@@ -1,0 +1,10 @@
+{
+  "name": "kyoten",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "library",
+  "kama": ">=0.9.793",
+  "modules": {
+    ".": { "visibility": "public" }
+  }
+}

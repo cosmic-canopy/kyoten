@@ -1,0 +1,40 @@
+# Human visibility and tuning tools
+
+**Status:** draft for the design spike. These are questions, not decisions.
+
+## What the vision asks
+
+- **Humans have visibility into the full process**, and **human tuning tools along the way.**
+- Named so far: **audio tools like a DAW** ([audio.md](audio.md)) and **timeline and cinematic tools**
+  ([timeline.md](timeline.md)).
+- Web first: **HTML/CSS** is the UI technology the browser already does best.
+
+## What already exists
+
+- Tuning files with live reload, debug overlays, record/replay viewers and test harnesses in the peers: see
+  [../research/peer-games.md](../research/peer-games.md) § human tools.
+- cosmic-forge's page: a web UI over a local HTTP server, with job logs streamed live (server-sent events). See
+  [../research/cosmic-forge.md](../research/cosmic-forge.md) § human visibility.
+
+## The questions
+
+1. **One tool surface or many?** A single editor (a web app the engine serves) with panels for each system, or
+   separate tools that share a protocol. Which comes first?
+2. **How does it run on native?** The same HTML/CSS UI in a browser pointed at a local server the native game
+   runs, an embedded webview, or a native UI. Web first suggests the first. What does that cost on native?
+3. **What can a human see live?** Candidates: the project database's change feed (agents' work as it happens),
+   entities and their components, per-phase and per-component timings at each update rate, the input recording,
+   network traffic.
+4. **What can a human change, and where does it go?** A tuning change writes a project-database record, exactly
+   as an agent's would ([project-database.md](project-database.md)), so the human and the AI share one history.
+   Is that the rule?
+5. **Record and replay as a tool:** scrub a recorded session, step frame by frame, and compare two runs. How much
+   of that comes for free from the Input phase's recording ([replay-and-determinism.md](replay-and-determinism.md))?
+6. **Profiling:** what is measured per phase, per component, per rate, and how is it shown?
+7. **In-game versus out-of-game:** which tools overlay the running game, and which run beside it?
+8. **Access and safety:** a dev server that can edit the project must not ship in a release build. How is that
+   enforced?
+
+## Decided
+
+*(nothing yet — filled in during the walk-through)*

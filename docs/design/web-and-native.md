@@ -1,0 +1,60 @@
+# Web first, native at parity
+
+**Status:** draft for the design spike. These are questions, not decisions.
+
+## What the vision asks
+
+- **Web first, and light on the web.** It uses the browser's best-in-class features (HTML/CSS, Web Audio, WebGPU,
+  and so on) rather than shipping heavy replacements to it.
+- **Native implements the same interfaces where needed**, for full cross-platform compatibility.
+- **N platforms, extensible** ([target-platforms.md](target-platforms.md)): the web and desktop native are the first
+  two implementations of the platform interface, not the only ones, so nothing here may assume there are two.
+
+## What already exists
+
+From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2–3:
+
+- **One source builds to wasm through emscripten** (`--target WASM`). `std::app::run` drives the frame from
+  `requestAnimationFrame` on the web and from a loop natively. Browser APIs are bound with `jsLibraries` (JS glue a
+  package ships) and C prototypes, and std's own glue uses a pull model: JS events enqueue and kama polls.
+- **Threads on the web have a price.** A wasm program that spawns runs `main` on a **worker**
+  (`PROXY_TO_PTHREAD`). That needs COOP/COEP headers (which break a cross-origin WebSocket), and the worker has no
+  `document`, so no DOM or canvas there. A WebGPU client has already died reading `getContext` on a worker. Nothing in
+  kama designs the split between the page thread and workers for an engine; kyoten has to.
+- **The platform packages are designed but unbuilt:** `@kama/gpu` (KR-25, RAII WebGPU handles, typed `acquire`),
+  `@kama/window` (KR-26, window plus one event ring; html5.h on the web, GLFW natively; headless for tests and replay),
+  `@kama/http` (KR-173). **Nothing exists for audio.** `@kama/ui` (HTML documents: the DOM on the web, RmlUi
+  natively) is on the registry, and the-mallow-man and cosmic-forge use it.
+- **The peers built their own platform layers** (GLFW plus emscripten html5, wgpu-native against the browser's
+  WebGPU). See [../research/peer-games.md](../research/peer-games.md) § platform split.
+- Every wasm call into a browser API is a JS crossing; WebGPU on the web is emscripten's `emdawnwebgpu`, which
+  implements `webgpu.h` in JS. Nothing measures that cost yet.
+
+## The questions
+
+1. **Where is the seam?** Designed against the browser's API (WebGPU, Web Audio, DOM events, WebRTC), with native
+   implementing each one, per the rule. Which interfaces are kyoten's own, and which does kyoten take from kama's
+   packages once they exist (`@kama/gpu`, `@kama/window`, `@kama/ui`)? Does kyoten build them, wait for them, or build
+   them *as* those packages?
+2. **The web thread topology.** This is the hardest web question, and it decides the frame model's parallelism on
+   the web ([frame-phases.md](frame-phases.md)). Options:
+   - a single-threaded wasm `main` on the page thread, with no parallel phases on the web at first;
+   - `main` on a worker, rendering through an OffscreenCanvas transferred to it, and the DOM driven by messages;
+   - the page thread owning input, DOM and audio scheduling, with simulation workers fed through SharedArrayBuffer.
+   Which one, and is COOP/COEP acceptable for every game kyoten hosts ([marketplace.md](marketplace.md))?
+3. **UI in HTML/CSS.** The game's UI is the browser's DOM on the web. Natively: RmlUi through `@kama/ui`, as the peers
+   do, or a webview? Is a game's UI the same HTML on both?
+4. **"Light on the web": what is the budget?** The wasm and JS size of the examples ([examples.md](examples.md))
+   on their first slice, and a number to hold it to.
+5. **What does native gain beyond parity?** Threads without COOP/COEP, files, raw UDP. How does a game ask for a
+   capability one target lacks (kama's `@compileFor` gates whole declarations, so per-platform types)?
+6. **The cost of crossing into JS.** Measure the `wgpu*` call cost on the web before designing a renderer that makes
+   thousands of calls per frame ([rendering.md](rendering.md)).
+7. **CI for the web.** kama's wasm leg runs under node, not a browser. kyoten needs a browser leg (headless Chrome)
+   to test COOP/COEP, workers and WebGPU for real.
+8. **A third family: the headset.** Meta Quest is either a browser (WebXR) or an Android device (OpenXR), and kama has
+   no Android target ([xr.md](xr.md)). Does the seam's design leave room for it from the start?
+
+## Decided
+
+*(nothing yet — filled in during the walk-through)*

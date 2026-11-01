@@ -1,0 +1,9 @@
+// kyoten's root module. Nothing is designed here yet: the architecture is the design spike's to decide
+// (docs/SPIKE.md). This placeholder exists so the workspace builds end to end, engine to game, from day one.
+
+export { version };
+
+fn string version()
+{
+    return "0.1.0";
+}

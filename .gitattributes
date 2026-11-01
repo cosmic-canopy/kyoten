@@ -1,0 +1,4 @@
+# LF in the repository AND in the worktree, on every platform, as in kama and the peer games. Without it a Windows
+# checkout obeys `core.autocrlf` and lands every text file as CRLF, which breaks wherever bytes are hashed or compared
+# (replay logs, golden digests, generated files) rather than executed. Binary files are left alone.
+* text=auto eol=lf
