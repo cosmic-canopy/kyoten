@@ -17,6 +17,9 @@
   [../research/kama-for-engines.md](../research/kama-for-engines.md).
 - The peers record what an LLM gets wrong in kama (reserved words, the literal-typing rules) in their gap files and
   agent guides: see [../research/peer-games.md](../research/peer-games.md) § process and lessons.
+- **The bar, counted** ([../research/component-models.md](../research/component-models.md) § 2): Three.js's spinning
+  cube is 25 lines (17 non-blank), 54 lit; Bevy's `3d_rotation` is 55; Godot's first script is 4, because the editor
+  holds the scene.
 
 ## The questions
 

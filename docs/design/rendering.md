@@ -25,6 +25,12 @@
 - **FFD's 2D renderer already renders to textures.** `gfx::render` gained three passes and two offscreen targets on
   2026-09-14 (`friendly-fire-department/docs/ROADMAP_DETAIL.md` § "The offscreen render target"), proved by four
   byte-identical captures, and it serves both larger-than-screen captures and a screen-space heat haze.
+- **Gathered since:**
+  - **For question 1,** [../research/harvest.md](../research/harvest.md) §§ 6–8 compares the donors' renderers.
+    forge's `render` is library-shaped, web only, and keeps no module statics. the-mallow-man's is feature-rich,
+    native only, shaped like its one scene, and holds 63 statics. FFD's 2D renderer holds 16.
+  - **For questions 2 and 5,** [../research/web-baseline.md](../research/web-baseline.md) measured what a draw costs
+    from wasm. A few thousand draws a frame need no batching; ten thousand do.
 
 ## The questions
 

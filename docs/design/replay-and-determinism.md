@@ -27,6 +27,14 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
   bug looks like."
 - **kama helps:** `reproducible-float` in the manifest (no fused multiply-add), explicit integer widths, and traps on
   signed overflow ([../research/kama-for-engines.md](../research/kama-for-engines.md) § 4).
+- **Found since:**
+  - **A world reloaded from a snapshot does not step like the world that was saved** when its stores are kama
+    `SlotMap`s, because a reloaded one reuses slots in a different order ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-4,
+    [../research/component-models.md](../research/component-models.md) § 4).
+  - **FFD's input record is FFD's controller.** Its clock, RNG and hasher move nearly verbatim, but `InputFrame` and
+    the four-phase driver are game-shaped ([../research/harvest.md](../research/harvest.md) § 1).
+  - **Whether the ports fix the order.** KYR-46 needs FFD's RNG stream and hash order bit for bit, and Jolt is built
+    without its cross-platform determinism (harvest's *What this does not decide* 6 and 8).
 
 ## The questions
 

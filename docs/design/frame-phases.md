@@ -46,6 +46,15 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
   I/O, not for this.
 - **On the web, threads move `main` to a worker** (COOP/COEP required, no DOM or canvas there). See
   [web-and-native.md](web-and-native.md).
+- **Gathered since** ([../research/component-models.md](../research/component-models.md), KYR-3;
+  [../research/harvest.md](../research/harvest.md), KYR-2):
+  - **Phases and rates (questions 1–3).** flecs's built-in pipeline maps onto the four phases almost one to one.
+    Unreal, flecs and Unity Entities give each unit its own rate; MonoBehaviour, Bevy and Godot run one fixed rate.
+  - **Parallelism (questions 5–6).** On kama 0.9.803, `scope` accepts two systems on disjoint fields of a world when
+    the world's own method spawns them. It refuses a store reached through a `ref`-returning accessor, and two
+    read-only children of one place ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-5). Probes 1–4 of its § 4.
+  - **The donors' renderers keep their state in module statics** (FFD 16, the-mallow-man 63), which are per isolate;
+    forge's `render` keeps none (harvest § Summary and its *What this does not decide* 3).
 
 ## The questions
 

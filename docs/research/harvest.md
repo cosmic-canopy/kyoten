@@ -1,6 +1,6 @@
 # Harvest: what kyoten could take from the peers' code
 
-Research for KYR-2, made 2026-11-01. The owner decided that kyoten starts from the code of three of his kama projects,
+Research for KYR-2, made 2026-11-01. The owner decided that kyoten starts from the code of three of their own kama projects,
 "at the very least great references", while moving toward generic and component-driven
 ([../design/architecture.md](../design/architecture.md) § Decided). This is the inventory that decision needs: what
 exists, what game-shaped assumptions each piece carries, and what making it generic would cost. **It decides nothing.**

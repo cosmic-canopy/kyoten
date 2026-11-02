@@ -16,10 +16,10 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | id | item | detail |
 |---|---|---|
 | KYR-1 | **Design spike, narrowed (2026-11-01)**: decide what the first slice needs, and the design of the project database and wiki. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
-| KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic | [architecture.md](design/architecture.md) |
-| KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision | [components.md](design/components.md) |
+| KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic. **Done 2026-11-01** | [research/harvest.md](research/harvest.md) · [architecture.md](design/architecture.md) |
+| KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision. **Done 2026-11-01** | [research/component-models.md](research/component-models.md) · [components.md](design/components.md) |
 | KYR-4 | **The Quest probe, answered by the owner's Quest prototype** (its own project): WebXR with WebGPU in the Quest browser, and a kama program built, loaded and run on the headset (KY-2). Its findings come back as research | [xr.md](design/xr.md) |
-| KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build | [web-and-native.md](design/web-and-native.md) |
+| KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build. **Done 2026-11-01** | [research/web-baseline.md](research/web-baseline.md) · [web-and-native.md](design/web-and-native.md) |
 
 ## NEXT: the first slice, after which a game can start on kyoten
 
@@ -67,8 +67,8 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-31 | **The XR package**: one interface (session, frame timing, views, poses, input sources) with WebXR and OpenXR backends | [xr.md](design/xr.md) |
-| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2), Vulkan with OpenXR's extensions, and APK packaging and signing | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
+| KYR-31 | **The XR package**: one interface (session, frame timing, views, poses, input sources) with WebXR and OpenXR backends. kama has filed the same binding as `@kama/xr` (KR-284) | [xr.md](design/xr.md) |
+| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2; kama's KR-280, in its NOW since 2026-11-01), Vulkan with OpenXR's extensions, and APK packaging and signing | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
 | KYR-33 | **kyoten-vr on Quest**: the example, holding the headset's frame rate | [examples.md](design/examples.md) · [xr](design/xr.md) |
 | KYR-34 | **iOS**: the platform package on kama's iOS target (KY-3), and Safari on the web route | [target-platforms.md](design/target-platforms.md) |
 

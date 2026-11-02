@@ -1,6 +1,6 @@
 # The design spike — kickoff brief
 
-kyoten was seeded on 2026-11-01 to be designed **with** its owner, not for him. This brief is for the session
+kyoten was seeded on 2026-11-01 to be designed **with** its owner, not for its owner. This brief is for the session
 that runs the walk-through.
 
 ## The goal
@@ -9,6 +9,53 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 [ROADMAP.md](ROADMAP.md) whose rows are the work those decisions create. **The output is decisions, not code.** A
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
+
+## Where it stands (2026-11-02)
+
+**Start here.** The walk-through (KYR-1) has not begun. Open it at [design/architecture.md](design/architecture.md)
+questions 1–4 and 7, and follow the [narrowed table](#narrowed-2026-11-01) from there. Nothing in the narrowed spike is
+decided beyond what each doc's *Decided* already records.
+
+- **The evidence rows are done** (2026-11-01). Each was checked against its sources before it was committed, and the
+  design docs they feed point at them under *What already exists*:
+  - KYR-2, [research/harvest.md](research/harvest.md): what to take from FFD, the-mallow-man and cosmic-forge, and what
+    each piece assumes.
+  - KYR-3, [research/component-models.md](research/component-models.md): Unity's phases and its peers, probes of
+    kama, and three options for components.md.
+  - KYR-5, [research/web-baseline.md](research/web-baseline.md): the web build's size, and what a WebGPU call costs
+    from wasm.
+  - Between them they filed KY-4 to KY-7 in [KAMA_GAPS.md](KAMA_GAPS.md).
+- **KYR-4 is the owner's**: a Quest prototype in its own project. Nothing in the spike waits for it.
+- **kama moved after the seeding.** On 2026-11-01 (kama `4f0ecbdc`) it put Android for Quest (KR-280) in its NOW and
+  filed `@kama/xr` (KR-284), which it recommends as a first-party package. So architecture.md question 3 (on, as or
+  beside kama's platform packages) now covers XR as well ([design/xr.md](design/xr.md)).
+- **The work is on the branch `spike/roadmap`**, not yet pushed or merged.
+
+### What to read before each question
+
+Each research doc ends in what it leaves open, naming the question it feeds. Read the evidence first, and re-check any
+claim a recommendation rests on (each doc pins the commits and versions it read). Then bring the owner the options and
+a recommendation, and record the answer in the doc's *Decided* as it is given. Commit once per doc, so a decision never
+lives only in a conversation.
+
+| Questions | Read first |
+|---|---|
+| architecture 1: how general, how soon | harvest § Summary; component-models § 1 (Unity grew by adding) and § 5.8 |
+| architecture 2: the package split | harvest § The overview, and its *What this does not decide* 5 (copy, depend or publish) |
+| architecture 3: kama's platform packages | harvest §§ 3–5 and *What this does not decide* 1; kama's `docs/ROADMAP_DETAIL.md` § `@kama/xr` |
+| frame-phases 1–3: the phases and their rates | harvest § 1 (FFD's `engine::phase`); component-models § 2 (flecs) and § Summary (rates) |
+| frame-phases 5–7: parallelism | component-models § 4, probes 1–4, and KY-5; harvest *What this does not decide* 3 (the renderers' statics) |
+| frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |
+| components 1–8 | component-models § 5, one subsection per question, and § Options for the walk-through (A, B, C) |
+| components 5, project-database 11: records and layers | component-models § Summary (overrides layer per property almost everywhere) and § 5.5 |
+| replay 1, 2, 5 | KY-4; harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
+| web-and-native 4: the size budget | web-baseline § What this means and § Candidate budgets. **The owner picks a number, a ratchet, or both** |
+| web-and-native 6: the crossing cost | web-baseline § What this means, *For question 6* |
+| target-platforms 1–4 | harvest § 3 (the peers' platform headers) |
+| rendering 1: where it starts | harvest §§ 6–8 and *What this does not decide* 2 |
+| rendering 2 and 5 | web-baseline § What this means, *For rendering.md* |
+| rendering 3, ai-first-api 1: the hello cube | component-models § 2 (Three.js) and § 5.7 |
+| examples 3: what "done" measures | web-baseline § Method, so a slice can repeat its measurements |
 
 ## Read first
 
@@ -19,6 +66,9 @@ or in a temporary directory, and record what it measured in the design doc it se
 3. [research/kama-for-engines.md](research/kama-for-engines.md): what kama offers an engine today (threads,
    isolates, wasm, GPU and window packages, performance) and what kyoten has to build or wait for.
 4. [research/cosmic-forge.md](research/cosmic-forge.md): the content-creation component kyoten consumes.
+5. [research/harvest.md](research/harvest.md) (KYR-2), [research/component-models.md](research/component-models.md)
+   (KYR-3) and [research/web-baseline.md](research/web-baseline.md) (KYR-5): the evidence gathered for the walk-through.
+   The harvest corrects the earlier surveys where the code has moved (its § *Corrections*).
 
 ## The walk-through, in order
 
@@ -63,7 +113,8 @@ still roadmapped, so nothing is dropped ([ROADMAP.md](ROADMAP.md)).
 stays after the first slice. A game that starts after slice B would otherwise be built before its wiki exists
 ([design/project-database.md](design/project-database.md) § Decided).
 
-Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the walk-through itself.
+Walk the docs in this order. KYR-2, KYR-3 and KYR-5 gathered the evidence, KYR-4 is the owner's Quest prototype, and
+KYR-1 is the walk-through itself.
 
 | Doc | In the spike | The rest waits for |
 |---|---|---|
@@ -96,7 +147,8 @@ Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the wa
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-1 is already there.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-1 to KY-7 are there; take the
+  next id from its counter.
 
 ## What the spike should leave behind
 

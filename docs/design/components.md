@@ -27,6 +27,11 @@
   closures** (a system is a functor contract: a resource implementing a contract), no overloading or default
   parameters, and module statics are per isolate. `scope` proves disjoint `ref` field borrows, which is what can make a
   phase's parallel work compiler-checked.
+- **KYR-3's comparison** ([../research/component-models.md](../research/component-models.md)): Unity's phases and its
+  peers, probes of kama 0.9.803, one subsection of its § 5 per question here, and three coherent options (A, a typed
+  world with written phases; B, that world generated from project-database records; C, an engine-owned archetype ECS).
+  Two of its probes became kama gaps: KY-4 (a `SlotMap` reloaded through serde reuses slots in a different order) and
+  KY-5 (two `spawn`s cannot share a read-only borrow).
 
 ## The questions
 

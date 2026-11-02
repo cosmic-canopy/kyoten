@@ -26,6 +26,12 @@
 - **What kama gives and lacks** ([../research/kama-for-engines.md](../research/kama-for-engines.md)): the platform
   packages (`@kama/gpu`, `@kama/window`, `@kama/http`) are designed, not built; `@kama/ui` exists; the job pool is not
   built; packages are published to `registry.kama-lang.org`.
+- **The inventory of what to take** ([../research/harvest.md](../research/harvest.md), KYR-2): every candidate piece
+  of FFD, the-mallow-man and cosmic-forge, with what it assumes about its game and what making it generic would cost.
+  Only FFD's pieces have a proven web leg, and no donor has a 3D renderer on both legs. Its *What this does not decide*
+  frames questions 2 (copy, depend or publish) and 3. **kama has since filed `@kama/xr`** (KR-284, 2026-11-01) and
+  recommends it first-party, as `@kama/gpu` and `@kama/window` are, so question 3 covers XR as well
+  ([xr.md](xr.md)).
 
 kyoten's position differs from the peers' on purpose: it *is* the general engine they each declined to build early.
 The tension between their lesson and that purpose is the first thing to settle.

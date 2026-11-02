@@ -11,12 +11,21 @@
 ## What already exists
 
 - **Nothing for XR in kama or the peers.** kama has no WebXR or OpenXR binding, and neither peer game has any XR code.
+  **kama filed one on 2026-11-01:** `@kama/xr` (KR-284, unprobed), which it recommends as a first-party package with
+  one interface and an OpenXR and a WebXR backend chosen by target, since every engine on kama that wants XR needs the
+  same binding. It would build OpenXR on Windows over Quest Link first, which needs no Android target (kama
+  `docs/ROADMAP_DETAIL.md` § `@kama/xr`). That bears on question 2, and on [architecture.md](architecture.md)
+  question 3.
 - **kama's targets** (`kama/docs/targets.md` § Built-in targets): `MACOS`, `WINDOWS`, `LINUX`, `WASM`, `EMBEDDED`.
   **There is no Android target.** A custom triple with a per-target compiler is allowed, and the docs name "an NDK
   wrapper" as the kind of compiler that carries its triple in its name (`targets.md:540-553`). Building an Android
   `.so` that way is untested, and std's OS layer has no Android branch that anyone has exercised. Probed 2026-11-01 on
   0.9.803 ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-2): `--target ANDROID` is refused, and the triple
   `aarch64-linux-android` transpiles as `OS_LINUX` with `ABI_ANDROID`, so std treats it as Linux.
+  **kama has since measured the native route** (kama `4f0ecbdc`, 2026-11-01, with NDK r30 on this machine; not
+  re-checked from here): a `kama.json` target carrying `--target=aarch64-linux-android29` builds an executable and a
+  `.so`, and every std fixture that applies links once `-lpthread` is dropped. Nothing has run on a device. kama moved
+  the target (KR-280) to its NOW and filed KR-282 (an NDK wrapper is handed `-target`) and KR-283 (an installable APK).
 - **kama's hot-reload notes** already mention Quest: "Android/Quest only via a pushed `.so`"
   (`kama/docs/ROADMAP_DETAIL.md` § the hot-reload library).
 - **Quest facts to verify before relying on them** *(to verify)*: the Quest browser runs WebXR `immersive-vr`
@@ -82,7 +91,8 @@
   - **Its quickest start** (a suggestion; the route is the game's own call): the web route needs no new kama target,
     since kama builds wasm today, and renders with WebGPU behind the Quest browser's flag or with WebGL without it. The
     native route meets KY-2 at once, though a `kama.json` target entry naming the NDK's clang (kama `docs/targets.md`
-    § "You already have a cross toolchain") may carry it. That is untested.
+    § "You already have a cross toolchain") may carry it. That is untested. *(kama has since built through such a
+    target, but run nothing; see What already exists.)*
 - **2026-11-01: the Android target is kama's to build; the platform package on it is kyoten's.** This answers question
   4. kyoten's rules already settle it: kyoten never edits kama, and the gap file is how kama hears about a gap
   ([../../AGENTS.kyoten.md](../../AGENTS.kyoten.md)). The owner expected the same ("some of that is KAMA_GAPS"). The

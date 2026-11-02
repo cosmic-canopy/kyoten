@@ -34,6 +34,8 @@
   `OS_IOS`, which std's macOS declarations do not cover. Apple's own spelling, `arm64-apple-ios`, derives neither
   `ARCH_AARCH64` nor `OS_IOS`. Each also needs an app entry the OS owns, its own packaging and signing, and, for iOS, a
   Mac to build on.
+- **The peers' platform layers** ([../research/harvest.md](../research/harvest.md) § 3): one C header per game, its web
+  half over emscripten's `html5.h` and its native half over GLFW, with one window held in file-static C state.
 
 ## The questions
 

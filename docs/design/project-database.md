@@ -25,6 +25,11 @@ least prior art in the peers, and the one most worth getting right before code.
   name, written by hand.
 - **kama gives typed data for free:** `@generate(Serializable/Deserializable)`, strict decoding, merge into a held
   value, and an untyped `JsonValue`. See [../research/kama-for-engines.md](../research/kama-for-engines.md).
+- **Overrides layer the same way in most engines** ([../research/component-models.md](../research/component-models.md)
+  § Summary): per property, the most specific layer wins, and a field a layer does not mention is inherited (Unity's
+  prefab variants, Godot's instances, flecs's `IsA`, Bevy's BSN patches). That is kama serde's `mergeJsonBuffer` rule
+  and the priority stacks in *Decided*. Unreal, which infers an override from a value that differs from the default,
+  is the outlier, and UEFN overrides per component rather than per field.
 
 ## The questions
 

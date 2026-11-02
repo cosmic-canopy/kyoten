@@ -28,7 +28,14 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
 - **The peers built their own platform layers** (GLFW plus emscripten html5, wgpu-native against the browser's
   WebGPU). See [../research/peer-games.md](../research/peer-games.md) § platform split.
 - Every wasm call into a browser API is a JS crossing; WebGPU on the web is emscripten's `emdawnwebgpu`, which
-  implements `webgpu.h` in JS. Nothing measures that cost yet.
+  implements `webgpu.h` in JS. **KYR-5 measured it, and the build size**
+  ([../research/web-baseline.md](../research/web-baseline.md)):
+  - **Question 6:** an empty wasm-to-JS call costs about 5 ns, a `draw` 31 ns, a mesh draw 359 ns, and a call with
+    `uint64` arguments 116–133 ns. Most of a call is the browser's own WebGPU work, so the number of calls is what to
+    design around.
+  - **Question 4:** a WebGPU triangle is 22.5 KB brotli as kama builds it, and 17.5 KB with Closure and
+    `ENVIRONMENT=web`; emdawnwebgpu is most of it. The doc lists candidate budgets for the owner to choose from.
+    kama's release build does not run Closure ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-6).
 
 ## The questions
 
