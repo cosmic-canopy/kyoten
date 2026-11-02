@@ -65,7 +65,7 @@ lives only in a conversation.
 | frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |
 | components 1–8 | component-models § 5, one subsection per question, and § Options for the walk-through (A, B, C) |
 | components 5, project-database 11: records and layers | component-models § Summary (overrides layer per property almost everywhere) and § 5.5 |
-| replay 1, 2, 5 | KY-4; harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
+| replay 1, 2, 5 | KY-4 (fixed in kama 0.9.809); harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
 | web-and-native 4: the size budget | web-baseline § What this means and § Candidate budgets. **The owner picks a number, a ratchet, or both** |
 | web-and-native 6: the crossing cost | web-baseline § What this means, *For question 6* |
 | target-platforms 1–4 | harvest § 3 (the peers' platform headers) |
@@ -164,7 +164,7 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-1 to KY-7 are there; take the
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6 and KY-8 are open there; take the
   next id from its counter.
 
 ## What the spike should leave behind

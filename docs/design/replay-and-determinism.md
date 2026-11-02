@@ -30,7 +30,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
 - **Found since:**
   - **A world reloaded from a snapshot does not step like the world that was saved** when its stores are kama
     `SlotMap`s, because a reloaded one reuses slots in a different order ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-4,
-    [../research/component-models.md](../research/component-models.md) § 4).
+    [../research/component-models.md](../research/component-models.md) § 4). **Fixed in kama 0.9.809** (KR-287): the
+    free list is written to the wire, so a reloaded map reuses the slot the live one would. Re-checked here on 0.9.810,
+    and KY-4 was removed on 2026-11-02.
   - **FFD's input record is FFD's controller.** Its clock, RNG and hasher move nearly verbatim, but `InputFrame` and
     the four-phase driver are game-shaped ([../research/harvest.md](../research/harvest.md) § 1).
   - **Whether the ports fix the order.** KYR-46 needs FFD's RNG stream and hash order bit for bit, and Jolt is built

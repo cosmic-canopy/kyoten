@@ -34,8 +34,8 @@
 - **KYR-3's comparison** ([../research/component-models.md](../research/component-models.md)): Unity's phases and its
   peers, probes of kama 0.9.803, one subsection of its § 5 per question here, and three coherent options (A, a typed
   world with written phases; B, that world generated from project-database records; C, an engine-owned archetype ECS).
-  Two of its probes became kama gaps: KY-4 (a `SlotMap` reloaded through serde reuses slots in a different order) and
-  KY-5 (two `spawn`s cannot share a read-only borrow).
+  Two of its probes became kama gaps: KY-4 (a `SlotMap` reloaded through serde reuses slots in a different order;
+  fixed in kama 0.9.809) and KY-5 (two `spawn`s cannot share a read-only borrow).
 
 ## The questions
 
