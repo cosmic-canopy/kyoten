@@ -14,7 +14,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [target-platforms.md](target-platforms.md) | N platforms, extensible: desktop, Steam Deck, mobile, consoles, Roblox and UEFN | draft, one decision recorded (iOS; Android for Quest) |
 | [xr.md](xr.md) | VR: OpenXR natively, WebXR on the web, perhaps a package; Meta Quest first | draft, four decisions recorded |
 | [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft, one decision recorded (a self-hostable server; the platform is the easy option) |
-| [project-database.md](project-database.md) | the AI-coordinated project database and wiki | deferred to KYR-24, three decisions recorded |
+| [project-database.md](project-database.md) | the AI-coordinated project database and wiki | draft for the spike (build: KYR-24), four decisions recorded |
 | [human-tools.md](human-tools.md) | human visibility and tuning: the tool surface | deferred to KYR-26, KYR-27 |
 | [rendering.md](rendering.md) | WebGPU first | draft |
 | [audio.md](audio.md) | Web Audio first, and the DAW tool | deferred to KYR-15, KYR-35 |
@@ -24,7 +24,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [version-manager.md](version-manager.md) | several engine versions side by side, and example projects to start from | deferred to KYR-38 |
 | [marketplace.md](marketplace.md) | the developer platform: build, deploy and sell | a separate product; the engine's side is KYR-44 |
 | [website.md](website.md) | kyotenengine.com: the site, its subdomains, provisioning and deployment | deferred to KYR-39 |
-| [examples.md](examples.md) | the example games (FPS, VR on Meta Quest), each its own repository, and the first vertical slice | draft, three decisions recorded |
+| [examples.md](examples.md) | the example games (FPS, VR on Meta Quest), each its own repository, and the first vertical slice | draft, four decisions recorded |
 
 **A doc's status moves from `draft` to `decided`** when every question in it is answered or deferred with a reason,
 and to `superseded` if a later design replaces it (then it says by which).

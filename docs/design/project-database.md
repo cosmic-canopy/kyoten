@@ -1,6 +1,6 @@
 # The project database and wiki
 
-**Status:** draft, deferred past the first slice to KYR-24. Three decisions are recorded; the rest are questions.
+**Status:** draft for the design spike; its build is KYR-24. Four decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -81,7 +81,12 @@ least prior art in the peers, and the one most worth getting right before code.
 - **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
   ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). It is taken up with KYR-24 and KYR-25 and proved in slice C
   (KYR-28). Meanwhile the spike keeps the component model ready for records (components.md question 5), so this design
-  is not boxed in before it starts.
+  is not boxed in before it starts. *Its design came back into the spike later the same day (next entry); only the
+  build stays deferred.*
+- **2026-11-01, the owner, later the same day: the wiki's design is decided in the spike; its build stays after the
+  first slice** (KYR-24, proved in slice C, KYR-28). The reason: a game that starts after slice B would otherwise be
+  built before its wiki exists, and the lookup abstraction (below) shapes how game code reads its data. Questions 1–6, 8
+  and 11 join the spike. Question 7 waits for KYR-26, 9 for KYR-25 and 10 for KYR-29.
 - **2026-11-01, the owner: query support and MCP are built into kyoten** ([ai-first-api.md](ai-first-api.md) §
   Decided). That answers question 9 in part: the project database is reached through them, and whether a CLI, an HTTP
   API or a schema export layers on top stays open.

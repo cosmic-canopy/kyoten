@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-46**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-50**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -15,7 +15,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-1 | **Design spike, narrowed (2026-11-01)**: decide only what the first slice needs. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
+| KYR-1 | **Design spike, narrowed (2026-11-01)**: decide what the first slice needs, and the design of the project database and wiki. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
 | KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic | [architecture.md](design/architecture.md) |
 | KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision | [components.md](design/components.md) |
 | KYR-4 | **The Quest probe, answered by the owner's Quest prototype** (its own project): WebXR with WebGPU in the Quest browser, and a kama program built, loaded and run on the headset (KY-2). Its findings come back as research | [xr.md](design/xr.md) |
@@ -50,6 +50,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-21 | **Shipping a game**: release builds, crash reports, licence notices, and bundles for Steam on Windows, Linux and a notarized macOS, plus a web release | [target-platforms.md](design/target-platforms.md) |
 | KYR-22 | **Parallel work inside a phase**: a job pool (kama's, or kyoten's until kama's lands), when a measurement asks for one | [frame-phases.md](design/frame-phases.md) |
 | KYR-23 | **Live tuning and asset hot reload** | [ai-first-api.md](design/ai-first-api.md) · [tools](design/human-tools.md) |
+| KYR-49 | **2D**: sprites, shapes, text and a 2D camera on the same renderer, for 2D games such as FFD's port and a 2D example | [rendering.md](design/rendering.md) · [examples](design/examples.md) |
 
 ## THE AI-DRIVEN LAYER: slice C
 
@@ -70,6 +71,18 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2), Vulkan with OpenXR's extensions, and APK packaging and signing | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
 | KYR-33 | **kyoten-vr on Quest**: the example, holding the headset's frame rate | [examples.md](design/examples.md) · [xr](design/xr.md) |
 | KYR-34 | **iOS**: the platform package on kama's iOS target (KY-3), and Safari on the web route | [target-platforms.md](design/target-platforms.md) |
+
+## SHOWCASE: shipped games on kyoten
+
+The owner wants as many games running on kyoten as possible to showcase when it is ready to host games: the examples
+(KYR-11, KYR-33, KYR-40) and these ports. A port starts only after its game has shipped on its own engine, and it
+happens in that game's own repository, never here.
+
+| id | item | detail |
+|---|---|---|
+| KYR-46 | **friendly-fire-department's simulation on kyoten's frame**, once FFD has shipped and slice B passes: its rounds reproduce FFD's pinned world hash on every leg. The engine's acceptance test against a shipped game | [architecture.md](design/architecture.md) |
+| KYR-47 | **friendly-fire-department on kyoten, the whole game**: 2D (KYR-49), its UI, voice, lockstep netcode and Steam, on kyoten's packages | [architecture.md](design/architecture.md) · [examples](design/examples.md) |
+| KYR-48 | **the-mallow-man on kyoten**, once it has shipped: 3D, physics, snapshot netcode and voice, on kyoten's packages | [architecture.md](design/architecture.md) · [examples](design/examples.md) |
 
 ## LATER
 

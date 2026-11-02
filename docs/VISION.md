@@ -130,3 +130,7 @@ Given in the owner's next messages, the same day:
   Quest game on its own, so as not to hold kyoten up; it comes here only if it fits in a reasonable time
   ([design/xr.md](design/xr.md)).
 - **kyoten is open-ended and general purpose**, never pigeonholed into one game project.
+- **The wiki is decided now.** Its design is settled in the spike, even though it is built after the first slice
+  ([SPIKE.md](SPIKE.md)).
+- **Showcase as many games running on kyoten as possible** when it is ready to host games: the examples, and ports of
+  friendly-fire-department and the-mallow-man once each has shipped ([ROADMAP.md](ROADMAP.md)).

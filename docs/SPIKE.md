@@ -59,14 +59,19 @@ blocks it; settling about 150 questions before any code would put the far-off on
 manager) ahead of the near ones. In the owner's words, the list "is likely a good place to start", and everything is
 still roadmapped, so nothing is dropped ([ROADMAP.md](ROADMAP.md)).
 
+**Widened the same day, by the owner: the design of the project database and wiki joins the spike**, though its build
+stays after the first slice. A game that starts after slice B would otherwise be built before its wiki exists
+([design/project-database.md](design/project-database.md) § Decided).
+
 Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the walk-through itself.
 
 | Doc | In the spike | The rest waits for |
 |---|---|---|
 | [architecture.md](design/architecture.md) | 1–4, 7 | 5–6: settled by the platform being a separate product (see its *Decided*); 8: KYR-37 |
 | [frame-phases.md](design/frame-phases.md) | all, including 10 (a display clock the game does not own) | — |
-| [components.md](design/components.md) | all; 5 only far enough that the model leaves room for project-database records | KYR-3 feeds it |
+| [components.md](design/components.md) | all, with 5 decided beside project-database.md | KYR-3 feeds it |
 | [replay-and-determinism.md](design/replay-and-determinism.md) | 1–3, 5–6 | 4: KYR-27 |
+| [project-database.md](design/project-database.md) | 1–6, 8, 11: the design (its build is KYR-24) | 7: KYR-26; 9: KYR-25; 10: KYR-29 |
 | [web-and-native.md](design/web-and-native.md) | 1–6, 8 | 7: KYR-13 |
 | [target-platforms.md](design/target-platforms.md) | 1–4, the extension model the platform seam is built on | 5–6: KYR-42; 7–9: KYR-43; 10: the roadmap's order; 11: KYR-13; 12–13: KYR-32, KYR-34 |
 | [rendering.md](design/rendering.md) | 1–4 (with content-pipeline 5, forge's `render` package) | 5: KYR-22; 6: KYR-10; 7: KYR-26; 8: KYR-33 |
@@ -74,7 +79,6 @@ Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the wa
 | [examples.md](design/examples.md) | 1–3 | 4: KYR-29; 5: KYR-39, KYR-44; 6: KYR-40 |
 | [xr.md](design/xr.md) | none decided here; the owner's Quest prototype, its own project, answers 1, 3 and 4 on a headset (KYR-4) | KYR-31 to KYR-33 |
 | [networking.md](design/networking.md) | — | 1–4: KYR-18; 5–9: KYR-45 (the server) and KYR-44 |
-| [project-database.md](design/project-database.md) | — | KYR-24; 9: KYR-25 |
 | [human-tools.md](design/human-tools.md) | — | KYR-26, KYR-27 |
 | [audio.md](design/audio.md) | — | 1–5, 7: KYR-15; 6: KYR-35 |
 | [timeline.md](design/timeline.md) | — | KYR-36 |
@@ -100,7 +104,8 @@ Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the wa
   has its roadmap row (above).
 - A ROADMAP whose first rows are the **first vertical slice**: the smallest thing that proves the frame model and
   the platform seam together, running on web and native (see [design/examples.md](design/examples.md) for
-  candidates). The AI-facing project database joins it in slice C, and VR on Quest after it. *(Narrowed 2026-11-01:
+  candidates). The AI-facing project database, designed in the spike, is built and joins it in slice C, and VR on Quest
+  after it. *(Narrowed 2026-11-01:
   this asked for the project database in the first slice, and the roadmap now puts it in slice C, KYR-28.)*
 - A decision on how the engine is split into packages, reflected in `kama_workspace.json`.
 

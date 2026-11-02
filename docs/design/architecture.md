@@ -79,6 +79,10 @@ The tension between their lesson and that purpose is the first thing to settle.
     nothing a player sees.
   - **Considered:** porting FFD to kyoten before launch, set aside for that reason. The same holds for the-mallow-man.
   - **What follows:** the two games are kyoten's donors and references, not yet its customers.
+  - **And after each ships, it is ported to kyoten** (the owner, 2026-11-01), to showcase as many games running on
+    kyoten as possible. FFD's simulation goes first, as the engine's acceptance test: kyoten's frame must reproduce
+    FFD's pinned world hash (KYR-46). Then the whole of FFD (KYR-47) and the-mallow-man (KYR-48), each in its own
+    repository.
 - **2026-11-01, the owner: kyoten starts from the peers' code, and moves toward generic and component-driven.** FFD,
   the-mallow-man and cosmic-forge are the starting point, and "at the very least great references".
   - **How:** a piece taken from a peer is made generic as it moves. It names no game, and it fits the component model

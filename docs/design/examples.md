@@ -1,6 +1,6 @@
 # The example games, and the first vertical slice
 
-**Status:** draft for the design spike. Three decisions are recorded; the rest are questions.
+**Status:** draft for the design spike. Four decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -58,3 +58,7 @@
   first slice is planned in `kyoten-fps`. On the roadmap, slice A (KYR-11) and slice B (KYR-12) are the gate after
   which a game can start on kyoten, and slice C (KYR-28) follows with the project database. What each slice contains
   is still question 2's to decide, in the spike.
+- **2026-11-01, the owner: the examples are built to showcase** (question 5). The owner wants as many games running
+  on kyoten as possible to showcase when it is ready to host games. The ports of friendly-fire-department and
+  the-mallow-man join the examples once each has shipped (KYR-46 to KYR-48). Each example still stays a different
+  shape (question 6), so the showcase guards against bending the engine toward one game.
