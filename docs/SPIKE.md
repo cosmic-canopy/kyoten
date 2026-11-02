@@ -12,9 +12,23 @@ or in a temporary directory, and record what it measured in the design doc it se
 
 ## Where it stands (2026-11-02)
 
-**Start here.** The walk-through (KYR-1) has not begun. Open it at [design/architecture.md](design/architecture.md)
-questions 1–4 and 7, and follow the [narrowed table](#narrowed-2026-11-01) from there. Nothing in the narrowed spike is
-decided beyond what each doc's *Decided* already records.
+**Start here.** The walk-through (KYR-1) began on 2026-11-02. [design/architecture.md](design/architecture.md) is
+done except one part of question 7, all recorded in its *Decided*:
+
+- **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
+  gated; kyoten builds `@kama/window` and `@kama/gpu` (KYR-51, KYR-52); and the game's `main` calls `run`.
+- **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package shaped
+  like Three.js.
+- **Question 7's directories:** `editor/`, `server/` and `tools/`.
+
+**Still open in it:**
+
+- **Question 7's namespaces** wait on kama's ruling on [KAMA_GAPS.md](KAMA_GAPS.md) KY-8: a scope does not keep two
+  packages apart, and no dependency alias exists.
+- **Question 2's module rules** (which module may import which) are drafted next, for the owner.
+
+**Next:** [design/frame-phases.md](design/frame-phases.md), all of it, then the rest of the
+[narrowed table](#narrowed-2026-11-01).
 
 - **The evidence rows are done** (2026-11-01). Each was checked against its sources before it was committed, and the
   design docs they feed point at them under *What already exists*:

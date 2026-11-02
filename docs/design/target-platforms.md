@@ -41,6 +41,11 @@
   [architecture.md](architecture.md) question 4 *(inferred)*.
 - **The peers' platform layers** ([../research/harvest.md](../research/harvest.md) § 3): one C header per game, its web
   half over emscripten's `html5.h` and its native half over GLFW, with one window held in file-static C state.
+- **Decided in [architecture.md](architecture.md) (2026-11-02), bearing on questions 1–4:**
+  - **The game picks the platform.** The game's `main` builds the app and calls `run`, and the engine cannot import a
+    private platform package.
+  - **A gated part is its own package**, a console's platform under NDA among them.
+  - **kyoten builds `@kama/window` and `@kama/gpu`** (KYR-51, KYR-52).
 
 ## The questions
 

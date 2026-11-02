@@ -11,6 +11,9 @@
 - **Components within a phase update at different fixed frequencies**, each chosen for human perception.
 - **Clean patterns each game uses, not hard-coded systems.** It should be easy to use correctly and high
   performance.
+- **Strong abstractions for the systems and phases, up front** (the owner, 2026-11-02;
+  [architecture.md](architecture.md) question 1), with "each phase has its own components that can be written"
+  ([components.md](components.md)).
 
 ## What already exists
 
@@ -55,6 +58,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
     read-only children of one place ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-5). Probes 1–4 of its § 4.
   - **The donors' renderers keep their state in module statics** (FFD 16, the-mallow-man 63), which are per isolate;
     forge's `render` keeps none (harvest § Summary and its *What this does not decide* 3).
+- **The loop is the engine's** ([architecture.md](architecture.md) question 4, 2026-11-02): the game's `main` calls
+  `run`, which owns the loop on every target. That covers rAF on the web, the headset's frame under XR (question 10)
+  and the lifecycle's events. The parts stay public, so a test or a replay can step a world without it.
 
 ## The questions
 

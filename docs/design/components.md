@@ -11,6 +11,10 @@
   design. kyoten takes different approaches but can learn from that model. KYR-3 is the research.
 - **Start from the peers' code, and move toward generic and component-driven** (the owner, 2026-11-01;
   [architecture.md](architecture.md) § Decided).
+- **Generic up front, with strong abstractions for the systems and phases** (the owner, 2026-11-02; architecture.md
+  question 1): "each phase has its own components that can be written", likened to Unity's generic scene graph with
+  MonoBehaviours composed on it per game, "and there may be some lessons we learn from that NOT to do". The aim is "as
+  optimal as possible while being flexible and generic".
 
 ## What already exists
 

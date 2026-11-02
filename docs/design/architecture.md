@@ -1,6 +1,8 @@
 # Architecture: the engine, the games, the repository
 
-**Status:** draft for the design spike. Four decisions are recorded; the rest are questions.
+**Status:** the spike's questions here are decided (1–4, 2026-11-02), except question 7's namespaces, which wait on
+kama (KY-8). Question 5 is settled with question 7's directories, question 6 moved to the platform product, and question 8
+waits for KYR-37.
 
 ## What the vision asks
 
@@ -47,21 +49,25 @@ The tension between their lesson and that purpose is the first thing to settle.
 
 1. **How general, how soon?** The peers' rule is "no abstraction before a game needs it". kyoten's purpose is the
    abstraction. Does each engine feature arrive driven by the examples, an FPS and a VR game ([examples.md](examples.md)),
-   so it still pays for itself on a real game, and on two different ones?
+   so it still pays for itself on a real game, and on two different ones? *Decided 2026-11-02: generic up front.*
 2. **The package split.** One `kyoten` package, or several (core/frame, components, platform, render, audio, net,
    database, tools), each a workspace member? What may depend on what, and which parts are useful outside kyoten
-   (published to the registry, as `@kama/ui` was)?
+   (published to the registry, as `@kama/ui` was)? *Decided 2026-11-02: one package with modules, and a package of
+   its own for anything standalone or gated.*
 3. **kama's platform packages.** Build kyoten's platform layer on `@kama/gpu` and `@kama/window`, build those packages
-   (in kama's design) as part of kyoten's work, or keep kyoten's own layer as the peers did?
+   (in kama's design) as part of kyoten's work, or keep kyoten's own layer as the peers did? *Decided 2026-11-02:
+   kyoten builds them.*
    - **Extensible to N platforms.** The owner requires that a platform (web, desktop, Steam Deck, consoles under NDA, XR)
      is added without changing the engine for the others, which points to platforms, and features such as XR, as
      packages implementing engine interfaces, some of them private ([target-platforms.md](target-platforms.md)). The
      package split in question 2 has to leave room for that.
 4. **The engine/game boundary.** What a game provides (components, systems, content records, rates) and what the
    engine provides (the frame, scheduling, platform, tools, database). How a game starts: a template, a `main` the
-   engine owns, or a `main` the game owns that calls the engine?
+   engine owns, or a `main` the game owns that calls the engine? *Decided 2026-11-02: the game's `main` calls `run`.*
 5. **Where the tools live.** In this monorepo (an editor served over HTTP, [human-tools.md](human-tools.md)), and the
-   hosted platform (marketplace, backend): in this monorepo too, or their own repositories?
+   hosted platform (marketplace, backend): in this monorepo too, or their own repositories? *Settled: the hosted
+   platform is a separate product (2026-11-01), and the editor and kyoten's own backend server live here, as `editor/`
+   and `server/` (2026-11-02).*
 6. **The license and the platform.** The engine is MIT OR Apache-2.0. Is the hosted platform's code open as well, or
    only the engine?
 7. **Naming.** `kyoten` as the engine package name, `tools/`, `services/`: fixed now so imports and docs do not churn
@@ -71,6 +77,7 @@ The tension between their lesson and that purpose is the first thing to settle.
      official Cosmic Canopy scope. On kama 0.9.810, a scope does not reach the import: `@kyoten/net` imports as `net`,
      so it cannot sit beside any other `net`, the game's own included, and a consumer cannot alias a dependency.
      kama triages it, and this question is settled once it rules.
+   - *The directories are decided (2026-11-02): `editor/`, `server/` and `tools/`.*
 8. **Examples against a published engine.** An example reaches the engine by path, so it builds only inside a kyoten
    checkout. When the engine is published and the engine manager hands out a standalone copy of an example
    ([version-manager.md](version-manager.md)), does it depend on a registry version, with a `kama.local.json` override
@@ -115,4 +122,86 @@ The tension between their lesson and that purpose is the first thing to settle.
   ([marketplace.md](marketplace.md)). That settles question 5's second half (the hosted platform lives outside this
   monorepo) and moves question 6 (whether the platform's code is open) to that product. kyoten's own backend server,
   which anyone may host ([networking.md](networking.md) § Decided), is open like the engine; where its code lives is
-  still question 5.
+  still question 5. *(Since settled: `server/`, in this repository, 2026-11-02 below.)*
+- **2026-11-02, the owner: generic up front (question 1).** "We should be generic as much as possible up front and
+  write strong abstractions for our systems and phases." The aim is "as optimal as possible while being flexible and
+  generic".
+  - **How:** the peers are the reference for implementation detail ("FFD, the mallow man, cosmic forge all have
+    lessons for us with kama"). The FPS example shows what is needed, without the engine taking its shape: "I don't
+    want to fall into a gap of being too specific for anything."
+  - **For [components.md](components.md) and [frame-phases.md](frame-phases.md):** "each phase has its own components
+    that can be written", likened to how Unity built a generic scene graph and composed MonoBehaviours on it per game,
+    and "there may be some lessons we learn from that NOT to do".
+  - **Considered:** features arriving only when an example needs them, with only what cannot change later (identity,
+    order, the override format; [../research/component-models.md](../research/component-models.md) § 5.8) designed up
+    front. That was the recommendation, and the owner chose strong abstractions up front instead. The peers' rule ("no
+    abstraction before a game needs it") is theirs, not kyoten's.
+- **2026-11-02, the owner: one `kyoten` package with modules, and "anything external/stand alone or gated can be a
+  separate package" (question 2).**
+  - **How:** the engine's parts are modules of `kyoten` (`kyoten::frame`, `kyoten::platform`, …). A part becomes a
+    package of its own when it stands alone, so that something outside kyoten can use it (as `@kama/ui` grew out of FFD's
+    UI). It also becomes one when it is gated: optional or private (a console's platform under NDA, Steamworks, XR), or
+    carrying a C dependency that only some games build. `kama_workspace.json` gains a member as each one is made.
+  - **Why:** a consumer compiles only what it reaches, so modules cost it only the download (kama
+    `docs/packages.md:639-650`). A console's package cannot live in this public repository. Only a package boundary is
+    checked by the compiler: a module may import any sibling in its own package.
+  - **Still to settle:** which module may import which, brought to the owner next.
+  - **Considered:** several workspace members from day one, as the-mallow-man (9) and cosmic-forge (8) have; and a
+    core package with one package per platform and per C-backed feature.
+- **2026-11-02, the owner: kyoten builds `@kama/window` and `@kama/gpu` (question 3).**
+  - **How:** to kama's designs (kama `docs/ROADMAP_DETAIL.md` § 8, `s8-input` and `s8-gpu-wrapper`). Each lives in its
+    own repository, `kama-window` and `kama-gpu`, the convention every `@kama` package follows, and is built from the
+    harvested pieces ([../research/harvest.md](../research/harvest.md) §§ 3–5):
+    - `@kama/window`: FFD's proven web platform header, with the-mallow-man's native superset, made multi-window;
+    - `@kama/gpu`: cosmic-forge's resource-shaped device, with `wgpugen` over both `webgpu.h` headers.
+    - kyoten's platform layer sits on them. The engine-shaped parts stay in kyoten: frame pacing, the renderer and the
+      XR swapchain. kyoten claims kama's KR-25 and KR-26, and the owner relays that to kama's session. The work is
+      KYR-51 and KYR-52.
+  - **Why:**
+    - Both are in kama's LATER with no repository, and "No consumer waits on it" (kama `docs/ROADMAP.md:154-155`).
+    - kama ruled that both stand alone, since a tool needs them as much as a game does.
+    - Their designs match code kyoten already has.
+    - The peers' layers hold one window per process in file-static C state, which an editor and XR cannot use.
+  - **Considered:** waiting for kama to build them, which puts slice A behind kama's queue; and kyoten's own layer
+    beside them, a third copy of the same code.
+- **2026-11-02, the owner: each system is built on a general-purpose library, and the graphics one is shaped like
+  Three.js.** "Each system 'graphics, audio, networking, etc.' can probably be built from a more general purpose
+  package library. Recall also that each should be as lean as possible on the web and rely on the best in class
+  browser APIs for that purpose." On graphics: "the graphics side can be general utilities that help other projects
+  build graphics applications quickly … I've used Three.js for several 'non-game' products."
+  - **How:** `@kama/gpu` is only the binding: kama's design keeps a renderer out of it. The Three.js-shaped library
+    (scene, meshes, materials, lights, camera, loaders) sits on it as **its own package from day one**, naming no engine
+    concept, so cosmic-forge, the editor and non-game products can use it without kyoten's frame. kyoten's render
+    module binds components to it. Audio (on Web Audio) and networking (on WebSocket, WebRTC and WebTransport) follow
+    the same pattern when KYR-15 and KYR-18 come up.
+  - **Why its own package from the start:** the owner leaned on the recommendation ("we can start with it being a
+    built in module if that is easier?"). Only a package boundary keeps it from importing the engine; as a module,
+    "names no engine concept" would be a convention.
+  - **Still open:** its name and scope wait on question 7 (KY-8). Where its code starts (forge's `render`,
+    the-mallow-man's `gfx`, or fresh) is [rendering.md](rendering.md) question 1.
+  - **Considered:** a `kyoten::render` module split out later; and widening `@kama/gpu` into the library, which would
+    reverse kama's design.
+- **2026-11-02, the owner: the game's `main` calls `run` (question 4).**
+  - **How:** the game owns `main`. It builds the engine's app (its rates, its platform, its components and systems)
+    and calls `run`, which owns the loop on every target: `requestAnimationFrame` on the web, the native loop, the
+    headset's frame under XR, and the lifecycle's events. The parts stay public, so a test, a replay tool or the
+    headless backend server (KYR-45) can step a world without the loop, as FFD's tests do. `kyoten new` (KYR-30)
+    writes that `main`, so a game starts from a template, but the `main` stays ordinary code the game owns.
+  - **The boundary:** the game provides components, systems with their phase and rate, content records and its input
+    record. The engine provides the frame, scheduling, the clocks, the platform, the tools and the database.
+  - **Why:**
+    - In kama, `main` stays the entry on every target, and `std::app::run` drives the loop. On wasm that is
+      `emscripten_set_main_loop_arg`, which never returns (kama `include/kama_app.h`). On Android it pumps the looper
+      and delivers the lifecycle as events (kama `docs/ROADMAP_DETAIL.md:2523-2527`).
+    - The engine cannot import a game, or a private platform package, so the game is what picks the platform. How it
+      names one is [target-platforms.md](target-platforms.md) questions 1–2.
+    - An engine-owned loop keeps the phase order, replay and a display clock the game does not own
+      ([frame-phases.md](frame-phases.md) question 10) in one place.
+  - **Considered:** the game owning the loop too, FFD's shape, where each game would carry the phase order and replay
+    itself; and the engine owning `main`, which in kama needs a generated shim.
+- **2026-11-02, the owner: `editor/`, `server/` and `tools/` (question 7, the directories).** `engine/` holds the
+  `kyoten` package, `editor/` the human tool surface (KYR-26) and `server/` kyoten's open backend (KYR-45). `tools/`
+  holds scripts, as in kama and all three peers. Each directory is made when its row starts. On the editor: "We will
+  develop AI first and human tools start as visibility into the process… but obviously it will be most powerful to
+  allow humans to edit as well as AI so humans can tweak" ([human-tools.md](human-tools.md)).
+  - **Considered:** the brief's `tools/` for the editor and `services/` for the server, which would move the scripts.

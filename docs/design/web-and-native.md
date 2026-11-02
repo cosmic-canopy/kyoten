@@ -7,6 +7,9 @@
 - **Web first, and light on the web.** It uses the browser's best-in-class features (HTML/CSS, Web Audio, WebGPU,
   and so on) rather than shipping heavy replacements to it.
 - **Native implements the same interfaces where needed**, for full cross-platform compatibility.
+- **Each system is built on a general-purpose library** (the owner, 2026-11-02; [architecture.md](architecture.md) §
+  Decided): "each should be as lean as possible on the web and rely on the best in class browser APIs for that
+  purpose". The graphics library is its own package on `@kama/gpu`, and audio and networking follow it.
 - **N platforms, extensible** ([target-platforms.md](target-platforms.md)): the web and desktop native are the first
   two implementations of the platform interface, not the only ones, so nothing here may assume there are two.
 
@@ -23,7 +26,8 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
   kama designs the split between the page thread and workers for an engine; kyoten has to.
 - **The platform packages are designed but unbuilt:** `@kama/gpu` (KR-25, RAII WebGPU handles, typed `acquire`),
   `@kama/window` (KR-26, window plus one event ring; html5.h on the web, GLFW natively; headless for tests and replay),
-  `@kama/http` (KR-173). **Nothing exists for audio.** `@kama/ui` (HTML documents: the DOM on the web, RmlUi
+  `@kama/http` (KR-173). **kyoten builds `@kama/window` and `@kama/gpu`** (the owner, 2026-11-02; KYR-51, KYR-52).
+  **Nothing exists for audio.** `@kama/ui` (HTML documents: the DOM on the web, RmlUi
   natively) is on the registry, and the-mallow-man and cosmic-forge use it.
 - **The peers built their own platform layers** (GLFW plus emscripten html5, wgpu-native against the browser's
   WebGPU). See [../research/peer-games.md](../research/peer-games.md) § platform split.

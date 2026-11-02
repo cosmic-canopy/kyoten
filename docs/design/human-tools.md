@@ -8,6 +8,9 @@
 - Named so far: **audio tools like a DAW** ([audio.md](audio.md)) and **timeline and cinematic tools**
   ([timeline.md](timeline.md)).
 - Web first: **HTML/CSS** is the UI technology the browser already does best.
+- **AI first, then humans who edit too** (the owner, 2026-11-02): "We will develop AI first and human tools start as
+  visibility into the process… but obviously it will be most powerful to allow humans to edit as well as AI so humans
+  can tweak." The tool surface lives in `editor/` ([architecture.md](architecture.md) question 7).
 
 ## What already exists
 

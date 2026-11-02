@@ -31,6 +31,11 @@
     native only, shaped like its one scene, and holds 63 statics. FFD's 2D renderer holds 16.
   - **For questions 2 and 5,** [../research/web-baseline.md](../research/web-baseline.md) measured what a draw costs
     from wasm. A few thousand draws a frame need no batching; ten thousand do.
+- **Decided in [architecture.md](architecture.md) (2026-11-02), bearing on questions 1–3:**
+  - **The layers:** a standalone, Three.js-shaped graphics library is its own package on `@kama/gpu`, which kyoten
+    builds (KYR-52). It names no engine concept, so tools and non-game products can use it, and kyoten's render module
+    binds components to it (KYR-9).
+  - **Still open here:** where its code starts (question 1). Its name waits on architecture question 7 (KY-8).
 
 ## The questions
 
