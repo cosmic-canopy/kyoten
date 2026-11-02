@@ -27,14 +27,16 @@
   `aarch64-linux-android` transpiles as `OS_LINUX` with `ABI_ANDROID`, so std treats it as Linux.
   **kama has since measured the native route** (kama `4f0ecbdc`, 2026-11-01, with NDK r30 on this machine; not
   re-checked from here): a `kama.json` target carrying `--target=aarch64-linux-android29` builds an executable and a
-  `.so`, and every std fixture that applies links once `-lpthread` is dropped. Nothing has run on a device. kama moved
-  the target (KR-280) to its NOW and filed KR-282 (an NDK wrapper is handed `-target`) and KR-283 (an installable APK).
-  On 2026-11-02 its Windows machine, which is this one, claimed all three, with KR-279 (kama `62322f93`).
-- **Developing without the headset** (kama's Windows session, relayed by the owner 2026-11-02; not re-checked from
-  here). The Android emulator runs on this machine: an API 34 x86_64 image, accelerated by the Windows Hypervisor
-  Platform, which also runs arm64 binaries through Google's ARM translation. A kama hello ran there on both ABIs, and a
-  full std fixture run was in progress. The SDK, the emulator and a `kama34` virtual device are installed under
-  `%LOCALAPPDATA%\Android\Sdk`.
+  `.so`, and all 135 std fixtures that apply link once `-lpthread` is dropped. kama moved the target (KR-280) to its NOW
+  and filed KR-282 (an NDK wrapper is handed `-target`) and KR-283 (an installable APK). On 2026-11-02 its Windows
+  machine, which is this one, claimed all three, with KR-279 (kama `62322f93`).
+- **Developing without the headset** (kama `a23f1da2`, 2026-11-02, `docs/ROADMAP_DETAIL.md` § Android; not re-checked
+  from here). The SDK's emulator runs on this machine: an API 34 x86_64 image (the `kama34` virtual device) boots
+  headless in about 35 s under the Windows Hypervisor Platform, and runs arm64 executables through Google's
+  `ndk_translation`, so Quest's own ABI is tested too. **110 of the 135 fixtures pass, on arm64 and x86_64 alike.** 16
+  are unmeasured (a test helper the probe did not supply), and 9 fail and are tracked under KR-280. kama's
+  `./dev test android` leg will run on the emulator by default and on the Quest when one is attached. CI could run it
+  too, since GitHub's Linux runners expose KVM to the emulator (untried).
   - **Quest Link is optional.** It renders on the PC, and this machine's GPU is an integrated Radeon 880M, so
     Quest-native and WebXR, which render on the headset, come first.
   - **The headset is the last mile:** Horizon OS specifics, the VR launch path, and OpenXR itself.
@@ -109,7 +111,7 @@
     since kama builds wasm today, and renders with WebGPU behind the Quest browser's flag or with WebGL without it. The
     native route meets KY-2 at once, though a `kama.json` target entry naming the NDK's clang (kama `docs/targets.md`
     § "You already have a cross toolchain") may carry it. That is untested. *(kama has since built through such a
-    target, but run nothing; see What already exists.)*
+    target and run its std fixtures on the SDK's emulator; see What already exists.)*
 - **2026-11-01: the Android target is kama's to build; the platform package on it is kyoten's.** This answers question
   4. kyoten's rules already settle it: kyoten never edits kama, and the gap file is how kama hears about a gap
   ([../../AGENTS.kyoten.md](../../AGENTS.kyoten.md)). The owner expected the same ("some of that is KAMA_GAPS"). The
