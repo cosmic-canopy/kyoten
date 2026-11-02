@@ -50,7 +50,7 @@ Added to the brief the same day:
 - **The engine supports N platforms and must be extensible**: a new platform is added without changing the engine
   for every other one.
 - **The platforms named:** the web (wasm), Windows PC, Linux, Mac and Steam Deck; **eventually game consoles**
-  (Nintendo Switch 2, Xbox, PlayStation, and so on).
+  (Nintendo Switch 2, Xbox, PlayStation, and so on). **iOS** was added later the same day (see the last section).
 - **XR:** OpenXR natively, for certain; WebXR on the web. XR is perhaps a package of its own.
 - **Roblox and UEFN** (Unreal Editor for Fortnite) may be good targets as well.
 
@@ -61,6 +61,7 @@ Added to the brief the same day:
 - **A platform for developers to build, deploy and sell games and content**, something like Steam or the Unity
   asset store. **kyoten hosts the marketplace.**
 - **A networking backend built for games**, hosted as part of that platform.
+- *Refined the same day: the platform is a separate product the owner builds in parallel (see the last section).*
 
 ## Distribution and the web presence
 
@@ -88,3 +89,25 @@ Added to the brief the same day:
   repository (above).
 - **`docs/design/` files** plan out each system's design.
 - The owner adds the git remote after the initial commit.
+
+## Added at the first roadmap review
+
+Given the same day, 2026-11-01, once the seeded plan had been read back to the owner. The decisions among them are
+recorded in the design docs they settle; this section keeps the brief itself.
+
+- **friendly-fire-department and the-mallow-man ship on their own engines.** The owner has Steam partner approval and
+  wants FFD out as soon as possible; kyoten is built in parallel and gates neither game
+  ([design/architecture.md](design/architecture.md)).
+- **Roadmap everything**, so there is a record of what is wanted, even where the work is far off
+  ([ROADMAP.md](ROADMAP.md)).
+- **The marketplace and platform are a separate product**, which the owner builds in parallel. kyoten is aware of the
+  goal so that its own decisions can serve it ([design/marketplace.md](design/marketplace.md)).
+- **Start from the peers' code.** FFD, the-mallow-man and cosmic-forge are the starting point, and at the very least
+  the reference. kyoten must also move toward being **generic and component-driven**.
+- **Learn from Unity's growth.** Unity succeeded, and grew in phases, from its component-based design. kyoten takes
+  different approaches but can learn from that model ([design/components.md](design/components.md)).
+- **The FPS example may well be the first example** ([design/examples.md](design/examples.md)).
+- **The first Quest game will likely be a new project of its own**, as FFD and the-mallow-man were
+  ([design/xr.md](design/xr.md)).
+- **iOS is wanted as well**, and Android support (which Quest runs on) is expected to need kama work
+  ([design/target-platforms.md](design/target-platforms.md), [KAMA_GAPS.md](KAMA_GAPS.md) KY-2 and KY-3).

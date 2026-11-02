@@ -2,13 +2,98 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-2**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-45**
 
-## NOW
+**Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
+wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
+decided when the row comes up, in the doc it links. friendly-fire-department and the-mallow-man ship on their own
+engines, so nothing here gates either one ([design/architecture.md](design/architecture.md)).
+
+**The gate: when KYR-12 passes, a game can start on kyoten.**
+
+## NOW: the narrowed spike, and the probes it needs
 
 | id | item | detail |
 |---|---|---|
-| KYR-1 | **Design spike** — walk through every draft under [design/](design/) with the owner, turn each open question into a decision or a recorded deferral, and write the first real roadmap from what is decided | [SPIKE.md](SPIKE.md) |
+| KYR-1 | **Design spike, narrowed (2026-11-01)**: decide only what the first slice needs. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
+| KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic | [architecture.md](design/architecture.md) |
+| KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision | [components.md](design/components.md) |
+| KYR-4 | **The Quest probe**: does the Quest browser run WebXR with WebGPU, and does a kama program build, load and run on the headset through the NDK (KY-2)? | [xr.md](design/xr.md) |
+| KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build | [web-and-native.md](design/web-and-native.md) |
 
-Everything after the spike is decided in it. Until then this file has one row on purpose: a plan written
-before the walk-through would be a guess.
+## NEXT: the first slice, after which a game can start on kyoten
+
+| id | item | detail |
+|---|---|---|
+| KYR-6 | **The frame core**: phases, the fixed-tick clock and its sub-rates, the RNG, the world hash and the input log, starting from FFD's `engine::phase` | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
+| KYR-7 | **The component model, first version**, as KYR-1 decides it | [components.md](design/components.md) |
+| KYR-8 | **The platform seam**: a window or canvas, keyboard, mouse, gamepad and the app loop, on the web and on Windows, Linux and macOS | [web-and-native.md](design/web-and-native.md) · [platforms](design/target-platforms.md) |
+| KYR-9 | **The GPU layer and the first renderer**: WebGPU bindings, and a scene layer of meshes, materials, lights and a camera | [rendering.md](design/rendering.md) |
+| KYR-10 | **Assets, first version**: glTF/GLB, KTX2 textures and WGSL, bundled on the web | [rendering.md](design/rendering.md) |
+| KYR-11 | **Slice A in kyoten-fps**: a first-person camera moving over a level, on the web and native | [examples.md](design/examples.md) |
+| KYR-12 | **Slice B**: the phases at their own rates, and a session recorded and replayed bit-identically, with one world hash on every leg | [examples.md](design/examples.md) · [replay](design/replay-and-determinism.md) |
+| KYR-13 | **CI on every leg**: native on three OSes, wasm, and a headless browser leg for COOP/COEP and WebGPU | [web-and-native.md](design/web-and-native.md) |
+| KYR-14 | **The hello cube**: the Three.js bar, written down as a number and met | [ai-first-api.md](design/ai-first-api.md) |
+
+## AFTER THE GATE: what a shipping game needs
+
+| id | item | detail |
+|---|---|---|
+| KYR-15 | **Audio, first version**: Web Audio and a native backend behind one interface | [audio.md](design/audio.md) |
+| KYR-16 | **UI, first version**: HTML and CSS, as the DOM on the web and through `@kama/ui` natively | [web-and-native.md](design/web-and-native.md) |
+| KYR-17 | **Physics in the Constraints phase**, and whether it is deterministic across platforms | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
+| KYR-18 | **Netcode in the engine**: transports behind one interface, with lockstep (FFD) and snapshots with rollback (the-mallow-man) as patterns a game picks | [networking.md](design/networking.md) |
+| KYR-19 | **Steamworks as a feature package**: sign-in, achievements, the overlay, invites and Steam networking | [target-platforms.md](design/target-platforms.md) |
+| KYR-20 | **Steam Deck**: the Linux build, the controller, and the Deck's own checks | [target-platforms.md](design/target-platforms.md) |
+| KYR-21 | **Shipping a game**: release builds, crash reports, licence notices, and bundles for Steam on Windows, Linux and a notarized macOS, plus a web release | [target-platforms.md](design/target-platforms.md) |
+| KYR-22 | **Parallel work inside a phase**: a job pool (kama's, or kyoten's until kama's lands), when a measurement asks for one | [frame-phases.md](design/frame-phases.md) |
+| KYR-23 | **Live tuning and asset hot reload** | [ai-first-api.md](design/ai-first-api.md) · [tools](design/human-tools.md) |
+
+## THE AI-DRIVEN LAYER: slice C
+
+| id | item | detail |
+|---|---|---|
+| KYR-24 | **The project database, first version**: records, schemas typed by kama serde, consistency checks, and live reload into the running game | [project-database.md](design/project-database.md) |
+| KYR-25 | **The agent interface**: the engine's API and the project database as data, through a CLI, MCP, a JSON schema and generated reference | [project-database.md](design/project-database.md) · [ai-first](design/ai-first-api.md) |
+| KYR-26 | **The human tool surface, first version**: a local web editor with the database's change feed, entities, timings per phase, and tuning that writes records | [human-tools.md](design/human-tools.md) |
+| KYR-27 | **Replay as a tool**: scrub, step, and compare two runs | [replay-and-determinism.md](design/replay-and-determinism.md) |
+| KYR-28 | **Slice C in kyoten-fps**: an agent builds and tunes a level through records while a human watches and adjusts | [examples.md](design/examples.md) |
+| KYR-29 | **The content pipeline**: the kyoten adapter for cosmic-forge, shared ids and provenance, and a live preview | [content-pipeline.md](design/content-pipeline.md) |
+| KYR-30 | **Templates**: `kyoten new`, a game born wired to the frame and the project database | [ai-first-api.md](design/ai-first-api.md) |
+
+## XR AND MOBILE
+
+| id | item | detail |
+|---|---|---|
+| KYR-31 | **The XR package**: one interface (session, frame timing, views, poses, input sources) with WebXR and OpenXR backends | [xr.md](design/xr.md) |
+| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2), Vulkan with OpenXR's extensions, and APK packaging and signing | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
+| KYR-33 | **kyoten-vr on Quest**: the example, holding the headset's frame rate | [examples.md](design/examples.md) · [xr](design/xr.md) |
+| KYR-34 | **iOS**: the platform package on kama's iOS target (KY-3), and Safari on the web route | [target-platforms.md](design/target-platforms.md) |
+
+## LATER
+
+| id | item | detail |
+|---|---|---|
+| KYR-35 | **The DAW**: tracks, clips, a mixer and automation, editing records the runtime plays | [audio.md](design/audio.md) |
+| KYR-36 | **Timeline and cinematic tools**, sharing a transport with the DAW | [timeline.md](design/timeline.md) |
+| KYR-37 | **The engine on the registry**: an example depends on a published version, with a local override for engine work | [architecture.md](design/architecture.md) |
+| KYR-38 | **The engine version manager**, and example projects to start from | [version-manager.md](design/version-manager.md) |
+| KYR-39 | **kyotenengine.com**: the home page, the docs and getting started, provisioned and deployed automatically | [website.md](design/website.md) |
+| KYR-40 | **More examples, each a different shape**: a 2D game, a racing game, a networked arena | [examples.md](design/examples.md) |
+| KYR-41 | **Code hot reload**, on kama's hot-reload library, desktop first | [ai-first-api.md](design/ai-first-api.md) |
+
+## FUTURE
+
+| id | item | detail |
+|---|---|---|
+| KYR-42 | **Consoles**: Switch 2, Xbox and PlayStation, as private packages under NDA | [target-platforms.md](design/target-platforms.md) |
+| KYR-43 | **Roblox and UEFN as export targets** | [target-platforms.md](design/target-platforms.md) |
+
+## ALONGSIDE: the platform, a separate product
+
+The marketplace and the hosted backend are the owner's separate product. kyoten keeps one row for what the engine owes
+it, and that row is decided before the engine's packaging settles (KYR-37).
+
+| id | item | detail |
+|---|---|---|
+| KYR-44 | **What the engine owes the platform**: what a game and a content package are, the web deploy shape, and the client for identity and the hosted backend | [marketplace.md](design/marketplace.md) |

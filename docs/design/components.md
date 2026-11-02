@@ -7,6 +7,10 @@
 - **A general-purpose, component-based architecture.** Component-driven is the ideal.
 - **Clean patterns each game uses**; the engine does not hard-code game systems.
 - **Easy to use correctly, and high performance**, across parallel phases ([frame-phases.md](frame-phases.md)).
+- **Learn from Unity's growth** (the owner, 2026-11-01). Unity succeeded, and grew in phases, from its component-based
+  design. kyoten takes different approaches but can learn from that model. KYR-3 is the research.
+- **Start from the peers' code, and move toward generic and component-driven** (the owner, 2026-11-01;
+  [architecture.md](architecture.md) § Decided).
 
 ## What already exists
 
@@ -43,6 +47,8 @@
    How are large components kept off the stack (the KM-29 lesson)?
 7. **The prototype path.** A Three.js-style prototype wants "make a cube, give it a spin". What is the shortest correct
    spelling in the component model ([ai-first-api.md](ai-first-api.md))?
+8. **Growing in phases.** Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
+   on day one, because changing them later would break every game, and which can arrive later without that?
 
 ## Decided
 

@@ -1,6 +1,6 @@
 # kyotenengine.com: the website, its subdomains, provisioning and deployment
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft, deferred past the first slice to KYR-39. These are questions, not decisions.
 
 ## What the vision asks
 
@@ -56,4 +56,6 @@ Everything below is in the kama repo, and works today:
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
+  ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). It is taken up with KYR-39. Question 7, a landing page before
+  there is an engine, can be pulled forward whenever the owner wants, since nothing in the engine waits on it.

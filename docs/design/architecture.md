@@ -1,6 +1,6 @@
 # Architecture: the engine, the games, the repository
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft for the design spike. Four decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -70,3 +70,25 @@ The tension between their lesson and that purpose is the first thing to settle.
     kyoten's root or from its own directory.
   - **Considered:** one repository holding every game, set aside because examples are downloaded individually. kama
     accepted every layout tried (an optional workspace member, a games workspace, standalone projects).
+- **2026-11-01, the owner: friendly-fire-department and the-mallow-man ship on their own engines.** kyoten is built in
+  parallel and gates neither. The owner has Steam partner approval and wants FFD out as soon as possible.
+  - **Why:** FFD is one milestone from shipping. M0–M5 are done and M6 is down to its tuning pass, with the ship list in
+    `friendly-fire-department/docs/ROADMAP_DETAIL.md` § M7, current at FFD's last commit (2026-10-13). kyoten has no
+    engine code. Moving FFD first would rebuild what its engine already does (FFD's `engine` is 18,733 lines of kama,
+    `view` 7,427, `gfx` 5,910, counted 2026-11-01), then re-prove its world hash on five legs and its 3,538 checks, for
+    nothing a player sees.
+  - **Considered:** porting FFD to kyoten before launch, set aside for that reason. The same holds for the-mallow-man.
+  - **What follows:** the two games are kyoten's donors and references, not yet its customers.
+- **2026-11-01, the owner: kyoten starts from the peers' code, and moves toward generic and component-driven.** FFD,
+  the-mallow-man and cosmic-forge are the starting point, and "at the very least great references".
+  - **How:** a piece taken from a peer is made generic as it moves. It names no game, and it fits the component model
+    the spike decides ([components.md](components.md)) rather than bringing a game's shape with it. KYR-2 inventories the
+    candidates and what each assumes. For scale, counted 2026-11-01: FFD's `engine` (18,733 lines), the-mallow-man's
+    `gfx` (18,013), `net` (8,080), `voice` (3,802) and `physics` (1,878), and cosmic-forge's `render` (7,860).
+  - **The model to learn from is Unity's**, which grew in phases from its component-based design. kyoten takes
+    different approaches but learns from that growth (KYR-3).
+  - **Still open:** question 1 (how soon generality arrives) and question 3 (whether the platform layer is built on,
+    as, or beside kama's platform packages).
+- **2026-11-01, the owner: the marketplace and platform are a separate product**, which the owner builds in parallel
+  ([marketplace.md](marketplace.md)). That settles question 5's second half (the hosted platform lives outside this
+  monorepo) and moves question 6 (whether the platform's code is open) to that product.

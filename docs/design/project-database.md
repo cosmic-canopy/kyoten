@@ -1,6 +1,6 @@
 # The project database and wiki
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft, deferred past the first slice to KYR-24 and KYR-25. These are questions, not decisions.
 
 ## What the vision asks
 
@@ -60,4 +60,7 @@ least prior art in the peers, and the one most worth getting right before code.
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
+  ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). It is taken up with KYR-24 and KYR-25 and proved in slice C
+  (KYR-28). Meanwhile the spike keeps the component model ready for records (components.md question 5), so this design
+  is not boxed in before it starts.

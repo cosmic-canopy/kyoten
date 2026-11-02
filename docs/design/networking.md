@@ -1,6 +1,6 @@
 # Networking: netcode in the frame, and the hosted game backend
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft. One decision is recorded: the hosted backend goes with the platform product. The engine's netcode is KYR-18.
 
 ## What the vision asks
 
@@ -50,4 +50,8 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, following the owner's decision in [marketplace.md](marketplace.md): the hosted backend belongs to
+  the platform product.** The vision hosts it "as part of that platform", and the platform is now a separate product,
+  so questions 5–9 go with it. kyoten keeps the netcode in the engine (questions 1–4, KYR-18) and the client the engine
+  needs for the backend (KYR-44). *This reading was not put to the owner directly; it stands unless the owner moves the
+  backend back.*

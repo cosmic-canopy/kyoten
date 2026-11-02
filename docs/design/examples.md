@@ -1,6 +1,6 @@
 # The example games, and the first vertical slice
 
-**Status:** draft for the design spike. Two decisions are recorded; the rest are questions.
+**Status:** draft for the design spike. Three decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -54,3 +54,7 @@
   `games/` out, so examples take no space for anyone who only wants the engine. Layout and verification:
   [architecture.md](architecture.md) § Decided.
 - **2026-11-01, the owner: the first examples are an FPS (`kyoten-fps`) and a VR game for Meta Quest (`kyoten-vr`).**
+- **2026-11-01, the owner: the FPS example is expected to come first** ("may indeed be the first example"), so the
+  first slice is planned in `kyoten-fps`. On the roadmap, slice A (KYR-11) and slice B (KYR-12) are the gate after
+  which a game can start on kyoten, and slice C (KYR-28) follows with the project database. What each slice contains
+  is still question 2's to decide, in the spike.

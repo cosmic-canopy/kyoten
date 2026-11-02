@@ -1,6 +1,6 @@
 # Audio, and the DAW tool
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft, deferred past the first slice to KYR-15 and KYR-35. These are questions, not decisions.
 
 ## What the vision asks
 
@@ -34,4 +34,6 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
+  ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). Questions 1–5 and 7 are taken up with KYR-15, and question 6, the
+  DAW, with KYR-35.

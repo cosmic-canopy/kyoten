@@ -1,6 +1,6 @@
 # Timeline and cinematic tools
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft, deferred past the first slice to KYR-36. These are questions, not decisions.
 
 ## What the vision asks
 
@@ -24,4 +24,5 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
+  ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). It is taken up with KYR-36, which answers question 6.

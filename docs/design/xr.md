@@ -1,6 +1,6 @@
 # XR: VR on Meta Quest
 
-**Status:** draft for the design spike. Two decisions are recorded; the rest are questions.
+**Status:** draft for the design spike. Four decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -14,7 +14,9 @@
 - **kama's targets** (`kama/docs/targets.md` § Built-in targets): `MACOS`, `WINDOWS`, `LINUX`, `WASM`, `EMBEDDED`.
   **There is no Android target.** A custom triple with a per-target compiler is allowed, and the docs name "an NDK
   wrapper" as the kind of compiler that carries its triple in its name (`targets.md:540-553`). Building an Android
-  `.so` that way is untested, and std's OS layer has no Android branch that anyone has exercised.
+  `.so` that way is untested, and std's OS layer has no Android branch that anyone has exercised. Probed 2026-11-01 on
+  0.9.803 ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-2): `--target ANDROID` is refused, and the triple
+  `aarch64-linux-android` transpiles as `OS_LINUX` with `ABI_ANDROID`, so std treats it as Linux.
 - **kama's hot-reload notes** already mention Quest: "Android/Quest only via a pushed `.so`"
   (`kama/docs/ROADMAP_DETAIL.md` § the hot-reload library).
 - **Quest facts to verify before relying on them** *(to verify)*: the Quest browser runs WebXR `immersive-vr`
@@ -48,6 +50,8 @@
    simulator natively), and a desktop mode for the example, so that agents and CI can exercise the VR path.
 9. **Distribution.** A URL on kyoten's platform, a store listing, or sideloading for development. Who signs the APK
    (the signing question kama records as KR-135 applies)?
+10. **The first Quest game.** The owner will likely make it as a new project of its own (see *Decided*). Is it built on
+    kyoten, so that it drives KYR-31 to KYR-33, or on an engine of its own, as FFD and the-mallow-man were?
 
 ## Decided
 
@@ -56,3 +60,10 @@
 - **2026-11-01, the owner: XR on the web is WebXR.** The owner's expectation ("likely"), and the web has no other
   standard XR API to weigh against it. Whether the Quest browser runs it with WebGPU (question 3) decides how it
   renders, not whether it is WebXR.
+- **2026-11-01, the owner: the first Quest game will likely be a new project of its own**, as friendly-fire-department
+  and the-mallow-man were, beside the `kyoten-vr` example. Which engine it runs on is question 10.
+- **2026-11-01: the Android target is kama's to build; the platform package on it is kyoten's.** This answers question
+  4. kyoten's rules already settle it: kyoten never edits kama, and the gap file is how kama hears about a gap
+  ([../../AGENTS.kyoten.md](../../AGENTS.kyoten.md)). The owner expected the same ("some of that is KAMA_GAPS"). The
+  target is KY-2, and kyoten's package on it is KYR-32. The probe (KYR-4) still runs, so that KY-2 gains a repro from a
+  real build.

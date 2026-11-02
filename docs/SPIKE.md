@@ -51,6 +51,38 @@ The marketplace comes late in the order because the engine is its first product,
 decides what a "game" and a "content package" are when they are built, deployed and sold, and the engine's
 packaging should be checked against it before it settles.
 
+## Narrowed (2026-11-01)
+
+**The owner, 2026-11-01: the spike decides only what the first slice needs. Every other question is roadmapped and
+decided when its row comes up.** The reason: the first slice is what lets a game start on kyoten, and nothing else
+blocks it; settling about 150 questions before any code would put the far-off ones (consoles, the DAW, the version
+manager) ahead of the near ones. In the owner's words, the list "is likely a good place to start", and everything is
+still roadmapped, so nothing is dropped ([ROADMAP.md](ROADMAP.md)).
+
+Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the walk-through itself.
+
+| Doc | In the spike | The rest waits for |
+|---|---|---|
+| [architecture.md](design/architecture.md) | 1–4, 7 | 5–6: settled by the platform being a separate product (see its *Decided*); 8: KYR-37 |
+| [frame-phases.md](design/frame-phases.md) | all, including 10 (a display clock the game does not own) | — |
+| [components.md](design/components.md) | all; 5 only far enough that the model leaves room for project-database records | KYR-3 feeds it |
+| [replay-and-determinism.md](design/replay-and-determinism.md) | 1–3, 5–6 | 4: KYR-27 |
+| [web-and-native.md](design/web-and-native.md) | 1–6, 8 | 7: KYR-13 |
+| [target-platforms.md](design/target-platforms.md) | 1–4, the extension model the platform seam is built on | 5–6: KYR-42; 7–9: KYR-43; 10: the roadmap's order; 11: KYR-13; 12–13: KYR-32, KYR-34 |
+| [rendering.md](design/rendering.md) | 1–4 (with content-pipeline 5, forge's `render` package) | 5: KYR-22; 6: KYR-10; 7: KYR-26; 8: KYR-33 |
+| [ai-first-api.md](design/ai-first-api.md) | 1–3, because they shape the component API | 4: KYR-25; 5: KYR-23, KYR-41; 6: KYR-30; 7: KYR-14 |
+| [examples.md](design/examples.md) | 1–3 | 4: KYR-29; 5: KYR-39, KYR-44; 6: KYR-40 |
+| [xr.md](design/xr.md) | none decided, but KYR-4 probes 1, 3 and 4 now, since Quest is the longest pole | KYR-31 to KYR-33 |
+| [networking.md](design/networking.md) | — | 1–4: KYR-18; 5–9: the platform product (KYR-44 for the engine's side) |
+| [project-database.md](design/project-database.md) | — | KYR-24, KYR-25 |
+| [human-tools.md](design/human-tools.md) | — | KYR-26, KYR-27 |
+| [audio.md](design/audio.md) | — | 1–5, 7: KYR-15; 6: KYR-35 |
+| [timeline.md](design/timeline.md) | — | KYR-36 |
+| [content-pipeline.md](design/content-pipeline.md) | 5, with rendering 1 | the rest: KYR-29 |
+| [version-manager.md](design/version-manager.md) | — | KYR-38 |
+| [marketplace.md](design/marketplace.md) | — (the platform is a separate product, see its *Decided*) | 2, 3, 8: KYR-44; 1, 4–7: the platform product |
+| [website.md](design/website.md) | — | KYR-39 |
+
 ## Ground rules
 
 - **The owner decides.** Bring the options, the evidence and a recommendation, then ask. A question the
@@ -64,10 +96,12 @@ packaging should be checked against it before it settles.
 
 ## What the spike should leave behind
 
-- Every design doc's questions answered or explicitly deferred, with the reason.
-- A ROADMAP whose first rows are the **first vertical slice**: the smallest thing that proves the frame model,
-  the platform seam and the AI-facing project database together, running on web and native (see
-  [design/examples.md](design/examples.md) for candidates), and where VR on Quest joins it.
+- Every question in the narrowed spike answered or explicitly deferred, with the reason. Every other question already
+  has its roadmap row (above).
+- A ROADMAP whose first rows are the **first vertical slice**: the smallest thing that proves the frame model and
+  the platform seam together, running on web and native (see [design/examples.md](design/examples.md) for
+  candidates). The AI-facing project database joins it in slice C, and VR on Quest after it. *(Narrowed 2026-11-01:
+  this asked for the project database in the first slice, and the roadmap now puts it in slice C, KYR-28.)*
 - A decision on how the engine is split into packages, reflected in `kama_workspace.json`.
 
 ## Practicalities

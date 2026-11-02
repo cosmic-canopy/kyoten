@@ -1,6 +1,6 @@
 # The developer platform: build, deploy and sell
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** the platform is a separate product (one decision recorded). The engine's side of it is KYR-44.
 
 ## What the vision asks
 
@@ -41,4 +41,10 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: the marketplace and platform are a separate product, which the owner builds in
+  parallel.** kyoten is aware of the goal so that its own decisions can serve it.
+  - **What stays kyoten's:** what the engine owes the platform. That is question 2 (what a game or content package
+    is), the engine's half of question 3 (a game's deploy shape) and question 8 (what the engine must decide early),
+    all as KYR-44, decided before the engine's packaging settles (KYR-37).
+  - **What goes to the platform product:** questions 1 and 4–7, and the hosted game backend
+    ([networking.md](networking.md) § Decided).

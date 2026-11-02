@@ -1,6 +1,6 @@
 # Target platforms: N platforms, extensible
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft for the design spike. One decision is recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -10,6 +10,8 @@
   Xbox, PlayStation and others. **XR** on each through OpenXR natively and WebXR on the web, perhaps as a package
   ([xr.md](xr.md)).
 - **Roblox and UEFN** (Unreal Editor for Fortnite) may be good targets too.
+- **iOS** (added at the first roadmap review, 2026-11-01). **Android** is needed for Quest's native route
+  ([xr.md](xr.md)).
 - **Web first, native at parity** ([web-and-native.md](web-and-native.md)): each engine interface is designed against
   the browser's API, and every other platform implements the same interface.
 
@@ -27,6 +29,11 @@
   ([../research/peer-games.md](../research/peer-games.md) § 4).
 - **Steam Deck runs SteamOS (Linux)**, so a Linux build plus controller input is its baseline *(to verify the details:
   Steam Input, the Deck's display and performance profile)*.
+- **kama has neither an Android nor an iOS target** (probed 2026-11-01 on 0.9.803, [../KAMA_GAPS.md](../KAMA_GAPS.md)
+  KY-2 and KY-3). Both triples transpile. `aarch64-linux-android` is treated as Linux, and `aarch64-ios-none` derives
+  `OS_IOS`, which std's macOS declarations do not cover. Apple's own spelling, `arm64-apple-ios`, derives neither
+  `ARCH_AARCH64` nor `OS_IOS`. Each also needs an app entry the OS owns, its own packaging and signing, and, for iOS, a
+  Mac to build on.
 
 ## The questions
 
@@ -74,6 +81,15 @@
 11. **CI across N platforms.** Which platforms are built and tested on every commit, which nightly, and which only by
     whoever holds the SDK?
 
+### Mobile
+
+12. **iOS: native, the web, or both?** Natively it needs kama's iOS target (KY-3), a GPU route to Metal (wgpu-native's,
+    *to verify*), and builds on a Mac. On the web it is Safari, and whether Safari on iOS runs WebGPU *(to verify)*
+    decides whether the web route reaches it at all.
+13. **Android beyond Quest.** Quest needs Android for its native route (KY-2). Are Android phones and tablets a target
+    too, once the target exists?
+
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: iOS joins the platforms, and Android is needed for Quest.** kama has neither target, so both
+  are kama gaps (KY-2, KY-3). kyoten's platform packages on them are KYR-32 and KYR-34.
