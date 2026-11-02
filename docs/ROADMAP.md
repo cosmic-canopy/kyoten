@@ -50,7 +50,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-21 | **Shipping a game**: release builds, crash reports, licence notices, and bundles for Steam on Windows, Linux and a notarized macOS, plus a web release | [target-platforms.md](design/target-platforms.md) |
 | KYR-22 | **Parallel work inside a phase**: a job pool (kama's, or kyoten's until kama's lands), when a measurement asks for one | [frame-phases.md](design/frame-phases.md) |
 | KYR-23 | **Live tuning and asset hot reload** | [ai-first-api.md](design/ai-first-api.md) · [tools](design/human-tools.md) |
-| KYR-49 | **2D**: sprites, shapes, text and a 2D camera on the same renderer, for 2D games such as FFD's port and a 2D example | [rendering.md](design/rendering.md) · [examples](design/examples.md) |
+| KYR-49 | **2D, as layers**: sprites, shapes, text and a 2D camera, rendered onto a screen layer (over a 3D scene or alone) or into a texture. For 2D games such as FFD's port, HUDs, and screens inside a 3D world | [rendering.md](design/rendering.md) · [examples](design/examples.md) |
 
 ## THE AI-DRIVEN LAYER: slice C
 

@@ -16,7 +16,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft, one decision recorded (a self-hostable server; the platform is the easy option) |
 | [project-database.md](project-database.md) | the AI-coordinated project database and wiki | draft for the spike (build: KYR-24), four decisions recorded |
 | [human-tools.md](human-tools.md) | human visibility and tuning: the tool surface | deferred to KYR-26, KYR-27 |
-| [rendering.md](rendering.md) | WebGPU first | draft |
+| [rendering.md](rendering.md) | WebGPU first | draft, one decision recorded (2D as layers) |
 | [audio.md](audio.md) | Web Audio first, and the DAW tool | deferred to KYR-15, KYR-35 |
 | [timeline.md](timeline.md) | timeline and cinematic tools | deferred to KYR-36 |
 | [content-pipeline.md](content-pipeline.md) | consuming cosmic-forge | draft |

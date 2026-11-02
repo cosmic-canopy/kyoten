@@ -1,12 +1,14 @@
 # Rendering: WebGPU first
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft for the design spike. One decision is recorded; the rest are questions.
 
 ## What the vision asks
 
 - **WebGPU** on the web, the browser's own API, with native implementing the same interface.
 - **High performance**, and **as quick to prototype in as Three.js**: a lit mesh on screen in a few lines.
 - **Rendering is an Output-phase system**, running at the display's rate.
+- **2D as layers** (the owner, 2026-11-01): a 2D game can render onto a screen layer over a 3D scene, or into a
+  texture, and so on.
 
 ## What already exists
 
@@ -20,6 +22,9 @@
   package would be", in forge's own words. See [../research/cosmic-forge.md](../research/cosmic-forge.md) and
   [content-pipeline.md](content-pipeline.md).
 - `std::math` has vectors, matrices and quaternions with WebGPU's depth convention.
+- **FFD's 2D renderer already renders to textures.** `gfx::render` gained three passes and two offscreen targets on
+  2026-09-14 (`friendly-fire-department/docs/ROADMAP_DETAIL.md` § "The offscreen render target"), proved by four
+  byte-identical captures, and it serves both larger-than-screen captures and a screen-space heat haze.
 
 ## The questions
 
@@ -42,6 +47,14 @@
 8. **Stereo and a mobile GPU.** The VR example on Meta Quest needs stereo (multiview), foveation and a hard 72–120 Hz
    budget, and its web route depends on whether WebXR works with WebGPU in the Quest browser ([xr.md](xr.md)).
 
+9. **2D layers, in detail** (see *Decided*). The order and blending of screen layers; which layer receives input (a
+   click on a 2D overlay versus the 3D scene behind it); how a 2D layer rendered to a texture is placed in 3D (a screen
+   in the world, a panel in a headset, where OpenXR's and WebXR's own quad layers may keep text sharper,
+   [xr.md](xr.md)); and how HTML/CSS UI relates to it. On the web, is the DOM simply the topmost layer?
+
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: 2D is a layer.** A 2D scene renders onto a screen layer, over a 3D scene or alone, or into
+  a texture that something else uses. So 2D is not a separate engine mode, and a 2D game, a HUD, and a game on a screen
+  inside a 3D world are one mechanism. The renderer designed in the spike (questions 2 and 4) leaves room for layers
+  and render targets; 2D itself is KYR-49, and the details are question 9.
