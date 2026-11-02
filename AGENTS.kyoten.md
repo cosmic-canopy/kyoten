@@ -38,6 +38,13 @@ kama run games/fps/kama.json                  # prints "fps example, on kyoten"
 
 On Windows, drive kama from msys2 UCRT64, as kama's own `docs/platforms/windows.md` describes.
 
+**A web build** (`--target WASM`) needs emscripten's `emcc`; kama's CI and the peer games use the latest emsdk. On
+Windows, emsdk 6.0.13 is verified (2026-11-01, a kama program built and ran under node, debug and release). Put
+`<emsdk>/upstream/emscripten` on `PATH` and set `EMSDK_PYTHON` to emsdk's bundled `python/<version>/python.exe`.
+Without it, `emcc.exe` reaches the Windows Store's python alias, and kama reports `emcc failed (exit 9009)`. A UCRT64
+shell does not inherit the Windows `PATH` unless `MSYS2_PATH_TYPE=inherit`, so `emsdk activate --permanent` does not
+reach it; set both in the shell's own profile.
+
 ## Rules
 
 - **The engine is the driver for games, never one game.** Nothing in `engine/` names or special-cases a game.

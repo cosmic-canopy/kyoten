@@ -119,5 +119,6 @@ Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the wa
 - Two decisions are already made and recorded in [design/architecture.md](design/architecture.md) and
   [design/examples.md](design/examples.md): each example is its own repository, and the first two are the FPS and the
   VR (Meta Quest) examples.
-- A web build needs emscripten. Whether this machine has it is in
-  [research/kama-for-engines.md](research/kama-for-engines.md).
+- A web build needs emscripten. The Windows machine has emsdk 6.0.13 at `C:\Users\Matt\emsdk` (installed
+  2026-11-01), and a kama program builds to wasm and runs under node there. Setting it up in a shell is in
+  [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Build.
