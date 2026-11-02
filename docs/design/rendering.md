@@ -57,6 +57,15 @@
    click on a 2D overlay versus the 3D scene behind it); how a 2D layer rendered to a texture is placed in 3D (a screen
    in the world, a panel in a headset, where OpenXR's and WebXR's own quad layers may keep text sharper,
    [xr.md](xr.md)); and how HTML/CSS UI relates to it. On the web, is the DOM simply the topmost layer?
+10. **Generative worlds, later** (KYR-50; the owner, 2026-11-02: traditional engines "for a while… especially on
+    current hardware… but generative games are likely the future"). Wizard (Yuzhe Wu, Zijun Lin and Yeying Jin;
+    Tencent, NUS and NTU; arXiv 2610.40339, 2026-10-29; <https://wyzardwu.github.io/wizard/>, code "soon") splits a
+    game the way kyoten's frame does. Agents keep the explicit state (scene geometry, an articulated skeleton per
+    character, the fight's rules), and a video model renders it: Wan2.2-TI2V-5B with two denoising steps, at 24 FPS on
+    hardware the project page does not state. In kyoten's terms that is another renderer in the Output phase, reading
+    the same simulation state, with agents changing the world through the project database *(inferred)*. What should
+    the engine keep true until then so that one can be added: state explicit enough to condition a model on, and an
+    Output phase that a renderer other than the rasterizer can fill?
 
 ## Decided
 

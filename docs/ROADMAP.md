@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-50**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-51**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -68,7 +68,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | id | item | detail |
 |---|---|---|
 | KYR-31 | **The XR package**: one interface (session, frame timing, views, poses, input sources) with WebXR and OpenXR backends. kyoten's to build: kama ruled XR out of its own packages (2026-11-02) | [xr.md](design/xr.md) |
-| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2; kama's KR-280, in its NOW since 2026-11-01), Vulkan with OpenXR's extensions, and APK packaging and signing | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
+| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2; kama's KR-280, in its NOW since 2026-11-01), Vulkan with OpenXR's extensions, and the lifecycle events kama delivers to `main`; `kama build` makes the signed APK (KR-283) | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
 | KYR-33 | **kyoten-vr on Quest**: the example, holding the headset's frame rate | [examples.md](design/examples.md) · [xr](design/xr.md) |
 | KYR-34 | **iOS**: the platform package on kama's iOS target (KY-3), and Safari on the web route | [target-platforms.md](design/target-platforms.md) |
 
@@ -102,6 +102,7 @@ happens in that game's own repository, never here.
 |---|---|---|
 | KYR-42 | **Consoles**: Switch 2, Xbox and PlayStation, as private packages under NDA | [target-platforms.md](design/target-platforms.md) |
 | KYR-43 | **Roblox and UEFN as export targets** | [target-platforms.md](design/target-platforms.md) |
+| KYR-50 | **Generative worlds, on high-end machines**: a world generated and changed interactively while it is played, beside the traditional pipeline rather than in place of it. Prior art: Wizard (Tencent, NUS and NTU, 2026), where agents keep the game's explicit state and a video model renders it | [rendering.md](design/rendering.md) · [database](design/project-database.md) |
 
 ## ALONGSIDE: the platform, a separate product
 

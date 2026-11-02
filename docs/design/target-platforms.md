@@ -34,6 +34,11 @@
   `OS_IOS`, which std's macOS declarations do not cover. Apple's own spelling, `arm64-apple-ios`, derives neither
   `ARCH_AARCH64` nor `OS_IOS`. Each also needs an app entry the OS owns, its own packaging and signing, and, for iOS, a
   Mac to build on.
+- **kama ruled Android for production** (kama `1c1f165f`, 2026-11-02; KY-2): kama finds the NDK itself,
+  `kama build` makes the signed APK, and **`main` stays the entry on every target, with the activity's lifecycle
+  (pause, resume, a lost surface) delivered as events.** So a platform package on Android receives the lifecycle as
+  events rather than owning an entry point of its own, which bears on questions 1–2 and on
+  [architecture.md](architecture.md) question 4 *(inferred)*.
 - **The peers' platform layers** ([../research/harvest.md](../research/harvest.md) § 3): one C header per game, its web
   half over emscripten's `html5.h` and its native half over GLFW, with one window held in file-static C state.
 

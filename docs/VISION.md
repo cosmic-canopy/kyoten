@@ -134,3 +134,10 @@ Given in the owner's next messages, the same day:
   ([SPIKE.md](SPIKE.md)).
 - **Showcase as many games running on kyoten as possible** when it is ready to host games: the examples, and ports of
   friendly-fire-department and the-mallow-man once each has shipped ([ROADMAP.md](ROADMAP.md)).
+
+Given on 2026-11-02:
+
+- **Generative worlds, later, on high-end machines.** A game world generated interactively, on the fly. The owner has
+  seen it prototyped several times, most recently as Wizard: "I still see doing traditional game engines for a while…
+  especially on current hardware… but generative games are likely the future" ([ROADMAP.md](ROADMAP.md) KYR-50,
+  [design/rendering.md](design/rendering.md) question 10).

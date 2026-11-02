@@ -45,6 +45,7 @@ lives only in a conversation.
 | architecture 1: how general, how soon | harvest § Summary; component-models § 1 (Unity grew by adding) and § 5.8 |
 | architecture 2: the package split | harvest § The overview, and its *What this does not decide* 5 (copy, depend or publish) |
 | architecture 3: kama's platform packages | harvest §§ 3–5 and *What this does not decide* 1; kama's `docs/ROADMAP_DETAIL.md` § 8 (`s8-gpu-wrapper`, `s8-input`) |
+| architecture 4: the engine/game boundary, how a game starts | kama's Android ruling: `main` stays the entry on every target, with the lifecycle as events (target-platforms.md § What already exists) |
 | frame-phases 1–3: the phases and their rates | harvest § 1 (FFD's `engine::phase`); component-models § 2 (flecs) and § Summary (rates) |
 | frame-phases 5–7: parallelism | component-models § 4, probes 1–4, and KY-5; harvest *What this does not decide* 3 (the renderers' statics) |
 | frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |
@@ -127,7 +128,7 @@ KYR-1 is the walk-through itself.
 | [project-database.md](design/project-database.md) | 1–6, 8, 11: the design (its build is KYR-24) | 7: KYR-26; 9: KYR-25; 10: KYR-29 |
 | [web-and-native.md](design/web-and-native.md) | 1–6, 8 | 7: KYR-13 |
 | [target-platforms.md](design/target-platforms.md) | 1–4, the extension model the platform seam is built on | 5–6: KYR-42; 7–9: KYR-43; 10: the roadmap's order; 11: KYR-13; 12–13: KYR-32, KYR-34 |
-| [rendering.md](design/rendering.md) | 1–4 (with content-pipeline 5, forge's `render` package) | 5: KYR-22; 6: KYR-10; 7: KYR-26; 8: KYR-33; 9: KYR-49 |
+| [rendering.md](design/rendering.md) | 1–4 (with content-pipeline 5, forge's `render` package) | 5: KYR-22; 6: KYR-10; 7: KYR-26; 8: KYR-33; 9: KYR-49; 10: KYR-50 |
 | [ai-first-api.md](design/ai-first-api.md) | 1–3, because they shape the component API | 4: KYR-25; 5: KYR-23, KYR-41; 6: KYR-30; 7: KYR-14 |
 | [examples.md](design/examples.md) | 1–3 | 4: KYR-29; 5: KYR-39, KYR-44; 6: KYR-40 |
 | [xr.md](design/xr.md) | none decided here; the owner's Quest prototype, its own project, answers 1, 3 and 4 on a headset (KYR-4) | KYR-31 to KYR-33 |
