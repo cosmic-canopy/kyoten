@@ -11,11 +11,14 @@
 ## What already exists
 
 - **Nothing for XR in kama or the peers.** kama has no WebXR or OpenXR binding, and neither peer game has any XR code.
-  **kama filed one on 2026-11-01:** `@kama/xr` (KR-284, unprobed), which it recommends as a first-party package with
-  one interface and an OpenXR and a WebXR backend chosen by target, since every engine on kama that wants XR needs the
-  same binding. It would build OpenXR on Windows over Quest Link first, which needs no Android target (kama
-  `docs/ROADMAP_DETAIL.md` § `@kama/xr`). That bears on question 2, and on [architecture.md](architecture.md)
-  question 3.
+  kama will not build one: XR is kyoten's (see *Decided*). kama's survey of the routes, made for kyoten, opens its
+  `docs/ROADMAP_DETAIL.md` § 8 (kama `62322f93`):
+  - **Native:** Quest's loader is Khronos's `openxr_loader_for_android` AAR (Meta supports 1.0.34 and later),
+    initialized with the activity's `JavaVM` and `jobject`. On Windows it is `openxr_loader.dll`, with Quest Link as
+    the runtime.
+  - **Web:** WebXR is reached through `jsLibraries`, with an `expose fn` as the per-frame callback. It exists only on
+    the page thread, and a threaded wasm build runs `main` on a worker. It renders through WebGL2, since WebGPU in
+    WebXR is behind a flag in the Quest browser.
 - **kama's targets** (`kama/docs/targets.md` § Built-in targets): `MACOS`, `WINDOWS`, `LINUX`, `WASM`, `EMBEDDED`.
   **There is no Android target.** A custom triple with a per-target compiler is allowed, and the docs name "an NDK
   wrapper" as the kind of compiler that carries its triple in its name (`targets.md:540-553`). Building an Android
@@ -26,6 +29,18 @@
   re-checked from here): a `kama.json` target carrying `--target=aarch64-linux-android29` builds an executable and a
   `.so`, and every std fixture that applies links once `-lpthread` is dropped. Nothing has run on a device. kama moved
   the target (KR-280) to its NOW and filed KR-282 (an NDK wrapper is handed `-target`) and KR-283 (an installable APK).
+  On 2026-11-02 its Windows machine, which is this one, claimed all three, with KR-279 (kama `62322f93`).
+- **Developing without the headset** (kama's Windows session, relayed by the owner 2026-11-02; not re-checked from
+  here). The Android emulator runs on this machine: an API 34 x86_64 image, accelerated by the Windows Hypervisor
+  Platform, which also runs arm64 binaries through Google's ARM translation. A kama hello ran there on both ABIs, and a
+  full std fixture run was in progress. The SDK, the emulator and a `kama34` virtual device are installed under
+  `%LOCALAPPDATA%\Android\Sdk`.
+  - **Quest Link is optional.** It renders on the PC, and this machine's GPU is an integrated Radeon 880M, so
+    Quest-native and WebXR, which render on the headset, come first.
+  - **The headset is the last mile:** Horizon OS specifics, the VR launch path, and OpenXR itself.
+  - **Leads, none tried with kama** (question 8): the Meta XR Simulator, an OpenXR runtime on Windows; the Immersive
+    Web Emulator extension, WebXR in desktop Chrome; and Google's Android XR emulator images
+    (`system-images;android-34;google-xr`), which the SDK lists, though whether they run OpenXR apps is unchecked.
 - **kama's hot-reload notes** already mention Quest: "Android/Quest only via a pushed `.so`"
   (`kama/docs/ROADMAP_DETAIL.md` § the hot-reload library).
 - **Quest facts to verify before relying on them** *(to verify)*: the Quest browser runs WebXR `immersive-vr`
@@ -52,6 +67,8 @@
 3. **Graphics on each route.** On the web: does WebXR work with WebGPU on the Quest browser, or would the web route
    force WebGL, against the WebGPU-first rule ([rendering.md](rendering.md))? Natively: Vulkan through wgpu-native
    needs the device created with the extensions OpenXR asks for, which is a known integration point to probe early.
+   *Since (kama § 8, 2026-11-02):* the swapchain is Vulkan or GLES on Quest, and whether wgpu-native exposes either is
+   unprobed. With XR now kyoten's, that probe is kyoten's too, and it comes before the XR renderer is designed.
 4. **An Android target for kama.** The NDK's clang as the `cc`, a triple such as `aarch64-linux-android<api>`, bionic
    in kama's OS layer, a shared library loaded by a native activity, APK packaging and signing. Does kyoten build this,
    or ask kama for it (a `KAMA_GAPS.md` entry and a kama roadmap row)? Probe it before deciding.
@@ -98,3 +115,13 @@
   ([../../AGENTS.kyoten.md](../../AGENTS.kyoten.md)). The owner expected the same ("some of that is KAMA_GAPS"). The
   target is KY-2, and kyoten's package on it is KYR-32. The probe (KYR-4) still runs, so that KY-2 gains a repro from a
   real build.
+- **2026-11-02, the owner, ruling in kama: XR is kyoten's, not kama's** (kama `62322f93`, `docs/ROADMAP_DETAIL.md`
+  § 8). kama's rule puts a capability in the language or std if it belongs there, in a first-party package if it
+  stands alone, and otherwise in the engine.
+  - **Why XR is the engine's:** its one consumer is an engine, and its hard half is engine design: the swapchain
+    handed to the renderer, and on the web the frame loop `XRSession.requestAnimationFrame` owns. One interface over
+    OpenXR and WebXR is an engine abstraction, as Godot's `XRServer` is.
+  - **Considered:** a first-party `@kama/xr` (KR-284), filed 2026-11-01 and retired. A bare OpenXR binding could
+    stand alone, as Rust's `openxr` crate does, so kyoten may publish one later.
+  - **What follows:** question 2's package is kyoten's to build (KYR-31). What kama owes XR is the Android target
+    (KR-280, KR-283); a gap kyoten meets past that goes to [../KAMA_GAPS.md](../KAMA_GAPS.md).

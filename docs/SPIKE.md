@@ -26,9 +26,11 @@ decided beyond what each doc's *Decided* already records.
     from wasm.
   - Between them they filed KY-4 to KY-7 in [KAMA_GAPS.md](KAMA_GAPS.md).
 - **KYR-4 is the owner's**: a Quest prototype in its own project. Nothing in the spike waits for it.
-- **kama moved after the seeding.** On 2026-11-01 (kama `4f0ecbdc`) it put Android for Quest (KR-280) in its NOW and
-  filed `@kama/xr` (KR-284), which it recommends as a first-party package. So architecture.md question 3 (on, as or
-  beside kama's platform packages) now covers XR as well ([design/xr.md](design/xr.md)).
+- **kama moved after the seeding.** It put Android for Quest (KR-280) in its NOW, and its Windows machine (this one)
+  has claimed that and KR-279, KR-282 and KR-283 (kama `62322f93`, 2026-11-02). It ruled that XR is kyoten's, not a kama
+  package, while `@kama/gpu` and `@kama/window` stay first-party packages that kyoten will be first to use
+  ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). Who builds those two is
+  still architecture.md question 3.
 - **The work is on the branch `spike/roadmap`**, not yet pushed or merged.
 
 ### What to read before each question
@@ -42,7 +44,7 @@ lives only in a conversation.
 |---|---|
 | architecture 1: how general, how soon | harvest § Summary; component-models § 1 (Unity grew by adding) and § 5.8 |
 | architecture 2: the package split | harvest § The overview, and its *What this does not decide* 5 (copy, depend or publish) |
-| architecture 3: kama's platform packages | harvest §§ 3–5 and *What this does not decide* 1; kama's `docs/ROADMAP_DETAIL.md` § `@kama/xr` |
+| architecture 3: kama's platform packages | harvest §§ 3–5 and *What this does not decide* 1; kama's `docs/ROADMAP_DETAIL.md` § 8 (`s8-gpu-wrapper`, `s8-input`) |
 | frame-phases 1–3: the phases and their rates | harvest § 1 (FFD's `engine::phase`); component-models § 2 (flecs) and § Summary (rates) |
 | frame-phases 5–7: parallelism | component-models § 4, probes 1–4, and KY-5; harvest *What this does not decide* 3 (the renderers' statics) |
 | frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |

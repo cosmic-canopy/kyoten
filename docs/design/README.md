@@ -12,7 +12,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [replay-and-determinism.md](replay-and-determinism.md) | recorded inputs, seeds, bit-identical replay | draft |
 | [web-and-native.md](web-and-native.md) | web first, native at parity: the platform seam and the web thread topology | draft |
 | [target-platforms.md](target-platforms.md) | N platforms, extensible: desktop, Steam Deck, mobile, consoles, Roblox and UEFN | draft, one decision recorded (iOS; Android for Quest) |
-| [xr.md](xr.md) | VR: OpenXR natively, WebXR on the web, perhaps a package; Meta Quest first | draft, four decisions recorded |
+| [xr.md](xr.md) | VR: OpenXR natively, WebXR on the web, kyoten's own package; Meta Quest first | draft, five decisions recorded |
 | [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft, one decision recorded (a self-hostable server; the platform is the easy option) |
 | [project-database.md](project-database.md) | the AI-coordinated project database and wiki | draft for the spike (build: KYR-24), four decisions recorded |
 | [human-tools.md](human-tools.md) | human visibility and tuning: the tool surface | deferred to KYR-26, KYR-27 |

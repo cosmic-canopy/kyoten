@@ -29,9 +29,16 @@
 - **The inventory of what to take** ([../research/harvest.md](../research/harvest.md), KYR-2): every candidate piece
   of FFD, the-mallow-man and cosmic-forge, with what it assumes about its game and what making it generic would cost.
   Only FFD's pieces have a proven web leg, and no donor has a 3D renderer on both legs. Its *What this does not decide*
-  frames questions 2 (copy, depend or publish) and 3. **kama has since filed `@kama/xr`** (KR-284, 2026-11-01) and
-  recommends it first-party, as `@kama/gpu` and `@kama/window` are, so question 3 covers XR as well
-  ([xr.md](xr.md)).
+  frames questions 2 (copy, depend or publish) and 3.
+- **What kama will and will not build** (kama `docs/ROADMAP_DETAIL.md` § 8, ruled by the owner 2026-11-02 at kama
+  `62322f93`). The rule: a capability is kama's (the language or std) if it belongs there, a first-party package if it
+  stands alone, and otherwise the engine's.
+  - **GPU and window stand alone**, since FFD and the-mallow-man each wrote their own WebGPU binding and GLFW layer,
+    and a tool needs them as much as a game does. So `@kama/gpu` (KR-25) and `@kama/window` (KR-26) stay first-party
+    packages in their own repositories, designed and unbuilt, with kyoten as their first consumer. Who builds them is
+    question 3.
+  - **XR is kyoten's** ([xr.md](xr.md) § Decided). kama filed `@kama/xr` (KR-284) on 2026-11-01 and retired it the
+    next day: its one consumer is an engine, and its hard half is engine design.
 
 kyoten's position differs from the peers' on purpose: it *is* the general engine they each declined to build early.
 The tension between their lesson and that purpose is the first thing to settle.
