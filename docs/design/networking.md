@@ -1,13 +1,14 @@
 # Networking: netcode in the frame, and the hosted game backend
 
-**Status:** draft. One decision is recorded: the hosted backend goes with the platform product. The engine's netcode is KYR-18.
+**Status:** draft. One decision is recorded: kyoten ships a backend server anyone can host, and the platform is the easy option for hosting it, never a lock-in. The engine's netcode is KYR-18; the server is KYR-45.
 
 ## What the vision asks
 
 - In the frame: **network receive is Input** (recorded, so a session can be replayed) and **network send is
   Output**. Each system updates at the frequency that makes sense for it.
 - **A networking backend that works for games, hosted by kyoten** as part of the developer platform
-  ([marketplace.md](marketplace.md)).
+  ([marketplace.md](marketplace.md)). Refined the same day: the platform is the easy option, never a lock-in, and
+  kyoten likely ships a backend server anyone can host (*Decided*).
 - Web first: the browser's own transports.
 
 ## What already exists
@@ -50,8 +51,15 @@
 
 ## Decided
 
-- **2026-11-01, following the owner's decision in [marketplace.md](marketplace.md): the hosted backend belongs to
-  the platform product.** The vision hosts it "as part of that platform", and the platform is now a separate product,
-  so questions 5–9 go with it. kyoten keeps the netcode in the engine (questions 1–4, KYR-18) and the client the engine
-  needs for the backend (KYR-44). *This reading was not put to the owner directly; it stands unless the owner moves the
-  backend back.*
+- **2026-11-01, the owner: the platform is the "easy button" for networking, never a lock-in.** Self-hosting a
+  backend for kyoten is fine, and kyoten will likely ship a backend server of its own. The platform's offerings are
+  meant to be fair and easy to use, which is why a developer may choose it to host for them, and no developer should
+  feel locked in.
+  - **What it settles:** the backend *server* is kyoten's, open like the engine, and anyone may host it (KYR-45).
+    *Hosting* it for developers is the platform product's ([marketplace.md](marketplace.md)). The netcode in the engine
+    is questions 1–4 (KYR-18).
+  - **What it asks of the design:** a game reaches its backend the same way whoever runs it, so moving between
+    self-hosting and the platform is a change of deployment, not of code. How that is done is for questions 5–9, with
+    KYR-45 and KYR-44.
+  - *This corrects a reading recorded earlier the same day, which had moved the whole backend (questions 5–9) to the
+    platform product.*

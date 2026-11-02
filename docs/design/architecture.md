@@ -91,4 +91,6 @@ The tension between their lesson and that purpose is the first thing to settle.
     as, or beside kama's platform packages).
 - **2026-11-01, the owner: the marketplace and platform are a separate product**, which the owner builds in parallel
   ([marketplace.md](marketplace.md)). That settles question 5's second half (the hosted platform lives outside this
-  monorepo) and moves question 6 (whether the platform's code is open) to that product.
+  monorepo) and moves question 6 (whether the platform's code is open) to that product. kyoten's own backend server,
+  which anyone may host ([networking.md](networking.md) § Decided), is open like the engine; where its code lives is
+  still question 5.

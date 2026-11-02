@@ -13,14 +13,14 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [web-and-native.md](web-and-native.md) | web first, native at parity: the platform seam and the web thread topology | draft |
 | [target-platforms.md](target-platforms.md) | N platforms, extensible: desktop, Steam Deck, mobile, consoles, Roblox and UEFN | draft, one decision recorded (iOS; Android for Quest) |
 | [xr.md](xr.md) | VR: OpenXR natively, WebXR on the web, perhaps a package; Meta Quest first | draft, four decisions recorded |
-| [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft; the hosted backend goes with the platform product |
-| [project-database.md](project-database.md) | the AI-coordinated project database and wiki | deferred to KYR-24, KYR-25 |
+| [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft, one decision recorded (a self-hostable server; the platform is the easy option) |
+| [project-database.md](project-database.md) | the AI-coordinated project database and wiki | deferred to KYR-24, three decisions recorded |
 | [human-tools.md](human-tools.md) | human visibility and tuning: the tool surface | deferred to KYR-26, KYR-27 |
 | [rendering.md](rendering.md) | WebGPU first | draft |
 | [audio.md](audio.md) | Web Audio first, and the DAW tool | deferred to KYR-15, KYR-35 |
 | [timeline.md](timeline.md) | timeline and cinematic tools | deferred to KYR-36 |
 | [content-pipeline.md](content-pipeline.md) | consuming cosmic-forge | draft |
-| [ai-first-api.md](ai-first-api.md) | easy for AI from day one, as quick as Three.js | draft |
+| [ai-first-api.md](ai-first-api.md) | easy for AI from day one, as quick as Three.js | draft, one decision recorded (AI first; query and MCP built in) |
 | [version-manager.md](version-manager.md) | several engine versions side by side, and example projects to start from | deferred to KYR-38 |
 | [marketplace.md](marketplace.md) | the developer platform: build, deploy and sell | a separate product; the engine's side is KYR-44 |
 | [website.md](website.md) | kyotenengine.com: the site, its subdomains, provisioning and deployment | deferred to KYR-39 |

@@ -36,7 +36,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
    a third-party physics engine may not be deterministic across CPUs. Is determinism a promise the engine makes, or a
    pattern a game opts into?
 2. **What is recorded?** Every Input-phase source (devices, network receive, seeds, time where a game reads it) as one
-   ordered log per tick? What about inputs that do not fit a tick (text input, file drops, asset loads)?
+   ordered log per tick? What about inputs that do not fit a tick (text input, file drops, asset loads)? And the
+   content layers loaded, since one id can resolve differently under another stack
+   ([project-database.md](project-database.md) question 11)?
 3. **The log format.** Shared with the network wire, as FFD's is, so there is one serializer? Versioned, so a recording
    survives an engine update, or explicitly tied to a build?
 4. **What does replay give humans?** Scrubbing, stepping, comparing two runs, reproducing a bug from a recording, and

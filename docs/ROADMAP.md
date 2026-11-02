@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-45**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-46**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -18,7 +18,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-1 | **Design spike, narrowed (2026-11-01)**: decide only what the first slice needs. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
 | KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic | [architecture.md](design/architecture.md) |
 | KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision | [components.md](design/components.md) |
-| KYR-4 | **The Quest probe**: does the Quest browser run WebXR with WebGPU, and does a kama program build, load and run on the headset through the NDK (KY-2)? | [xr.md](design/xr.md) |
+| KYR-4 | **The Quest probe, answered by the owner's Quest prototype** (its own project): WebXR with WebGPU in the Quest browser, and a kama program built, loaded and run on the headset (KY-2). Its findings come back as research | [xr.md](design/xr.md) |
 | KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build | [web-and-native.md](design/web-and-native.md) |
 
 ## NEXT: the first slice, after which a game can start on kyoten
@@ -34,6 +34,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-12 | **Slice B**: the phases at their own rates, and a session recorded and replayed bit-identically, with one world hash on every leg | [examples.md](design/examples.md) · [replay](design/replay-and-determinism.md) |
 | KYR-13 | **CI on every leg**: native on three OSes, wasm, and a headless browser leg for COOP/COEP and WebGPU | [web-and-native.md](design/web-and-native.md) |
 | KYR-14 | **The hello cube**: the Three.js bar, written down as a number and met | [ai-first-api.md](design/ai-first-api.md) |
+| KYR-25 | **Query support and MCP, built in, first version**: the engine and a running game as data an agent can ask, because AI is the engine's first consumer. The project database joins it with KYR-24 | [ai-first-api.md](design/ai-first-api.md) · [database](design/project-database.md) |
 
 ## AFTER THE GATE: what a shipping game needs
 
@@ -43,6 +44,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-16 | **UI, first version**: HTML and CSS, as the DOM on the web and through `@kama/ui` natively | [web-and-native.md](design/web-and-native.md) |
 | KYR-17 | **Physics in the Constraints phase**, and whether it is deterministic across platforms | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
 | KYR-18 | **Netcode in the engine**: transports behind one interface, with lockstep (FFD) and snapshots with rollback (the-mallow-man) as patterns a game picks | [networking.md](design/networking.md) |
+| KYR-45 | **The kyoten backend server**: open, and anyone may host it. A game reaches it the same way whoever runs it, so the platform's hosting is the easy option, never a lock-in | [networking.md](design/networking.md) |
 | KYR-19 | **Steamworks as a feature package**: sign-in, achievements, the overlay, invites and Steam networking | [target-platforms.md](design/target-platforms.md) |
 | KYR-20 | **Steam Deck**: the Linux build, the controller, and the Deck's own checks | [target-platforms.md](design/target-platforms.md) |
 | KYR-21 | **Shipping a game**: release builds, crash reports, licence notices, and bundles for Steam on Windows, Linux and a notarized macOS, plus a web release | [target-platforms.md](design/target-platforms.md) |
@@ -53,8 +55,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-24 | **The project database, first version**: records, schemas typed by kama serde, consistency checks, and live reload into the running game | [project-database.md](design/project-database.md) |
-| KYR-25 | **The agent interface**: the engine's API and the project database as data, through a CLI, MCP, a JSON schema and generated reference | [project-database.md](design/project-database.md) · [ai-first](design/ai-first-api.md) |
+| KYR-24 | **The project database and wiki, first version**: one per game project, so agents on separate machines keep one game direction. Typed records, consistency checks, live reload, and lookups through one abstraction whose sources stack by priority (on disk, DLC) | [project-database.md](design/project-database.md) |
 | KYR-26 | **The human tool surface, first version**: a local web editor with the database's change feed, entities, timings per phase, and tuning that writes records | [human-tools.md](design/human-tools.md) |
 | KYR-27 | **Replay as a tool**: scrub, step, and compare two runs | [replay-and-determinism.md](design/replay-and-determinism.md) |
 | KYR-28 | **Slice C in kyoten-fps**: an agent builds and tunes a level through records while a human watches and adjusts | [examples.md](design/examples.md) |
@@ -91,9 +92,10 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 ## ALONGSIDE: the platform, a separate product
 
-The marketplace and the hosted backend are the owner's separate product. kyoten keeps one row for what the engine owes
-it, and that row is decided before the engine's packaging settles (KYR-37).
+The marketplace and its hosting are the owner's separate product: the easy button, never a lock-in. kyoten ships its
+own backend server that anyone may host (KYR-45), and keeps one row for what the engine owes the platform, decided
+before the engine's packaging settles (KYR-37).
 
 | id | item | detail |
 |---|---|---|
-| KYR-44 | **What the engine owes the platform**: what a game and a content package are, the web deploy shape, and the client for identity and the hosted backend | [marketplace.md](design/marketplace.md) |
+| KYR-44 | **What the engine owes the platform**: what a game and a content package are, the web deploy shape, and identity, all working the same with or without the platform | [marketplace.md](design/marketplace.md) |

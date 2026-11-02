@@ -23,6 +23,13 @@
   sessions; native Quest apps use OpenXR on Android with Vulkan (or OpenGL ES); headsets run at 72, 90 or 120 Hz on a
   mobile GPU with a tight thermal budget. **Whether the Quest browser supports WebGPU, and WebXR with WebGPU layers,
   is the question the web route depends on.** WebXR has traditionally been bound to WebGL.
+- **WebGPU in WebXR on Quest is experimental and behind a flag** *(to verify on a headset)*. A web search of Meta's
+  Quest Browser release notes (`developers.meta.com/horizon/release-notes/web/`, 2026-11-01) reports: 146.0 (April
+  2026) enabled experimental WebGPU in WebXR, behind `chrome://flags` "webxr experiments"; 149.1 added WebGPU
+  space-warp layers; 150.1 experimental foveation for WebGPU in WebXR; 152.1 (October 2026) composition layers for it.
+  A January 2026 forum thread reported the WebGPU samples failing on a Quest 3S. The pages render by script, so they
+  were not read directly. **So the web route can render with WebGPU for development, but not yet for players** who
+  have not set a flag.
 
 ## The questions
 
@@ -51,7 +58,8 @@
 9. **Distribution.** A URL on kyoten's platform, a store listing, or sideloading for development. Who signs the APK
    (the signing question kama records as KR-135 applies)?
 10. **The first Quest game.** The owner will likely make it as a new project of its own (see *Decided*). Is it built on
-    kyoten, so that it drives KYR-31 to KYR-33, or on an engine of its own, as FFD and the-mallow-man were?
+    kyoten, so that it drives KYR-31 to KYR-33, or on an engine of its own, as FFD and the-mallow-man were? *Answered
+    2026-11-01: on its own, as a prototype kyoten references (see Decided).*
 
 ## Decided
 
@@ -60,8 +68,21 @@
 - **2026-11-01, the owner: XR on the web is WebXR.** The owner's expectation ("likely"), and the web has no other
   standard XR API to weigh against it. Whether the Quest browser runs it with WebGPU (question 3) decides how it
   renders, not whether it is WebXR.
-- **2026-11-01, the owner: the first Quest game will likely be a new project of its own**, as friendly-fire-department
-  and the-mallow-man were, beside the `kyoten-vr` example. Which engine it runs on is question 10.
+- **2026-11-01, the owner: the first Quest game starts as its own project, now**, as friendly-fire-department and
+  the-mallow-man did, unless it fits here in a reasonable time. The owner has not built for Quest before and wants a
+  prototype to reference as soon as possible, without holding kyoten up or bending kyoten toward one game, since kyoten
+  is open-ended and general purpose. It sits beside the `kyoten-vr` example, which stays an example of the engine.
+  - **Assessed the same day: it does not fit here in a reasonable time.** kyoten has no frame, platform seam or
+    renderer yet, so a Quest game here would wait for the gate (KYR-12), then the XR package (KYR-31) and Android
+    (KYR-32). Meanwhile it would be the one game kyoten's early design bends toward, which is what the owner wants to
+    avoid.
+  - **What kyoten gets from it:** what FFD and the-mallow-man gave, a donor and a reference. It answers KYR-4's
+    questions on real hardware, its findings come back here as research, and its kama findings go to the gap files
+    (KY-2 first).
+  - **Its quickest start** (a suggestion; the route is the game's own call): the web route needs no new kama target,
+    since kama builds wasm today, and renders with WebGPU behind the Quest browser's flag or with WebGL without it. The
+    native route meets KY-2 at once, though a `kama.json` target entry naming the NDK's clang (kama `docs/targets.md`
+    § "You already have a cross toolchain") may carry it. That is untested.
 - **2026-11-01: the Android target is kama's to build; the platform package on it is kyoten's.** This answers question
   4. kyoten's rules already settle it: kyoten never edits kama, and the gap file is how kama hears about a gap
   ([../../AGENTS.kyoten.md](../../AGENTS.kyoten.md)). The owner expected the same ("some of that is KAMA_GAPS"). The

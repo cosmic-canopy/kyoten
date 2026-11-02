@@ -72,9 +72,9 @@ Walk the docs in this order. KYR-2 to KYR-5 gather the evidence; KYR-1 is the wa
 | [rendering.md](design/rendering.md) | 1–4 (with content-pipeline 5, forge's `render` package) | 5: KYR-22; 6: KYR-10; 7: KYR-26; 8: KYR-33 |
 | [ai-first-api.md](design/ai-first-api.md) | 1–3, because they shape the component API | 4: KYR-25; 5: KYR-23, KYR-41; 6: KYR-30; 7: KYR-14 |
 | [examples.md](design/examples.md) | 1–3 | 4: KYR-29; 5: KYR-39, KYR-44; 6: KYR-40 |
-| [xr.md](design/xr.md) | none decided, but KYR-4 probes 1, 3 and 4 now, since Quest is the longest pole | KYR-31 to KYR-33 |
-| [networking.md](design/networking.md) | — | 1–4: KYR-18; 5–9: the platform product (KYR-44 for the engine's side) |
-| [project-database.md](design/project-database.md) | — | KYR-24, KYR-25 |
+| [xr.md](design/xr.md) | none decided here; the owner's Quest prototype, its own project, answers 1, 3 and 4 on a headset (KYR-4) | KYR-31 to KYR-33 |
+| [networking.md](design/networking.md) | — | 1–4: KYR-18; 5–9: KYR-45 (the server) and KYR-44 |
+| [project-database.md](design/project-database.md) | — | KYR-24; 9: KYR-25 |
 | [human-tools.md](design/human-tools.md) | — | KYR-26, KYR-27 |
 | [audio.md](design/audio.md) | — | 1–5, 7: KYR-15; 6: KYR-35 |
 | [timeline.md](design/timeline.md) | — | KYR-36 |

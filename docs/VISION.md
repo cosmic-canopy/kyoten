@@ -61,7 +61,8 @@ Added to the brief the same day:
 - **A platform for developers to build, deploy and sell games and content**, something like Steam or the Unity
   asset store. **kyoten hosts the marketplace.**
 - **A networking backend built for games**, hosted as part of that platform.
-- *Refined the same day: the platform is a separate product the owner builds in parallel (see the last section).*
+- *Refined the same day: the platform is a separate product the owner builds in parallel, the easy option for
+  hosting and never a lock-in (see the last section).*
 
 ## Distribution and the web presence
 
@@ -111,3 +112,21 @@ recorded in the design docs they settle; this section keeps the brief itself.
   ([design/xr.md](design/xr.md)).
 - **iOS is wanted as well**, and Android support (which Quest runs on) is expected to need kama work
   ([design/target-platforms.md](design/target-platforms.md), [KAMA_GAPS.md](KAMA_GAPS.md) KY-2 and KY-3).
+
+Given in the owner's next messages, the same day:
+
+- **The platform is the "easy button", never a lock-in.** Self-hosting a backend for kyoten is fine, and kyoten will
+  likely ship a backend server of its own. The platform's offerings are fair and easy to use, which is why developers
+  may choose it to host for them ([design/networking.md](design/networking.md)).
+- **The engine's first consumer is AI.** kama is opinionated, strict and AI-friendly, and kyoten carries the same
+  mentality, with query support and MCP built in ([design/ai-first-api.md](design/ai-first-api.md)).
+- **The project database and wiki are central to kyoten's success.** They let several agents develop concurrently on
+  separate machines and still keep one consistent game direction. A wiki per game project, as what coordinates them,
+  is what the owner sees as unique ([design/project-database.md](design/project-database.md)).
+- **The "database" may be an abstraction.** It could literally be kama postgres, or an abstract interface that a
+  database or flat files fulfil. Game lookups go through an abstraction, with overriding by priority, which serves
+  content on disk against DLC and similar cases.
+- **A Quest prototype as soon as possible.** The owner has not built for Quest before and is tempted to start the
+  Quest game on its own, so as not to hold kyoten up; it comes here only if it fits in a reasonable time
+  ([design/xr.md](design/xr.md)).
+- **kyoten is open-ended and general purpose**, never pigeonholed into one game project.

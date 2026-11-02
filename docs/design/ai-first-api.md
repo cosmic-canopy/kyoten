@@ -1,6 +1,6 @@
 # Easy for AI from day one, as quick as Three.js
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft for the design spike. One decision is recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -39,4 +39,9 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-01, the owner: the engine's first consumer is AI.** kama is opinionated, strict and AI-friendly, and kyoten
+  carries the same mentality. **Query support and MCP are built in**, not added later.
+  - **What it settles:** the shape of question 4. The engine's API, and a running game, are data an agent can ask
+    through query and MCP. Which questions and tools they answer, and how they sit beside `kama query`, stay open.
+  - **On the roadmap:** KYR-25 moves into the first slice, so the first consumer can use the engine from its first
+    version. The project database joins it with KYR-24.
