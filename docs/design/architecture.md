@@ -66,6 +66,11 @@ The tension between their lesson and that purpose is the first thing to settle.
    only the engine?
 7. **Naming.** `kyoten` as the engine package name, `tools/`, `services/`: fixed now so imports and docs do not churn
    later.
+   - **The namespaces wait on kama** ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-8, 2026-11-02). The owner wants
+     `@kama/<noun>` for general-purpose packages and `@kyoten/<noun>` for kyoten's own, with `@kyoten` as a second
+     official Cosmic Canopy scope. On kama 0.9.810, a scope does not reach the import: `@kyoten/net` imports as `net`,
+     so it cannot sit beside any other `net`, the game's own included, and a consumer cannot alias a dependency.
+     kama triages it, and this question is settled once it rules.
 8. **Examples against a published engine.** An example reaches the engine by path, so it builds only inside a kyoten
    checkout. When the engine is published and the engine manager hands out a standalone copy of an example
    ([version-manager.md](version-manager.md)), does it depend on a registry version, with a `kama.local.json` override
