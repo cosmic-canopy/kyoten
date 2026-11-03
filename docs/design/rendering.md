@@ -36,8 +36,8 @@
     builds (KYR-52). It names no engine concept, so tools and non-game products can use it, and kyoten's render module
     binds components to it (KYR-9).
   - **It is a `@kama` package** (architecture question 7, 2026-11-03): "If it can exist outside of kyoten it probably
-    will be in kama for now". kama rules on it first ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-9), and its name is the
-    owner's to pick.
+    will be in kama for now". Its name is `@kama/graphics` (the owner, 2026-11-03), and kama rules on it first
+    ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-9).
   - **Still open here:** where its code starts (question 1).
 
 ## The questions

@@ -20,8 +20,8 @@ spike questions are decided, all recorded in its *Decided*:
 - **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package shaped
   like Three.js.
 - **Question 7.** The directories are `editor/`, `server/` and `tools/`. The namespaces (2026-11-03): `@kama/<noun>`
-  is for a package that can exist outside kyoten, such as `@kama/gpu`, `@kama/window` and the Three.js-shaped graphics
-  library. `@kyoten/<noun>` is for what is kyoten's own. kama made scopes work by fixing KY-8 in 0.9.820 (KR-291).
+  is for a package that can exist outside kyoten, such as `@kama/gpu`, `@kama/window` and the Three.js-shaped
+  `@kama/graphics`. `@kyoten/<noun>` is for what is kyoten's own. kama made scopes work by fixing KY-8 in 0.9.820 (KR-291).
 
 **The next session, in order:**
 
@@ -39,8 +39,8 @@ spike questions are decided, all recorded in its *Decided*:
 - **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up.
-- **The graphics library's name, and kama's ruling on it** ([KAMA_GAPS.md](KAMA_GAPS.md) KY-9, for the owner to
-  relay). kama's roadmap keeps the renderer in the engine today, so a `@kama` graphics library needs its ruling.
+- **kama's ruling on `@kama/graphics`** ([KAMA_GAPS.md](KAMA_GAPS.md) KY-9, for the owner to relay). kama's roadmap
+  keeps the renderer in the engine today, so the library needs its ruling.
 - **Is `@kyoten` reserved in the registry?** kama ruled that a maintainer's scope is reserved in the registry project,
   not the compiler. That is not visible from here: there is no `gh`, and the registry repo is not checked out.
 

@@ -73,7 +73,7 @@ The tension between their lesson and that purpose is the first thing to settle.
 7. **Naming.** `kyoten` as the engine package name, `tools/`, `services/`: fixed now so imports and docs do not churn
    later.
    - *The namespaces are decided (2026-11-03): `@kama/<noun>` for a package that can exist outside kyoten
-     (`@kama/gpu`, `@kama/window`, the graphics library), and `@kyoten/<noun>` for what is kyoten's own.*
+     (`@kama/gpu`, `@kama/window`, `@kama/graphics`), and `@kyoten/<noun>` for what is kyoten's own.*
    - **What made them possible.** The owner wants `@kama/<noun>` for general-purpose packages and
      `@kyoten/<noun>` for kyoten's own, with `@kyoten` as a second official Cosmic Canopy scope. On kama 0.9.810 a
      scope did not reach the import, so `@kyoten/net` could not sit beside any other `net`, and no alias existed
@@ -168,7 +168,7 @@ The tension between their lesson and that purpose is the first thing to settle.
       1. the frame: phases, clocks, the scheduler and the input record;
       2. the world: components and their stores (named by [components.md](components.md));
       3. one module per system (input, render, audio, net, and later physics and UI), each also importing its own
-         general-purpose library (`@kama/window`, the `@kama` graphics library, …);
+         general-purpose library (`@kama/window`, `@kama/graphics`, …);
       4. the agent surface (KYR-25), which reads every module and which no module imports.
       - The platform seam's interfaces go with the frame or with each system, as
         [target-platforms.md](target-platforms.md) question 1 settles.
@@ -210,8 +210,7 @@ The tension between their lesson and that purpose is the first thing to settle.
   - **Why its own package from the start:** the owner leaned on the recommendation ("we can start with it being a
     built in module if that is easier?"). Only a package boundary keeps it from importing the engine; as a module,
     "names no engine concept" would be a convention.
-  - **It is a `@kama` package** (question 7, 2026-11-03, below), once kama rules on KY-9. Its name is the owner's to
-    pick. Where its code starts (forge's `render`, the-mallow-man's `gfx`, or fresh) is
+  - **It is `@kama/graphics`** (question 7, 2026-11-03, below), once kama rules on KY-9. Where its code starts (forge's `render`, the-mallow-man's `gfx`, or fresh) is
     [rendering.md](rendering.md) question 1.
   - **Considered:** a `kyoten::render` module split out later; and widening `@kama/gpu` into the library, which would
     reverse kama's design.
@@ -248,15 +247,20 @@ The tension between their lesson and that purpose is the first thing to settle.
   doesn't need to be game engine / simulation or even real time."
   - **How:**
     - **`@kama/<noun>`** is for a package that can exist outside kyoten: `@kama/gpu` and `@kama/window` (KYR-51,
-      KYR-52), and the Three.js-shaped graphics library (KYR-9). The general-purpose libraries under audio and
+      KYR-52), and the Three.js-shaped graphics library, `@kama/graphics` (KYR-9). The general-purpose libraries under audio and
       networking (question 1's pattern) go there too, when KYR-15 and KYR-18 come up.
     - **`@kyoten/<noun>`** is for what is kyoten's own: what binds those libraries to kyoten's components and phases,
       and a platform or feature package that implements kyoten's interfaces.
     - A game names its own packages as it likes. A clash with a kyoten package is settled in the game's manifest, with
       a local name.
   - **The graphics library needs kama's ruling first** ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-9). kama's roadmap
-    keeps "the renderer" in the engine today (kama `docs/ROADMAP_DETAIL.md:2862-2863`). Its name is the owner's to
-    pick.
+    keeps "the renderer" in the engine today (kama `docs/ROADMAP_DETAIL.md:2862-2863`).
+  - **Its name is `@kama/graphics`** (the owner, 2026-11-03: "kama graphics is probably the best bet"). It is imported as
+    `graphics` (`graphics::Mesh`), and a path package of that name installs and runs on 0.9.823. It is a plain noun like
+    kama's other first-party names, and it says nothing about games or real time. It avoids every name already in use:
+    kama's (`gpu`, `window`, `http`, `ui`, `tls`, `sodium`, `postgres`, `redis`), the peers' (`gfx`, `render`, `view`)
+    and kyoten's `render` module. Also considered: `@kama/scene` (a scene graph, but narrower than the library, and
+    `scene::Scene` stutters), `@kama/draw` (reads as 2D or immediate-mode), and `@kama/three` (Three.js's own name).
   - **The engine package keeps its import name.** Today it is the unscoped `kyoten`. Published as `@kyoten/kyoten`, it
     imports as `kyoten` too, and its files reach their own modules as `kyoten::phase::…` (probed on 0.9.823). So which
     one it publishes as waits for its first publish (question 8, KYR-37) and changes no import.
