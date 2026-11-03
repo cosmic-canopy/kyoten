@@ -44,8 +44,8 @@ spike questions are decided, all recorded in its *Decided*:
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
-  publish --dry-run`, and nothing is built. They have no remote yet: the owner adds the `cosmic-canopy` remotes and
-  pushes. Commit there on `main`, and never push unasked.
+  publish --dry-run`, and nothing is built. Each is pushed to `cosmic-canopy/kama-<name>` (2026-11-03), so a session
+  on another machine clones it beside kyoten. Commit there on `main`, and push when the owner asks.
 - **Is `@kyoten` reserved in the registry?** kama ruled that a maintainer's scope is reserved in the registry project,
   not the compiler. That is not visible from here: there is no `gh`, and the registry repo is not checked out.
 
@@ -68,7 +68,8 @@ can as each tool is built. cosmic-forge's tools and its CLI are references, but 
   package, while `@kama/gpu` and `@kama/window` stay first-party packages that kyoten will be first to use
   ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). kyoten builds those two
   (question 3), and kama's roadmap records the claim on KR-25 and KR-26. kama has since fixed KY-1, KY-4, KY-7 and KY-8.
-- **The work is on the branch `spike/roadmap`**, not yet pushed or merged.
+- **The work is on the branch `spike/roadmap`**, pushed to `origin` on 2026-11-03 so other machines can pick it up, and
+  not merged.
 
 ### What to read before each question
 
