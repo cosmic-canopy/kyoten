@@ -11,13 +11,20 @@
 - **AI first, then humans who edit too** (the owner, 2026-11-02): "We will develop AI first and human tools start as
   visibility into the process… but obviously it will be most powerful to allow humans to edit as well as AI so humans
   can tweak." The tool surface lives in `editor/` ([architecture.md](architecture.md) question 7).
+- **Tooling works for AI up front and is visible to humans** (the owner, 2026-11-03): "The first consumers of kyoten
+  are AI. So the tooling needs to work well for AI up front and be visible to humans and UX will need to be something
+  we do our best with as we build out any sort of tools." See [ai-first-api.md](ai-first-api.md) § Decided
+  (2026-11-01).
+- **cosmic-forge is a reference for tools, not for UX** (the owner, 2026-11-03): "The tools are good to reference but
+  the UX of cosmic forge is NOT great for humans yet. Perhaps the LLM CLI stuff... but not the UX so much yet."
 
 ## What already exists
 
 - Tuning files with live reload, debug overlays, record/replay viewers and test harnesses in the peers: see
   [../research/peer-games.md](../research/peer-games.md) § human tools.
 - cosmic-forge's page: a web UI over a local HTTP server, with job logs streamed live (server-sent events). See
-  [../research/cosmic-forge.md](../research/cosmic-forge.md) § human visibility.
+  [../research/cosmic-forge.md](../research/cosmic-forge.md) § human visibility. Its tools and its CLI are the
+  references, not its UX (the owner, above).
 
 ## The questions
 

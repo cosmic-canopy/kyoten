@@ -14,6 +14,15 @@
 - **Strong abstractions for the systems and phases, up front** (the owner, 2026-11-02;
   [architecture.md](architecture.md) question 1), with "each phase has its own components that can be written"
   ([components.md](components.md)).
+- **The engine systems are driven by components in the phases, each subsystem at its own rate** (the owner,
+  2026-11-03). "Much of the initial work will be engine systems anyway. Cross platform Audio, graphics, networking,
+  input, etc. Each are driven by components in each of the phased parallel processes. Input -> update -> Constraint ->
+  output. Each sub system of a phase has its update frequency to compensate best with human perception and GPU/CPU
+  performance and simulation correctness."
+  - **What this sets for the questions below:** the rate belongs to a subsystem inside a phase. It is chosen against
+    three things together: human perception, CPU and GPU cost, and simulation correctness (questions 2 and 3).
+  - **What it leaves open:** whether those rates divide one fixed tick, as FFD's do, or run on clocks of their own
+    (question 2).
 
 ## What already exists
 

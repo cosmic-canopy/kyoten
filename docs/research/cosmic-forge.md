@@ -4,6 +4,15 @@ Read-only survey of `C:\Users\Matt\Documents\cosmic-forge` at `1d0abca` (2026-10
 (2026-10-13, "forge moves here"). Pointers are `cosmic-forge/<path>:<line>` or `§ heading`. *(inferred)* marks a
 conclusion drawn from absence or from reading across files, not a statement the repo makes.
 
+> **The owner, 2026-11-03:** "The tools are good to reference but the UX of cosmic forge is NOT great for humans yet.
+> Perhaps the LLM CLI stuff... but not the UX so much yet." Read § 1's page, and anything below about the page, as
+> what exists, not as a pattern for kyoten's `editor/`.
+>
+> **forge has moved since this survey.** It was pulled to `ff695ae` on 2026-11-03, 32 commits past `1d0abca`. It now
+> has 76 tool manifests, a mesh in parts (GeoSAM2 labels, HoloPart, border clean-up), skeleton and camera thumbnails
+> and, on the page, an asset browser and Duplicate. Audio R&D started 2026-11-03, with every route local. None of it is
+> re-surveyed here.
+
 ## Summary
 
 - forge is a **local, single-user asset pipeline**. It reads tool manifests and per-subject flow files as data, expands

@@ -10,25 +10,41 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-02)
+## Where it stands (2026-11-03)
 
-**Start here.** The walk-through (KYR-1) began on 2026-11-02. [design/architecture.md](design/architecture.md) is
-done except one part of question 7, all recorded in its *Decided*:
+**Start here.** The walk-through (KYR-1) began on 2026-11-02. [design/architecture.md](design/architecture.md)'s
+spike questions are decided, all recorded in its *Decided*:
 
 - **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
   gated; kyoten builds `@kama/window` and `@kama/gpu` (KYR-51, KYR-52); and the game's `main` calls `run`.
 - **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package shaped
   like Three.js.
-- **Question 7's directories:** `editor/`, `server/` and `tools/`.
+- **Question 7.** The directories are `editor/`, `server/` and `tools/`. The namespaces (2026-11-03): `@kama/<noun>`
+  is for a general-purpose package such as `@kama/gpu` and `@kama/window`. `@kyoten/<noun>` is for anything that wraps
+  one or is kyoten's own, the graphics library included. kama made scopes work by fixing KY-8 in 0.9.820 (KR-291).
 
-**Still open in it:**
+**The next session, in order:**
 
-- **Question 7's namespaces** are the owner's to settle. kama fixed KY-8 in 0.9.820 (KR-291, re-checked on 0.9.823,
-  2026-11-03). A scope now keeps two packages apart, and a consumer can give a dependency a local name.
-- **Question 2's module rules** (which module may import which) are drafted next, for the owner.
+1. **Architecture question 2's module rules.** A draft sits under question 2. Its rule is that a system never imports
+   another system, so data moves between systems through components, in phase order. It proposes four layers and a
+   `tools/` check, because kama's `visibility` cannot hold the rule between public modules (probed on 0.9.823). The
+   rule can be decided first; the layer names wait for frame-phases 1 and components 1.
+2. **[design/frame-phases.md](design/frame-phases.md), all of it.** The owner's direction of 2026-11-03 is in its
+   *What the vision asks*. Each subsystem of a phase has its own rate, chosen for human perception, CPU and GPU cost,
+   and simulation correctness. That frames questions 2 and 3, and leaves open whether the rates divide one tick.
+3. Then the rest of the [narrowed table](#narrowed-2026-11-01).
 
-**Next:** [design/frame-phases.md](design/frame-phases.md), all of it, then the rest of the
-[narrowed table](#narrowed-2026-11-01).
+**To raise with the owner:**
+
+- **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
+  audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
+  audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up.
+- **Is `@kyoten` reserved in the registry?** kama ruled that a maintainer's scope is reserved in the registry project,
+  not the compiler. That is not visible from here: there is no `gh`, and the registry repo is not checked out.
+
+**Standing direction (2026-11-03):** tooling works for AI first and is visible to humans, and UX is done as well as we
+can as each tool is built. cosmic-forge's tools and its CLI are references, but its UX is not a pattern
+([design/human-tools.md](design/human-tools.md)).
 
 - **The evidence rows are done** (2026-11-01). Each was checked against its sources before it was committed, and the
   design docs they feed point at them under *What already exists*:
@@ -43,8 +59,8 @@ done except one part of question 7, all recorded in its *Decided*:
 - **kama moved after the seeding.** It put Android for Quest (KR-280) in its NOW, and its Windows machine (this one)
   has claimed that and KR-279, KR-282 and KR-283 (kama `62322f93`, 2026-11-02). It ruled that XR is kyoten's, not a kama
   package, while `@kama/gpu` and `@kama/window` stay first-party packages that kyoten will be first to use
-  ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). Who builds those two is
-  still architecture.md question 3.
+  ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). kyoten builds those two
+  (question 3), and kama's roadmap records the claim on KR-25 and KR-26. kama has since fixed KY-1, KY-4, KY-7 and KY-8.
 - **The work is on the branch `spike/roadmap`**, not yet pushed or merged.
 
 ### What to read before each question
@@ -180,8 +196,9 @@ KYR-1 is the walk-through itself.
 
 ## Practicalities
 
-- Built against kama **0.9.803** (`../kama`). On Windows, drive kama from msys2 UCRT64 (see kama's
-  `docs/platforms/windows.md`).
+- Seeded on kama **0.9.803** (`../kama`), last re-checked on **0.9.823** (2026-11-03). kama rebuilds often, so run
+  `--version` before quoting one. On Windows, drive kama from msys2 UCRT64 (see kama's `docs/platforms/windows.md`).
+  `kama` is not on that shell's `PATH`: use `../kama/out/UCRT64-x86_64/kama.exe`.
 - **Each example game is its own repository**, cloned as `games/<name>` (git-ignored here): `kyoten-fps` and
   `kyoten-vr`. With one present, `kama pkg install games/fps/kama.json` then `kama run games/fps/kama.json` prints
   `fps example, on kyoten`: everything is wired end to end, and nothing else is built.
