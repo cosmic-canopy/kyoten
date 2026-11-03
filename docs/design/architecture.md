@@ -1,8 +1,8 @@
 # Architecture: the engine, the games, the repository
 
-**Status:** the spike's questions here are decided (1–4, 2026-11-02), except question 7's namespaces, which wait on
-kama (KY-8). Question 5 is settled with question 7's directories, question 6 moved to the platform product, and question 8
-waits for KYR-37.
+**Status:** the spike's questions here are decided (1–4, 2026-11-02), except question 7's namespaces, which are the
+owner's to settle now that kama has fixed KY-8 (2026-11-03). Question 5 is settled with question 7's directories,
+question 6 moved to the platform product, and question 8 waits for KYR-37.
 
 ## What the vision asks
 
@@ -72,11 +72,21 @@ The tension between their lesson and that purpose is the first thing to settle.
    only the engine?
 7. **Naming.** `kyoten` as the engine package name, `tools/`, `services/`: fixed now so imports and docs do not churn
    later.
-   - **The namespaces wait on kama** ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-8, 2026-11-02). The owner wants
-     `@kama/<noun>` for general-purpose packages and `@kyoten/<noun>` for kyoten's own, with `@kyoten` as a second
-     official Cosmic Canopy scope. On kama 0.9.810, a scope does not reach the import: `@kyoten/net` imports as `net`,
-     so it cannot sit beside any other `net`, the game's own included, and a consumer cannot alias a dependency.
-     kama triages it, and this question is settled once it rules.
+   - **The namespaces are the owner's to settle.** The owner wants `@kama/<noun>` for general-purpose packages and
+     `@kyoten/<noun>` for kyoten's own, with `@kyoten` as a second official Cosmic Canopy scope. On kama 0.9.810 a
+     scope did not reach the import, so `@kyoten/net` could not sit beside any other `net`, and no alias existed
+     ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-8, 2026-11-02). **kama fixed it in 0.9.820 (KR-291), re-checked here on
+     0.9.823 (2026-11-03):**
+     - A package's full name is its identity, and a scoped one's C names carry the scope: `@kyoten/net`'s `who` is
+       `kS_kyoten__net__who`, an unscoped `net`'s is `net__who`.
+     - A consumer gives a dependency a local name, `"kynet": { "package": "@kyoten/net", … }`, and each package
+       resolves its imports through its own manifest. A game's own `net` and a library's `@kyoten/net` therefore meet
+       in one program. A multi-module `@kyoten/gfx` under an alias still imports itself as `gfx::math` inside.
+     - A scoped package still imports under its bare name by default. A consumer holding two packages of one name
+       gives one a local name, and the refusal says how.
+     - **Ownership is ruled** (kama `04837b90`, decision 4). A scope the maintainer's products publish under is
+       reserved in the registry project, not the compiler, and a third party's claim waits on KR-27's trust model.
+     - Still to settle: the names themselves.
    - *The directories are decided (2026-11-02): `editor/`, `server/` and `tools/`.*
 8. **Examples against a published engine.** An example reaches the engine by path, so it builds only inside a kyoten
    checkout. When the engine is published and the engine manager hands out a standalone copy of an example
@@ -177,8 +187,8 @@ The tension between their lesson and that purpose is the first thing to settle.
   - **Why its own package from the start:** the owner leaned on the recommendation ("we can start with it being a
     built in module if that is easier?"). Only a package boundary keeps it from importing the engine; as a module,
     "names no engine concept" would be a convention.
-  - **Still open:** its name and scope wait on question 7 (KY-8). Where its code starts (forge's `render`,
-    the-mallow-man's `gfx`, or fresh) is [rendering.md](rendering.md) question 1.
+  - **Still open:** its name and scope are question 7's (unblocked 2026-11-03, KY-8 fixed). Where its code starts
+    (forge's `render`, the-mallow-man's `gfx`, or fresh) is [rendering.md](rendering.md) question 1.
   - **Considered:** a `kyoten::render` module split out later; and widening `@kama/gpu` into the library, which would
     reverse kama's design.
 - **2026-11-02, the owner: the game's `main` calls `run` (question 4).**

@@ -23,8 +23,8 @@ done except one part of question 7, all recorded in its *Decided*:
 
 **Still open in it:**
 
-- **Question 7's namespaces** wait on kama's ruling on [KAMA_GAPS.md](KAMA_GAPS.md) KY-8: a scope does not keep two
-  packages apart, and no dependency alias exists.
+- **Question 7's namespaces** are the owner's to settle. kama fixed KY-8 in 0.9.820 (KR-291, re-checked on 0.9.823,
+  2026-11-03). A scope now keeps two packages apart, and a consumer can give a dependency a local name.
 - **Question 2's module rules** (which module may import which) are drafted next, for the owner.
 
 **Next:** [design/frame-phases.md](design/frame-phases.md), all of it, then the rest of the
@@ -164,7 +164,7 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6 and KY-8 are open there; take the
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5 and KY-6 are open there; take the
   next id from its counter.
 
 ## What the spike should leave behind
