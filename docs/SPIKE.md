@@ -41,6 +41,10 @@ spike questions are decided, all recorded in its *Decided*:
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up.
 - **kama's ruling on `@kama/graphics`** ([KAMA_GAPS.md](KAMA_GAPS.md) KY-9, for the owner to relay). kama's roadmap
   keeps the renderer in the engine today, so the library needs its ruling.
+- **The owner creates the repositories** (2026-11-03): `cosmic-canopy/kama-gpu` (KYR-52), `kama-window` (KYR-51) and
+  `kama-graphics` (KYR-9), beside `kama-sodium` and `kama-tls`. None exists yet. Each is then cloned beside kyoten as
+  `../kama-<name>` and seeded the way `kama-sodium` is laid out: `kama seed --kind library --name @kama/<name> --license
+  mit-or-apache --agents`, plus `AGENTS.<name>.md`, `KAMA_GAPS.md` and `CHANGELOG.md`. Commit there, never push.
 - **Is `@kyoten` reserved in the registry?** kama ruled that a maintainer's scope is reserved in the registry project,
   not the compiler. That is not visible from here: there is no `gh`, and the registry repo is not checked out.
 
