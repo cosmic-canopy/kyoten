@@ -35,8 +35,9 @@
   - **The layers:** a standalone, Three.js-shaped graphics library is its own package on `@kama/gpu`, which kyoten
     builds (KYR-52). It names no engine concept, so tools and non-game products can use it, and kyoten's render module
     binds components to it (KYR-9).
-  - **Still open here:** where its code starts (question 1). Its name is architecture question 7's, which kama
-    unblocked on 2026-11-03 (KY-8 fixed in 0.9.820).
+  - **Its scope is `@kyoten`**, since it wraps `@kama/gpu` (architecture question 7, 2026-11-03). Its noun comes with
+    KYR-9.
+  - **Still open here:** where its code starts (question 1).
 
 ## The questions
 

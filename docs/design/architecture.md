@@ -1,8 +1,8 @@
 # Architecture: the engine, the games, the repository
 
-**Status:** the spike's questions here are decided (1–4, 2026-11-02), except question 7's namespaces, which are the
-owner's to settle now that kama has fixed KY-8 (2026-11-03). Question 5 is settled with question 7's directories,
-question 6 moved to the platform product, and question 8 waits for KYR-37.
+**Status:** the spike's questions here are decided: 1–4 and question 7's directories on 2026-11-02, question 7's
+namespaces on 2026-11-03. Question 2's module rules (which module may import which) are still to draft. Question 5 is
+settled with question 7's directories, question 6 moved to the platform product, and question 8 waits for KYR-37.
 
 ## What the vision asks
 
@@ -72,7 +72,9 @@ The tension between their lesson and that purpose is the first thing to settle.
    only the engine?
 7. **Naming.** `kyoten` as the engine package name, `tools/`, `services/`: fixed now so imports and docs do not churn
    later.
-   - **The namespaces are the owner's to settle.** The owner wants `@kama/<noun>` for general-purpose packages and
+   - *The namespaces are decided (2026-11-03): `@kama/<noun>` for a general-purpose package such as `@kama/gpu` and
+     `@kama/window`, and `@kyoten/<noun>` for anything that wraps one or is kyoten's own.*
+   - **What made them possible.** The owner wants `@kama/<noun>` for general-purpose packages and
      `@kyoten/<noun>` for kyoten's own, with `@kyoten` as a second official Cosmic Canopy scope. On kama 0.9.810 a
      scope did not reach the import, so `@kyoten/net` could not sit beside any other `net`, and no alias existed
      ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-8, 2026-11-02). **kama fixed it in 0.9.820 (KR-291), re-checked here on
@@ -86,7 +88,6 @@ The tension between their lesson and that purpose is the first thing to settle.
        gives one a local name, and the refusal says how.
      - **Ownership is ruled** (kama `04837b90`, decision 4). A scope the maintainer's products publish under is
        reserved in the registry project, not the compiler, and a third party's claim waits on KR-27's trust model.
-     - Still to settle: the names themselves.
    - *The directories are decided (2026-11-02): `editor/`, `server/` and `tools/`.*
 8. **Examples against a published engine.** An example reaches the engine by path, so it builds only inside a kyoten
    checkout. When the engine is published and the engine manager hands out a standalone copy of an example
@@ -154,8 +155,30 @@ The tension between their lesson and that purpose is the first thing to settle.
     carrying a C dependency that only some games build. `kama_workspace.json` gains a member as each one is made.
   - **Why:** a consumer compiles only what it reaches, so modules cost it only the download (kama
     `docs/packages.md:639-650`). A console's package cannot live in this public repository. Only a package boundary is
-    checked by the compiler: a module may import any sibling in its own package.
-  - **Still to settle:** which module may import which, brought to the owner next.
+    checked by the compiler: a module may import any sibling in its own package. *(Made precise 2026-11-03, probed on
+    0.9.823: a module's `visibility` may list the modules allowed to import it, and kama refuses any other. A module a
+    game imports must be `public`, though, and that opens it to every sibling too. So between public modules, only a
+    package boundary is checked.)*
+  - **Still to settle: which module may import which.** A draft for the owner, not decided:
+    - **The rule it rests on** (the owner, 2026-11-03, [frame-phases.md](frame-phases.md) § What the vision asks):
+      each engine system is driven by components in the phases. So **a system never imports another system**, and data
+      moves between systems only through components, in phase order. That is also what lets a phase run its
+      subsystems in parallel, each at its own rate.
+    - **The layers, each importing only the ones above it:**
+      1. the frame: phases, clocks, the scheduler and the input record;
+      2. the world: components and their stores (named by [components.md](components.md));
+      3. one module per system (input, render, audio, net, and later physics and UI), each also importing its own
+         general-purpose library (`@kama/window`, the `@kyoten` graphics library, …);
+      4. the agent surface (KYR-25), which reads every module and which no module imports.
+      - The platform seam's interfaces go with the frame or with each system, as
+        [target-platforms.md](target-platforms.md) question 1 settles.
+    - **How it is checked.** A helper module fences itself with a list (`"visibility": ["render"]`). The system rule
+      is between public modules, which `kama.json` cannot state. The options:
+      - (a) a check in `tools/` that reads each file's one `import` block and fails CI on a forbidden edge;
+      - (b) ask kama for a rule on what a module may import, filed as a gap;
+      - (c) convention only.
+    - **Recommended:** (a) now, and (b) filed if the owner wants the compiler to hold it. The layer names wait for
+      frame-phases question 1 and components question 1, but the system rule can be decided first.
   - **Considered:** several workspace members from day one, as the-mallow-man (9) and cosmic-forge (8) have; and a
     core package with one package per platform and per C-backed feature.
 - **2026-11-02, the owner: kyoten builds `@kama/window` and `@kama/gpu` (question 3).**
@@ -187,8 +210,9 @@ The tension between their lesson and that purpose is the first thing to settle.
   - **Why its own package from the start:** the owner leaned on the recommendation ("we can start with it being a
     built in module if that is easier?"). Only a package boundary keeps it from importing the engine; as a module,
     "names no engine concept" would be a convention.
-  - **Still open:** its name and scope are question 7's (unblocked 2026-11-03, KY-8 fixed). Where its code starts
-    (forge's `render`, the-mallow-man's `gfx`, or fresh) is [rendering.md](rendering.md) question 1.
+  - **Its scope is `@kyoten`**, because it wraps `@kama/gpu` (question 7, 2026-11-03, below). Its noun is chosen when
+    KYR-9 creates it. Where its code starts (forge's `render`, the-mallow-man's `gfx`, or fresh) is
+    [rendering.md](rendering.md) question 1.
   - **Considered:** a `kyoten::render` module split out later; and widening `@kama/gpu` into the library, which would
     reverse kama's design.
 - **2026-11-02, the owner: the game's `main` calls `run` (question 4).**
@@ -215,3 +239,22 @@ The tension between their lesson and that purpose is the first thing to settle.
   develop AI first and human tools start as visibility into the process… but obviously it will be most powerful to
   allow humans to edit as well as AI so humans can tweak" ([human-tools.md](human-tools.md)).
   - **Considered:** the brief's `tools/` for the editor and `services/` for the server, which would move the scripts.
+- **2026-11-03, the owner: `@kama` for the general-purpose packages, `@kyoten` for the rest (question 7, the
+  namespaces).** "If you are talking about general purpose things like window and gpu those can probably live in kama
+  namespace. Anything wrapping those or specific to kyoten would belong to kyoten."
+  - **How:**
+    - `@kama/gpu` and `@kama/window` (KYR-51, KYR-52) are `@kama`.
+    - A package that wraps one of them, or is kyoten's own, is `@kyoten/<noun>`. The Three.js-shaped graphics library
+      wraps `@kama/gpu`, so it is `@kyoten/<noun>`, and its noun comes with KYR-9.
+    - A game names its own packages as it likes. A clash with a kyoten package is settled in the game's manifest, with
+      a local name.
+  - **The engine package keeps its import name.** Today it is the unscoped `kyoten`. Published as `@kyoten/kyoten`, it
+    imports as `kyoten` too, and its files reach their own modules as `kyoten::phase::…` (probed on 0.9.823). So which
+    one it publishes as waits for its first publish (question 8, KYR-37) and changes no import.
+  - **Why it holds now:** kama 0.9.820 made a package's full name its identity and gave a consumer the `package` key
+    (KR-291; *What made them possible*, under question 7).
+  - **Still with kama:** reserving `@kyoten` for Cosmic Canopy, which kama ruled belongs in the registry project.
+    Whether it is reserved yet is not visible from here.
+  - **Considered:** `@kama` for the graphics library as well, from the owner's 2026-11-02 "any package that IS general
+    purpose can probably live in the kama official namespace". The rule above settles a wrapper as kyoten's. Also
+    considered: a prefix in every name (`kyoten_net`), which kama refused as a workaround when it ruled KR-291.
