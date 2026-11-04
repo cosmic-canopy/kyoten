@@ -8,6 +8,9 @@
 - **Easy to use correctly, and high performance.**
 - **As quick to prototype in as Three.js**, on web and native alike. Three.js became the quick, iterative
   environment for games on the web; kyoten wants that ease.
+- **AI drives the same inputs as humans** (the owner, 2026-11-04; [../VISION.md](../VISION.md)). The input system is an
+  abstraction with universal rebinding, and an agent plays through its semantic actions, as a player does
+  ([../ROADMAP.md](../ROADMAP.md) KYR-54).
 
 ## What already exists
 

@@ -6,6 +6,15 @@
 
 - **Input-phase data is recorded**: networking, bot and human input, random seeds. The recording **can feed the
   simulation again for replay**, and more.
+- **Input is an abstraction with universal rebinding, so AI drives the same inputs as humans** (the owner,
+  2026-11-04; [../VISION.md](../VISION.md), [../ROADMAP.md](../ROADMAP.md) KYR-54).
+  - **What it points to for question 2:** the record holds semantic actions ("fire", "move squad to X"), not device
+    events.
+  - **Why:**
+    - A rebind then cannot move the hash. FFD already works this way: "every bound key is a bit of the hashed frame"
+      ([../research/peer-games.md](../research/peer-games.md), FFD `SPEC.md:2617-2640`).
+    - An iPad tap and a PC click enter as the same order, which players in different roles of one simulation need
+      ([frame-phases.md](frame-phases.md) § What the vision asks).
 
 ## What already exists
 

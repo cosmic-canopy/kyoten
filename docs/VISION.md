@@ -141,3 +141,24 @@ Given on 2026-11-02:
   seen it prototyped several times, most recently as Wizard: "I still see doing traditional game engines for a while…
   especially on current hardware… but generative games are likely the future" ([ROADMAP.md](ROADMAP.md) KYR-50,
   [design/rendering.md](design/rendering.md) question 10).
+
+Given on 2026-11-04, in the walk-through:
+
+- **What each phase is.** The owner's own definition of Input, Update, Constraints and Output, which widens the table
+  above (Constraints is "a more general term than "physics""), is recorded word for word in
+  [design/frame-phases.md](design/frame-phases.md) § What the vision asks.
+- **Output can differ per platform, over one simulation.** "I believe visual fidelity can be abstracted so rendering
+  can differ per platform and still give the same determinism. I've had a vision for this for a long time...
+  basically the "OUTPUT" phase can differ per platform and on a high end box you get super smooth looking graphics and
+  shaders while you may see simpler scenes on a lower end box."
+- **Different games in one simulation.** "I even like the idea of ipad users playing an RTS game while high end PC
+  gamers are playing an FPS of the same game. AKA... the RTS players are like generals directing troops and both
+  players get a totally different gameplay experience in the same simulation."
+- **Cross-platform play**, with "some considerations per game/simulation there"
+  ([design/networking.md](design/networking.md)).
+- **Input is an abstraction from the start, with universal rebinding.** "we want to handle universal input rebinding
+  for developers in the input system. Too many people start with hard coded inputs but you really need an abstraction
+  there... then AI can drive [the] same inputs as humans for example... and you can get the sort of semantics you are
+  talking about as well" ([ROADMAP.md](ROADMAP.md) KYR-54).
+- **Rates that suit any game.** "Different games may have different requirements but we should come up with the best
+  universal rates for ANY" ([design/frame-phases.md](design/frame-phases.md) question 3).

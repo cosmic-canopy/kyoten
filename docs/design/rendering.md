@@ -9,6 +9,12 @@
 - **Rendering is an Output-phase system**, running at the display's rate.
 - **2D as layers** (the owner, 2026-11-01): a 2D game can render onto a screen layer over a 3D scene, or into a
   texture, and so on.
+- **Output differs per platform, over one simulation** (the owner, 2026-11-04; [../VISION.md](../VISION.md)).
+  - A high-end box renders "super smooth looking graphics and shaders", and a low-end one "simpler scenes".
+  - One simulation can even be seen as two different games: an RTS on an iPad, an FPS on a PC.
+  - Because Output never writes the simulation, this keeps determinism ([frame-phases.md](frame-phases.md) § Decided).
+    Anything that affects fairness, such as smoke that hides a player, is simulated, and only its look is the
+    renderer's.
 
 ## What already exists
 

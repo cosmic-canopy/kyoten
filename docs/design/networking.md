@@ -10,6 +10,16 @@
   ([marketplace.md](marketplace.md)). Refined the same day: the platform is the easy option, never a lock-in, and
   kyoten likely ships a backend server anyone can host (*Decided*).
 - Web first: the browser's own transports.
+- **Cross-platform play, and different games in one simulation** (the owner, 2026-11-04; [../VISION.md](../VISION.md)):
+  iPad players as RTS generals, PC players in the same simulation as an FPS.
+  - **What it asks of this doc** (raised in the walk-through, not decided):
+    - The generals want many units cheaply, which is lockstep's strength. The soldiers want low latency, which is
+      prediction's.
+    - A general who sees the whole map conflicts with hiding state from FPS clients, because every lockstep peer
+      holds all of it. So a game like this likely wants server authority, with each role sent only what it may see
+      (questions 1 and 9).
+    - A hidden browser tab pauses rAF, so a networked web game needs a policy: pause and resync, or simulate from
+      another clock ([frame-phases.md](frame-phases.md) § Decided, question 2).
 
 ## What already exists
 
