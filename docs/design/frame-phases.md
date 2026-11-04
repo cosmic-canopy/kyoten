@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1 and 2, and question 3's structure, were decided on 2026-11-04
+**Status:** in the walk-through (KYR-1). Questions 1, 2 and 4, and question 3's structure, were decided on 2026-11-04
 (see *Decided*). Question 3's numbers wait for KYR-55. A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
@@ -116,7 +116,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    own clock, network send rates. Write down the defaults, and which ones a game changes. *Its structure was decided
    2026-11-04 (which clock drives each subsystem, and what sets its floor); its numbers wait for KYR-55.*
 4. **Interpolation.** Output at display rate between fixed ticks: who reads `alpha`, and how does a component say how it
-   is interpolated (or that it is not)?
+   is interpolated (or that it is not)? *Decided 2026-11-04: a component declares it, and the engine blends two
+   timestamped samples at Output's render time.*
 5. **Parallelism inside a phase.** Over what: components of one type (data-parallel), independent systems
    (task-parallel), or both? Built on what, given that kama's job pool is not built yet and `parallel_for` is too slow
    to call per phase? Does kyoten build the pool now, contribute it to kama as KR-3 step 9, or wait?
@@ -194,7 +195,8 @@ run can both hold.
    | Audio | the device's own clock and thread; cues each tick, the listener each frame (TMM) | perception | no |
    | Network send | each tick, or a divisor (TMM 30/30) | bandwidth, correctness | yes |
 
-4. **Interpolation.**
+4. **Interpolation.** *Decided 2026-11-04, with timestamped samples (see Decided). The draft is kept as it was
+   brought.*
    - **Options:** (a) the game interpolates by hand, as today: `alpha` reaches FFD's renderer, and nothing reads it;
      (b) a component declares how it is interpolated, and the engine keeps the previous tick's value only for those,
      so Output reads the previous value, the current value and `alpha`; (c) every component is double-buffered.
@@ -410,3 +412,28 @@ run can both hold.
         out every step, as the RTS generals in *What the vision asks* command their troops.
   - **Considered:** recording the draft's numbers as the defaults now, with the research later; and holding the whole
     question until the research is done.
+- **2026-11-04, the owner: a component declares how it is interpolated, and the engine blends timestamped samples
+  (question 4).**
+  - **How:**
+    - A declared component keeps its last two values, each stamped with the simulation time it was written.
+    - Output asks for the component at its render time, and the engine blends the two samples around that time.
+      Output's subsystems never compute an `alpha` themselves.
+    - **The defaults:** a transform is linear for position and slerp for rotation. Anything undeclared snaps at the
+      step (health, ammo, a door's state). A component may declare a blend of its own, such as a colour or a scalar.
+  - **Why timestamps, not one `alpha`:** FFD's `alpha` is the fraction of the way to the next 60 Hz tick. Under question
+    2 there is no single tick: physics may move a body at 120 Hz while AI moves a unit at 20 Hz. Timestamped samples
+    work for any writer's rate, for a mix of rates, and for the headset's predicted display time (question 10).
+  - **What it costs:**
+    - Interpolation renders up to one writer period behind. That is 16.7 ms at 60 Hz, but 50 ms for a unit moved only
+      at 20 Hz. So whatever moves visibly wants a decent rate, which feeds question 3's research (KYR-55).
+    - The player's own view does not pay it: camera look takes the newest input every frame (question 2).
+    - Extrapolation, which predicts past the newest sample, would be a later opt-in per component, not a default.
+  - **What it settles or narrows elsewhere:**
+    - **[rendering.md](rendering.md) question 4**, how Output reads without stalling the next step: the declared
+      samples are already two deep, so the question narrows to the undeclared components.
+    - **Networking:** remote entities could be interpolated by the same samples (KYR-18, not decided here).
+    - **[components.md](components.md) question 2** decides how a component spells its declaration.
+  - **Considered:**
+    - one global `alpha`, FFD's, which is simpler but wrong once subsystems run at different rates;
+    - the game interpolating by hand, as FFD does today: `alpha` reaches its renderer and nothing reads it;
+    - double-buffering every component, which costs memory and copies for what never blends.
