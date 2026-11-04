@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–4 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–5 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -120,7 +120,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    timestamped samples at Output's render time.*
 5. **Parallelism inside a phase.** Over what: components of one type (data-parallel), independent systems
    (task-parallel), or both? Built on what, given that kama's job pool is not built yet and `parallel_for` is too slow
-   to call per phase? Does kyoten build the pool now, contribute it to kama as KR-3 step 9, or wait?
+   to call per phase? Does kyoten build the pool now, contribute it to kama as KR-3 step 9, or wait? *Decided
+   2026-11-04: both shapes from stated access, relative order with a no-conflict rule, group iteration, and the pool
+   as kama's KR-3 step 9 (KY-12).*
 6. **Proving it safe.** kama's `scope` proves disjointness of `ref` field borrows. Can the component model
    ([components.md](components.md)) be shaped so a phase's parallel work is checked by the compiler, not by convention?
 7. **When does parallelism pay?** Both peers' ticks are microseconds; their frame cost is the renderer (TMM: renderer
@@ -203,7 +205,7 @@ run can both hold.
    - **Recommended: (b).** A transform defaults to linear for position and slerp for rotation, and anything undeclared
      snaps at the tick. How a component declares it waits for components question 2. How Output reads without
      stalling the next Update is rendering question 4, and (b) narrows it to the declared components.
-5. **Parallelism inside a phase.**
+5. **Parallelism inside a phase.** *Decided 2026-11-04 (see Decided). The draft is kept as it was brought.*
    - **Options:** data-parallel (one system over a store), task-parallel (independent systems), or both. Built on
      `parallel_for` per call, on a pool kyoten writes, or on kama's pool (KR-3 step 9).
    - **The costs measured here** (kama-for-engines § 1, on 0.9.793): `parallel_for` costs 0.15–1.4 ms per call at
@@ -457,3 +459,65 @@ run can both hold.
     - one global `alpha`, FFD's, which is simpler but wrong once subsystems run at different rates;
     - the game interpolating by hand, as FFD does today: `alpha` reaches its renderer and nothing reads it;
     - double-buffering every component, which costs memory and copies for what never blends.
+- **2026-11-04, the owner: parallelism from stated access, relative order with a no-conflict rule, and group
+  iteration (question 5).**
+  - **Both shapes:**
+    - task-parallel: independent subsystems of a phase at once;
+    - data-parallel: one subsystem over a store, in chunks.
+
+    Both come from each subsystem stating what it reads and writes, which the module rule already asks for
+    ([architecture.md](architecture.md) § Decided). The scheduler runs together whatever does not conflict.
+  - **Order inside a phase is relative** (the owner's "priority"):
+    - subsystems sit in groups;
+    - a subsystem or a group runs `after` or `before` another, or `first` or `last` in its group;
+    - what has the final say is `last`;
+    - a cycle is refused at startup.
+
+    An example, illustrative only ([components.md](components.md) question 2 decides the spelling):
+
+    ```
+    Constraints
+      group physics
+        broadphase                     reads Transform, Collider    writes Contacts
+        solve      after broadphase    reads Contacts               writes Transform, Velocity
+      group rules  after physics
+        arenaBounds                    writes Transform
+        doorLocks                      writes Door
+        killVolume last                writes Health
+    ```
+
+    Here `arenaBounds` and `doorLocks` have no order between them and write different components, so they run in
+    parallel.
+    - **Why relative, not a number:** two packages that never met can pick the same number, and the order is global
+      and opaque. Unity's Entities replaced MonoBehaviour's Script Execution Order with `UpdateInGroup`,
+      `UpdateBefore` and `UpdateAfter`, and `OrderFirst` and `OrderLast`. Bevy and flecs order the same way.
+  - **The no-conflict rule:** two subsystems with no order between them may not conflict. Neither may write what the
+    other reads or writes.
+    - Where they would, the engine refuses at startup and names both, so the game states an order. For example:
+      *"Constraints › rules: `arenaBounds` and `pushOutOfWalls` both write `Transform` with no order between them."*
+    - So a result never depends on which subsystem the scheduler happened to run first, and serial and parallel runs
+      hash alike on every machine.
+  - **The schedule is visible.** It shows the resolved order in each phase, what runs in parallel, and each
+    subsystem's reads, writes, rate and cost. An agent can query it as data (KYR-25), and a human sees it as a view in
+    the editor (KYR-26). The owner: "relative with rules sounds and probably some "visibility tool" sounds like a good
+    bet".
+  - **Group iteration:** a Constraints group may iterate as a whole, N times (A, B, A, B), so constraints that act on
+    each other settle together, such as a rope and the ragdoll on it. Each subsystem's own count (question 1) still
+    holds inside the group. FFD's Constraints is one such group (KYR-46).
+  - **What runs it:**
+    - **Serially at first.** The scheduler runs the schedule serially until parallel execution is switched on. Because
+      of the no-conflict rule, the result is the same either way.
+    - **Parallel execution needs a job pool:** worker threads kept alive, to which each phase's parallel work is
+      handed. `parallel_for` starts and joins its threads on every call. That costs 0.15 ms at 1 worker, 1.34–1.38 ms
+      at 16 and 1.83 ms at 20 (on 0.9.793, [../research/kama-for-engines.md](../research/kama-for-engines.md) § 1),
+      which is too slow to call several times a frame.
+    - **The pool is kama's.** KR-3's decision 5 rules "a sized job pool for CPU work whose jobs may not park". It is
+      step 9 of kama's fiber plan, and the next step is 7 (kama `docs/ROADMAP.md:86`, `6cac55c7`). By the owner's
+      rule, what can exist outside kyoten goes to kama.
+    - **Its priority:** "we likely will need to get kama to put the pool as high priority" (the owner).
+      [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-12 is the request, for the owner to relay. When kyoten needs the pool is
+      question 7.
+  - **Considered:**
+    - a number per subsystem (Unity's Script Execution Order);
+    - named bands fixed per phase;
+    - kyoten's own pool, which the rule sends to kama.
