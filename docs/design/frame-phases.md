@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–6 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–7 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -129,7 +129,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    narrows to options A and B.*
 7. **When does parallelism pay?** Both peers' ticks are microseconds; their frame cost is the renderer (TMM: renderer
    CPU about 0.9 ms a frame). Is parallel Update a day-one feature or a measured later step, and is parallel *Output*
-   (render command recording) the first one worth having?
+   (render command recording) the first one worth having? *Decided 2026-11-04: parallel by design from day one,
+   serial by default, and switched on group by group by measurement, with CI holding serial and parallel to one hash.*
 8. **On the web.** Single-threaded first (as FFD chose), or workers from the start? This depends on the thread
    topology in [web-and-native.md](web-and-native.md).
 9. **Game-logic waits** ("in two seconds, open the door"). Tick-counted deadlines, as FFD's `Countdown`; coroutines on
@@ -224,7 +225,8 @@ run can both hold.
      snapshot, which Output wants anyway (question 4).
    - **Under option C**, a run-time scheduler over type-erased columns, disjointness is kyoten's invariant rather than
      the compiler's. This waits for components question 1.
-7. **When parallelism pays.**
+7. **When parallelism pays.** *Decided 2026-11-04, with a hash check in CI (see Decided). The draft is kept as it was
+   brought.*
    - **What the peers measured:** FFD's tick is about 7.5 µs. TMM's physics is about 0.1 ms a tick, its bots 3 µs, and
      its renderer about 0.9 ms of CPU a frame.
    - **Recommended:** parallel Update is a later, measured step, not a day-one feature. The trigger is a phase over its
@@ -573,3 +575,41 @@ run can both hold.
       and Unity's DOTS are;
     - deferring the whole question to components question 1;
     - an opt-in proof.
+- **2026-11-04, the owner: parallel by design from day one, serial by default, switched on by measurement
+  (question 7).**
+  - **The owner:** "I like option 2 as well.... the recommendation. It sounds like with that approach a simple game can
+    be shipped sequential and more complex games become parallel when needed."
+  - **How:**
+    - **From day one:** stated access, the no-conflict rule and the compiler's proof (questions 5 and 6). The scheduler
+      runs serially by default, and by question 5's rule the result is the same either way.
+    - **CI runs every test scene both serially and in parallel** and requires one world hash. The parallel path is
+      exercised from the first slice, so it cannot quietly break while it is off (KYR-6).
+    - **A group's switch flips by measurement:** when a measured scene shows its phase over budget, and its serial
+      cost well above what handing out the work costs. Slice B's scene (KYR-12) is the first such measurement.
+  - **Why not parallel everywhere at once:** for a small game, handing out the work costs more than the work does.
+    - **A frame's budget:** 16.7 ms at 60 Hz, 13.9 ms at Quest's 72 Hz, 8.3 ms at 120 Hz.
+    - **What the peers spend:** FFD's whole tick is about 7.5 µs. TMM's physics is about 0.1 ms a tick and its bots
+      3 µs, and its renderer takes about 0.9 ms of CPU a frame, its largest CPU cost (§ What already exists).
+    - **What handing out costs today:** a channel-fed pool in kama measured 245–252 µs a frame on Windows
+      ([../research/kama-for-engines.md](../research/kama-for-engines.md) § 1, 0.9.793), more than 30 times FFD's
+      tick. kama's own pool (KY-12) should cost far less; that is not measured.
+  - **What is likely first:**
+    - Output's render-command recording, on native. On the web, recording is tied to the thread that owns the GPU
+      device (question 8).
+    - Physics through its library's own threads, as TMM runs Jolt with two.
+    - Update after those, at large entity counts. KYR-58's RTS row says how large.
+  - **What it means for kama's pool:** it does not block the first slice's code. It is needed when slice B starts
+    measuring (KYR-12), which is the timing the owner's priority for KY-12 meets.
+  - **Where the switch lives:** proposed to the owner, not yet answered.
+    - **At build time, whether a build has threads at all.** A serial build contains no `spawn`, so on the web it
+      needs no cross-origin isolation and keeps `main` on the page's thread (question 8, web-and-native question 2).
+      kama gates a declaration with `@compileFor(FLAG)`, and `kama check` still analyzes the gated-out path. Probed on
+      0.9.845: with a `PARALLEL` flag declared in `kama.json` and off by default, an overlap in the parallel version is
+      reported as *"two children in this `scope` borrow overlapping places (`pos` and `pos`) … [--define PARALLEL]"*.
+    - **At start-up, inside a threaded build: how many workers, and which groups run in parallel.** The worker count
+      comes from the machine, and each group's switch from the measured configuration. A change needs no rebuild,
+      and it is safe because both ways hash alike.
+  - **Considered:**
+    - parallel everywhere from day one, which waits on KY-12 and slows small games until the pool is cheap;
+    - Output on its own thread beside the simulation as the first step, which FFD warns "buys throughput at a frame of
+      latency".
