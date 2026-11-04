@@ -555,6 +555,17 @@ Scene Graph), Bevy, flecs, EnTT and Three.js; then probes of kama 0.9.803 (`../k
 
 Built with `out/UCRT64-x86_64/kama.exe` (`0.9.803+gaa9093dc`). Each probe is my own scratch program.
 
+**Re-run on 0.9.839 (2026-11-04), for frame-phases.md's draft.** Probes 1–4 hold.
+
+- Probe 1 builds and runs.
+- Probe 2 is refused with the same message.
+- Probe 3 is refused, and its message ends "split a buffer with `parallel_for` instead".
+- Probe 4 is refused as before ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-5).
+- **A requirement these notes did not record:** a store handed to a `spawn` must hold a type that declares
+  `implements Sendable`. Otherwise kama refuses it: "cannot spawn with `std::collections::DynamicArray<Pos>` as the
+  bundle — its type argument `Pos` … is not `Sendable`". So a component type that a phase spawns over is `Sendable`.
+  Whether 0.9.803 asked the same was not re-checked.
+
 1. **Disjoint stores, from the world's own method: admitted.**
    - **The program:** a `type resource World` holds `DynamicArray<Pos> pos` and `DynamicArray<Hp> hp`. A method runs
      `scope { spawn stepPos(ps: ref this.pos); spawn stepHp(hs: ref this.hp); }`.

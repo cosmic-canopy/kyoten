@@ -1,6 +1,7 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** draft for the design spike. These are questions, not decisions. A draft answer to each, for the owner,
+is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
 
@@ -99,6 +100,114 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
 10. **A display clock the game does not own.** In VR the headset drives the loop at 72, 90 or 120 Hz with a predicted
     display time, and poses are sampled as late as possible ([xr.md](xr.md)). Does the frame model hold when Output's
     rate is dictated from outside?
+
+## A draft for the walk-through (2026-11-04)
+
+**For the owner, not decided:** options and a recommendation per question, to bring and ask. The evidence is the
+sections above and the research they cite. What rests on kama was re-checked on **0.9.839** (2026-11-04):
+
+- `scope` still admits two systems on disjoint fields of a world, spawned from the world's own method, and refuses a
+  store reached through an accessor ([../research/component-models.md](../research/component-models.md) § 4, probes
+  1–3).
+- Two readers of one store are still refused (KY-5, KR-288 open).
+- A spawned store's element type must declare `implements Sendable`.
+- No job pool exists yet: KR-3's next step is 7, and the pool is step 9.
+
+**The thread through all ten:** one simulation clock, and every subsystem's rate stated against it. The clocks the
+game does not own stay outside the simulation: the display, the audio device, the headset and the OS's input events.
+They meet it only at Input's fold and at Output's read. That is how the owner's per-subsystem rates and a replayable
+run can both hold.
+
+1. **The phases.**
+   - **Options:** (a) the four as the vision words them; (b) the four with FFD's refinements; (c) finer phases as
+     tags, as flecs splits Constraints into detecting and correcting.
+   - **Recommended: (b), with one change.** Output reads and never writes, from day one, because enforcing it later
+     breaks every renderer that writes back (component-models § 5.8, item 6; replay question 6).
+   - **The change:** a Constraints subsystem runs a whole number of iterations per tick. FFD's count is the case where
+     every subsystem runs the same N. Idempotence is something a projection may claim and a test checks, as FFD's
+     suite does, not a rule of the phase, because a solver such as Jolt's is not idempotent.
+   - **Where network and audio go:** network receive goes in Input, recorded. Network send and audio cues go in Output,
+     derived from the settled tick, as FFD derives its cues from world deltas.
+2. **Rates.**
+   - **Options:**
+     - (a) one fixed tick, with every simulation rate a divisor or a multiple of it, derived and not stored (FFD's
+       modulo, flecs's `rate`);
+     - (b) independent clocks, each with its own accumulator (flecs's `interval`, Unreal's `TickInterval`);
+     - (c) (a) inside the simulation, plus the outside clocks named above, each an interface the engine reads.
+   - **Recommended: (c).**
+     - **Why:** a replay or a lockstep peer then needs only the tick count and the Input log. Under (b), every clock's
+       steps are recorded or re-derived, and two machines must agree on each one.
+     - **What it costs:** a rate that does not divide the tick, such as 50 Hz on a 60 Hz tick, means a faster tick or a
+       rounded rate.
+   - **A 1000 Hz device:** the platform takes events as they come, and Input folds everything since the last tick into
+     that tick's record (the event queue and fold, harvest § 2).
+     - **Edges wait for a tick,** as TMM's `InputState` holds them: "EDGES persist until a sim TICK consumes them". So
+       "a frame that owes no fixed steps (a 240 Hz display against a 60 Hz sim) must not discard a keypress, and a
+       frame that owes three must not apply one keypress three times"
+       (`the-mallow-man/engine/src/input/state.kama:27-32`).
+     - **Presentation-only reads,** such as camera look, take the newest sample each frame instead, because "a look
+       that waits for the next tick is latency" (TMM, peer-games § 1).
+     - **What the simulation sees** is the value the tick consumed, and the log records that value.
+3. **Which rates for what.** Proposed defaults, each with the owner's reason that drives it:
+
+   | Subsystem | Default | Driven by | A game changes it? |
+   |---|---|---|---|
+   | The simulation tick | 60 Hz (FFD; TMM's rules run at 30 and its free walk at 60) | correctness, CPU | yes |
+   | Input's fold | once a tick; presentation reads once a frame | perception (latency) | no |
+   | Update subsystems | every tick; slower AI on a divisor with a per-entity offset (FFD's bots) | CPU | yes, per subsystem |
+   | Constraints | 1 iteration a tick | correctness | yes, per subsystem |
+   | Rendering | the display's rate | perception, GPU | no: the display, rAF or the headset owns it |
+   | Audio | the device's own clock and thread; cues each tick, the listener each frame (TMM) | perception | no |
+   | Network send | each tick, or a divisor (TMM 30/30) | bandwidth, correctness | yes |
+
+4. **Interpolation.**
+   - **Options:** (a) the game interpolates by hand, as today: `alpha` reaches FFD's renderer, and nothing reads it;
+     (b) a component declares how it is interpolated, and the engine keeps the previous tick's value only for those,
+     so Output reads the previous value, the current value and `alpha`; (c) every component is double-buffered.
+   - **Recommended: (b).** A transform defaults to linear for position and slerp for rotation, and anything undeclared
+     snaps at the tick. How a component declares it waits for components question 2. How Output reads without
+     stalling the next Update is rendering question 4, and (b) narrows it to the declared components.
+5. **Parallelism inside a phase.**
+   - **Options:** data-parallel (one system over a store), task-parallel (independent systems), or both. Built on
+     `parallel_for` per call, on a pool kyoten writes, or on kama's pool (KR-3 step 9).
+   - **The costs measured here** (kama-for-engines § 1, on 0.9.793): `parallel_for` costs 0.15–1.4 ms per call at
+     1–16 workers, and 1.83 ms at 20. A pool kyoten writes costs about 250 µs a frame.
+   - **Recommended:** both shapes in the API from day one, through access stated in signatures, but run serially until
+     a measurement asks. Once access is stated, parallelism is a scheduler change (component-models § 5.8, *Later*).
+     When a measurement does ask, build the pool as KR-3 step 9 in kama rather than as kyoten's own, by the rule that
+     what can exist outside kyoten goes to kama. That last part is the owner's call.
+6. **Proving it safe.**
+   - **Recommended: yes, checked by the compiler.** Shape the component model so that a phase's parallel group is a
+     `scope` over named store fields, which is components options A and B (component-models § Options).
+   - **What the compiler then checks:** writes are disjoint. Two readers of one store wait for KR-288, or read a
+     snapshot, which Output wants anyway (question 4).
+   - **Under option C**, a run-time scheduler over type-erased columns, disjointness is kyoten's invariant rather than
+     the compiler's. This waits for components question 1.
+7. **When parallelism pays.**
+   - **What the peers measured:** FFD's tick is about 7.5 µs. TMM's physics is about 0.1 ms a tick, its bots 3 µs, and
+     its renderer about 0.9 ms of CPU a frame.
+   - **Recommended:** parallel Update is a later, measured step, not a day-one feature. The trigger is a phase over its
+     budget in a measured scene. The first parallel work worth having is likely in Output, recording render commands,
+     and on the web that is bound to the device's thread (question 8).
+8. **On the web.**
+   - **Recommended:** single-threaded first, as FFD chose. Nothing measured needs threads yet (question 7), and threads
+     cost COOP/COEP, which breaks a cross-origin WebSocket, and a `main` with no DOM.
+   - **What keeps the door open:** the frame model never assumes threads, so a worker topology is a later change to the
+     scheduler. The topology itself is web-and-native question 2.
+9. **Game-logic waits.**
+   - **Recommended:** a wait is a tick-counted deadline (FFD's `Countdown`, 85 lines, harvest § 1). An API may take
+     seconds and convert them once, at the tick rate in force when the wait is made.
+   - Fibers stay for I/O, because they park on the real clock, which a replay cannot reproduce.
+10. **A display clock the game does not own.**
+    - **Recommended: yes, it holds,** because Output is the only phase on the display clock.
+    - **How a frame runs:** each frame, `run` asks the clock source how many ticks are owed and runs them. The clock
+      source is rAF, vsync or the headset's predicted display time (architecture question 4 gave `run` the loop). Output
+      then renders for that time.
+    - **At headset rates:** at 72 Hz over a 60 Hz tick, some frames run no tick and some run one, and interpolation
+      (question 4) covers both. FFD's clamp of five steps a frame still bounds a stall.
+    - **Poses:** a pose is sampled late in Output, for presentation. A pose the simulation needs, such as a hand's grab,
+      enters through Input at the tick, like any device.
+    - **What settles it on a headset:** the owner's Quest prototype (KYR-4), measured against 120 Hz's 8.3 ms.
 
 ## Decided
 

@@ -1,7 +1,8 @@
 # Architecture: the engine, the games, the repository
 
 **Status:** the spike's questions here are decided: 1–4 and question 7's directories on 2026-11-02, question 7's
-namespaces on 2026-11-03. Question 2's module rules (which module may import which) are still to draft. Question 5 is
+namespaces on 2026-11-03. Question 2's module rules (which module may import which) are drafted for the owner
+(2026-11-03, under question 2's entry in *Decided*) and not decided. Question 5 is
 settled with question 7's directories, question 6 moved to the platform product, and question 8 waits for KYR-37.
 
 ## What the vision asks
@@ -158,7 +159,7 @@ The tension between their lesson and that purpose is the first thing to settle.
     checked by the compiler: a module may import any sibling in its own package. *(Made precise 2026-11-03, probed on
     0.9.823: a module's `visibility` may list the modules allowed to import it, and kama refuses any other. A module a
     game imports must be `public`, though, and that opens it to every sibling too. So between public modules, only a
-    package boundary is checked.)*
+    package boundary is checked. Re-probed on 0.9.839, 2026-11-04, with the same result.)*
   - **Still to settle: which module may import which.** A draft for the owner, not decided:
     - **The rule it rests on** (the owner, 2026-11-03, [frame-phases.md](frame-phases.md) § What the vision asks):
       each engine system is driven by components in the phases. So **a system never imports another system**, and data
