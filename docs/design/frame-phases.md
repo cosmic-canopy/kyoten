@@ -1,7 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1, 2 and 4, and question 3's structure, were decided on 2026-11-04
-(see *Decided*). Question 3's numbers wait for KYR-55. A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–4 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -113,8 +112,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    sampled at 1000 Hz do? *Decided 2026-11-04: one simulation clock with its base derived from the subsystems' rates
    (or pinned), each subsystem handed its step, and input split across owed steps by timestamp.*
 3. **Which rates for what?** The vision ties rates to human perception: input latency, animation smoothness, audio's
-   own clock, network send rates. Write down the defaults, and which ones a game changes. *Its structure was decided
-   2026-11-04 (which clock drives each subsystem, and what sets its floor); its numbers wait for KYR-55.*
+   own clock, network send rates. Write down the defaults, and which ones a game changes. *Decided 2026-11-04:
+   which clock drives each subsystem and what sets its floor, then the defaults of `../research/rates.md` (KYR-55) as
+   the starting point, which measurement lowers wherever it holds.*
 4. **Interpolation.** Output at display rate between fixed ticks: who reads `alpha`, and how does a component say how it
    is interpolated (or that it is not)? *Decided 2026-11-04: a component declares it, and the engine blends two
    timestamped samples at Output's render time.*
@@ -182,8 +182,8 @@ run can both hold.
      - **Presentation-only reads,** such as camera look, take the newest sample each frame instead, because "a look
        that waits for the next tick is latency" (TMM, peer-games § 1).
      - **What the simulation sees** is the value the tick consumed, and the log records that value.
-3. **Which rates for what.** *Its structure was decided 2026-11-04, and its numbers wait for KYR-55 (see Decided). The
-   draft is kept as it was brought.* Proposed defaults, each with the owner's reason that drives it:
+3. **Which rates for what.** *Decided 2026-11-04, with KYR-55's defaults (see Decided). The draft is kept as it was
+   brought.* Proposed defaults, each with the owner's reason that drives it:
 
    | Subsystem | Default | Driven by | A game changes it? |
    |---|---|---|---|
@@ -396,9 +396,29 @@ run can both hold.
   - **The rule for a number:** each subsystem's default is the lowest rate that holds its floor. The owner: "the
     lowest frequency we can go while maintaining high fidelity is likely the best bet", and "What goes wrong below is a
     good thing to keep in mind and sets the floor." The defaults are to suit any game, and a game overrides them.
-  - **The numbers are KYR-55's.** [../research/rates.md](../research/rates.md) (2026-11-04) proposes a default per
-    subsystem from its evidence, and they are decided here from it. Until then, the draft's numbers (60 Hz gameplay, the-mallow-man's
-    30 Hz send) are provisional, and nothing is built on them.
+  - **The numbers came from KYR-55.** [../research/rates.md](../research/rates.md) (2026-11-04) proposes a default per
+    subsystem from its evidence. The owner took them the same day, below.
+  - **The numbers (the owner, 2026-11-04): rates.md's defaults are the starting point, and measurement decides.** "I do
+    agree with your defaults so far ... testing will be the ultimate tell though. and we have the flexibility other
+    engines do not."
+    - **The defaults:**
+      - gameplay at 60 Hz, and physics at 60 with the solver's own sub-steps;
+      - game AI decisions at 10 Hz, staggered, with re-pathing at 1–2 Hz and distant agents down to about 1 Hz;
+      - server-to-client send at 30 Hz, interpolated two snapshots behind, and client input every step;
+      - rendering at the display's or headset's rate, and audio on its device's clock;
+      - cosmetic animation at the display's rate, and what gameplay reads at the simulation's.
+    - **They divide 60,** so question 2's derived base stays at 60 Hz.
+    - **The owner's caveat:** other engines' single rate is not kyoten's model. "Kyoten is specifically designed to be
+      parallel in a smarter way up front and can allow systems to have different update frequencies to prevent over
+      use of CPU and GPU resources unnecessarily for the simulation. So just because these other more static engines
+      have one particular update rate... doesn't mean that all systems should update at that rate." So a default is a
+      starting point, which a measured scene lowers wherever it still holds.
+    - **Lower send rates:** the owner recalls Aliens versus Predator playing well as a twitch shooter on dial-up, at
+      perhaps 10 Hz (not verified).
+      - A low send rate can feel good when each client predicts its own movement and the server only corrects it.
+      - What pays is other players' positions (more interpolation delay) and hit registration.
+      - KYR-18 measures it.
+    - **Where they are first measured:** slice B (KYR-12), which runs the phases at their own rates.
   - **Game AI and LLM players.** The owner: "I want to support the traditional "AI" in games ( typically finite state
     machines, or other deterministic procedural logic ) but I also want to leave things open for the more modern "AI"
     concepts like llms... It would be pretty amazing to have llms playing against a player where possible."
