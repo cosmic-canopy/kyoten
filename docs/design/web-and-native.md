@@ -53,6 +53,9 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
    - `main` on a worker, rendering through an OffscreenCanvas transferred to it, and the DOM driven by messages;
    - the page thread owning input, DOM and audio scheduling, with simulation workers fed through SharedArrayBuffer.
    Which one, and is COOP/COEP acceptable for every game kyoten hosts ([marketplace.md](marketplace.md))?
+   - *Found 2026-11-04* ([frame-phases.md](frame-phases.md) § Decided, question 2):
+     - The Gamepad API is `[Exposed=Window]`, so a gamepad is read on the page thread in every topology, once a frame.
+     - rAF pauses in a hidden tab, so a networked game needs a policy for its clock there.
 3. **UI in HTML/CSS.** The game's UI is the browser's DOM on the web. Natively: RmlUi through `@kama/ui`, as the peers
    do, or a webview? Is a game's UI the same HTML on both?
 4. **"Light on the web": what is the budget?** The wasm and JS size of the examples ([examples.md](examples.md))

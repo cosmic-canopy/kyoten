@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Question 1 was decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1 and 2 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -41,6 +41,17 @@ of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
     ([architecture.md](architecture.md) § Decided, 2026-11-04): "The goal is that each PHASE can be made parallel safely
     and efficiently to increase overall performance and utilization of CPU and GPU resources. It is also to make the
     engine easy to use correctly and hard to use incorrectly."
+- **Output can differ per platform, over one simulation** (the owner, 2026-11-04; [../VISION.md](../VISION.md)).
+  - A high-end box renders "super smooth looking graphics and shaders" and a low-end one "simpler scenes", with the same
+    determinism.
+  - Players can even play different games in the same simulation: iPad users as RTS "generals directing troops" while
+    PC players play it as an FPS.
+  - **What follows here:**
+    - Output's being read-only (question 1) is what makes this possible.
+    - Whatever affects fairness is simulated, not only drawn. If smoke hides a player on one box and is skipped on
+      another, the second player sees through it, so concealment is a simulation rule and only its look is Output's.
+    - The roles act differently, so Input's record holds semantic actions rather than device events
+      ([replay-and-determinism.md](replay-and-determinism.md) question 2).
 
 ## What already exists
 
@@ -98,7 +109,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
 2. **Rates: one tick with sub-rates, or several clocks?** FFD derives every sub-rate from one fixed tick, which keeps
    replay trivial. The vision says components update "at different set frequencies". Is that tick-divided rates
    (60, 30, 20, 15 Hz…) on one clock, or independent clocks with their own accumulators? What does an input device
-   sampled at 1000 Hz do?
+   sampled at 1000 Hz do? *Decided 2026-11-04: one simulation clock with its base derived from the subsystems' rates
+   (or pinned), each subsystem handed its step, and input split across owed steps by timestamp.*
 3. **Which rates for what?** The vision ties rates to human perception: input latency, animation smoothness, audio's
    own clock, network send rates. Write down the defaults, and which ones a game changes.
 4. **Interpolation.** Output at display rate between fixed ticks: who reads `alpha`, and how does a component say how it
@@ -147,7 +159,7 @@ run can both hold.
      suite does, not a rule of the phase, because a solver such as Jolt's is not idempotent.
    - **Where network and audio go:** network receive goes in Input, recorded. Network send and audio cues go in Output,
      derived from the settled tick, as FFD derives its cues from world deltas.
-2. **Rates.**
+2. **Rates.** *Decided 2026-11-04, with a derived base (see Decided). The draft is kept as it was brought.*
    - **Options:**
      - (a) one fixed tick, with every simulation rate a divisor or a multiple of it, derived and not stored (FFD's
        modulo, flecs's `rate`);
@@ -293,3 +305,71 @@ run can both hold.
     - Output writing some simulation state back, such as animation driven by rendering, which makes the result depend
       on the display rate;
     - named sub-phases fixed in advance, as flecs has. Order now goes to priority, question 5.
+- **2026-11-04, the owner: one simulation clock, with each subsystem's rate stated against it (question 2).**
+  - **The clock:** each simulation subsystem declares its rate in Hz and runs every *k* steps of one base clock.
+    - The engine derives the base as the rates' least common multiple: 60 and 30 give 60, 120 and 60 give 120, and 60
+      and 50 give 300. Above a cap, about 1,000 Hz, it warns and suggests the nearest rate that fits.
+    - A game may pin the base instead, as FFD's port pins 60.
+    - A step where nothing is due costs nothing, because the engine jumps to the next step that has work.
+  - **Why**, in the owner's words: "It allows the subsystem granularity and solves the order problem of phases."
+    - Under independent clocks, which subsystem steps first depends on how their accumulators interleave with frame
+      timing. A replay then records every clock's steps, and lockstep peers must agree on each one.
+    - Under one clock, the step count alone decides who runs when. A replay or a lockstep peer needs only the step
+      count and the Input record.
+  - **A subsystem never reads a clock. It is handed its step: its `dt` and its step index.**
+    - A rate is then a configuration change, and the scheduler can change under the subsystems without touching their
+      code. The owner: "you will always pass the dt to components so they should calculate any frame delta logic
+      against the dt they are passed".
+    - Code written against `dt` is rate-portable, not rate-identical. A jump integrated by simple Euler peaks at a
+      different height at 30 Hz than at 60. A fixed `dt` keeps that from showing.
+    - Output's subsystems already run on the display clock with the frame's `dt`, so one interface covers both.
+  - **Other modes come later, opted into per game.** The owner: "We start with what we decided and it is probably the
+    best simulation update anyway. but the abstraction allows flexibility and per game variation if needed later."
+    - Independent clocks, or a variable `dt`, would be a scheduler mode a game opts into.
+    - Under such a mode, each step's `dt` is recorded and the record names the mode. Lockstep between peers on
+      different displays is not possible.
+    - Only the derived or pinned base is built first.
+  - **The clocks the game does not own stay outside:** the display, the audio device, the headset, the OS's input
+    events and the network. Each is an interface the engine reads, and they meet the simulation only at Input's
+    hand-off and Output's read.
+    - **The counter is kama's.** `std::time::Instant` reads the best clock on each platform (kama
+      `include/kama_time.h` and `lib/std/time/time.kama:282`, at `6cac55c7`):
+      - `performance.now()` on wasm, whose resolution is 100 µs, or 5 µs when cross-origin isolated (MDN);
+      - `QueryPerformanceCounter` on Windows;
+      - `CLOCK_MONOTONIC` on Linux, Android, macOS and iOS.
+    - **The engine's interface is the frame source,** which says when a frame will be shown: rAF on the web, vsync
+      natively, and the headset's predicted display time under XR (question 10).
+      - rAF is the web's display-synchronized wake-up, not its most frequent one. The audio worklet runs every 128
+        samples on its own thread, and a worker loops on its own.
+      - XR is another frame source ("XR is just another platform variation", the owner). It carries a predicted
+        display time, a late pose, two views, and rates that change at run time.
+  - **Input across several owed steps is split by timestamp.**
+    - Events queue as they arrive. Each step's hand-off takes the events whose timestamps fall in its window, so a key
+      pressed late in a frame lands in the later step.
+    - Edges wait for a step that consumes them (the-mallow-man). Presentation reads, such as camera look, take the
+      newest sample each frame.
+    - **On the web, a gamepad is polled once a frame.** The Gamepad API is `[Exposed=Window]` and has no button
+      events. The spec says to poll "as closely as possible to immediately before the animation callbacks are
+      executed" (W3C Gamepad). A press and release that both fall between two polls is not seen. Natively, a gamepad
+      can be polled faster.
+  - **Cross-platform play is wanted** ([../VISION.md](../VISION.md), 2026-11-04). One clock is what makes it possible:
+    every peer steps the same rates whatever its display, and a display changes only that peer's Output. Two things
+    stay per game:
+    - **The netcode model.** Lockstep needs the simulation bit-identical across wasm, x86 and ARM
+      ([replay-and-determinism.md](replay-and-determinism.md) question 1), and server authority does not
+      ([networking.md](networking.md) question 1).
+    - **Input fidelity.** A web peer's gamepad is sampled once a frame.
+  - **Carried:**
+    - **To question 3, the rates' defaults.** The owner: "we should come up with the best universal rates for ANY".
+      - Each subsystem's floor is set by what breaks below it: latency for net send, stability for physics, cost for
+        AI.
+      - Fast objects tunnelling is answered by sweeping in Constraints (continuous collision detection). The owner: "if
+        you can sweep spheres for example you can determine if a bullet passed through a wall between simulation
+        rounds". The rate still sets the stability of stacks, joints and springs.
+    - **To [web-and-native.md](web-and-native.md) question 2 and networking (KYR-18): a hidden tab pauses rAF.** MDN:
+      "requestAnimationFrame() calls are paused in most browsers when running in background tabs". A networked web
+      game needs a policy: pause and resync, or simulate from another clock.
+  - **Considered:**
+    - a base the game must state, with every rate dividing or multiplying it, which is kept as the pinned option;
+    - independent clocks per subsystem (Unreal's `TickInterval`, flecs's `interval`), which are kept as a later mode a
+      game opts into.
