@@ -1,6 +1,7 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1 and 2 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1 and 2, and question 3's structure, were decided on 2026-11-04
+(see *Decided*). Question 3's numbers wait for KYR-55. A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -112,7 +113,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    sampled at 1000 Hz do? *Decided 2026-11-04: one simulation clock with its base derived from the subsystems' rates
    (or pinned), each subsystem handed its step, and input split across owed steps by timestamp.*
 3. **Which rates for what?** The vision ties rates to human perception: input latency, animation smoothness, audio's
-   own clock, network send rates. Write down the defaults, and which ones a game changes.
+   own clock, network send rates. Write down the defaults, and which ones a game changes. *Its structure was decided
+   2026-11-04 (which clock drives each subsystem, and what sets its floor); its numbers wait for KYR-55.*
 4. **Interpolation.** Output at display rate between fixed ticks: who reads `alpha`, and how does a component say how it
    is interpolated (or that it is not)?
 5. **Parallelism inside a phase.** Over what: components of one type (data-parallel), independent systems
@@ -179,7 +181,8 @@ run can both hold.
      - **Presentation-only reads,** such as camera look, take the newest sample each frame instead, because "a look
        that waits for the next tick is latency" (TMM, peer-games § 1).
      - **What the simulation sees** is the value the tick consumed, and the log records that value.
-3. **Which rates for what.** Proposed defaults, each with the owner's reason that drives it:
+3. **Which rates for what.** *Its structure was decided 2026-11-04, and its numbers wait for KYR-55 (see Decided). The
+   draft is kept as it was brought.* Proposed defaults, each with the owner's reason that drives it:
 
    | Subsystem | Default | Driven by | A game changes it? |
    |---|---|---|---|
@@ -373,3 +376,37 @@ run can both hold.
     - a base the game must state, with every rate dividing or multiplying it, which is kept as the pinned option;
     - independent clocks per subsystem (Unreal's `TickInterval`, flecs's `interval`), which are kept as a later mode a
       game opts into.
+- **2026-11-04, the owner: which clock drives each subsystem, and what sets its floor (question 3, its structure).**
+  The numbers wait for the research row KYR-55.
+
+  | Subsystem | Its clock | Its floor is set by | A game changes it? |
+  |---|---|---|---|
+  | Gameplay (Update) | simulation | correctness, latency | yes |
+  | Game AI (state machines, procedural logic) | simulation, slower and staggered per entity (FFD's bots) | cost | yes |
+  | An LLM player | outside, like a remote player: its actions enter at Input's hand-off | n/a | n/a |
+  | Physics and constraints | simulation, with its own iteration count | stability | yes |
+  | Input hand-off | every step that consumes input; presentation reads every frame | perception (latency) | no |
+  | Net receive | outside (the socket), handed off at Input | n/a | no |
+  | Net send | simulation, every step or slower | latency, bandwidth | yes |
+  | Rendering | the frame source (rAF, vsync, the headset) | perception, GPU | no |
+  | Audio | the device's own clock and thread; cues every step, the listener every frame | perception | no |
+
+  - **The rule for a number:** each subsystem's default is the lowest rate that holds its floor. The owner: "the
+    lowest frequency we can go while maintaining high fidelity is likely the best bet", and "What goes wrong below is a
+    good thing to keep in mind and sets the floor." The defaults are to suit any game, and a game overrides them.
+  - **The numbers are KYR-55's.** It gathers evidence with its sources into `../research/rates.md`, and they are decided
+    here from it. Until then, the draft's numbers (60 Hz gameplay, the-mallow-man's 30 Hz send) are provisional, and
+    nothing is built on them.
+  - **Game AI and LLM players.** The owner: "I want to support the traditional "AI" in games ( typically finite state
+    machines, or other deterministic procedural logic ) but I also want to leave things open for the more modern "AI"
+    concepts like llms... It would be pretty amazing to have llms playing against a player where possible."
+    - **Traditional game AI is part of the simulation:** components in Update, deterministic, on the simulation clock,
+      at a slower rate staggered per entity (KYR-56).
+    - **An LLM is an outside clock, like a remote player** (KYR-57). Its decisions take far longer than a step, are not
+      deterministic, and may come from a remote service.
+      - It plays through the input system's semantic actions (KYR-54), as a human does.
+      - Its decisions enter at Input's hand-off and are recorded, so a replay needs no model.
+      - **A likely shape, not decided:** the model sets goals at its own pace, and deterministic game AI carries them
+        out every step, as the RTS generals in *What the vision asks* command their troops.
+  - **Considered:** recording the draft's numbers as the defaults now, with the research later; and holding the whole
+    question until the research is done.

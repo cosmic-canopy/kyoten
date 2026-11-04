@@ -162,3 +162,7 @@ Given on 2026-11-04, in the walk-through:
   talking about as well" ([ROADMAP.md](ROADMAP.md) KYR-54).
 - **Rates that suit any game.** "Different games may have different requirements but we should come up with the best
   universal rates for ANY" ([design/frame-phases.md](design/frame-phases.md) question 3).
+- **Game AI, traditional and modern.** "I want to support the traditional "AI" in games ( typically finite state
+  machines, or other deterministic procedural logic ) but I also want to leave things open for the more modern "AI"
+  concepts like llms... It would be pretty amazing to have llms playing against a player where possible"
+  ([ROADMAP.md](ROADMAP.md) KYR-56 and KYR-57).

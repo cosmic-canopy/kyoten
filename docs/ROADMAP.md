@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-55**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-58**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -20,6 +20,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision. **Done 2026-11-01** | [research/component-models.md](research/component-models.md) · [components.md](design/components.md) |
 | KYR-4 | **The Quest probe, answered by the owner's Quest prototype** (its own project): WebXR with WebGPU in the Quest browser, and a kama program built, loaded and run on the headset (KY-2). Its findings come back as research | [xr.md](design/xr.md) |
 | KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build. **Done 2026-11-01** | [research/web-baseline.md](research/web-baseline.md) · [web-and-native.md](design/web-and-native.md) |
+| KYR-55 | **The rates, researched**: for each subsystem, the floor and what breaks below it, from perception studies, physics engines' guidance, engines' defaults and shipped games by genre, with sources. It ends in a universal default per subsystem, so frame-phases question 3's numbers are decided from evidence | research/rates.md · [frame-phases.md](design/frame-phases.md) |
 
 ## NEXT: the first slice, after which a game can start on kyoten
 
@@ -47,6 +48,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-15 | **Audio, first version**: Web Audio and a native backend behind one interface | [audio.md](design/audio.md) |
 | KYR-16 | **UI, first version**: HTML and CSS, as the DOM on the web and through `@kama/ui` natively | [web-and-native.md](design/web-and-native.md) |
 | KYR-17 | **Physics in the Constraints phase**, and whether it is deterministic across platforms | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
+| KYR-56 | **Game AI, first version**: finite state machines and other deterministic procedural logic, as components in Update on the simulation clock, staggered per entity, playing through the same semantic actions as a player (KYR-54) | [frame-phases.md](design/frame-phases.md) · [VISION.md](VISION.md) |
 | KYR-18 | **Netcode in the engine**: transports behind one interface, with lockstep (FFD) and snapshots with rollback (the-mallow-man) as patterns a game picks | [networking.md](design/networking.md) |
 | KYR-45 | **The kyoten backend server**: open, and anyone may host it. A game reaches it the same way whoever runs it, so the platform's hosting is the easy option, never a lock-in | [networking.md](design/networking.md) |
 | KYR-19 | **Steamworks as a feature package**: sign-in, achievements, the overlay, invites and Steam networking | [target-platforms.md](design/target-platforms.md) |
@@ -99,6 +101,7 @@ happens in that game's own repository, never here.
 | KYR-39 | **kyotenengine.com**: the home page, the docs and getting started, provisioned and deployed automatically | [website.md](design/website.md) |
 | KYR-40 | **More examples, each a different shape**: a 2D game, a racing game, a networked arena | [examples.md](design/examples.md) |
 | KYR-41 | **Code hot reload**, on kama's hot-reload library, desktop first | [ai-first-api.md](design/ai-first-api.md) |
+| KYR-57 | **LLM players**: a model playing against a player "where possible", as an outside clock like a remote player. Its semantic actions (KYR-54) enter at Input's hand-off and are recorded, so a replay needs no model. A likely shape: the model sets goals at its own pace and game AI (KYR-56) carries them out each step | [frame-phases.md](design/frame-phases.md) · [ai-first-api](design/ai-first-api.md) · [VISION.md](VISION.md) |
 
 ## FUTURE
 

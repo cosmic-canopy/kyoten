@@ -11,6 +11,9 @@
 - **AI drives the same inputs as humans** (the owner, 2026-11-04; [../VISION.md](../VISION.md)). The input system is an
   abstraction with universal rebinding, and an agent plays through its semantic actions, as a player does
   ([../ROADMAP.md](../ROADMAP.md) KYR-54).
+  - **LLMs playing against a player**, "where possible" (the owner, 2026-11-04), go the same way. A model is an outside
+    clock, like a remote player: its actions enter at Input's hand-off and are recorded, so a replay needs no model
+    ([frame-phases.md](frame-phases.md) § Decided, question 3; KYR-57).
 
 ## What already exists
 
