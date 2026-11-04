@@ -70,7 +70,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | id | item | detail |
 |---|---|---|
 | KYR-31 | **The XR package**: one interface (session, frame timing, views, poses, input sources) with WebXR and OpenXR backends. kyoten's to build: kama ruled XR out of its own packages (2026-11-02) | [xr.md](design/xr.md) |
-| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (KY-2; kama's KR-280, in its NOW since 2026-11-01), Vulkan with OpenXR's extensions, and the lifecycle events kama delivers to `main`; `kama build` makes the signed APK (KR-283) | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
+| KYR-32 | **Android, Quest first**: the platform package on kama's Android target (kama's KR-280, shipped in 0.9.830; the app is KR-283, KY-2), Vulkan with OpenXR's extensions, and the lifecycle events kama delivers to `main`; `kama build` makes the signed APK (KR-283) | [xr.md](design/xr.md) · [platforms](design/target-platforms.md) |
 | KYR-33 | **kyoten-vr on Quest**: the example, holding the headset's frame rate | [examples.md](design/examples.md) · [xr](design/xr.md) |
 | KYR-34 | **iOS**: the platform package on kama's iOS target (KY-3), and Safari on the web route | [target-platforms.md](design/target-platforms.md) |
 

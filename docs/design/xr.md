@@ -19,10 +19,19 @@
   - **Web:** WebXR is reached through `jsLibraries`, with an `expose fn` as the per-frame callback. It exists only on
     the page thread, and a threaded wasm build runs `main` on a worker. It renders through WebGL2, since WebGPU in
     WebXR is behind a flag in the Quest browser.
+- **The Android target shipped** (kama KR-280, 0.9.830, 2026-11-03; re-checked here on 0.9.839, 2026-11-04,
+  [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-2).
+  - **What it is:** `aarch64-linux-android29` is the one spelling, and kama finds the NDK itself.
+  - **What was built here:** a hello, to an aarch64 executable "for Android 29, built by NDK r30". It has not been run
+    on a device from here.
+  - **What Quest still needs from kama** is the installable app, KR-283 (an APK the launcher starts). Its next step is a
+    ruling on `kama.json`'s shape (kama `6cac55c7`).
+  - The history below is how it got there.
 - **kama's targets** (`kama/docs/targets.md` § Built-in targets): `MACOS`, `WINDOWS`, `LINUX`, `WASM`, `EMBEDDED`.
-  **There is no Android target.** A custom triple with a per-target compiler is allowed, and the docs name "an NDK
-  wrapper" as the kind of compiler that carries its triple in its name (`targets.md:540-553`). Building an Android
-  `.so` that way is untested, and std's OS layer has no Android branch that anyone has exercised. Probed 2026-11-01 on
+  **There was no Android target until 0.9.830** (above). A custom triple with a per-target compiler is allowed, and
+  the docs name "an NDK wrapper" as the kind of compiler that carries its triple in its name (`targets.md:540-553`).
+  Building an Android `.so` that way is untested, and std's OS layer has no Android branch that anyone has exercised.
+  Probed 2026-11-01 on
   0.9.803 ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-2): `--target ANDROID` is refused, and the triple
   `aarch64-linux-android` transpiles as `OS_LINUX` with `ABI_ANDROID`, so std treats it as Linux.
   **kama has since measured the native route** (kama `4f0ecbdc`, 2026-11-01, with NDK r30 on this machine; not

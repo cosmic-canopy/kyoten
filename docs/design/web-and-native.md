@@ -63,8 +63,9 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
    thousands of calls per frame ([rendering.md](rendering.md)).
 7. **CI for the web.** kama's wasm leg runs under node, not a browser. kyoten needs a browser leg (headless Chrome)
    to test COOP/COEP, workers and WebGPU for real.
-8. **A third family: the headset.** Meta Quest is either a browser (WebXR) or an Android device (OpenXR), and kama has
-   no Android target ([xr.md](xr.md)). Does the seam's design leave room for it from the start?
+8. **A third family: the headset.** Meta Quest is either a browser (WebXR) or an Android device (OpenXR). kama's
+   Android target shipped in 0.9.830, and its installable app (KR-283) is next ([xr.md](xr.md)). Does the seam's
+   design leave room for it from the start?
 
 ## Decided
 

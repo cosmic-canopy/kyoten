@@ -29,7 +29,10 @@
   ([../research/peer-games.md](../research/peer-games.md) § 4).
 - **Steam Deck runs SteamOS (Linux)**, so a Linux build plus controller input is its baseline *(to verify the details:
   Steam Input, the Deck's display and performance profile)*.
-- **kama has neither an Android nor an iOS target** (probed 2026-11-01 on 0.9.803, [../KAMA_GAPS.md](../KAMA_GAPS.md)
+- **kama's Android target shipped** (KR-280, 0.9.830; re-checked here on 0.9.839, 2026-11-04). It is
+  `aarch64-linux-android29`, with the NDK found by kama itself. The app the launcher starts (an APK) is still to come,
+  as kama's KR-283 ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-2, narrowed to it). iOS is unchanged (KY-3).
+- **kama had neither an Android nor an iOS target** (probed 2026-11-01 on 0.9.803, [../KAMA_GAPS.md](../KAMA_GAPS.md)
   KY-2 and KY-3). Both triples transpile. `aarch64-linux-android` is treated as Linux, and `aarch64-ios-none` derives
   `OS_IOS`, which std's macOS declarations do not cover. Apple's own spelling, `arm64-apple-ios`, derives neither
   `ARCH_AARCH64` nor `OS_IOS`. Each also needs an app entry the OS owns, its own packaging and signing, and, for iOS, a
