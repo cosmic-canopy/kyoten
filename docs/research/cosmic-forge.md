@@ -12,6 +12,14 @@ conclusion drawn from absence or from reading across files, not a statement the 
 > has 76 tool manifests, a mesh in parts (GeoSAM2 labels, HoloPart, border clean-up), skeleton and camera thumbnails
 > and, on the page, an asset browser and Duplicate. Audio R&D started 2026-11-03, with every route local. None of it is
 > re-surveyed here.
+>
+> **Fetched again on 2026-11-04, not pulled.** forge's `origin/main` is 7 commits past `ff695ae`, at `e073097`.
+> - **The work is audio's slice 1, sound effects,** planned with the owner: one rule for audio, Sonniss's GDC 2024
+>   bundle as a library, and footsteps and the fire's one-shots first.
+> - **Next is a music and ambience session,** whose models fit on a VM disk grown to 1 TiB.
+> - **To read it:** `git -C ../cosmic-forge log ff695ae..origin/main`. It bears on audio
+>   ([../design/audio.md](../design/audio.md)) and on whether audio joins the first slice ([../SPIKE.md](../SPIKE.md)
+>   § Where it stands).
 
 ## Summary
 

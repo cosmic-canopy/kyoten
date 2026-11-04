@@ -10,7 +10,7 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-03)
+## Where it stands (2026-11-04)
 
 **Start here.** The walk-through (KYR-1) began on 2026-11-02. [design/architecture.md](design/architecture.md)'s
 spike questions are decided, all recorded in its *Decided*:
@@ -27,20 +27,33 @@ spike questions are decided, all recorded in its *Decided*:
 
 1. **Architecture question 2's module rules.** A draft sits under question 2. Its rule is that a system never imports
    another system, so data moves between systems through components, in phase order. It proposes four layers and a
-   `tools/` check, because kama's `visibility` cannot hold the rule between public modules (probed on 0.9.823). The
-   rule can be decided first; the layer names wait for frame-phases 1 and components 1.
+   `tools/` check, because kama's `visibility` cannot hold the rule between public modules (probed on 0.9.823, and
+   again on 0.9.839). The rule can be decided first; the layer names wait for frame-phases 1 and components 1.
 2. **[design/frame-phases.md](design/frame-phases.md), all of it.** The owner's direction of 2026-11-03 is in its
-   *What the vision asks*. Each subsystem of a phase has its own rate, chosen for human perception, CPU and GPU cost,
-   and simulation correctness. That frames questions 2 and 3, and leaves open whether the rates divide one tick.
+   *What the vision asks*: each subsystem of a phase has its own rate, chosen for human perception, CPU and GPU cost,
+   and simulation correctness.
+   - **A draft answer to all ten questions** is in its *A draft for the walk-through* (2026-11-04), for the owner and
+     not decided. Its kama evidence was re-checked on 0.9.839.
+   - **Its thread:** one simulation clock, with every subsystem's rate stated against it. The display, the audio
+     device, the headset and the OS's input events stay outside the simulation, and meet it at Input's fold and
+     Output's read.
+   - **How to take it:** one question at a time, recording each answer in *Decided* as it is given. Questions 4 and 6
+     lean on components 1 and 2, and question 8 on web-and-native 2. Where the owner defers one of those, the draft
+     says what waits.
 3. Then the rest of the [narrowed table](#narrowed-2026-11-01).
 
 **To raise with the owner:**
 
 - **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
-  audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up.
+  audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
+  started audio's slice 1, sound effects, with music and ambience next
+  ([research/cosmic-forge.md](research/cosmic-forge.md), the note at the top).
 - **kama's ruling on `@kama/graphics`** ([KAMA_GAPS.md](KAMA_GAPS.md) KY-9, for the owner to relay). kama's roadmap
-  keeps the renderer in the engine today, so the library needs its ruling.
+  keeps the renderer in the engine today, so the library needs its ruling. Nothing upstream mentions it yet (kama
+  `6cac55c7`, 2026-11-03).
+- **KY-10, for the owner to relay** (found 2026-11-04). kama's agent guidance says to `cast<int32>` for `main`'s exit
+  code, and since 0.9.684 `main` returns a `uint8`. It is one clause, in the file every kama project's agent reads.
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -68,6 +81,9 @@ can as each tool is built. cosmic-forge's tools and its CLI are references, but 
   package, while `@kama/gpu` and `@kama/window` stay first-party packages that kyoten will be first to use
   ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). kyoten builds those two
   (question 3), and kama's roadmap records the claim on KR-25 and KR-26. kama has since fixed KY-1, KY-4, KY-7 and KY-8.
+  **It shipped the Android target** in 0.9.830 (KR-280, 2026-11-03), so KY-2 is narrowed to the app the launcher
+  starts (KR-283, next). [design/xr.md](design/xr.md) and [design/target-platforms.md](design/target-platforms.md) say
+  so under *What already exists*.
 - **The work is on the branch `spike/roadmap`**, pushed to `origin` on 2026-11-03 so other machines can pick it up, and
   not merged.
 
@@ -188,8 +204,8 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6 and KY-9 are open there; take the
-  next id from its counter.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-9 and
+  KY-10 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
@@ -204,9 +220,14 @@ KYR-1 is the walk-through itself.
 
 ## Practicalities
 
-- Seeded on kama **0.9.803** (`../kama`), last re-checked on **0.9.823** (2026-11-03). kama rebuilds often, so run
+- Seeded on kama **0.9.803** (`../kama`), last re-checked on **0.9.839** (2026-11-04). kama rebuilds often, so run
   `--version` before quoting one. On Windows, drive kama from msys2 UCRT64 (see kama's `docs/platforms/windows.md`).
   `kama` is not on that shell's `PATH`: use `../kama/out/UCRT64-x86_64/kama.exe`.
+- **An Android build** (`--target aarch64-linux-android29`) needs the NDK, which this machine has at
+  `C:\Users\Matt\AppData\Local\Android\Sdk\ndk\30.0.16248370`. In a UCRT64 shell started by an agent's tool,
+  `USERPROFILE` is empty, so kama's search of Android Studio's default SDK misses it. Set `ANDROID_NDK_HOME` to that
+  directory for the command. The Android emulator and its `kama34` device are kama's: don't start them while a kama
+  session is busy.
 - **Each example game is its own repository**, cloned as `games/<name>` (git-ignored here): `kyoten-fps` and
   `kyoten-vr`. With one present, `kama pkg install games/fps/kama.json` then `kama run games/fps/kama.json` prints
   `fps example, on kyoten`: everything is wired end to end, and nothing else is built.
