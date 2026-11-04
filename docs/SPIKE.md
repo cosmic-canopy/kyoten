@@ -12,35 +12,49 @@ or in a temporary directory, and record what it measured in the design doc it se
 
 ## Where it stands (2026-11-04)
 
-**Start here.** The walk-through (KYR-1) began on 2026-11-02. [design/architecture.md](design/architecture.md)'s
-spike questions are decided, all recorded in its *Decided*:
+**Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, every answer recorded in its
+*Decided*:
 
-- **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
-  gated; kyoten builds `@kama/window` and `@kama/gpu` (KYR-51, KYR-52); and the game's `main` calls `run`.
-- **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package shaped
-  like Three.js.
-- **Question 7.** The directories are `editor/`, `server/` and `tools/`. The namespaces (2026-11-03): `@kama/<noun>`
-  is for a package that can exist outside kyoten, such as `@kama/gpu`, `@kama/window` and the Three.js-shaped
-  `@kama/graphics`. `@kyoten/<noun>` is for what is kyoten's own. kama made scopes work by fixing KY-8 in 0.9.820 (KR-291).
+- **[design/architecture.md](design/architecture.md), its spike questions.**
+  - **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
+    gated; kyoten builds `@kama/window` and `@kama/gpu` (KYR-51, KYR-52); and the game's `main` calls `run`.
+  - **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package
+    shaped like Three.js, `@kama/graphics`, which kama ruled first-party (KR-309, 2026-11-04).
+  - **Question 2's module rule** (2026-11-04). A system never imports another system, so data moves between systems
+    through components, in phase order. kama's `importsOnly` (0.9.842) now holds it, and KYR-53 checks the lists. The
+    layer names wait for components question 1.
+  - **Question 7.** The directories are `editor/`, `server/` and `tools/`. `@kama/<noun>` is for a package that can
+    exist outside kyoten, and `@kyoten/<noun>` for what is kyoten's own.
+- **[design/frame-phases.md](design/frame-phases.md), all ten** (2026-11-04):
+  - Input → Update → Constraints → Output in that order. Output is read-only and may feed Input through the record,
+    and each Constraints subsystem has its own iteration count.
+  - **One simulation clock.** Its base is derived from the subsystems' rates or pinned by the game, and each subsystem
+    is handed its step. The display, audio, headset, network and OS input are outside clocks that meet it at Input's
+    hand-off and Output's read. The defaults are [research/rates.md](research/rates.md)'s (KYR-55), lowered by
+    measurement.
+  - **Interpolation.** A component declares how it interpolates, and Output blends two timestamped samples.
+  - **Parallelism.**
+    - It comes from stated access: relative order, a no-conflict rule, group iteration and a visible schedule.
+    - **It is proven by the compiler,** with an explicit opt-out the schedule shows. So components question 1 is
+      between options A and B. The owner's leaning is B built on A, with ECS-shaped chunk storage inside.
+    - **It is serial by default, and switched on per group by measurement.** CI holds serial and parallel runs to one
+      hash. The build decides whether threads exist, and start-up decides how they are used.
+    - **On the web, a build is single-threaded by default.**
+  - **Waits.** A wait is a deadline in simulation steps, held in each waiting subsystem's own queue. Designers'
+    sequences come later (KYR-36).
+  - **The headset** is one more frame source behind `run`.
 
-**The next session, in order:**
+**Next, in order:**
 
-1. **Architecture question 2's module rules.** A draft sits under question 2. Its rule is that a system never imports
-   another system, so data moves between systems through components, in phase order. It proposes four layers and a
-   `tools/` check, because kama's `visibility` cannot hold the rule between public modules (probed on 0.9.823, and
-   again on 0.9.839). The rule can be decided first; the layer names wait for frame-phases 1 and components 1.
-2. **[design/frame-phases.md](design/frame-phases.md), all of it.** The owner's direction of 2026-11-03 is in its
-   *What the vision asks*: each subsystem of a phase has its own rate, chosen for human perception, CPU and GPU cost,
-   and simulation correctness.
-   - **A draft answer to all ten questions** is in its *A draft for the walk-through* (2026-11-04), for the owner and
-     not decided. Its kama evidence was re-checked on 0.9.839.
-   - **Its thread:** one simulation clock, with every subsystem's rate stated against it. The display, the audio
-     device, the headset and the OS's input events stay outside the simulation, and meet it at Input's fold and
-     Output's read.
-   - **How to take it:** one question at a time, recording each answer in *Decided* as it is given. Questions 4 and 6
-     lean on components 1 and 2, and question 8 on web-and-native 2. Where the owner defers one of those, the draft
-     says what waits.
-3. Then the rest of the [narrowed table](#narrowed-2026-11-01).
+1. **KYR-58: the game types, stress-tested.** Walk each kind of game (FPS, RTS, open world, rollback fighting games, VR,
+   simulation, MMO, turn-based, 2D and mobile) through the frame model, options A and B, and per-zone budgets. It is
+   done before components question 1, at the owner's direction ("we want to support all game types").
+2. **[design/components.md](design/components.md), all eight**, with question 5 decided beside project-database 11. Its
+   *What the vision asks* now carries the owner's leaning, the per-zone budgets (input to question 6) and every game
+   type.
+3. Then the rest of the [narrowed table](#narrowed-2026-11-01). **42 questions remain:** components 8,
+   replay-and-determinism 5, project-database 8, web-and-native 7, target-platforms 4, rendering 4, ai-first-api 3,
+   examples 3. A few are taken together, so about 39 separate decisions.
 
 **To raise with the owner:**
 
@@ -49,11 +63,13 @@ spike questions are decided, all recorded in its *Decided*:
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
   started audio's slice 1, sound effects, with music and ambience next
   ([research/cosmic-forge.md](research/cosmic-forge.md), the note at the top).
-- **kama's ruling on `@kama/graphics`** ([KAMA_GAPS.md](KAMA_GAPS.md) KY-9, for the owner to relay). kama's roadmap
-  keeps the renderer in the engine today, so the library needs its ruling. Nothing upstream mentions it yet (kama
-  `6cac55c7`, 2026-11-03).
-- **KY-10, for the owner to relay** (found 2026-11-04). kama's agent guidance says to `cast<int32>` for `main`'s exit
-  code, and since 0.9.684 `main` returns a `uint8`. It is one clause, in the file every kama project's agent reads.
+- **The gaps for kama, for the owner to relay** ([KAMA_GAPS.md](KAMA_GAPS.md)). These were pushed on 2026-11-04 so
+  another kama machine can act on them:
+  - KY-12, the job pool: its priority, running borrowing work, and no heap allocation per call;
+  - KY-5, raised with it;
+  - KY-13 to KY-16, filed on 0.9.845.
+
+  kama closed KY-9, KY-10 and KY-11 the same day.
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -62,30 +78,41 @@ spike questions are decided, all recorded in its *Decided*:
 - **Is `@kyoten` reserved in the registry?** kama ruled that a maintainer's scope is reserved in the registry project,
   not the compiler. That is not visible from here: there is no `gh`, and the registry repo is not checked out.
 
-**Standing direction (2026-11-03):** tooling works for AI first and is visible to humans, and UX is done as well as we
-can as each tool is built. cosmic-forge's tools and its CLI are references, but its UX is not a pattern
-([design/human-tools.md](design/human-tools.md)).
+**Standing direction:**
 
-- **The evidence rows are done** (2026-11-01). Each was checked against its sources before it was committed, and the
-  design docs they feed point at them under *What already exists*:
+- **Tooling (2026-11-03).** Tooling works for AI first and is visible to humans, and UX is done as well as we can as
+  each tool is built. cosmic-forge's tools and its CLI are references, but its UX is not a pattern
+  ([design/human-tools.md](design/human-tools.md)).
+- **Given 2026-11-04** ([VISION.md](VISION.md)):
+  - web-first tools in kama, as cosmic-forge's are, which become the window onto the workflow;
+  - errors at compile time, threading errors above all;
+  - every game type, and the best engine;
+  - budgets per element and per zone, with allocation up front or at least very controlled;
+  - Output per platform over one simulation, and input as an abstraction with universal rebinding.
+
+- **The evidence rows are done.** Each was checked against its sources before it was committed, and the design docs
+  they feed point at them under *What already exists*:
   - KYR-2, [research/harvest.md](research/harvest.md): what to take from FFD, the-mallow-man and cosmic-forge, and what
     each piece assumes.
   - KYR-3, [research/component-models.md](research/component-models.md): Unity's phases and its peers, probes of
     kama, and three options for components.md.
   - KYR-5, [research/web-baseline.md](research/web-baseline.md): the web build's size, and what a WebGPU call costs
     from wasm.
-  - Between them they filed KY-4 to KY-7 in [KAMA_GAPS.md](KAMA_GAPS.md).
-- **KYR-4 is the owner's**: a Quest prototype in its own project. Nothing in the spike waits for it.
-- **kama moved after the seeding.** It put Android for Quest (KR-280) in its NOW, and its Windows machine (this one)
-  has claimed that and KR-279, KR-282 and KR-283 (kama `62322f93`, 2026-11-02). It ruled that XR is kyoten's, not a kama
-  package, while `@kama/gpu` and `@kama/window` stay first-party packages that kyoten will be first to use
-  ([design/architecture.md](design/architecture.md), [design/xr.md](design/xr.md) § Decided). kyoten builds those two
-  (question 3), and kama's roadmap records the claim on KR-25 and KR-26. kama has since fixed KY-1, KY-4, KY-7 and KY-8.
-  **It shipped the Android target** in 0.9.830 (KR-280, 2026-11-03), so KY-2 is narrowed to the app the launcher
-  starts (KR-283, next). [design/xr.md](design/xr.md) and [design/target-platforms.md](design/target-platforms.md) say
-  so under *What already exists*.
-- **The work is on the branch `spike/roadmap`**, pushed to `origin` on 2026-11-03 so other machines can pick it up, and
-  not merged.
+  - KYR-55, [research/rates.md](research/rates.md) (2026-11-04): each subsystem's floor, and a default for any game.
+- **KYR-4 is the owner's**: a Quest prototype in its own project. Frame-phases question 10 leaves its measurements to
+  it.
+- **kama moves fast beside this work.**
+  - **Earlier:**
+    - It ruled that XR is kyoten's, not a kama package.
+    - `@kama/gpu` and `@kama/window` stay first-party packages, and kyoten builds them (KR-25, KR-26).
+    - It shipped the Android target in 0.9.830 (KR-280), so KY-2 is narrowed to the app the launcher starts (KR-283).
+  - **On 2026-11-04:**
+    - KR-309 ruled `@kama/graphics` first-party.
+    - `importsOnly` landed (KR-308, 0.9.842).
+    - The agent guidance's exit-status clause was fixed (0.9.840).
+  - **Check kama's log at the start of each session.**
+- **The work is on the branch `spike/roadmap`**, pushed to `origin` after each decision so other machines can pick it
+  up, and not merged.
 
 ### What to read before each question
 
@@ -103,7 +130,7 @@ lives only in a conversation.
 | frame-phases 1–3: the phases and their rates | harvest § 1 (FFD's `engine::phase`); component-models § 2 (flecs) and § Summary (rates) |
 | frame-phases 5–7: parallelism | component-models § 4, probes 1–4, and KY-5; harvest *What this does not decide* 3 (the renderers' statics) |
 | frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |
-| components 1–8 | component-models § 5, one subsection per question, and § Options for the walk-through (A, B, C) |
+| components 1–8 | KYR-58 first (the game types); then component-models § 5, one subsection per question, and § Options for the walk-through (A and B, after frame-phases question 6) |
 | components 5, project-database 11: records and layers | component-models § Summary (overrides layer per property almost everywhere) and § 5.5 |
 | replay 1, 2, 5 | KY-4 (fixed in kama 0.9.809); harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
 | web-and-native 4: the size budget | web-baseline § What this means and § Candidate budgets. **The owner picks a number, a ratchet, or both** |
@@ -204,8 +231,8 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-9 and
-  KY-10 are open there; take the next id from its counter.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6 and KY-12 to
+  KY-16 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
