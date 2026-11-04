@@ -193,7 +193,8 @@ The tension between their lesson and that purpose is the first thing to settle.
   - **Why its own package from the start:** the owner leaned on the recommendation ("we can start with it being a
     built in module if that is easier?"). Only a package boundary keeps it from importing the engine; as a module,
     "names no engine concept" would be a convention.
-  - **It is `@kama/graphics`** (question 7, 2026-11-03, below), once kama rules on KY-9. Where its code starts (forge's `render`, the-mallow-man's `gfx`, or fresh) is
+  - **It is `@kama/graphics`** (question 7, 2026-11-03, below), which kama ruled a first-party package on 2026-11-04
+    (kama KR-309). Where its code starts (forge's `render`, the-mallow-man's `gfx`, or fresh) is
     [rendering.md](rendering.md) question 1.
   - **Considered:** a `kyoten::render` module split out later; and widening `@kama/gpu` into the library, which would
     reverse kama's design.
@@ -236,8 +237,11 @@ The tension between their lesson and that purpose is the first thing to settle.
       and a platform or feature package that implements kyoten's interfaces.
     - A game names its own packages as it likes. A clash with a kyoten package is settled in the game's manifest, with
       a local name.
-  - **The graphics library needs kama's ruling first** ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-9). kama's roadmap
-    keeps "the renderer" in the engine today (kama `docs/ROADMAP_DETAIL.md:2862-2863`).
+  - **kama ruled the graphics library first-party** on 2026-11-04, closing KY-9. Its roadmap row KR-309 reads
+    "`@kama/graphics` — a lightweight 3D graphics library, a first-party package … naming no engine concept, since a
+    viewer, an editor and a non-game product each use one". The row is claimed by "a downstream engine, … building it
+    in its own repository", and its design lives in `cosmic-canopy/kama-graphics` (kama `docs/ROADMAP.md:157`,
+    `fd3ec5eb`).
   - **Its name is `@kama/graphics`** (the owner, 2026-11-03: "kama graphics is probably the best bet"). It is imported as
     `graphics` (`graphics::Mesh`), and a path package of that name installs and runs on 0.9.823. It is a plain noun like
     kama's other first-party names, and it says nothing about games or real time. It avoids every name already in use:
@@ -294,10 +298,17 @@ The tension between their lesson and that purpose is the first thing to settle.
       - **Why it reads the source:** kama reports no module's imports (`kama stats` lists the modules but not their
         edges, on 0.9.840). Reading the block is exact, because kama's grammar keeps one per file, at the top, with
         each entry a full path.
-    - **[../KAMA_GAPS.md](../KAMA_GAPS.md) KY-11 asks kama for a list on the *importing* module**, so that `kama check`
-      and the editor refuse the edge and the tool can retire. `visibility` is a list on the imported module, so it
-      cannot hold the rule between public modules. Re-probed on 0.9.840: fencing `audio` from `render` also fences it
-      from the game.
+    - **KY-11 asked kama for a list on the *importing* module**, so that `kama check` and the editor refuse the edge
+      and the tool can retire. `visibility` is a list on the imported module, so it cannot hold the rule between public
+      modules. Re-probed on 0.9.840: fencing `audio` from `render` also fences it from the game.
+    - **kama took it on 2026-11-04: `importsOnly`** (KR-308, 0.9.842). A module that writes it may import, from its
+      own package, only the modules it lists. Re-probed on 0.9.845: with `"render": { "visibility": "public",
+      "importsOnly": ["frame"] }`, `render`'s import of `audio` is refused (*"module `eng::audio` is not in the
+      `importsOnly` of `eng::render`"*), and the game still imports both.
+      - **So the compiler now holds the rule.** Each engine system module lists, in `importsOnly`, the layers it may
+        import, which never name another system.
+      - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every system
+        module has an `importsOnly`, and that none names a system. It no longer reads the source.
   - **Still open: the layer names.** They wait for [frame-phases.md](frame-phases.md) question 1 and
     [components.md](components.md) question 1. The draft has four layers, each importing only the ones above it:
     1. the frame: phases, clocks, the scheduler and the input record;
