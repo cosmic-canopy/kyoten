@@ -396,9 +396,9 @@ run can both hold.
   - **The rule for a number:** each subsystem's default is the lowest rate that holds its floor. The owner: "the
     lowest frequency we can go while maintaining high fidelity is likely the best bet", and "What goes wrong below is a
     good thing to keep in mind and sets the floor." The defaults are to suit any game, and a game overrides them.
-  - **The numbers are KYR-55's.** It gathers evidence with its sources into `../research/rates.md`, and they are decided
-    here from it. Until then, the draft's numbers (60 Hz gameplay, the-mallow-man's 30 Hz send) are provisional, and
-    nothing is built on them.
+  - **The numbers are KYR-55's.** [../research/rates.md](../research/rates.md) (2026-11-04) proposes a default per
+    subsystem from its evidence, and they are decided here from it. Until then, the draft's numbers (60 Hz gameplay, the-mallow-man's
+    30 Hz send) are provisional, and nothing is built on them.
   - **Game AI and LLM players.** The owner: "I want to support the traditional "AI" in games ( typically finite state
     machines, or other deterministic procedural logic ) but I also want to leave things open for the more modern "AI"
     concepts like llms... It would be pretty amazing to have llms playing against a player where possible."
