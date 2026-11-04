@@ -166,3 +166,23 @@ Given on 2026-11-04, in the walk-through:
   machines, or other deterministic procedural logic ) but I also want to leave things open for the more modern "AI"
   concepts like llms... It would be pretty amazing to have llms playing against a player where possible"
   ([ROADMAP.md](ROADMAP.md) KYR-56 and KYR-57).
+- **Errors at compile time, threading errors above all.** "I am always in favor of trying to detect errors at compile
+  time over runtime... especially threading errors. Race conditons are typically the most problematic errors to
+  debug" ([design/frame-phases.md](design/frame-phases.md) question 6).
+- **Every game type, and the best engine.** "we want to support all game types", with an FPS likely the first game
+  (above). "Ideally Kyoten will be the best engine out there... On par or better than Godot, Unity, or Unreal... I know
+  that is a HUGE ask... but Kama has so far been holding up well against other languages out there so I feel we have a
+  chance."
+- **Budgets per element, per zone, and a footprint you can calculate.** "I wanted the engine to allow game designers to
+  budget per element so kyoten could limit allocations at runtime and in theory could be allocation up front based on
+  the machine it runs. So you would say... each zone of a level can only have N number of X creatures and N number of
+  bullets in flight, etc. This would then be a per "zone" or "region" type decision limit but could be very powerful
+  for allocation and memoryy order, cache etc. It could just be an opt-in or hybrid as well... but it was a working
+  Idea I had to make this engines runtime footprint fully calculable so you know exactly what machines it can and
+  can't run on."
+  - **On allocation:** "no allocation is a stretch goal... really means... single allocation or allcation up front is
+    the most likely target... or at the very least... very controlled allocations which helps with load transitions
+    and such."
+  - **Where it lands:** [design/components.md](design/components.md) question 6 (scale and storage), with budgets as
+    records in [design/project-database.md](design/project-database.md), and which machines a game runs on in
+    [design/target-platforms.md](design/target-platforms.md). Not decided yet.

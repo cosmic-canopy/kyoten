@@ -15,6 +15,15 @@
   question 1): "each phase has its own components that can be written", likened to Unity's generic scene graph with
   MonoBehaviours composed on it per game, "and there may be some lessons we learn from that NOT to do". The aim is "as
   optimal as possible while being flexible and generic".
+- **Every game type**, with an FPS likely the first, and "on par or better than Godot, Unity, or Unreal" (the owner,
+  2026-11-04; [../VISION.md](../VISION.md)).
+- **Parallel work proven by the compiler** ([frame-phases.md](frame-phases.md) § Decided, question 6, 2026-11-04).
+  Component types are then known at build time, so question 1 is between options A and B. **The owner's leaning**
+  (2026-11-04, not yet decided): "B built on A with C internal storage when possible", meaning a world generated from
+  records, whose generated code is A's, with ECS-shaped storage (chunks) inside it.
+- **Budgets per element, per zone** (the owner, 2026-11-04; [../VISION.md](../VISION.md)): "each zone of a level can
+  only have N number of X creatures and N number of bullets in flight", so a runtime footprint can be calculated and
+  allocated up front, or at least in very controlled steps. This is input to question 6.
 
 ## What already exists
 
