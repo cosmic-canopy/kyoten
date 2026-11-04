@@ -1,7 +1,7 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** draft for the design spike. These are questions, not decisions. A draft answer to each, for the owner,
-is in *A draft for the walk-through* (2026-11-04).
+**Status:** in the walk-through (KYR-1). Question 1 was decided on 2026-11-04 (see *Decided*). A draft answer to each
+of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
 
@@ -24,6 +24,23 @@ is in *A draft for the walk-through* (2026-11-04).
     three things together: human perception, CPU and GPU cost, and simulation correctness (questions 2 and 3).
   - **What it leaves open:** whether those rates divide one fixed tick, as FFD's do, or run on clocks of their own
     (question 2).
+- **What each phase is, in the owner's words** (2026-11-04): "The phases I came up with is what I believe every
+  game/simulation has that requires input from the previous."
+  - **Input:** "This is external inputs to the simulation. Random Seeds, Player Input, Networking, etc. These can be
+    recorded for replay and determinism. it starts the process to feed the rest of the simulation phases."
+  - **Update:** "This is where the meat of game logic happens. gameplay code in the form of components drives the
+    experience. This leads to an ideal next frame which may [break] physical rules of the system and thus needs checked
+    next."
+  - **Constraints:** "This is a more general term than "physics" but that is one of the primary things that happens
+    here. This is where logic that gates happens. Did something violate a rule and need corrected, etc. This allows the
+    simulation to check rules like if a game relies on realistic physics we can check a bullet trajectory and determine
+    if it contacts another object, if a player is hitting a wall, etc. constraint components help drive the rules of
+    the system before an output frame or message to network is rendered."
+  - **Output:** "This is the output of a complete simulation run. Rendering, Network sends, etc."
+  - **Why there are phases at all,** said the same day about the module rule
+    ([architecture.md](architecture.md) § Decided, 2026-11-04): "The goal is that each PHASE can be made parallel safely
+    and efficiently to increase overall performance and utilization of CPU and GPU resources. It is also to make the
+    engine easy to use correctly and hard to use incorrectly."
 
 ## What already exists
 
@@ -76,7 +93,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
 
 1. **The phases themselves.** Keep the owner's four, with FFD's refinements (Constraints as iterations; Output
    reading, never writing, the simulation)? Where do network *send* and audio cues go: FFD put cues in Output, derived
-   from world deltas, and kept the net pump in one place.
+   from world deltas, and kept the net pump in one place. *Decided 2026-11-04: the four in order, with Output
+   read-only, each Constraints subsystem's own iteration count, and idempotence a check a subsystem may claim.*
 2. **Rates: one tick with sub-rates, or several clocks?** FFD derives every sub-rate from one fixed tick, which keeps
    replay trivial. The vision says components update "at different set frequencies". Is that tick-divided rates
    (60, 30, 20, 15 Hz…) on one clock, or independent clocks with their own accumulators? What does an input device
@@ -118,7 +136,8 @@ game does not own stay outside the simulation: the display, the audio device, th
 They meet it only at Input's fold and at Output's read. That is how the owner's per-subsystem rates and a replayable
 run can both hold.
 
-1. **The phases.**
+1. **The phases.** *Decided 2026-11-04, with the owner's refinements (see Decided). The draft is kept as it was
+   brought.*
    - **Options:** (a) the four as the vision words them; (b) the four with FFD's refinements; (c) finer phases as
      tags, as flecs splits Constraints into detecting and correcting.
    - **Recommended: (b), with one change.** Output reads and never writes, from day one, because enforcing it later
@@ -211,4 +230,66 @@ run can both hold.
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-04, the owner: the four phases, in order, with Output read-only (question 1).**
+  - **The phases:** Input → Update → Constraints → Output, always in that order, as the owner defines them in
+    *What the vision asks*.
+    - A system takes part in any phase by registering a subsystem there: net receives in Input and sends in Output.
+    - Nothing reaches the simulation outside a phase.
+  - **A phase has no rate; a subsystem does.** A phase is a place in the order.
+    - Sometimes the simulation's subsystems owe several steps in one display frame: a 30 Hz display under 60 Hz
+      physics, or a stalled frame. Then Input → Update → Constraints run once per owed step, and Output runs once.
+    - How the steps are counted is question 2.
+  - **Work runs at any time; it reaches the simulation only at its phase's hand-off.** In the owner's words: "phases can
+    do work at any time to best utilize the hardware. So the network INPUT phase may still be gathering packets for the
+    next Input "hand off" while the simulation is in a different phase. It just doesn't contribute to the simulation
+    and/or finalize anything until the next Input phase."
+    - **How:** outside its phase, a subsystem's work touches only its own staging state, or reads a settled snapshot.
+      It writes the simulation only in its phase. At Input, the hand-off is what the log records. How much had arrived
+      by then depends on timing, and recording the hand-off makes it a deterministic record.
+    - **The cheap cases:** net gathering packets, the OS's input events, audio decoding, asset streaming.
+    - **The case that crosses the simulation:** Output recording tick N while Update runs N+1. It needs a snapshot of
+      N (question 4, [rendering.md](rendering.md) question 4). FFD warns it can cost a frame of latency, so it is
+      questions 5 and 7's to measure.
+  - **Output reads the simulation and never writes it, from day one.**
+    - It keeps its own presentation state: render caches, audio voices, send buffers, a smoothed camera, screen shake.
+    - **Why:** Output runs on the display's clock, so a write would make the result depend on the player's monitor. A
+      replay, a test and a headless server run no Output, so each would get a different simulation. Enforcing the rule
+      later would break every renderer that writes back
+      ([../research/component-models.md](../research/component-models.md) § 5.8, item 6).
+    - **What it costs:** anything gameplay depends on is computed in the simulation. Animation that affects gameplay
+      (root motion, an animated hitbox) is evaluated in Update, and Output animates only what is cosmetic.
+    - **Output may feed Input** (the owner): GPU picking, whether an enemy is on screen, a local in-process server.
+      What Output feeds back enters through Input's record, so a replay reads it from the log. It lands on a later tick
+      at the earliest. In lockstep it is sent to the peers like player input, since a peer cannot reproduce another
+      player's screen.
+  - **Constraints corrects, gates and records the simulation state that Update left in the tick.** It pushes a player
+    out of a wall, holds a locked door, and records contacts, which Update reads on the next tick. A game's own rules
+    are constraint components.
+  - **Each Constraints subsystem runs a whole number of iterations per tick.**
+    - The count is the subsystem's own, fixed as part of the simulation's definition like the tick rate, so a replay
+      reproduces it.
+    - The owner: "most physics solvers run some bound number of iterations to arrive at the "result" like cloth
+      physics".
+  - **Idempotence is a check a subsystem may claim, not a rule of the phase.**
+    - **Why:** a physics step, a cloth solve and a bullet sweep are not idempotent, and the owner's Constraints holds
+      all three.
+    - **How:** kyoten offers FFD's test to any subsystem that claims idempotence: step at 1 iteration and at 5, and
+      compare the hash.
+    - **FFD:** "we want kyoten to be able to make any game so FFD should be possible to run in kyoten. FFD would just
+      need to build the idempotence into it" (the owner). FFD's projections port as Constraints subsystems that claim
+      it (KYR-46).
+    - **Carried to question 5:** FFD repeats its whole phase (A, B, A, B), while per-subsystem counts run A, A and then
+      B, B. For FFD the two agree, because its suite proves that 1 and 5 iterations hash alike. Solvers that must
+      converge together may want a group that iterates jointly.
+  - **Network and audio:**
+    - net receive goes in Input, recorded, and net send in Output;
+    - audio cues are decided by the settled tick, after Constraints, because Constraints can cancel what Update did (a
+      blocked shot plays no hit sound);
+    - Output plays the cues on the audio device's own clock.
+  - **Order inside a phase is a priority** (the owner's term): what has the final say runs last, and its write stands.
+    Its form (a number, relative edges, or bands) is question 5.
+  - **Considered:**
+    - FFD's idempotence as a rule of the phase, which moves every solver that integrates motion into Update;
+    - Output writing some simulation state back, such as animation driven by rendering, which makes the result depend
+      on the display rate;
+    - named sub-phases fixed in advance, as flecs has. Order now goes to priority, question 5.
