@@ -27,7 +27,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-6 | **The frame core**: phases, the fixed-tick clock and its sub-rates, the RNG, the world hash and the input log, starting from FFD's `engine::phase`. The scheduler runs serially by default, and CI runs every test scene both serially and in parallel and requires one world hash (frame-phases question 7) | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
+| KYR-6 | **The frame core**: phases, the fixed-tick clock and its sub-rates, the RNG, the world hash and the input log, starting from FFD's `engine::phase`. Waits are deadlines in simulation steps, held in each waiting subsystem's own queue (frame-phases question 9). The scheduler runs serially by default, and CI runs every test scene both serially and in parallel and requires one world hash (frame-phases question 7) | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
 | KYR-7 | **The component model, first version**, as KYR-1 decides it | [components.md](design/components.md) |
 | KYR-53 | **The module-rule check**: `tools/check-imports` fails CI when an engine system imports another system. It reads one layer table and each file's `import` block, and has `--json` for an agent. It lands with KYR-6, when the engine has a second module, and retires if kama takes KAMA_GAPS KY-11 | [architecture.md](design/architecture.md) · [KAMA_GAPS](KAMA_GAPS.md) |
 | KYR-51 | **`@kama/window`, built by kyoten** (kama's KR-26, to kama's design): several windows or canvases, one event queue, physical keys, pointer lock, gamepad, and a headless window for tests. In its own `kama-window` repository, from FFD's web platform header and the-mallow-man's native one | [architecture.md](design/architecture.md) · [kama § 8](../../kama/docs/ROADMAP_DETAIL.md#s8-input) |
@@ -96,7 +96,7 @@ happens in that game's own repository, never here.
 | id | item | detail |
 |---|---|---|
 | KYR-35 | **The DAW**: tracks, clips, a mixer and automation, editing records the runtime plays | [audio.md](design/audio.md) |
-| KYR-36 | **Timeline and cinematic tools**, sharing a transport with the DAW | [timeline.md](design/timeline.md) |
+| KYR-36 | **Timeline and cinematic tools**, sharing a transport with the DAW. Also game-logic sequences for designers ("open door; wait 2 s; play sound; wait until the player enters"), written as records and generated into state-machine components over the simulation's deadlines, so they save, hash and roll back (frame-phases question 9) | [timeline.md](design/timeline.md) · [frame-phases.md](design/frame-phases.md) |
 | KYR-37 | **The engine on the registry**: an example depends on a published version, with a local override for engine work | [architecture.md](design/architecture.md) |
 | KYR-38 | **The engine version manager**, and example projects to start from | [version-manager.md](design/version-manager.md) |
 | KYR-39 | **kyotenengine.com**: the home page, the docs and getting started, provisioned and deployed automatically | [website.md](design/website.md) |

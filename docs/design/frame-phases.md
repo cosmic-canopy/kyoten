@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–8 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–9 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -135,7 +135,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    topology in [web-and-native.md](web-and-native.md). *Decided 2026-11-04: single-threaded by default, with threads
    by question 7's switch whenever a game measures the need; web-and-native question 2 picks the threaded topology.*
 9. **Game-logic waits** ("in two seconds, open the door"). Tick-counted deadlines, as FFD's `Countdown`; coroutines on
-   fibers would park on the real clock, which a replay cannot reproduce.
+   fibers would park on the real clock, which a replay cannot reproduce. *Decided 2026-11-04: a wait is a deadline in
+   simulation steps, held as data; designers' sequences come later on KYR-36.*
 10. **A display clock the game does not own.** In VR the headset drives the loop at 72, 90 or 120 Hz with a predicted
     display time, and poses are sampled as late as possible ([xr.md](xr.md)). Does the frame model hold when Output's
     rate is dictated from outside?
@@ -238,7 +239,7 @@ run can both hold.
      cost COOP/COEP, which breaks a cross-origin WebSocket, and a `main` with no DOM.
    - **What keeps the door open:** the frame model never assumes threads, so a worker topology is a later change to the
      scheduler. The topology itself is web-and-native question 2.
-9. **Game-logic waits.**
+9. **Game-logic waits.** *Decided 2026-11-04 (see Decided). The draft is kept as it was brought.*
    - **Recommended:** a wait is a tick-counted deadline (FFD's `Countdown`, 85 lines, harvest § 1). An API may take
      seconds and convert them once, at the tick rate in force when the wait is made.
    - Fibers stay for I/O, because they park on the real clock, which a replay cannot reproduce.
@@ -652,3 +653,46 @@ run can both hold.
     - a serial simulation with helper workers that only pass messages (asset decoding, pathfinding requests). They need
       no headers because they share no memory, but kama has no way yet to host a second wasm instance like that. It is
       kept for later.
+- **2026-11-04, the owner: a wait is a deadline in simulation steps, held as data (question 9).**
+  - **The owner:** "That sounds good to me", for deadlines now and designers' sequences later on KYR-36.
+  - **Three kinds of wait, each on its own clock:**
+
+    | Kind | Examples | Clock |
+    |---|---|---|
+    | Simulation | a door's timer, a respawn, a cooldown, a buff's duration | simulation steps; recorded and replayed |
+    | Presentation | a UI fade, a menu's animation, which must run while the game is paused | the display clock, in Output; never replayed |
+    | I/O | loading a file, an LLM's answer, a web request | fibers, outside the simulation; the result enters at Input's hand-off (question 3) |
+
+  - **Why data and not a parked fiber:**
+    - The simulation is a function of the seed, the inputs and the step count. A wait on the real clock fires at a
+      different step on a slower machine, and a replay or a lockstep peer diverges.
+    - A deadline held as data is saved, hashed, rolled back, and listed by an agent asking what is pending. A parked
+      fiber's state is on its stack, out of reach of all four.
+    - Pausing or slowing the simulation pauses or slows every wait with it.
+  - **How:**
+    - **The deadline is the step it fires at**, on the simulation's base clock (question 2), and never a frame count.
+      FFD's `Countdown` is the precedent: *"TICKS, AND NEVER FRAMES OR PUMPS"* and *"IT READS NO CLOCK ITSELF"*
+      (`friendly-fire-department/engine/src/phase/countdown.kama:8-16`). It counts down; kyoten stores the step it
+      fires at instead, so a waiting timer costs nothing until it is due.
+    - **An API may take seconds** and converts them once to base steps, rounding up so that a wait is never shorter
+      than it asked.
+    - **Each subsystem that waits owns its own queue**, ordered by (step due, then the order the waits were made). The
+      queue is a store in its stated access (question 5). One shared queue would be a store every subsystem writes,
+      which would serialize them all.
+      - **Each step, a subsystem takes what is due:** the cost is the due waits, not all of them. Ties fall in the
+        order they were made, so every machine fires them alike.
+      - **An entry holds** the step due, its sequence number, the entity's handle and what fires. What fires is a
+        variant of an enum the generator emits, so it is a `match` and a direct call, with no closures.
+      - **A destroyed entity's waits cost nothing to cancel.** The handle is generational, and a stale one is skipped
+        when it comes due.
+      - **The structure:** a binary heap first. A timing wheel (buckets of steps, constant time to add and to advance)
+        replaces it if a measurement asks. Its capacity can be a budget like any store's (components question 6).
+    - **std's `PriorityQueue` cannot be saved with the world today.** A field of that type in a `@generate(Serializable,
+      Deserializable)` type is refused, *"`PriorityQueue` has none"* (0.9.845; [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-16).
+      Until kama closes it, kyoten's queue keeps its heap in its own array, which serializes in its stored order.
+  - **Later: sequences for designers** (KYR-36). "Open door; wait 2 s; play sound; wait until the player enters" is
+    written as a record or a short script, and the generator turns it into a state-machine component over these
+    deadlines, as C# compiles `yield return` into a state machine. It reads like a coroutine and still saves, hashes
+    and rolls back. A cutscene is such a sequence too.
+  - **Considered:** coroutines on kama fibers parked on simulation time. They read best, but a fiber's stack is not
+    data, and kama's fibers are built to wait on the real clock, for I/O.
