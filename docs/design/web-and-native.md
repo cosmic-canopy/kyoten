@@ -21,7 +21,8 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
   `requestAnimationFrame` on the web and from a loop natively. Browser APIs are bound with `jsLibraries` (JS glue a
   package ships) and C prototypes, and std's own glue uses a pull model: JS events enqueue and kama polls.
 - **Threads on the web have a price.** A wasm program that spawns runs `main` on a **worker**
-  (`PROXY_TO_PTHREAD`). That needs COOP/COEP headers (which break a cross-origin WebSocket), and the worker has no
+  (`PROXY_TO_PTHREAD`). That needs COOP/COEP headers (which kama says break a cross-origin WebSocket; disputed, see
+  question 2), and the worker has no
   `document`, so no DOM or canvas there. A WebGPU client has already died reading `getContext` on a worker. Nothing in
   kama designs the split between the page thread and workers for an engine; kyoten has to.
 - **The platform packages are designed but unbuilt:** `@kama/gpu` (KR-25, RAII WebGPU handles, typed `acquire`),
@@ -56,6 +57,11 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
    - *Found 2026-11-04* ([frame-phases.md](frame-phases.md) § Decided, question 2):
      - The Gamepad API is `[Exposed=Window]`, so a gamepad is read on the page thread in every topology, once a frame.
      - rAF pauses in a hidden tab, so a networked game needs a policy for its clock there.
+   - *Narrowed 2026-11-04* ([frame-phases.md](frame-phases.md) § Decided, questions 7 and 8): a web build is
+     single-threaded by default, and threads come from a build-time switch a game turns on by measurement. So this
+     question picks the topology a *threaded* web build gets, and whether kyoten's hosting serves the COOP/COEP headers
+     it needs. Whether those headers break a cross-origin WebSocket is disputed (frame-phases question 8), and question
+     7's browser leg should settle it.
 3. **UI in HTML/CSS.** The game's UI is the browser's DOM on the web. Natively: RmlUi through `@kama/ui`, as the peers
    do, or a webview? Is a game's UI the same HTML on both?
 4. **"Light on the web": what is the budget?** The wasm and JS size of the examples ([examples.md](examples.md))

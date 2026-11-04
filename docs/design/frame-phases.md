@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–7 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–8 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -132,7 +132,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    (render command recording) the first one worth having? *Decided 2026-11-04: parallel by design from day one,
    serial by default, and switched on group by group by measurement, with CI holding serial and parallel to one hash.*
 8. **On the web.** Single-threaded first (as FFD chose), or workers from the start? This depends on the thread
-   topology in [web-and-native.md](web-and-native.md).
+   topology in [web-and-native.md](web-and-native.md). *Decided 2026-11-04: single-threaded by default, with threads
+   by question 7's switch whenever a game measures the need; web-and-native question 2 picks the threaded topology.*
 9. **Game-logic waits** ("in two seconds, open the door"). Tick-counted deadlines, as FFD's `Countdown`; coroutines on
    fibers would park on the real clock, which a replay cannot reproduce.
 10. **A display clock the game does not own.** In VR the headset drives the loop at 72, 90 or 120 Hz with a predicted
@@ -232,7 +233,7 @@ run can both hold.
    - **Recommended:** parallel Update is a later, measured step, not a day-one feature. The trigger is a phase over its
      budget in a measured scene. The first parallel work worth having is likely in Output, recording render commands,
      and on the web that is bound to the device's thread (question 8).
-8. **On the web.**
+8. **On the web.** *Decided 2026-11-04 (see Decided). The draft is kept as it was brought.*
    - **Recommended:** single-threaded first, as FFD chose. Nothing measured needs threads yet (question 7), and threads
      cost COOP/COEP, which breaks a cross-origin WebSocket, and a `main` with no DOM.
    - **What keeps the door open:** the frame model never assumes threads, so a worker topology is a later change to the
@@ -600,7 +601,7 @@ run can both hold.
     - Update after those, at large entity counts. KYR-58's RTS row says how large.
   - **What it means for kama's pool:** it does not block the first slice's code. It is needed when slice B starts
     measuring (KYR-12), which is the timing the owner's priority for KY-12 meets.
-  - **Where the switch lives:** proposed to the owner, not yet answered.
+  - **Where the switch lives, in two places** (the owner, 2026-11-04: "Yes I agree with your split"):
     - **At build time, whether a build has threads at all.** A serial build contains no `spawn`, so on the web it
       needs no cross-origin isolation and keeps `main` on the page's thread (question 8, web-and-native question 2).
       kama gates a declaration with `@compileFor(FLAG)`, and `kama check` still analyzes the gated-out path. Probed on
@@ -613,3 +614,41 @@ run can both hold.
     - parallel everywhere from day one, which waits on KY-12 and slows small games until the pool is cheap;
     - Output on its own thread beside the simulation as the first step, which FFD warns "buys throughput at a frame of
       latency".
+- **2026-11-04, the owner: single-threaded on the web by default, threads when a game measures the need
+  (question 8).**
+  - **The owner:** "A sounds like a good starting point... it doesn't block us from going multithreaded at any time on
+    the web... but it seems like a good balance up front for most web games."
+  - **How:** a web build is serial unless the game turns on question 7's build-time switch. A game that does accepts
+    the cross-origin isolation headers. Which threaded topology it gets is [web-and-native.md](web-and-native.md)
+    question 2.
+  - **Why:**
+    - **The serial build keeps `main` on the page's thread**, beside the DOM, the canvas, `requestAnimationFrame`, the
+      Gamepad API (`[Exposed=Window]`, question 2) and Web Audio. It runs on any host with no special headers.
+    - **It still uses several cores**, because the browser does its own work off the page's thread: WebGPU's
+      execution, Web Audio's rendering, image decoding and network streaming. That is the vision's "rely on the best
+      in class browser APIs" ([web-and-native.md](web-and-native.md) § What the vision asks).
+    - **Nothing measured needs threads on the web yet** (question 7), FFD's web build is single-threaded on purpose,
+      and rendering on the web is tied to the thread that owns the GPU device.
+  - **What a threaded web build costs** (checked 2026-11-04):
+    - **COOP and COEP headers on every page that hosts the game**, the price of a SharedArrayBuffer.
+    - **Embedding gets harder.** COEP `require-corp` blocks a cross-origin `no-cors` load unless its response opts in
+      with `Cross-Origin-Resource-Policy`
+      ([MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy)). `credentialless`
+      relaxes that, but one secondary source says browsers do not support it alike, Safari above all *(unverified)*.
+      COOP also separates the page from cross-origin popups, which logins and payments use *(not checked here)*.
+    - **A cross-origin WebSocket is disputed.** kama's CI note says the headers "break a cross-origin WebSocket" (kama
+      `tools/check-target.sh:188-189`), and one public report says the same
+      ([KBVE PR #8218](https://github.com/KBVE/kbve/pull/8218)). MDN's rule covers `no-cors` loads, which a WebSocket
+      is not. The browser CI leg settles it (web-and-native question 7).
+    - **kama moves `main` to a worker in any build that spawns** (`PROXY_TO_PTHREAD`). The worker has no `document`,
+      so the canvas needs an OffscreenCanvas, and input such as the gamepad is read on the page and forwarded.
+  - **What keeps the door open:** kama's web glue already queues browser events for the program to poll
+    ([web-and-native.md](web-and-native.md) § What already exists). Moving the simulation to a worker later changes
+    the topology, not the engine's interfaces.
+  - **To watch:** physics through its library's own threads (Jolt) needs a threaded web build. At an FPS's scale,
+    single-threaded physics on the web is likely enough *(inferred)*. Slice B measures it (KYR-12).
+  - **Considered:**
+    - workers from the start, which picks the topology now and puts the headers on every game;
+    - a serial simulation with helper workers that only pass messages (asset decoding, pathfinding requests). They need
+      no headers because they share no memory, but kama has no way yet to host a second wasm instance like that. It is
+      kept for later.
