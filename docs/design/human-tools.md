@@ -17,6 +17,9 @@
   (2026-11-01).
 - **cosmic-forge is a reference for tools, not for UX** (the owner, 2026-11-03): "The tools are good to reference but
   the UX of cosmic forge is NOT great for humans yet. Perhaps the LLM CLI stuff... but not the UX so much yet."
+- **Web-first tools in kama, the window onto the workflow** (the owner, 2026-11-04): the tools "are a little less
+  important up front but will become the window into the workflow and eventually more human intervention can be added
+  as well. We will do web first tools with kama much like I'm doing with cosmic-forge" ([../VISION.md](../VISION.md)).
 
 ## What already exists
 

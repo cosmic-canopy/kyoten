@@ -183,6 +183,11 @@ Given on 2026-11-04, in the walk-through:
   - **On allocation:** "no allocation is a stretch goal... really means... single allocation or allcation up front is
     the most likely target... or at the very least... very controlled allocations which helps with load transitions
     and such."
-  - **Where it lands:** [design/components.md](design/components.md) question 6 (scale and storage), with budgets as
+  - **Where it lands (budgets):** [design/components.md](design/components.md) question 6 (scale and storage), with budgets as
     records in [design/project-database.md](design/project-database.md), and which machines a game runs on in
     [design/target-platforms.md](design/target-platforms.md). Not decided yet.
+- **Tools: AI first, then the window onto the workflow.** "Recall we are starting AI first ( I believe Unreal is goign
+  to be overhauling and trying the same ) so the tools are a little less important up front but will become the window
+  into the workflow and eventually more human intervention can be added as well. We will do web first tools with kama
+  much like I'm doing with cosmic-forge" ([design/human-tools.md](design/human-tools.md); KYR-26, KYR-27). What Unreal
+  plans is the owner's recollection, not checked here.

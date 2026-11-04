@@ -16,7 +16,8 @@
   MonoBehaviours composed on it per game, "and there may be some lessons we learn from that NOT to do". The aim is "as
   optimal as possible while being flexible and generic".
 - **Every game type**, with an FPS likely the first, and "on par or better than Godot, Unity, or Unreal" (the owner,
-  2026-11-04; [../VISION.md](../VISION.md)).
+  2026-11-04; [../VISION.md](../VISION.md)). KYR-58 stress-tests the model against each kind of game before question 1
+  is decided.
 - **Parallel work proven by the compiler** ([frame-phases.md](frame-phases.md) § Decided, question 6, 2026-11-04).
   Component types are then known at build time, so question 1 is between options A and B. **The owner's leaning**
   (2026-11-04, not yet decided): "B built on A with C internal storage when possible", meaning a world generated from
