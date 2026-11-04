@@ -86,6 +86,9 @@
 5. **The frame under XR.** The headset drives the loop (`XRSession.requestAnimationFrame`, `xrWaitFrame`) with a
    predicted display time. Output renders for that time; head and controller poses are sampled as late as possible.
    How do the four phases and their rates fit a 72, 90 or 120 Hz display clock ([frame-phases.md](frame-phases.md))?
+   *Narrowed 2026-11-04* (frame-phases § Decided, question 10): the headset is one more frame source behind `run`;
+   Output renders for its predicted display time, and poses are read late for drawing and enter Input at the step when
+   the simulation needs them. What is left is measured on a headset (KYR-4).
 6. **Input.** Head pose, tracked controllers and hands are Input-phase sources, recorded like any input, so a VR session
    replays ([replay-and-determinism.md](replay-and-determinism.md)). At what rate, and with what prediction?
 7. **Rendering budget.** Stereo (multiview), foveated rendering, and holding the display rate on a mobile GPU. What does

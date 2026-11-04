@@ -1,7 +1,7 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–9 were decided on 2026-11-04 (see *Decided*). A draft answer to each
-of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
+**Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The draft
+they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
 
@@ -139,9 +139,13 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    simulation steps, held as data; designers' sequences come later on KYR-36.*
 10. **A display clock the game does not own.** In VR the headset drives the loop at 72, 90 or 120 Hz with a predicted
     display time, and poses are sampled as late as possible ([xr.md](xr.md)). Does the frame model hold when Output's
-    rate is dictated from outside?
+    rate is dictated from outside? *Decided 2026-11-04: it holds; the headset is one more frame source behind `run`,
+    and the Quest prototype (KYR-4) measures it.*
 
 ## A draft for the walk-through (2026-11-04)
+
+*Superseded on 2026-11-04: all ten questions are decided (see Decided). This draft is kept as it was brought, for its
+reasoning and evidence.*
 
 **For the owner, not decided:** options and a recommendation per question, to bring and ask. The evidence is the
 sections above and the research they cite. What rests on kama was re-checked on **0.9.839** (2026-11-04):
@@ -243,7 +247,8 @@ run can both hold.
    - **Recommended:** a wait is a tick-counted deadline (FFD's `Countdown`, 85 lines, harvest § 1). An API may take
      seconds and convert them once, at the tick rate in force when the wait is made.
    - Fibers stay for I/O, because they park on the real clock, which a replay cannot reproduce.
-10. **A display clock the game does not own.**
+10. **A display clock the game does not own.** *Decided 2026-11-04 (see Decided). The draft is kept as it was
+    brought.*
     - **Recommended: yes, it holds,** because Output is the only phase on the display clock.
     - **How a frame runs:** each frame, `run` asks the clock source how many ticks are owed and runs them. The clock
       source is rAF, vsync or the headset's predicted display time (architecture question 4 gave `run` the loop). Output
@@ -696,3 +701,29 @@ run can both hold.
     and rolls back. A cutscene is such a sequence too.
   - **Considered:** coroutines on kama fibers parked on simulation time. They read best, but a fiber's stack is not
     data, and kama's fibers are built to wait on the real clock, for I/O.
+- **2026-11-04, the owner: a display clock the game does not own fits the frame model (question 10).**
+  - **The owner:** "Option A sounds good to me so far I think." A headset measures it (KYR-4), so this holds until that
+    measurement says otherwise.
+  - **What already covered it:** the display is an outside clock, and XR is "just another platform variation" (question
+    2). Output asks for each component's value at a time (question 4), and the headset's predicted display time is that
+    time.
+  - **How a headset's frame runs:**
+    - `run` asks the frame source how many simulation steps are owed, runs them, and Output renders for the predicted
+      display time. The frame source is the WebXR session's frame callback (`XRSession.requestAnimationFrame`) on the
+      web and OpenXR's `xrWaitFrame` natively ([xr.md](xr.md) question 5).
+    - At 72 Hz over a 60 Hz simulation, some frames run no step and some run one, and interpolation covers both. FFD's
+      cap of five steps a frame still bounds a stall.
+    - **Head and hand poses are read late, in Output, for drawing,** as camera look takes the newest input (question 2).
+      A pose the simulation needs, such as a hand's grab, enters through Input at the step, like any device. A held
+      object is likely drawn at the late hand pose while the simulation keeps its step pose *(inferred)*.
+    - **Entering VR from a flat web page** swaps the frame source mid-session. The simulation does not notice, because
+      it never read the display's clock.
+    - **A faster physics rate for hands** is question 2's machinery: physics at 90 Hz over 60 Hz gameplay makes the
+      base 180 Hz.
+  - **What only a headset settles** (KYR-4): whether 120 Hz's 8.3 ms frame fits, and whether held objects want physics
+    faster than 60 Hz ([../research/rates.md](../research/rates.md) § What this leaves open). Quest 2 and Quest 3 run at
+    72 to 120 Hz, 72 by default (rates.md, from Meta).
+  - **Considered:**
+    - running the simulation on the headset's clock, which ties the simulation to the display. Quest's rate can be
+      changed between 72 and 120 Hz, and PC and VR players in one simulation need one base;
+    - a separate frame model for XR, which contradicts the owner's "just another platform variation".
