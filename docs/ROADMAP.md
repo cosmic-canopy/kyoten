@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-53**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-54**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -27,6 +27,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 |---|---|---|
 | KYR-6 | **The frame core**: phases, the fixed-tick clock and its sub-rates, the RNG, the world hash and the input log, starting from FFD's `engine::phase` | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |
 | KYR-7 | **The component model, first version**, as KYR-1 decides it | [components.md](design/components.md) |
+| KYR-53 | **The module-rule check**: `tools/check-imports` fails CI when an engine system imports another system. It reads one layer table and each file's `import` block, and has `--json` for an agent. It lands with KYR-6, when the engine has a second module, and retires if kama takes KAMA_GAPS KY-11 | [architecture.md](design/architecture.md) · [KAMA_GAPS](KAMA_GAPS.md) |
 | KYR-51 | **`@kama/window`, built by kyoten** (kama's KR-26, to kama's design): several windows or canvases, one event queue, physical keys, pointer lock, gamepad, and a headless window for tests. In its own `kama-window` repository, from FFD's web platform header and the-mallow-man's native one | [architecture.md](design/architecture.md) · [kama § 8](../../kama/docs/ROADMAP_DETAIL.md#s8-input) |
 | KYR-52 | **`@kama/gpu`, built by kyoten** (kama's KR-25, to kama's design): the safe WebGPU binding, a resource per handle and a typed acquire, generated from both `webgpu.h` headers. In its own `kama-gpu` repository, from cosmic-forge's device and `wgpugen` | [architecture.md](design/architecture.md) · [kama § 8](../../kama/docs/ROADMAP_DETAIL.md#s8-gpu-wrapper) |
 | KYR-8 | **The platform seam**: a window or canvas, keyboard, mouse, gamepad and the app loop, on the web and on Windows, Linux and macOS, on KYR-51. The game's `main` builds the app and calls `run`, which owns the loop on every target | [web-and-native.md](design/web-and-native.md) · [platforms](design/target-platforms.md) · [architecture](design/architecture.md) |
