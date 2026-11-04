@@ -1,6 +1,6 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** in the walk-through (KYR-1). Questions 1–5 were decided on 2026-11-04 (see *Decided*). A draft answer to each
+**Status:** in the walk-through (KYR-1). Questions 1–6 were decided on 2026-11-04 (see *Decided*). A draft answer to each
 of the rest, for the owner, is in *A draft for the walk-through* (2026-11-04).
 
 ## What the vision asks
@@ -125,6 +125,8 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
    as kama's KR-3 step 9 (KY-12).*
 6. **Proving it safe.** kama's `scope` proves disjointness of `ref` field borrows. Can the component model
    ([components.md](components.md)) be shaped so a phase's parallel work is checked by the compiler, not by convention?
+   *Decided 2026-11-04: yes, proven by the compiler, with an explicit opt-out the schedule shows; components question 1
+   narrows to options A and B.*
 7. **When does parallelism pay?** Both peers' ticks are microseconds; their frame cost is the renderer (TMM: renderer
    CPU about 0.9 ms a frame). Is parallel Update a day-one feature or a measured later step, and is parallel *Output*
    (render command recording) the first one worth having?
@@ -214,7 +216,8 @@ run can both hold.
      a measurement asks. Once access is stated, parallelism is a scheduler change (component-models § 5.8, *Later*).
      When a measurement does ask, build the pool as KR-3 step 9 in kama rather than as kyoten's own, by the rule that
      what can exist outside kyoten goes to kama. That last part is the owner's call.
-6. **Proving it safe.**
+6. **Proving it safe.** *Decided 2026-11-04, with an explicit opt-out (see Decided). The draft is kept as it was
+   brought.*
    - **Recommended: yes, checked by the compiler.** Shape the component model so that a phase's parallel group is a
      `scope` over named store fields, which is components options A and B (component-models § Options).
    - **What the compiler then checks:** writes are disjoint. Two readers of one store wait for KR-288, or read a
@@ -521,3 +524,52 @@ run can both hold.
     - a number per subsystem (Unity's Script Execution Order);
     - named bands fixed per phase;
     - kyoten's own pool, which the rule sends to kama.
+- **2026-11-04, the owner: parallel work is proven safe by the compiler, with an explicit opt-out (question 6).**
+  - **The owner:** "I am always in favor of trying to detect errors at compile time over runtime... especially
+    threading errors. Race conditons are typically the most problematic errors to debug." And, after the trade was
+    laid out: "I like the compile time proof and the gaps you want to file with Kama make sense to me."
+  - **What the compiler proves:**
+    - **A subsystem stays inside what it stated.** Its signature is its stated access: what it reads arrives as
+      `const ref`, and what it writes as `ref`. kama refuses a write to what it only reads, and the module rule
+      ([architecture.md](architecture.md) § Decided) keeps it from reaching a store it was not handed.
+    - **A parallel group cannot race.** Task-parallel work runs as kama `scope` blocks over named stores, and
+      data-parallel work as `parallel_for` over a store or over chunks. kama refuses two tasks on the same data at
+      compile time: *"two children in this `scope` borrow overlapping places (`this.vel` and `this.vel`) — a shared
+      mutable borrow across tasks would race"* (0.9.845).
+    - **The startup check of question 5 stays.** It proves something the compiler does not: that no result depends on
+      an order nobody stated.
+  - **The opt-out:**
+    - A subsystem that needs a shape kama cannot prove goes through an `unsafe` seam, kama's `UnsafePtr` "primary
+      isolate idiom" (kama `docs/SPEC.md:7430-7433`). It is named and greppable.
+    - The visible schedule (question 5) marks that subsystem as unchecked, and the no-conflict rule still covers what it
+      states.
+    - A C library's own threads, such as Jolt's pool, are outside the proof, as in any engine.
+    - **Why an opt-out and not an opt-in:** with opt-in safety the default path is the unsafe one, and agents, the
+      first consumer ([ai-first-api.md](ai-first-api.md) § Decided), follow defaults. kama itself works this way:
+      its check is always on for safe code, and `unsafe` is the way out.
+  - **What it costs:**
+    - **Component types are known at build time.** [components.md](components.md) question 1 narrows to options A and
+      B of [../research/component-models.md](../research/component-models.md) § Options for the walk-through. Option
+      C's columns, typed only at run time, would sit behind an `UnsafePtr` seam, where kama's checks stop. A mod or the
+      editor adding a component *type* needs a rebuild until kama closes KY-14 and KY-15; hot reload (KYR-41) eases it.
+    - **Run time pays nothing for the proof.** It adds no locks, atomics or access checks. What is lost is parallelism
+      wherever kama's check is stricter than the truth. Those cases run serially, correctly, until kama widens the
+      check. Probed on **0.9.845** (2026-11-04):
+      - two readers of one store are refused ([../KAMA_GAPS.md](../KAMA_GAPS.md) KY-5);
+      - a `spawn` takes exactly one argument, so a system that reads one store and writes another needs both under one
+        field, which then overlaps any other system on either store (KY-13);
+      - `parallel_for` binds an element, not its index, so a data-parallel system over two stores needs both in one
+        element. A chunk holding both columns does that, and kama proves a `parallel_for` over chunks;
+      - the job pool kama plans takes moved jobs, which cannot borrow the world's stores, and a `parallel_for` heaps a
+        bundle on every call, so it is refused in `@noheap` code (both added to KY-12).
+  - **What it leaves to components question 1:** A or B. **The owner's leaning:** "B built on A with C internal storage
+    when possible", meaning a world generated from records (B), whose generated code is A's, with ECS-shaped storage
+    (chunks) inside it. "So far it sounds reasonable." It is decided at components question 1, not here.
+  - **The kama asks** (the owner: "the gaps you want to file with Kama make sense"): KY-13, KY-14 and KY-15 filed, and
+    KY-12 extended, all on 0.9.845. KY-5 is raised with the pool. KY-14 and KY-15 are wanted whether or not kyoten
+    picks option C.
+  - **Considered:**
+    - engine-guaranteed safety, a run-time scheduler over option C held by the startup check and by tests, as Bevy
+      and Unity's DOTS are;
+    - deferring the whole question to components question 1;
+    - an opt-in proof.
