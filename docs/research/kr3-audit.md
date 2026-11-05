@@ -25,6 +25,10 @@ and line), or *not checked*.
   - KR-327: whether a single-threaded wasm build is a per-build setting. Yes, and frame-phases decided it.
 - **One new gap was found, and it is a bug against kama's own promise.** `reproducible-float` does not cover
   `std::math`'s transcendental functions, so `sin` gives different bits natively and on wasm (KY-19, filed today).
+- **A second bug was found the same day, while components question 3 was prepared, and it touches the pool directly.**
+  A `parallel_for` body may read the container it splits by `ref`, so a worker reads an element another worker is
+  writing (KY-20). *Probed:* three runs read a counter mid-count. KR-323 closed the write half on 0.9.851. Moving
+  `parallel_for` onto the pool is the moment to close the read half.
 - **kyoten's needs, added to five rows kama already has:**
   - **KR-320:** long jobs arrive with the held `Job<R>`, not later.
   - **KR-325:** names, priorities and core classes for threads.

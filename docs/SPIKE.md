@@ -273,7 +273,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17, KY-18 and KY-19 are open there; take the next id from its counter.
+  KY-17 and KY-18 to KY-20 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
