@@ -143,6 +143,18 @@ never changes it, so serial and parallel runs see the same values:
 - **this step**: other entities' current values. It runs after their writers and may not write what it reads. In a
   parallel group its writes are staged and copied in at the group's end.
 
+**The order promise** (*decided*, question 4). The engine promises it for every game, and nothing is opted into:
+- **the same history gives the same order** on every run and machine, and a save keeps chunks, free slots and handle
+  generations exactly. Threads still take work in any order; only the order results are joined in is fixed;
+- **removal is swap-and-pop**, in tables and side stores. Spawn order is not promised; a system that needs an order
+  sorts by a key component;
+- **randomness is keyed** by world seed, step, handle and purpose, so a draw does not depend on visiting order;
+- **a combined result** (a sum, a minimum, "who hit first") folds within each chunk, then over chunks in chunk order,
+  and ties break by handle.
+
+Whether the simulation is also bit-identical across platforms is
+[design/replay-and-determinism.md](design/replay-and-determinism.md) question 1 (*open*).
+
 ## Prior art
 
 Each row is a choice kyoten made or proposes, the engines that made it before, and where kyoten differs.
@@ -163,6 +175,8 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | World data in cells with palettes | Minecraft's sections of 16×16×16, each with its own palette ([chunk format](https://wiki.vg/Chunk_Format)) | question 9 |
 | Pre-fractured destruction | Unreal Chaos's geometry collections ([destruction](https://dev.epicgames.com/documentation/unreal-engine/destruction-overview)) | question 9 |
 | Large worlds: doubles only at the absolute position, floats inside | Box3D ([large worlds](https://box2d.org/documentation3d/large-worlds.html)); Unreal 5's double-precision types ([LWC](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)) | proposed: zone-local floats with whole-number zone coordinates (question 9) |
+| An order every game is promised | Godot specifies its order; Unity, Bevy, EnTT and Unreal disclaim it, and Unity's chunk order is "deterministic per world" ([research/component-models.md](research/component-models.md) § 5.4) | promised by the engine, serial and parallel alike (question 4) |
+| Cross-platform physics as a build option | Jolt: deterministic on one platform given the same calls and binary; `CROSS_PLATFORM_DETERMINISTIC` is "approximately 8% slower" ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)) | replay question 1 |
 | Hand-coded maths for cross-platform determinism | Box2D: *"The atan2f function in the standard library is not cross-platform deterministic"* ([math_functions.h](https://github.com/erincatto/box2d/blob/main/include/box2d/math_functions.h)) | asked of kama as KY-19 |
 
 ## Where to read more

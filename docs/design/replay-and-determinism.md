@@ -54,6 +54,10 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
    constrains physics ([networking.md](networking.md) and the Constraints phase in [frame-phases.md](frame-phases.md)):
    a third-party physics engine may not be deterministic across CPUs. Is determinism a promise the engine makes, or a
    pattern a game opts into?
+   - *Narrowed 2026-11-05 at [components.md](components.md) question 4:* on one platform, the engine promises the order
+     to every game, with no opt-in. This question keeps the cross-platform tier: floats, libm (KY-19) and physics. Jolt's
+     cross-platform build is "approximately 8% slower". The owner asked whether any game should opt in, and this tier is
+     where a reason could turn up.
 2. **What is recorded?** Every Input-phase source (devices, network receive, seeds, time where a game reads it) as one
    ordered log per tick? What about inputs that do not fit a tick (text input, file drops, asset loads)? And the
    content layers loaded, since one id can resolve differently under another stack

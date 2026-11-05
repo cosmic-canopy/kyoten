@@ -66,18 +66,23 @@ answer is recorded in its doc's *Decided*:
   - **Engine modules** are written the way a game's systems are, so the engine never names a game's world.
   - **The layers:** frame, world, engine modules, the agent surface. This also decides architecture's layer names.
   - **The model in one read** is now [REFERENCE.md](REFERENCE.md), and AGENTS.kyoten.md points agents at it.
+- **[design/components.md](design/components.md), question 4** (2026-11-05): the engine promises the order for every
+  game. Only the order results are joined in is fixed, not the order threads run in, so the promise is close to free;
+  the costly kind, cross-platform, stays replay question 1's. Removal is swap-and-pop, randomness is keyed by seed,
+  step, handle and purpose, and a combined result folds in chunk order. A `Map`'s order was probed identical natively
+  and on wasm.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 4–9**, with question 5 decided beside project-database 11.
+1. **[design/components.md](design/components.md), questions 5–9**, with question 5 decided beside project-database 11.
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **40 questions remain:** components 6 (4–9; question 9
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **39 questions remain:** components 5 (5–9; question 9
    was added as question 2 was decided), replay-and-determinism 5, project-database 8, web-and-native 7,
-   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 37 separate
+   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 36 separate
    decisions. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
