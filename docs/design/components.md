@@ -440,8 +440,11 @@ Questions 5–9 are open; question 9 was added at question 2. The model's pictur
         arrival wait.
     - **The expensive kind of determinism is the cross-platform kind.** Jolt is deterministic on one platform given
       "the same order" of calls and "the same binary code"; its cross-platform build is "approximately 8% slower"
-      ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)). The libm gap is KY-19. Whether a game may choose
-      that tier is replay question 1. That question is where a reason to opt in could still turn up.
+      ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)). The libm gap is KY-19 (kama KR-328). It reaches past
+      platforms: one Windows executable gives different bits with UCRT's FMA3 paths on and off, so two CPUs can
+      disagree (kama `8813060d`, the same day). The promise here is the order; whether values agree across machines
+      is replay question 1, and so is whether a game may choose that tier. That question is where a reason to opt in
+      could still turn up.
     - **Why not opt in:** frame-phases question 5's check that serial and parallel hash alike needs the promise, as do
       replays, lockstep and rollback, bug reports from a seed and a log, and an agent re-running a test. With an opt-in,
       every engine module would carry and test both behaviours, and a game turning it on late would find what breaks

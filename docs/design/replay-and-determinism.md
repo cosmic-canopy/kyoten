@@ -58,6 +58,10 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
      to every game, with no opt-in. This question keeps the cross-platform tier: floats, libm (KY-19) and physics. Jolt's
      cross-platform build is "approximately 8% slower". The owner asked whether any game should opt in, and this tier is
      where a reason could turn up.
+   - *Learned the same day (kama KR-328's brief, `8813060d`):* the tier is wider than platforms. One Windows executable
+     gives different `std::math` bits with UCRT's FMA3 paths on and off, so two PCs can disagree, and kama says *"a
+     program that never targets wasm still needs one implementation compiled in"*. musl compiled in gives wasm's bits
+     on all 28 functions at risk.
 2. **What is recorded?** Every Input-phase source (devices, network receive, seeds, time where a game reads it) as one
    ordered log per tick? What about inputs that do not fit a tick (text input, file drops, asset loads)? And the
    content layers loaded, since one id can resolve differently under another stack

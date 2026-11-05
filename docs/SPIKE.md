@@ -108,6 +108,10 @@ answer is recorded in its doc's *Decided*:
   KR-326 (both shapes) and KR-327 (a per-build setting), and adds KY-19 (`reproducible-float` does not cover
   `std::math`). It also maps what each open question leans on in kama, so the gaps that depend on an answer are known
   in advance.
+
+  **kama ported the audit the same day** (`b6847d37`): KY-18 is now KR-329 and KY-19 is KR-328. **Still to relay:**
+  KY-20 (a `parallel_for` body reading the container it splits), which is not in kama's roadmap yet, and KY-21 (an
+  overfull list reported as a type mismatch).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -299,7 +303,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-20 are open there; take the next id from its counter.
+  KY-17 to KY-21 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
