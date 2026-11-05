@@ -120,6 +120,12 @@ answer is recorded in its doc's *Decided*:
   peers' physics) and RmlUi (under `@kama/ui`, natively) may serve first, and kyoten replaces each with its own. *Proposed
   the same day, to confirm:* each system's interface is kyoten's from the start, designed from the decided frame, so a
   borrowed library sits behind it and leaving it changes no game.
+  - **UI is the largest case of it** (the owner, the same day): "everything should ideally leverage best in class native
+    web tech for web and have counterparts we build natively. The UI system is a BIG part of that. The web ( html and
+    CSS3 ) is the best UI platform out there today IMHO and it saves a TON on native web." So a game's UI is HTML and
+    CSS, the browser's own on the web, and natively a counterpart kyoten builds, with RmlUi at most a stopgap.
+    web-and-native question 3 keeps what is left: whether a game's UI is the same HTML on both, and how much of HTML and
+    CSS the native counterpart covers, in what order.
 
 - **The evidence rows are done.** Each was checked against its sources before it was committed, and the design docs
   they feed point at them under *What already exists*:
