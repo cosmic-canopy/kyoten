@@ -39,7 +39,7 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
 
 ## The engine's layers
 
-*Proposed at components question 3, choice 6; the module rule itself is decided* ([design/architecture.md](design/architecture.md)
+*Decided at components question 3, choice 6 (2026-11-05), on architecture question 2's module rule* ([design/architecture.md](design/architecture.md)
 § Decided, question 2). Each layer imports only the layers above it.
 
 ```
@@ -82,7 +82,7 @@ which are question 9.
 ## One step, then a display frame
 
 *The phases, rates, order and read-only Output are decided* ([design/frame-phases.md](design/frame-phases.md) §
-Decided). *Snapshot reads and queued structural changes are components question 3.*
+Decided). *Snapshot reads and queued structural changes were decided at components question 3.*
 
 ```
  each simulation step ────────────────────────────────────────────►  each display frame ►
@@ -105,8 +105,8 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | Term | Means | Status |
 |---|---|---|
 | **Engine** | kyoten: one kama package in four layers | decided |
-| **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and singletons. It never imports another | decided (the rule); proposed (its contents) |
-| **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface | proposed |
+| **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and singletons. It never imports another | decided |
+| **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface | decided |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
 | **Game** | a separate package and repository: its records, its system bodies, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, system, budget or zone | decided |
@@ -121,20 +121,27 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget | decided |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
-| **Singleton** | a store holding one value per world or per zone: the physics world, an RNG, a spatial grid | proposed (question 3, shape 3) |
+| **Singleton** | a store holding one value per world or per zone: the physics world, an RNG, a spatial grid. A system's state between steps lives in one | decided (question 3, choice 2) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
-| **System** | a function over components, plus a record that schedules it. Its signature is its access | decided (the term); proposed (the record's role, choice 2) |
+| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access | decided (question 3, choices 1 and 2) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
 | **Group** | systems of one phase ordered together; a Constraints group may iterate as a whole | decided |
 | **Schedule** | the resolved order of every system, with its access, rate and cost, shown to humans and agents | decided |
 | **Step** | one tick of the simulation's one clock | decided |
 | **Frame** | one display refresh; Output runs once per frame | decided |
-| **Snapshot** | the world, or the columns other systems read, as it stood at the end of a step | proposed (question 3, choice 3) |
+| **Snapshot** | the world, or the columns other systems read, as it stood at the end of a step. A system reading other entities sees it by default | decided (question 3, choice 3) |
 | **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
 
-**Older wording, until the decided docs are reworded:** in [design/frame-phases.md](design/frame-phases.md) and
-[design/architecture.md](design/architecture.md), read "subsystem" as **system**, and "a system" in the sense of render
-or audio as **engine module**. Components question 1's "system" already means the function.
+**Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
+were reworded to this vocabulary on 2026-11-05, except inside quotes. Research docs written before then, and quotes,
+may still say "subsystem" for **system**, or "system" for an **engine module** such as render or audio.
+
+**How a system reads other entities** (*decided*, question 3, choice 3). It declares one of two modes, and the scheduler
+never changes it, so serial and parallel runs see the same values:
+- **the previous step**, the default: other entities as they were at the end of the last step. It always runs in
+  parallel, needs no order against writers, and may write what it reads;
+- **this step**: other entities' current values. It runs after their writers and may not write what it reads. In a
+  parallel group its writes are staged and copied in at the group's end.
 
 ## Prior art
 
@@ -152,7 +159,7 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | Bounded lists inline in a chunk, with a stated rule when full | Unity's dynamic buffers ([manual](https://docs.unity3d.com/Packages/com.unity.entities@1.2/manual/components-buffer-introducing.html)) | refuse or spill, stated per list |
 | Shared read-only assets by handle | Unity's blob assets ([blob assets](https://docs.unity3d.com/Packages/com.unity.entities@6.6/manual/blob-assets-concept.html)) | — |
 | Queued structural changes, played back in an order threads cannot change | Unity's command buffers, sorted by a sort key such as the chunk's index ([playback](https://docs.unity3d.com/Packages/com.unity.entities@1.3/manual/systems-entity-command-buffer-playback.html)) | the sort is always on |
-| Reading other entities from a parallel system | Unity's `ComponentLookup` reads them live, checked by the safety system at run time ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)) | proposed: the previous step's snapshot, or this step's with staged writes, both proven at compile time (question 3, choice 3) |
+| Reading other entities from a parallel system | Unity's `ComponentLookup` reads them live, checked by the safety system at run time ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)) | the previous step's snapshot by default, or this step's values declared by the system, both proven at compile time (question 3, choice 3) |
 | World data in cells with palettes | Minecraft's sections of 16×16×16, each with its own palette ([chunk format](https://wiki.vg/Chunk_Format)) | question 9 |
 | Pre-fractured destruction | Unreal Chaos's geometry collections ([destruction](https://dev.epicgames.com/documentation/unreal-engine/destruction-overview)) | question 9 |
 | Large worlds: doubles only at the absolute position, floats inside | Box3D ([large worlds](https://box2d.org/documentation3d/large-worlds.html)); Unreal 5's double-precision types ([LWC](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)) | proposed: zone-local floats with whole-number zone coordinates (question 9) |

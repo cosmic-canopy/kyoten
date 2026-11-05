@@ -1,9 +1,13 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1 and 2 decided on 2026-11-05. Question 1: B built on A, with a table of chunks per (zone, prefab)
-and side stores for components gained at run time. Question 2: a component is a plain value, with all four kinds of data
-on day one, and world data is not a component. Question 3 is partly decided (2026-11-05): the vocabulary, queued
-structural changes, engine modules written like a game's systems, and the layers; its choices 2 and 3 are open.
+**Status:** questions 1–3 decided on 2026-11-05.
+- **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
+  time.
+- **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
+  component.
+- **Question 3:** the vocabulary, a system as a function plus its record, two declared modes for reading other
+  entities, queued structural changes, engine modules written like a game's systems, and the layers.
+
 Questions 4–9 are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
 
@@ -78,10 +82,9 @@ Questions 4–9 are open; question 9 was added at question 2. The model's pictur
    contract bounds, `scope`'s disjointness proof)?
 2. **What is a component?** *(Decided 2026-11-05, below.)* A plain `type value` (copyable, serializable, hashable field
    by field), always? How does a component that owns memory (a mesh, a path) fit?
-3. **What is a system?** *(Partly decided 2026-11-05, below: choices 1, 4, 5 and 6. Choices 2 and 3 are open.)* A
-   functor contract (`implements System`) with a phase and a rate, registered by the game? How
-   does it declare what it reads and writes, so the scheduler can run disjoint systems in parallel and kama can check
-   it?
+3. **What is a system?** *(Decided 2026-11-05, below.)* A functor contract (`implements System`) with a phase and a
+   rate, registered by the game? How does it declare what it reads and writes, so the scheduler can run disjoint
+   systems in parallel and kama can check it?
 4. **Determinism.** Iteration order is part of the simulation (FFD). Does the component store guarantee a stable,
    specified order?
 5. **Records and components.** A project-database record ([project-database.md](project-database.md)) defines an
@@ -366,9 +369,43 @@ Questions 4–9 are open; question 9 was added at question 2. The model's pictur
     - **Reading this step's values works in parallel when writes are staged.** The system writes its output to a
       staging store beside the table, and a pass at the end of its group copies it in. kama proves it, since the table
       is only read and the staging store is what is split (exit 7, as expected).
-  - **Still open in question 3:**
-    - **Choice 2:** a system as a function plus its record, with any state in a singleton, against Unity's system
-      object.
-    - **Choice 3:** which read modes a system may declare (the previous step's snapshot, this step's values with staged
-      writes, or this step's values serially), and which is the default. The owner wants "as much parallelism as we
-      can", and asked whether a serial system reading the live world drifts from parallel ones.
+  - **Choices 2 and 3 followed the same day, below.**
+- **2026-11-05, the owner: question 3's choices 2 and 3, which close question 3.** "All sounds good... I take your
+  recommendations yes."
+  - **Choice 2: a system is a function plus its record, and any state it keeps is a singleton.**
+    - **The parts:** the record holds what Unity puts in a system's attributes (phase, group, order, rate,
+      iterations), and the function is its `OnUpdate`. State kept between steps (an AI cache, a timer, a physics world)
+      is a singleton store, declared in the record and passed in by `ref` like any store.
+    - **The owner's reading, confirmed:** "your function plus a record would act as an object as the record stores
+      metadata". The difference from Unity's system object is where the state lives.
+    - **Why:** the state is part of the world. It is saved, snapshotted, rolled back, hashed and budgeted, and its
+      access is proven like any other store's. A field on a system object would sit outside all of that, and outside
+      the scheduler's view *(reasoning; Unity's docs not checked on this point)*.
+    - **What it costs:** a system has three parts to look at, which the schedule view and the editor show as one. Setup
+      and teardown need a spelling. *Proposed:* a singleton's initial value comes from its record, and systems may run
+      when a zone loads or unloads.
+    - **Considered:** a system object with its own fields, as Unity's `ISystem` and `SystemBase` have, with lifecycle
+      hooks (`OnCreate`, `OnDestroy`). It is familiar, and everything sits in one place.
+  - **Choice 3: a system that reads other entities declares one of two modes.** The scheduler never chooses the mode,
+    so a system sees the same values whether its group runs serially or in parallel. That keeps frame-phases question
+    5's rule that serial and parallel runs hash alike, and it answers the owner's question about drift.
+    - **The previous step, the default.** The system sees other entities as they were at the end of the last step,
+      through a snapshot of the columns it reads. It may also write what it reads, as flocking reads old velocities and
+      writes new ones. It always runs in parallel and needs no order against writers. It costs one step of latency and
+      the snapshot's memory. *Probed:* it checks, and is sound (exit 3).
+    - **This step.** The system sees other entities' current values. It runs after whatever writes them, which the
+      no-conflict check enforces, and it may not write what it reads. When its group runs in parallel the generator
+      stages its writes and copies them in at the group's end; when serial, it writes in place. Since it never reads
+      what it writes, the two give the same result. *Probed:* the staged form checks and gives the right value (exit 7).
+    - **The owner's aim:** "I definitely want to have as much parallelism as we can". Both modes run in parallel, and
+      the default needs no ordering at all.
+    - **Considered:**
+      - **Unity's live reads through `ComponentLookup`**, checked by its safety system at run time
+        ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)).
+        It gives current values with no snapshot or staging. But the check sees only code paths that run, a reader
+        still waits for its writers, and kama cannot prove it: KY-20 is that read.
+      - **A serial system reading the live world without declaring it,** which was first proposed. The owner asked
+        whether it drifts from parallel runs, and it would.
+  - **Left to later questions:**
+    - **question 6:** the snapshot's and the staging stores' memory, within the budgets;
+    - **question 8:** the spelling of a lookup, of a command, and of the two modes.

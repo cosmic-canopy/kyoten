@@ -55,9 +55,13 @@ answer is recorded in its doc's *Decided*:
   A prefab with owned data gets a resource chunk, which still splits across workers and is snapshotted by `copy`. Each
   list states whether it refuses or spills when full. World data (voxels, terrain, destruction) is not a component; it
   lives in world stores of cells, and the owner added question 9 for them, with procedural generation.
-- **[design/components.md](design/components.md), question 3, in part** (2026-11-05):
+- **[design/components.md](design/components.md), question 3** (2026-11-05):
   - **The vocabulary:** "system" is a function plus its record, render or audio is an "engine module", and
-    "subsystem" is retired.
+    "subsystem" is retired. frame-phases.md and architecture.md were reworded to it the same day, apart from quotes.
+  - **A system's parts:** its record holds phase, group, order, rate and iterations, its signature is its access, and
+    any state it keeps between steps is a singleton in the world.
+  - **Reading other entities:** a system declares the previous step (the default, always parallel) or this step
+    (ordered after the writers, with its writes staged when parallel). The scheduler never changes what a system sees.
   - **Queued structural changes,** applied at the end of the phase, sorted by chunk.
   - **Engine modules** are written the way a game's systems are, so the engine never names a game's world.
   - **The layers:** frame, world, engine modules, the agent surface. This also decides architecture's layer names.
@@ -65,17 +69,15 @@ answer is recorded in its doc's *Decided*:
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), question 3's choices 2 and 3, then questions 4–9**, with question 5
-   decided beside project-database 11. When question 3 closes, frame-phases.md and architecture.md are reworded to the
-   new vocabulary ("subsystem" → system, render or audio → engine module).
+1. **[design/components.md](design/components.md), questions 4–9**, with question 5 decided beside project-database 11.
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **41 questions remain:** components 7 (3–9, since
-   question 9 was added as question 2 was decided), replay-and-determinism 5, project-database 8, web-and-native 7,
-   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 38 separate
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **40 questions remain:** components 6 (4–9; question 9
+   was added as question 2 was decided), replay-and-determinism 5, project-database 8, web-and-native 7,
+   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 37 separate
    decisions. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**

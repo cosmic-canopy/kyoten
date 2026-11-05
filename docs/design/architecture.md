@@ -1,10 +1,12 @@
 # Architecture: the engine, the games, the repository
 
 **Status:** the spike's questions here are decided: 1–4 and question 7's directories on 2026-11-02, question 7's
-namespaces on 2026-11-03, and question 2's module rule (a system never imports another system) on 2026-11-04. The
-layer names were decided at components question 3 (2026-11-05): frame, world, engine modules and the agent surface.
-Question 5 is settled with question 7's directories, question 6 moved to the platform product, and question 8 waits for
-KYR-37.
+namespaces on 2026-11-03, and question 2's module rule (an engine module never imports another engine module) on
+2026-11-04. The layer names were decided at components question 3 (2026-11-05): frame, world, engine modules and the
+agent surface. Question 5 is settled with question 7's directories, question 6 moved to the platform product, and
+question 8 waits for KYR-37. *Reworded 2026-11-05 to the vocabulary of [components.md](components.md) question 3:
+render, audio or net is an "engine module" (this doc first called it a "system"), and a "system" is a function over
+components. Quotes keep their words.*
 
 ## What the vision asks
 
@@ -55,8 +57,8 @@ The tension between their lesson and that purpose is the first thing to settle.
 2. **The package split.** One `kyoten` package, or several (core/frame, components, platform, render, audio, net,
    database, tools), each a workspace member? What may depend on what, and which parts are useful outside kyoten
    (published to the registry, as `@kama/ui` was)? *Decided 2026-11-02: one package with modules, and a package of
-   its own for anything standalone or gated. What may import what, decided 2026-11-04: a system never imports another
-   system.*
+   its own for anything standalone or gated. What may import what, decided 2026-11-04: an engine module never imports
+   another engine module.*
 3. **kama's platform packages.** Build kyoten's platform layer on `@kama/gpu` and `@kama/window`, build those packages
    (in kama's design) as part of kyoten's work, or keep kyoten's own layer as the peers did? *Decided 2026-11-02:
    kyoten builds them.*
@@ -162,7 +164,8 @@ The tension between their lesson and that purpose is the first thing to settle.
     0.9.823: a module's `visibility` may list the modules allowed to import it, and kama refuses any other. A module a
     game imports must be `public`, though, and that opens it to every sibling too. So between public modules, only a
     package boundary is checked. Re-probed on 0.9.839, 2026-11-04, with the same result.)*
-  - **Which module may import which** was decided on 2026-11-04: a system never imports another system (below).
+  - **Which module may import which** was decided on 2026-11-04: an engine module never imports another engine module
+    (below).
   - **Considered:** several workspace members from day one, as the-mallow-man (9) and cosmic-forge (8) have; and a
     core package with one package per platform and per C-backed feature.
 - **2026-11-02, the owner: kyoten builds `@kama/window` and `@kama/gpu` (question 3).**
@@ -181,7 +184,7 @@ The tension between their lesson and that purpose is the first thing to settle.
     - The peers' layers hold one window per process in file-static C state, which an editor and XR cannot use.
   - **Considered:** waiting for kama to build them, which puts slice A behind kama's queue; and kyoten's own layer
     beside them, a third copy of the same code.
-- **2026-11-02, the owner: each system is built on a general-purpose library, and the graphics one is shaped like
+- **2026-11-02, the owner: each engine module is built on a general-purpose library, and the graphics one is shaped like
   Three.js.** "Each system 'graphics, audio, networking, etc.' can probably be built from a more general purpose
   package library. Recall also that each should be as lean as possible on the web and rely on the best in class
   browser APIs for that purpose." On graphics: "the graphics side can be general utilities that help other projects
@@ -260,32 +263,32 @@ The tension between their lesson and that purpose is the first thing to settle.
     owner's first answer, and the owner corrected it the same day: what decides is whether a package can exist outside
     kyoten, not whether it wraps another. Also considered: a prefix in every name (`kyoten_net`), which kama refused as
     a workaround when it ruled KR-291.
-- **2026-11-04, the owner: a system never imports another system (question 2, the module rule).**
-  - **The rule:** a system never imports another system. It reads what other systems publish, in phase order. That
-    is components, and read-only query resources whose contract lives in the world layer and which a system
-    implements, such as a raycast against physics's world or a nav path.
-    - Data still moves between systems all the time, through the world, never by one system calling into another's
+- **2026-11-04, the owner: an engine module never imports another engine module (question 2, the module rule).**
+  - **The rule:** an engine module never imports another engine module. It reads what other engine modules publish, in
+    phase order. That is components, and read-only query resources whose contract lives in the world layer and which an
+    engine module implements, such as a raycast against physics's world or a nav path.
+    - Data still moves between engine modules all the time, through the world, never by one calling into another's
       module. Render reads the transforms Constraints settled. Audio derives its cues in Output from the settled tick.
       Update reads the contacts Constraints found, on the next tick.
-    - It rests on the owner's direction of 2026-11-03: each engine system is driven by components in the phases
+    - It rests on the owner's direction of 2026-11-03: each engine module is driven by components in the phases
       ([frame-phases.md](frame-phases.md) § What the vision asks).
   - **Why**, in the owner's words: "The goal is that each PHASE can be made parallel safely and efficiently to increase
     overall performance and utilization of CPU and GPU resources. It is also to make the engine easy to use correctly
     and hard to use incorrectly."
-    - A scheduler can run a phase's subsystems in parallel only if it knows what each one reads and writes. A
-      component or a published query is an access the system declares. A call into another system's module is
+    - A scheduler can run a phase's systems in parallel only if it knows what each one reads and writes. A
+      component or a published query is an access a system declares. A call into another engine module is
       access the scheduler cannot see.
     - Unity's Jobs and Entities require each job's reads and writes to be declared, for the same reason.
   - **What it costs, weighed with the owner:**
-    - A query one system answers for another needs its contract in the world layer. The rule as adopted includes
+    - A query one engine module answers for another needs its contract in the world layer. The rule as adopted includes
       that, rather than forbidding the query.
-    - Two subsystems of one phase that run in parallel cannot see each other's writes in that tick. The phase orders
+    - Two systems of one phase that run in parallel cannot see each other's writes in that tick. The phase orders
       them, or the reader sees the write on the next tick ([frame-phases.md](frame-phases.md) question 5).
     - A hit that Constraints finds reaches Update on the next tick. That comes from the phase order, not from this rule.
       A response that must land in the same tick is itself a constraint ([frame-phases.md](frame-phases.md) question 1).
     - **Not limited by it:**
-      - one system working in several phases (net receives in Input and sends in Output);
-      - a system's own general-purpose library;
+      - one engine module working in several phases (net receives in Input and sends in Output);
+      - an engine module's own general-purpose library;
       - the shared types (math, `Transform`), which live in the frame and world layers.
   - **Whom it binds:** the engine's own modules. A game is another package, so the rule does not reach its imports.
     Its systems state their access like any other ([frame-phases.md](frame-phases.md) questions 5 and 6).
@@ -306,27 +309,27 @@ The tension between their lesson and that purpose is the first thing to settle.
       own package, only the modules it lists. Re-probed on 0.9.845: with `"render": { "visibility": "public",
       "importsOnly": ["frame"] }`, `render`'s import of `audio` is refused (*"module `eng::audio` is not in the
       `importsOnly` of `eng::render`"*), and the game still imports both.
-      - **So the compiler now holds the rule.** Each engine system module lists, in `importsOnly`, the layers it may
-        import, which never name another system.
-      - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every system
-        module has an `importsOnly`, and that none names a system. It no longer reads the source.
+      - **So the compiler now holds the rule.** Each engine module lists, in `importsOnly`, the layers it may
+        import, which never name another engine module.
+      - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every engine
+        module has an `importsOnly`, and that none names another engine module. It no longer reads the source.
   - **The layer names: decided 2026-11-05 at [components.md](components.md) question 3, choice 6.** The four layers
     are frame, world, one module per engine module, and the agent surface. The `World` contract and `run` sit in the
     frame layer, and the generated world in the game's package. The draft as first written follows. The names waited
     for [frame-phases.md](frame-phases.md) question 1 (2026-11-04) and [components.md](components.md) question 1
     (2026-11-05). They were then proposed for components question 3, because a game's world is generated, and how an
-    engine system reads a world it did not write is decided there. The draft had four layers, each importing only the
+    engine module reads a world it did not write is decided there. The draft had four layers, each importing only the
     ones above it:
     1. the frame: phases, clocks, the scheduler and the input record;
     2. the world: components, their stores, and the contracts of published queries;
-    3. one module per system (input, render, audio, net, and later physics and UI), each also importing its own
+    3. the engine modules (input, render, audio, net, and later physics and UI), each also importing its own
        general-purpose library (`@kama/window`, `@kama/graphics`, …);
     4. the agent surface (KYR-25), which reads every module and which no module imports.
 
-    The platform seam's interfaces go with the frame or with each system, as
+    The platform seam's interfaces go with the frame or with each engine module, as
     [target-platforms.md](target-platforms.md) question 1 settles.
   - **Considered:**
-    - the rule as first worded, with no query between systems, so anything one system needs from another arrives as a
-      component, a tick later if need be;
+    - the rule as first worded, with no query between engine modules, so anything one engine module needs from another
+      arrives as a component, a tick later if need be;
     - deferring the rule to components question 1;
     - holding it by convention only, or by kama's gap alone.

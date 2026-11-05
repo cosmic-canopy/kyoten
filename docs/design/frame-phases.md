@@ -1,7 +1,10 @@
 # The frame: Input, Update, Constraints, Output
 
 **Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The draft
-they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04).
+they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
+the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
+that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
+owner's words.*
 
 ## What the vision asks
 
@@ -15,12 +18,12 @@ they were brought from is kept, superseded, in *A draft for the walk-through* (2
 - **Strong abstractions for the systems and phases, up front** (the owner, 2026-11-02;
   [architecture.md](architecture.md) question 1), with "each phase has its own components that can be written"
   ([components.md](components.md)).
-- **The engine systems are driven by components in the phases, each subsystem at its own rate** (the owner,
+- **The engine modules are driven by components in the phases, each system at its own rate** (the owner,
   2026-11-03). "Much of the initial work will be engine systems anyway. Cross platform Audio, graphics, networking,
   input, etc. Each are driven by components in each of the phased parallel processes. Input -> update -> Constraint ->
   output. Each sub system of a phase has its update frequency to compensate best with human perception and GPU/CPU
   performance and simulation correctness."
-  - **What this sets for the questions below:** the rate belongs to a subsystem inside a phase. It is chosen against
+  - **What this sets for the questions below:** the rate belongs to a system inside a phase. It is chosen against
     three things together: human perception, CPU and GPU cost, and simulation correctness (questions 2 and 3).
   - **What it leaves open:** whether those rates divide one fixed tick, as FFD's do, or run on clocks of their own
     (question 2).
@@ -105,15 +108,15 @@ From [../research/peer-games.md](../research/peer-games.md) § 1:
 1. **The phases themselves.** Keep the owner's four, with FFD's refinements (Constraints as iterations; Output
    reading, never writing, the simulation)? Where do network *send* and audio cues go: FFD put cues in Output, derived
    from world deltas, and kept the net pump in one place. *Decided 2026-11-04: the four in order, with Output
-   read-only, each Constraints subsystem's own iteration count, and idempotence a check a subsystem may claim.*
+   read-only, each Constraints system's own iteration count, and idempotence a check a system may claim.*
 2. **Rates: one tick with sub-rates, or several clocks?** FFD derives every sub-rate from one fixed tick, which keeps
    replay trivial. The vision says components update "at different set frequencies". Is that tick-divided rates
    (60, 30, 20, 15 Hz…) on one clock, or independent clocks with their own accumulators? What does an input device
-   sampled at 1000 Hz do? *Decided 2026-11-04: one simulation clock with its base derived from the subsystems' rates
-   (or pinned), each subsystem handed its step, and input split across owed steps by timestamp.*
+   sampled at 1000 Hz do? *Decided 2026-11-04: one simulation clock with its base derived from the systems' rates
+   (or pinned), each system handed its step, and input split across owed steps by timestamp.*
 3. **Which rates for what?** The vision ties rates to human perception: input latency, animation smoothness, audio's
    own clock, network send rates. Write down the defaults, and which ones a game changes. *Decided 2026-11-04:
-   which clock drives each subsystem and what sets its floor, then the defaults of `../research/rates.md` (KYR-55) as
+   which clock drives each system and what sets its floor, then the defaults of `../research/rates.md` (KYR-55) as
    the starting point, which measurement lowers wherever it holds.*
 4. **Interpolation.** Output at display rate between fixed ticks: who reads `alpha`, and how does a component say how it
    is interpolated (or that it is not)? *Decided 2026-11-04: a component declares it, and the engine blends two
@@ -157,9 +160,9 @@ sections above and the research they cite. What rests on kama was re-checked on 
 - A spawned store's element type must declare `implements Sendable`.
 - No job pool exists yet: KR-3's next step is 7, and the pool is step 9.
 
-**The thread through all ten:** one simulation clock, and every subsystem's rate stated against it. The clocks the
+**The thread through all ten:** one simulation clock, and every system's rate stated against it. The clocks the
 game does not own stay outside the simulation: the display, the audio device, the headset and the OS's input events.
-They meet it only at Input's fold and at Output's read. That is how the owner's per-subsystem rates and a replayable
+They meet it only at Input's fold and at Output's read. That is how the owner's per-system rates and a replayable
 run can both hold.
 
 1. **The phases.** *Decided 2026-11-04, with the owner's refinements (see Decided). The draft is kept as it was
@@ -168,8 +171,8 @@ run can both hold.
      tags, as flecs splits Constraints into detecting and correcting.
    - **Recommended: (b), with one change.** Output reads and never writes, from day one, because enforcing it later
      breaks every renderer that writes back (component-models § 5.8, item 6; replay question 6).
-   - **The change:** a Constraints subsystem runs a whole number of iterations per tick. FFD's count is the case where
-     every subsystem runs the same N. Idempotence is something a projection may claim and a test checks, as FFD's
+   - **The change:** a Constraints system runs a whole number of iterations per tick. FFD's count is the case where
+     every system runs the same N. Idempotence is something a projection may claim and a test checks, as FFD's
      suite does, not a rule of the phase, because a solver such as Jolt's is not idempotent.
    - **Where network and audio go:** network receive goes in Input, recorded. Network send and audio cues go in Output,
      derived from the settled tick, as FFD derives its cues from world deltas.
@@ -196,12 +199,12 @@ run can both hold.
 3. **Which rates for what.** *Decided 2026-11-04, with KYR-55's defaults (see Decided). The draft is kept as it was
    brought.* Proposed defaults, each with the owner's reason that drives it:
 
-   | Subsystem | Default | Driven by | A game changes it? |
+   | System | Default | Driven by | A game changes it? |
    |---|---|---|---|
    | The simulation tick | 60 Hz (FFD; TMM's rules run at 30 and its free walk at 60) | correctness, CPU | yes |
    | Input's fold | once a tick; presentation reads once a frame | perception (latency) | no |
-   | Update subsystems | every tick; slower AI on a divisor with a per-entity offset (FFD's bots) | CPU | yes, per subsystem |
-   | Constraints | 1 iteration a tick | correctness | yes, per subsystem |
+   | Update systems | every tick; slower AI on a divisor with a per-entity offset (FFD's bots) | CPU | yes, per system |
+   | Constraints | 1 iteration a tick | correctness | yes, per system |
    | Rendering | the display's rate | perception, GPU | no: the display, rAF or the headset owns it |
    | Audio | the device's own clock and thread; cues each tick, the listener each frame (TMM) | perception | no |
    | Network send | each tick, or a divisor (TMM 30/30) | bandwidth, correctness | yes |
@@ -264,17 +267,18 @@ run can both hold.
 - **2026-11-04, the owner: the four phases, in order, with Output read-only (question 1).**
   - **The phases:** Input → Update → Constraints → Output, always in that order, as the owner defines them in
     *What the vision asks*.
-    - A system takes part in any phase by registering a subsystem there: net receives in Input and sends in Output.
+    - An engine module takes part in any phase by registering a system there: net receives in Input and sends in
+      Output.
     - Nothing reaches the simulation outside a phase.
-  - **A phase has no rate; a subsystem does.** A phase is a place in the order.
-    - Sometimes the simulation's subsystems owe several steps in one display frame: a 30 Hz display under 60 Hz
+  - **A phase has no rate; a system does.** A phase is a place in the order.
+    - Sometimes the simulation's systems owe several steps in one display frame: a 30 Hz display under 60 Hz
       physics, or a stalled frame. Then Input → Update → Constraints run once per owed step, and Output runs once.
     - How the steps are counted is question 2.
   - **Work runs at any time; it reaches the simulation only at its phase's hand-off.** In the owner's words: "phases can
     do work at any time to best utilize the hardware. So the network INPUT phase may still be gathering packets for the
     next Input "hand off" while the simulation is in a different phase. It just doesn't contribute to the simulation
     and/or finalize anything until the next Input phase."
-    - **How:** outside its phase, a subsystem's work touches only its own staging state, or reads a settled snapshot.
+    - **How:** outside its phase, a system's work touches only its own staging state, or reads a settled snapshot.
       It writes the simulation only in its phase. At Input, the hand-off is what the log records. How much had arrived
       by then depends on timing, and recording the hand-off makes it a deterministic record.
     - **The cheap cases:** net gathering packets, the OS's input events, audio decoding, asset streaming.
@@ -296,20 +300,20 @@ run can both hold.
   - **Constraints corrects, gates and records the simulation state that Update left in the tick.** It pushes a player
     out of a wall, holds a locked door, and records contacts, which Update reads on the next tick. A game's own rules
     are constraint components.
-  - **Each Constraints subsystem runs a whole number of iterations per tick.**
-    - The count is the subsystem's own, fixed as part of the simulation's definition like the tick rate, so a replay
+  - **Each Constraints system runs a whole number of iterations per tick.**
+    - The count is the system's own, fixed as part of the simulation's definition like the tick rate, so a replay
       reproduces it.
     - The owner: "most physics solvers run some bound number of iterations to arrive at the "result" like cloth
       physics".
-  - **Idempotence is a check a subsystem may claim, not a rule of the phase.**
+  - **Idempotence is a check a system may claim, not a rule of the phase.**
     - **Why:** a physics step, a cloth solve and a bullet sweep are not idempotent, and the owner's Constraints holds
       all three.
-    - **How:** kyoten offers FFD's test to any subsystem that claims idempotence: step at 1 iteration and at 5, and
+    - **How:** kyoten offers FFD's test to any system that claims idempotence: step at 1 iteration and at 5, and
       compare the hash.
     - **FFD:** "we want kyoten to be able to make any game so FFD should be possible to run in kyoten. FFD would just
-      need to build the idempotence into it" (the owner). FFD's projections port as Constraints subsystems that claim
+      need to build the idempotence into it" (the owner). FFD's projections port as Constraints systems that claim
       it (KYR-46).
-    - **Carried to question 5:** FFD repeats its whole phase (A, B, A, B), while per-subsystem counts run A, A and then
+    - **Carried to question 5:** FFD repeats its whole phase (A, B, A, B), while per-system counts run A, A and then
       B, B. For FFD the two agree, because its suite proves that 1 and 5 iterations hash alike. Solvers that must
       converge together may want a group that iterates jointly.
   - **Network and audio:**
@@ -324,24 +328,24 @@ run can both hold.
     - Output writing some simulation state back, such as animation driven by rendering, which makes the result depend
       on the display rate;
     - named sub-phases fixed in advance, as flecs has. Order now goes to priority, question 5.
-- **2026-11-04, the owner: one simulation clock, with each subsystem's rate stated against it (question 2).**
-  - **The clock:** each simulation subsystem declares its rate in Hz and runs every *k* steps of one base clock.
+- **2026-11-04, the owner: one simulation clock, with each system's rate stated against it (question 2).**
+  - **The clock:** each simulation system declares its rate in Hz and runs every *k* steps of one base clock.
     - The engine derives the base as the rates' least common multiple: 60 and 30 give 60, 120 and 60 give 120, and 60
       and 50 give 300. Above a cap, about 1,000 Hz, it warns and suggests the nearest rate that fits.
     - A game may pin the base instead, as FFD's port pins 60.
     - A step where nothing is due costs nothing, because the engine jumps to the next step that has work.
   - **Why**, in the owner's words: "It allows the subsystem granularity and solves the order problem of phases."
-    - Under independent clocks, which subsystem steps first depends on how their accumulators interleave with frame
+    - Under independent clocks, which system steps first depends on how their accumulators interleave with frame
       timing. A replay then records every clock's steps, and lockstep peers must agree on each one.
     - Under one clock, the step count alone decides who runs when. A replay or a lockstep peer needs only the step
       count and the Input record.
-  - **A subsystem never reads a clock. It is handed its step: its `dt` and its step index.**
-    - A rate is then a configuration change, and the scheduler can change under the subsystems without touching their
+  - **A system never reads a clock. It is handed its step: its `dt` and its step index.**
+    - A rate is then a configuration change, and the scheduler can change under the systems without touching their
       code. The owner: "you will always pass the dt to components so they should calculate any frame delta logic
       against the dt they are passed".
     - Code written against `dt` is rate-portable, not rate-identical. A jump integrated by simple Euler peaks at a
       different height at 30 Hz than at 60. A fixed `dt` keeps that from showing.
-    - Output's subsystems already run on the display clock with the frame's `dt`, so one interface covers both.
+    - Output's systems already run on the display clock with the frame's `dt`, so one interface covers both.
   - **Other modes come later, opted into per game.** The owner: "We start with what we decided and it is probably the
     best simulation update anyway. but the abstraction allows flexibility and per game variation if needed later."
     - Independent clocks, or a variable `dt`, would be a scheduler mode a game opts into.
@@ -380,7 +384,7 @@ run can both hold.
     - **Input fidelity.** A web peer's gamepad is sampled once a frame.
   - **Carried:**
     - **To question 3, the rates' defaults.** The owner: "we should come up with the best universal rates for ANY".
-      - Each subsystem's floor is set by what breaks below it: latency for net send, stability for physics, cost for
+      - Each system's floor is set by what breaks below it: latency for net send, stability for physics, cost for
         AI.
       - Fast objects tunnelling is answered by sweeping in Constraints (continuous collision detection). The owner: "if
         you can sweep spheres for example you can determine if a bullet passed through a wall between simulation
@@ -390,12 +394,12 @@ run can both hold.
       game needs a policy: pause and resync, or simulate from another clock.
   - **Considered:**
     - a base the game must state, with every rate dividing or multiplying it, which is kept as the pinned option;
-    - independent clocks per subsystem (Unreal's `TickInterval`, flecs's `interval`), which are kept as a later mode a
+    - independent clocks per system (Unreal's `TickInterval`, flecs's `interval`), which are kept as a later mode a
       game opts into.
-- **2026-11-04, the owner: which clock drives each subsystem, and what sets its floor (question 3, its structure).**
+- **2026-11-04, the owner: which clock drives each system, and what sets its floor (question 3, its structure).**
   The numbers wait for the research row KYR-55.
 
-  | Subsystem | Its clock | Its floor is set by | A game changes it? |
+  | System | Its clock | Its floor is set by | A game changes it? |
   |---|---|---|---|
   | Gameplay (Update) | simulation | correctness, latency | yes |
   | Game AI (state machines, procedural logic) | simulation, slower and staggered per entity (FFD's bots) | cost | yes |
@@ -407,11 +411,11 @@ run can both hold.
   | Rendering | the frame source (rAF, vsync, the headset) | perception, GPU | no |
   | Audio | the device's own clock and thread; cues every step, the listener every frame | perception | no |
 
-  - **The rule for a number:** each subsystem's default is the lowest rate that holds its floor. The owner: "the
+  - **The rule for a number:** each system's default is the lowest rate that holds its floor. The owner: "the
     lowest frequency we can go while maintaining high fidelity is likely the best bet", and "What goes wrong below is a
     good thing to keep in mind and sets the floor." The defaults are to suit any game, and a game overrides them.
   - **The numbers came from KYR-55.** [../research/rates.md](../research/rates.md) (2026-11-04) proposes a default per
-    subsystem from its evidence. The owner took them the same day, below.
+    system from its evidence. The owner took them the same day, below.
   - **The numbers (the owner, 2026-11-04): rates.md's defaults are the starting point, and measurement decides.** "I do
     agree with your defaults so far ... testing will be the ultimate tell though. and we have the flexibility other
     engines do not."
@@ -440,7 +444,7 @@ run can both hold.
       at a slower rate staggered per entity (KYR-56).
     - **An LLM is an outside clock, like a remote player** (KYR-57). Its decisions take far longer than a step, are not
       deterministic, and may come from a remote service.
-      - It plays through the input system's semantic actions (KYR-54), as a human does.
+      - It plays through the input module's semantic actions (KYR-54), as a human does.
       - Its decisions enter at Input's hand-off and are recorded, so a replay needs no model.
       - **A likely shape, not decided:** the model sets goals at its own pace, and deterministic game AI carries them
         out every step, as the RTS generals in *What the vision asks* command their troops.
@@ -451,7 +455,7 @@ run can both hold.
   - **How:**
     - A declared component keeps its last two values, each stamped with the simulation time it was written.
     - Output asks for the component at its render time, and the engine blends the two samples around that time.
-      Output's subsystems never compute an `alpha` themselves.
+      Output's systems never compute an `alpha` themselves.
     - **The defaults:** a transform is linear for position and slerp for rotation. Anything undeclared snaps at the
       step (health, ammo, a door's state). A component may declare a blend of its own, such as a colour or a scalar.
   - **Why timestamps, not one `alpha`:** FFD's `alpha` is the fraction of the way to the next 60 Hz tick. Under question
@@ -468,20 +472,20 @@ run can both hold.
     - **Networking:** remote entities could be interpolated by the same samples (KYR-18, not decided here).
     - **[components.md](components.md) question 2** decides how a component spells its declaration.
   - **Considered:**
-    - one global `alpha`, FFD's, which is simpler but wrong once subsystems run at different rates;
+    - one global `alpha`, FFD's, which is simpler but wrong once systems run at different rates;
     - the game interpolating by hand, as FFD does today: `alpha` reaches its renderer and nothing reads it;
     - double-buffering every component, which costs memory and copies for what never blends.
 - **2026-11-04, the owner: parallelism from stated access, relative order with a no-conflict rule, and group
   iteration (question 5).**
   - **Both shapes:**
-    - task-parallel: independent subsystems of a phase at once;
-    - data-parallel: one subsystem over a store, in chunks.
+    - task-parallel: independent systems of a phase at once;
+    - data-parallel: one system over a store, in chunks.
 
-    Both come from each subsystem stating what it reads and writes, which the module rule already asks for
+    Both come from each system stating what it reads and writes, which the module rule already asks for
     ([architecture.md](architecture.md) § Decided). The scheduler runs together whatever does not conflict.
   - **Order inside a phase is relative** (the owner's "priority"):
-    - subsystems sit in groups;
-    - a subsystem or a group runs `after` or `before` another, or `first` or `last` in its group;
+    - systems sit in groups;
+    - a system or a group runs `after` or `before` another, or `first` or `last` in its group;
     - what has the final say is `last`;
     - a cycle is refused at startup.
 
@@ -503,18 +507,18 @@ run can both hold.
     - **Why relative, not a number:** two packages that never met can pick the same number, and the order is global
       and opaque. Unity's Entities replaced MonoBehaviour's Script Execution Order with `UpdateInGroup`,
       `UpdateBefore` and `UpdateAfter`, and `OrderFirst` and `OrderLast`. Bevy and flecs order the same way.
-  - **The no-conflict rule:** two subsystems with no order between them may not conflict. Neither may write what the
+  - **The no-conflict rule:** two systems with no order between them may not conflict. Neither may write what the
     other reads or writes.
     - Where they would, the engine refuses at startup and names both, so the game states an order. For example:
       *"Constraints › rules: `arenaBounds` and `pushOutOfWalls` both write `Transform` with no order between them."*
-    - So a result never depends on which subsystem the scheduler happened to run first, and serial and parallel runs
+    - So a result never depends on which system the scheduler happened to run first, and serial and parallel runs
       hash alike on every machine.
   - **The schedule is visible.** It shows the resolved order in each phase, what runs in parallel, and each
-    subsystem's reads, writes, rate and cost. An agent can query it as data (KYR-25), and a human sees it as a view in
+    system's reads, writes, rate and cost. An agent can query it as data (KYR-25), and a human sees it as a view in
     the editor (KYR-26). The owner: "relative with rules sounds and probably some "visibility tool" sounds like a good
     bet".
   - **Group iteration:** a Constraints group may iterate as a whole, N times (A, B, A, B), so constraints that act on
-    each other settle together, such as a rope and the ragdoll on it. Each subsystem's own count (question 1) still
+    each other settle together, such as a rope and the ragdoll on it. Each system's own count (question 1) still
     holds inside the group. FFD's Constraints is one such group (KYR-46).
   - **What runs it:**
     - **Serially at first.** The scheduler runs the schedule serially until parallel execution is switched on. Because
@@ -530,7 +534,7 @@ run can both hold.
       [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-12 is the request, for the owner to relay. When kyoten needs the pool is
       question 7.
   - **Considered:**
-    - a number per subsystem (Unity's Script Execution Order);
+    - a number per system (Unity's Script Execution Order);
     - named bands fixed per phase;
     - kyoten's own pool, which the rule sends to kama.
 - **2026-11-04, the owner: parallel work is proven safe by the compiler, with an explicit opt-out (question 6).**
@@ -538,7 +542,7 @@ run can both hold.
     threading errors. Race conditons are typically the most problematic errors to debug." And, after the trade was
     laid out: "I like the compile time proof and the gaps you want to file with Kama make sense to me."
   - **What the compiler proves:**
-    - **A subsystem stays inside what it stated.** Its signature is its stated access: what it reads arrives as
+    - **A system stays inside what it stated.** Its signature is its stated access: what it reads arrives as
       `const ref`, and what it writes as `ref`. kama refuses a write to what it only reads, and the module rule
       ([architecture.md](architecture.md) § Decided) keeps it from reaching a store it was not handed.
     - **A parallel group cannot race.** Task-parallel work runs as kama `scope` blocks over named stores, and
@@ -548,9 +552,9 @@ run can both hold.
     - **The startup check of question 5 stays.** It proves something the compiler does not: that no result depends on
       an order nobody stated.
   - **The opt-out:**
-    - A subsystem that needs a shape kama cannot prove goes through an `unsafe` seam, kama's `UnsafePtr` "primary
+    - A system that needs a shape kama cannot prove goes through an `unsafe` seam, kama's `UnsafePtr` "primary
       isolate idiom" (kama `docs/SPEC.md:7430-7433`). It is named and greppable.
-    - The visible schedule (question 5) marks that subsystem as unchecked, and the no-conflict rule still covers what it
+    - The visible schedule (question 5) marks that system as unchecked, and the no-conflict rule still covers what it
       states.
     - A C library's own threads, such as Jolt's pool, are outside the proof, as in any engine.
     - **Why an opt-out and not an opt-in:** with opt-in safety the default path is the unsafe one, and agents, the
@@ -683,10 +687,10 @@ run can both hold.
       fires at instead, so a waiting timer costs nothing until it is due.
     - **An API may take seconds** and converts them once to base steps, rounding up so that a wait is never shorter
       than it asked.
-    - **Each subsystem that waits owns its own queue**, ordered by (step due, then the order the waits were made). The
-      queue is a store in its stated access (question 5). One shared queue would be a store every subsystem writes,
+    - **Each system that waits owns its own queue**, ordered by (step due, then the order the waits were made). The
+      queue is a store in its stated access (question 5). One shared queue would be a store every system writes,
       which would serialize them all.
-      - **Each step, a subsystem takes what is due:** the cost is the due waits, not all of them. Ties fall in the
+      - **Each step, a system takes what is due:** the cost is the due waits, not all of them. Ties fall in the
         order they were made, so every machine fires them alike.
       - **An entry holds** the step due, its sequence number, the entity's handle and what fires. What fires is a
         variant of an enum the generator emits, so it is a `match` and a direct call, with no closures.
