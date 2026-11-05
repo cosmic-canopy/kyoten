@@ -66,6 +66,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
    ordered log per tick? What about inputs that do not fit a tick (text input, file drops, asset loads)? And the
    content layers loaded, since one id can resolve differently under another stack
    ([project-database.md](project-database.md) question 11)?
+   - *Settled in part 2026-11-05 at project-database question 11:* the stack's identity (each source's id, version and
+     content hash, in order) is in every save, replay and match. A recording carries any unpublished source, and a
+     source that changes while running applies at a step boundary as a recorded input.
 3. **The log format.** Shared with the network wire, as FFD's is, so there is one serializer? Versioned, so a recording
    survives an engine update, or explicitly tied to a build?
 4. **What does replay give humans?** Scrubbing, stepping, comparing two runs, reproducing a bug from a recording, and

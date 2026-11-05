@@ -1,6 +1,7 @@
 # The project database and wiki
 
-**Status:** draft for the design spike; its build is KYR-24. Four decisions are recorded; the rest are questions.
+**Status:** draft for the design spike; its build is KYR-24. Five decisions are recorded, the latest closing question
+11 (layers) on 2026-11-05; the rest are questions.
 
 ## What the vision asks
 
@@ -58,7 +59,7 @@ least prior art in the peers, and the one most worth getting right before code.
    set?
 10. **How does it relate to cosmic-forge?** Shared ids and provenance for assets, and forge writing into the
     project database or kyoten reading forge's outputs.
-11. **Layers, in detail** (see *Decided*). What is the priority order (the base game, DLC, patches, mods, a
+11. **Layers, in detail.** *(Decided 2026-11-05 with components question 5, below.)* What is the priority order (the base game, DLC, patches, mods, a
     developer's local overrides), and does a higher layer override a whole record or single fields? How do consistency
     checks (question 5) judge a stack rather than one source? A replay must know which layers were loaded, since one id
     can resolve differently under another stack ([replay-and-determinism.md](replay-and-determinism.md)). And which of
@@ -99,3 +100,69 @@ least prior art in the peers, and the one most worth getting right before code.
   overrides a lower one, which is what serves content on disk against DLC, and similar cases. Nothing reads a source
   directly. This bears on question 8 (the running game reads the stack, whatever backs each layer) and fits the store
   interface below, with a stack of them composed by priority. The details are question 11.
+- **2026-11-05, the owner: question 11, decided with [components.md](components.md) question 5.** "Part B 4. Yes
+  recommended... 5. It doesn't need to be hard coded... 6. sounds reasonable... 7. This seems to make sense to me so
+  far 8. Yes this sounds good so far too". The words used: a **source** is anything that satisfies the record-source
+  contract (this entry's 2026-11-01 "sources"). A **content layer** is a named slot in the order, holding any number of
+  sources. The **stack** is the resolved order of every source. *Proposed names*, since "layer" already names the
+  engine's layers and "store" a world's component stores.
+  - **Choice 4: a layer changes fields, not whole records.**
+    - **A patch names only what it changes,** by RFC 7396, which kama's `mergeJsonBuffer` implements. A map keyed by
+      id merges per key, `null` removes an entry, and a plain list is replaced whole. Anything a layer must reach
+      individually is keyed by a stable id: prefabs, and the entities placed in a zone.
+    - **A prefab variant** resolves as its base's resolved value plus its own patches, so a later layer's change to the
+      base reaches every field the variant never changed, as in Unity's prefab variants.
+    - **Explicit operations** cover what a merge cannot: removing an entity (`null`), moving a prefab to another
+      archetype the build has, and replacing a record whole.
+    - **The failure this avoids** is Bethesda's "rule of one": *"the last-loaded plugin's version overrides all
+      others"*, so two mods changing different fields of one record collide
+      ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)).
+    - **What it costs:** a mod adding one entry to a plain list must restate the list, so whatever mods are expected
+      to extend, such as a loot table, is a map keyed by id.
+  - **Choice 5: the order is data, not code.** The owner: "It doesn't need to be hard coded. It woudl be based on
+    'database' priority. Your order is right though but there is no reason a game couldn't have 4 sets of DLC for
+    example. Those 'layers' could be the default named layers for example and you can add priority asset 'databases'
+    to each layer."
+    - **The default content layers,** lowest first: engine, game, DLC, patch (with live tuning), mod, local. A game's
+      records may name its own, and the stack gives each a priority.
+    - **Each content layer holds any number of sources, each with a priority within it.** Four DLCs are four sources in
+      the DLC layer. A source also states what it must sit above, as LOOT's rule has it: *"If one plugin changes a
+      record added by another plugin, the former must load after the latter"*.
+    - **The stack resolves to one order,** deterministically. Within one priority, deeper dependencies come first and
+      then names in natural order, as Factorio orders its mods
+      ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)). A cycle is refused, and a
+      player orders mods within the constraints. The local layer never ships, and a release build refuses it.
+    - **A source is whatever satisfies the contract:** files in git, a baked pack, a database (`@kama/postgres`), or, in
+      the owner's words, "URIs for dynamic data updates? This is typically restricted on many consoles and such but
+      possible on web, etc." So whether a remote source is allowed is a platform's capability
+      ([target-platforms.md](target-platforms.md) question 3), never an assumption of the engine.
+  - **Choice 6: a layer holds what the running game reads.** That covers prefab values, zones and their entities,
+    singletons' starting values, the tuning of systems and engine modules, and budgets. A data layer adds only what
+    the build already has code for (components question 5, choice 3), and a check names anything that needs a build.
+    The wiki's prose, decisions and tasks are not layered; git versions them.
+    - **Mods with code are roadmapped** (KYR-60). The owner: "I would assume that probably is mostly driven by kama
+      scripting language when it lands. in that case code is content." kama's 2.0 plans *"dual-mode: compiled +
+      scripting/REPL"* (kama KR-35). A mod's script would then be a source in the mod layer, hashed into the stack like
+      its data.
+  - **Choice 7: checks run on each source, then on the stack.**
+    - **Each source alone, strictly:** a field no type declares, or a wrong type, is an error in that source, and
+      nothing is written (probed in components question 5).
+    - **The resolved stack:** references, rules that span records (question 5), and archetypes the build has.
+    - **An error names the topmost source that set the bad value,** found from the patches by the tools.
+    - **A source records what it was made against.** When a lower source later changes a field this one overrides, the
+      check warns, and the override still wins, as Unity and Godot keep overrides
+      ([../research/component-models.md](../research/component-models.md) § 5.5).
+  - **Choice 8: the stack is part of the history.**
+    - **Its identity is in every save, replay and match:** each source's id, version and content hash, in order. A
+      replay under another stack is refused, and peers compare stacks at matchmaking, as they compare budgets.
+    - **A recording carries any source that is not published,** such as a developer's local one, so a bug report
+      replays on another machine.
+    - **A source that changes while the game runs** (hot reload, live tuning, a remote update) applies at a step
+      boundary as a recorded input, as a zone's arrival does (components question 4). Native hot reload of records
+      needs a file watcher, which kama filed the same day as KR-330.
+  - **Left to later questions:**
+    - **question 2:** which sources the reference implementation ships;
+    - **question 5:** the cross-system rules a stack is checked against;
+    - **question 8:** where the bake boundary sits, and how a baked pack keeps its patches' provenance;
+    - **[replay-and-determinism.md](replay-and-determinism.md) question 3:** how the stack's identity is written in the
+      log.

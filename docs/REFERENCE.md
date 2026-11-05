@@ -109,15 +109,20 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface | decided |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
 | **Game** | a separate package and repository: its records, its system bodies, and the world generated from them | decided |
-| **Record** | a project-database entry declaring a component, prefab, system, budget or zone | decided |
+| **Record** | a project-database entry declaring a component, prefab, system, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
+| **Source** | anything that satisfies the record-source contract: files in git, a baked pack, a database, a URI where the platform allows | decided (project-database question 11); the name is proposed |
+| **Content layer** | a named slot in the order of sources: engine, game, DLC, patch, mod, local by default. Each holds any number of sources, each with a priority | decided (project-database question 11); the name is proposed |
+| **Patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 | decided (project-database question 11) |
+| **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Zone** | a region of the world: the unit of loading, budgets and coordinates | decided (G7) |
-| **Prefab** | an entity's fixed set of components and their defaults (an archetype) | decided |
+| **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
+| **Prefab** | a named archetype with its defaults. Prefabs of one archetype share generated code, so a record alone can add one | decided (question 5, choice 3) |
 | **Entity** | one thing in the world, an instance of a prefab | decided |
 | **Handle** | an entity's id, reaching it through a lookup (handle → table, chunk, slot) | decided; its form is question 8 |
-| **Component** | a plain value, one piece of an entity's data, of one of four kinds | decided |
-| **Table** | all the entities of one prefab in one zone | decided |
+| **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
+| **Table** | all the entities of one prefab in one zone, made from its archetype's table type | decided |
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget | decided |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
@@ -155,6 +160,17 @@ never changes it, so serial and parallel runs see the same values:
 Whether the simulation is also bit-identical across platforms is
 [design/replay-and-determinism.md](design/replay-and-determinism.md) question 1 (*open*).
 
+**How records layer** (*decided*, components question 5 with project-database question 11):
+- **A component is a kama type plus its record,** and a record's format is that type. A prefab names an archetype the
+  build has, so data alone can add one; a new component, archetype or system needs a build.
+- **A source patches fields,** never whole records. Keyed maps merge per key, `null` removes, and plain lists are
+  replaced whole. A prefab variant is its base plus its own patches.
+- **The order is data.** Named content layers (engine, game, DLC, patch, mod, local by default) each hold any number of
+  sources by priority, and the stack resolves to one order or refuses a cycle.
+- **Checks run per source, strictly, then over the stack,** and an error names the topmost source that set the value.
+- **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes
+  while running applies at a step boundary as a recorded input.
+
 ## Prior art
 
 Each row is a choice kyoten made or proposes, the engines that made it before, and where kyoten differs.
@@ -177,7 +193,11 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | Large worlds: doubles only at the absolute position, floats inside | Box3D ([large worlds](https://box2d.org/documentation3d/large-worlds.html)); Unreal 5's double-precision types ([LWC](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)) | proposed: zone-local floats with whole-number zone coordinates (question 9) |
 | An order every game is promised | Godot specifies its order; Unity, Bevy, EnTT and Unreal disclaim it, and Unity's chunk order is "deterministic per world" ([research/component-models.md](research/component-models.md) § 5.4) | promised by the engine, serial and parallel alike (question 4) |
 | Cross-platform physics as a build option | Jolt: deterministic on one platform given the same calls and binary; `CROSS_PLATFORM_DETERMINISTIC` is "approximately 8% slower" ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)) | replay question 1 |
-| Hand-coded maths for cross-platform determinism | Box2D: *"The atan2f function in the standard library is not cross-platform deterministic"* ([math_functions.h](https://github.com/erincatto/box2d/blob/main/include/box2d/math_functions.h)) | asked of kama as KY-19 |
+| Hand-coded maths for cross-platform determinism | Box2D: *"The atan2f function in the standard library is not cross-platform deterministic"* ([math_functions.h](https://github.com/erincatto/box2d/blob/main/include/box2d/math_functions.h)) | asked of kama as KY-19, now kama KR-328 |
+| A component's shape in code, its values in data | Unity's `IComponentData` structs, Bevy's Rust types, Godot's exported properties, Unreal's `UPROPERTY` *(general knowledge)* | the record's format is generated from the type, and strict reads refuse an unknown field (question 5) |
+| Overrides per field, inherited where unnamed | Unity's prefab variants and Godot's instances per property, Bevy's BSN patches per field ([research/component-models.md](research/component-models.md) § 5.5) | RFC 7396 patches, which kama's merge implements |
+| The counterexample: the last source wins the whole record | Bethesda's "rule of one", *"the last-loaded plugin's version overrides all others"* ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)) | patches per field, so two mods changing different fields do not collide |
+| A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
 
 ## Where to read more
 

@@ -63,6 +63,9 @@
    platform-specific capability (a console's achievements, Steam Input) without the engine naming that platform?
 3. **Capabilities, not platform names.** Does the engine ask "is there a pointer lock, a gamepad, threads, a file
    system?" rather than "is this the web?", so that a new platform slots in by declaring what it has?
+   - *Noted 2026-11-05 at [project-database.md](project-database.md) question 11:* a remote record source (a URI for
+     dynamic data updates) is one such capability. The owner: "This is typically restricted on many consoles and such
+     but possible on web, etc."
 4. **Packages for features as well as platforms.** XR (OpenXR and WebXR backends behind one interface), Steamworks,
    console services: the same package mechanism?
 

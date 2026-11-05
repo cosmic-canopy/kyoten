@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-60**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-61**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -64,7 +64,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-24 | **The project database and wiki, first version**: one per game project, so agents on separate machines keep one game direction. Typed records, consistency checks, live reload, and lookups through one abstraction whose sources stack by priority (on disk, DLC) | [project-database.md](design/project-database.md) |
+| KYR-24 | **The project database and wiki, first version**: one per game project, so agents on separate machines keep one game direction. Typed records, consistency checks, live reload, and lookups through one abstraction whose sources stack by priority (on disk, DLC). As decided 2026-11-05 (question 11): field patches, named content layers each holding any number of prioritized sources, a stack resolved to one order, checks per source and over the stack, and the stack's identity in every save, replay and match | [project-database.md](design/project-database.md) |
 | KYR-26 | **The human tool surface, first version**: a local web editor with the database's change feed, entities, timings per phase, and tuning that writes records | [human-tools.md](design/human-tools.md) |
 | KYR-27 | **Replay as a tool**: scrub, step, and compare two runs | [replay-and-determinism.md](design/replay-and-determinism.md) |
 | KYR-28 | **Slice C in kyoten-fps**: an agent builds and tunes a level through records while a human watches and adjusts | [examples.md](design/examples.md) |
@@ -104,6 +104,7 @@ happens in that game's own repository, never here.
 | KYR-40 | **More examples, each a different shape**: a 2D game, a racing game, a networked arena | [examples.md](design/examples.md) |
 | KYR-41 | **Code hot reload**, on kama's hot-reload library, desktop first | [ai-first-api.md](design/ai-first-api.md) |
 | KYR-57 | **LLM players**: a model playing against a player "where possible", as an outside clock like a remote player. Its semantic actions (KYR-54) enter at Input's hand-off and are recorded, so a replay needs no model. A likely shape: the model sets goals at its own pace and game AI (KYR-56) carries them out each step | [frame-phases.md](design/frame-phases.md) · [ai-first-api](design/ai-first-api.md) · [VISION.md](VISION.md) |
+| KYR-60 | **Mods with code**: "code is content" (the owner, 2026-11-05), likely through kama's scripting when it lands (kama KR-35, *"dual-mode: compiled + scripting/REPL"*). A mod's script is a source in the mod layer, hashed into the stack like its data. Until then a mod is data only, adding what the build already has code for | [project-database.md](design/project-database.md) · [components.md](design/components.md) |
 
 ## FUTURE
 

@@ -71,18 +71,27 @@ answer is recorded in its doc's *Decided*:
   the costly kind, cross-platform, stays replay question 1's. Removal is swap-and-pop, randomness is keyed by seed,
   step, handle and purpose, and a combined result folds in chunk order. A `Map`'s order was probed identical natively
   and on wasm.
+- **[design/components.md](design/components.md) question 5 with
+  [design/project-database.md](design/project-database.md) question 11** (2026-11-05):
+  - **Records and components:** a component is a kama type plus its record, and a record's format is the type, one to
+    one through serde. Prefabs of one archetype share generated code, so data alone can add a prefab.
+  - **Layers:** sources patch fields (RFC 7396, kama's merge). The order is data, with named content layers each holding
+    any number of sources by priority, and a source may be files, a pack, a database or a URI where the platform allows.
+  - **Checks and history:** checks run per source, then over the stack. The stack's identity is in every save, replay
+    and match.
+  - **Probed** on 0.9.854, which found KY-21. Mods with code are roadmapped as KYR-60: "code is content".
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 5–9**, with question 5 decided beside project-database 11.
+1. **[design/components.md](design/components.md), questions 6–9.**
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **39 questions remain:** components 5 (5–9; question 9
-   was added as question 2 was decided), replay-and-determinism 5, project-database 8, web-and-native 7,
-   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 36 separate
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **37 questions remain:** components 4 (6–9; question 9
+   was added as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
+   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 35 separate
    decisions. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
