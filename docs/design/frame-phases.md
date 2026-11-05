@@ -694,9 +694,10 @@ run can both hold.
         when it comes due.
       - **The structure:** a binary heap first. A timing wheel (buckets of steps, constant time to add and to advance)
         replaces it if a measurement asks. Its capacity can be a budget like any store's (components question 6).
-    - **std's `PriorityQueue` cannot be saved with the world today.** A field of that type in a `@generate(Serializable,
-      Deserializable)` type is refused, *"`PriorityQueue` has none"* (0.9.845; [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-16).
-      Until kama closes it, kyoten's queue keeps its heap in its own array, which serializes in its stored order.
+    - **std's `PriorityQueue` is saved with the world** (kama 0.9.849, KR-316, which closed KY-16). On 0.9.845 a field of
+      that type in a `@generate(Serializable, Deserializable)` type was refused, *"`PriorityQueue` has none"*. It is now
+      written as its direction and its backing array in stored order, and `view()` borrows that array read-only for the
+      world hash. Checked here on 0.9.850.
   - **Later: sequences for designers** (KYR-36). "Open door; wait 2 s; play sound; wait until the player enters" is
     written as a record or a short script, and the generator turns it into a state-machine component over these
     deadlines, as C# compiles `yield return` into a state machine. It reads like a coroutine and still saves, hashes

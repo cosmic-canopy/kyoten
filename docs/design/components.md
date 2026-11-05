@@ -25,6 +25,8 @@
 - **Budgets per element, per zone** (the owner, 2026-11-04; [../VISION.md](../VISION.md)): "each zone of a level can
   only have N number of X creatures and N number of bullets in flight", so a runtime footprint can be calculated and
   allocated up front, or at least in very controlled steps. This is input to question 6.
+  - **Where machines simulate together, the budget matches** (the owner, 2026-11-04, on KYR-58's G1): "I agree that
+    multiplayer would have to match the budget... I would assume that can be negotiated during matchmaking if needed."
 
 ## What already exists
 

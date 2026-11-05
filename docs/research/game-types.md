@@ -78,6 +78,9 @@ gameplay computed on the GPU (*Limits*).
   detail.
 - **The footprint:** a game's simulation budgets give the smallest machine it runs on, which is the owner's "you know
   exactly what machines it can and can't run on". Output's budgets then scale above that floor.
+- **The owner, 2026-11-04:** "I agree that multiplayer would have to match the budget... I would assume that can be
+  negotiated during matchmaking if needed." So peers agree a match's simulation budgets before it starts, and they
+  are fixed for the match, which feeds networking question 5 (matchmaking).
 - **Feeds:** components question 6, target-platforms question 3 (capabilities), and budgets as records in
   project-database.
 
@@ -117,8 +120,8 @@ gameplay computed on the GPU (*Limits*).
     them ([harvest.md](harvest.md)).
   - **Components are plain values**, with owned memory behind handles (components question 2, option a). A snapshot
     is then a copy of fixed blocks.
-  - **Every queue lives in the world.** frame-phases question 9's wait queues are already stores, and kyoten keeps the
-    heap in its own array until KY-16 closes.
+  - **Every queue lives in the world.** frame-phases question 9's wait queues are already stores, and std's
+    `PriorityQueue` is saved with the world since kama 0.9.849 (KY-16, closed).
   - **A physics library that can be restored.** Jolt saves and restores its world through `StateRecorder` (`SaveState`
     and `RestoreState`) [search], and one wrapper preallocates a ring of states for a rollback window [search].
 - **Probed on 0.9.845** (*The probe*, below): stores sized at start-up in one `Arena`, stepped and then snapshotted into
@@ -321,7 +324,7 @@ measure)*.
   - re-running up to 8 steps plus the new one inside one 16.7 ms frame, so a step must cost well under a millisecond
     *(arithmetic)*. FFD's tick is about 7.5 µs;
   - cues (G6);
-  - the wait queues inside the snapshot (G3, KY-16);
+  - the wait queues inside the snapshot (G3);
   - animation that is gameplay (a hitbox on each animation frame), which is evaluated in Update (frame-phases question
     1).
 - **What it budgets:** two characters, and a few projectiles each.
@@ -358,7 +361,7 @@ measure)*.
   - speed controls (G9);
   - huge counts (G14, chunk storage);
   - unbounded growth against budgets (G2);
-  - saving the whole world (G3, KY-16);
+  - saving the whole world (G3);
   - sleeping entities. A waiting entity is a deadline in a queue, not a polled update (frame-phases question 9), so it
     costs nothing until due.
 - **The verdict:** holds, if G2 and G9 are met.

@@ -71,9 +71,9 @@ or in a temporary directory, and record what it measured in the design doc it se
   another kama machine can act on them:
   - KY-12, the job pool: its priority, running borrowing work, and no heap allocation per call;
   - KY-5, raised with it;
-  - KY-13 to KY-16, filed on 0.9.845.
+  - KY-13 to KY-15, filed on 0.9.845, and KY-17, filed on 0.9.850.
 
-  kama closed KY-9, KY-10 and KY-11 the same day.
+  kama closed KY-9, KY-10 and KY-11 the same day, and KY-16 in 0.9.849.
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -238,8 +238,8 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6 and KY-12 to
-  KY-16 are open there; take the next id from its counter.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15
+  and KY-17 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
