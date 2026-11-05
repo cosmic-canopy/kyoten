@@ -234,6 +234,46 @@ was probed.
   kama's KR-24.
 - **content-pipeline, timeline, version-manager:** nothing found.
 
+## Who could take what: a suggestion for kama
+
+This is the owner's question of 2026-11-05: what the Windows box can work on while the Mac builds KR-3. It is a
+suggestion from kyoten, and the claims are kama's to make in its own roadmap.
+- **What kama's roadmap already assigns:**
+  - KR-3 is the Mac's. Step 8 and step 7's `Poller.wait` over AFD are the Windows box's.
+  - The Windows box holds defects and blockers meanwhile.
+  - KR-283, the Android app, is claimed by the Windows box (2026-11-02).
+- **The Windows bench is done** (kama `a6413d57`, 2026-11-05): a dozen short phases at 10 chunks take 8.55 ms through
+  today's `parallel_for` (51% of a 60 Hz frame), and 0.71 ms on the pool.
+
+**KR-326 is an allocator, not a container.** kama's containers already take the allocator as a type parameter
+(`FixedArray<T, A>`, `DynamicArray<T, A>`), so its two shapes are new allocator types that existing containers take.
+kyoten needs both (above).
+
+**The Mac:** KR-3's build order, steps 1–6. kyoten's two asks inside it:
+- **KR-320:** designed with the held `Job<R>` in step 4.
+- **KR-327:** ruled with step 10.
+
+KR-288 and KR-313 (step 1) need no pool, but they are inside the Mac's claim and touch the same borrow checker that
+`spawn job` will, so they stay there.
+
+**The Windows box, in this order:**
+1. **KR-324's Windows half.** It is step 0 of the pool's build order, since the pool sizes itself by `cpuCount()`, and the
+   row still says "The Windows box is measuring".
+2. **KR-326, the two allocators.**
+   - The row says design first, and kyoten's answer is in KY-17.
+   - It must land before `spawn job` (step 3), so it runs alongside the Mac's work.
+   - It touches `std::collections`, not the pool. Its only overlap is `Atomic`, which the Mac extends with `wait` and
+     `notify`.
+3. **KY-19, once kama files it.** The fix must show the same bits natively and on wasm, and this box builds and runs
+   both: the repro ran here, on emsdk 6.0.13 and node 24.21.
+4. **Then the rows independent of KR-3:**
+   - KY-18 (an `immutable` type holding an array), in the compiler;
+   - KR-314 (kyoten's KY-14);
+   - KR-289 (kyoten's KY-6, Closure), which is small.
+
+**KR-283's place in this order is the owner's call.** The owner's Quest prototype (KYR-4) needs it, and KR-326 has a
+workaround in kyoten: one global allocation per table.
+
 ## The probes
 
 All are in the session's scratchpad (`audit/`, `c1/`, `c2/`) and ran on 0.9.852:
