@@ -1,7 +1,8 @@
 # Components: how a game holds state and behaviour
 
-**Status:** question 1 decided on 2026-11-05: B built on A, with a table of chunks per (zone, prefab) and side stores
-for components gained at run time. Questions 2–8 are open.
+**Status:** questions 1 and 2 decided on 2026-11-05. Question 1: B built on A, with a table of chunks per (zone, prefab)
+and side stores for components gained at run time. Question 2: a component is a plain value, with all four kinds of data
+on day one, and world data is not a component. Questions 3–9 are open; question 9 was added at question 2.
 
 ## What the vision asks
 
@@ -72,8 +73,8 @@ for components gained at run time. Questions 2–8 are open.
    tables, queries), sparse-set ECS, or FFD's shape (one owner of dense arrays, systems as ordered methods) made
    general. Which gives the vision's "component-based" with the least machinery and the best fit to kama (no closures,
    contract bounds, `scope`'s disjointness proof)?
-2. **What is a component?** A plain `type value` (copyable, serializable, hashable field by field), always? How does a
-   component that owns memory (a mesh, a path) fit?
+2. **What is a component?** *(Decided 2026-11-05, below.)* A plain `type value` (copyable, serializable, hashable field
+   by field), always? How does a component that owns memory (a mesh, a path) fit?
 3. **What is a system?** A functor contract (`implements System`) with a phase and a rate, registered by the game? How
    does it declare what it reads and writes, so the scheduler can run disjoint systems in parallel and kama can check
    it?
@@ -87,6 +88,21 @@ for components gained at run time. Questions 2–8 are open.
    spelling in the component model ([ai-first-api.md](ai-first-api.md))?
 8. **Growing in phases.** Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
+9. **World data.** *(Added 2026-11-05 at question 2.)* Some data belongs to space, not to an entity: a voxel world, a
+   heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
+   coordinate within a zone (G7). The questions are:
+   - **The cell's format:** dense, palette or sparse, and who chooses it. Minecraft's sections are 16×16×16 blocks,
+     each with its own palette and packed indices of at least 4 bits.
+   - **How cells stream** in and out with their zone.
+   - **Procedural generation:** a generator fills cells from a seed and rules, off the simulation as streaming is, and
+     its result enters at Input's hand-off, recorded (G12).
+   - **How cells are saved:** whole, or only the edits over a cell that can be regenerated. The second needs
+     generation that is bit-identical on every platform, which is replay-and-determinism's to settle.
+   - **How destruction divides:** pre-fractured pieces as entities (Unreal Chaos's geometry collections), or cut at
+     run time into world data or an entity's owned data.
+   - **What presentation derives:** meshes built from voxels, and terrain LOD. These are never saved (G8).
+
+   KYR-50 (AI-generated worlds) would fill the same stores.
 
 ## Decided
 
@@ -196,3 +212,79 @@ for components gained at run time. Questions 2–8 are open.
       maps to a component type rather than to a (zone, prefab).
     - **C, an engine-owned archetype ECS.** Ruled out by frame-phases question 6, since its parallel work goes through
       an `UnsafePtr` seam the compiler cannot check.
+- **2026-11-05, the owner: a component is a plain value, all four kinds of data are on day one, and world data is not a
+  component (question 2).**
+  - **The owner's words:**
+    - "Kinds 1-4 and world data isn't a component and add question 9."
+    - On deferring kind 4, which was first recommended: "In general Kind 4 sounds like something people will want so I
+      don't think we can simply 'wait' for someone to ask for it... Kyoten is a general purpose engine. procedural
+      generated worlds are a major thing I want to handle as well."
+    - On the first recommendation's reason: "Noheap is an opt in choice btw." So `@noheap` binds only a game that opts
+      in, and that game picks kinds that do not allocate.
+  - **A component is a plain `type value`**: copyable, serializable, and hashable field by field. Each one sits in a
+    chunk, and the data around it comes in four kinds:
+
+    | Kind | Example | Where it lives | Snapshot | Parallel work |
+    |---|---|---|---|---|
+    | **1. Fixed data** | position, health | a field of the component | copied with the chunk | across chunks |
+    | **2. Bounded lists** | a path of up to 16 waypoints, inventory slots, G4's history ring | `InlineDynamicArray<T>#(N)` inside the component | copied with the chunk | across chunks |
+    | **3. Shared read-only data** | a mesh, a clip, a navmesh, a dialogue table | an asset store loaded with the zone and unchanged while it runs; the component holds a `Handle` | the handle only | within one table; across tables once KY-5 or KY-18 closes |
+    | **4. Owned per-entity data** | a long path found at run time, a script's state, a mesh being cut | owned by the chunk, which becomes a resource | a deep copy (`copy`) | across chunks, and a worker may grow it |
+
+  - **A chunk owns memory only when its prefab needs it.** A prefab with kind-4 data, or a list that may spill, gets a
+    `type resource` chunk, and the generator writes its methods and its `copy` constructor. Every other chunk stays a
+    plain value, which copies with no allocation.
+  - **Each bounded list states its rule for when it is full**: refuse, or spill past N into the chunk's own memory, which
+    is how Unity's dynamic buffers behave. This is G2's stated rule for a full budget, applied to a list. The default is
+    question 6's.
+  - **The generator gives saved fields fixed widths** (`int32`, `int64`). kama refuses to serialize an `isize`, since it
+    is 8 bytes natively and 4 on wasm, and fixed widths keep native and web saves identical.
+  - **World data goes in world stores of cells**, keyed by coordinate within a zone. A voxel world, a heightfield or a
+    destruction state belongs to space, not to an entity. Each cell owns its memory, as a resource chunk does, so work
+    splits by cell with the same proof. Question 9 was added for its design.
+  - **Physics already works this way.** Jolt owns its world, and a component holds a body id, as the-mallow-man's `BodyId`
+    does.
+  - **The evidence: probes on kama 0.9.850, re-run on 0.9.852** (after 0.9.851, KR-323, tightened what a `parallel_for`
+    body may capture):
+    - **Kind 2.** A 128-entity value chunk whose component holds an `InlineDynamicArray<Waypoint>#(16)` is stepped by
+      `parallel_for` with the right result. `InlineDynamicArray` zeroes every place it vacates, so equal lists are equal
+      bytes, and the world hash can hash a chunk directly.
+    - **Kind 3.**
+      - Within one table it works: every worker of one `parallel_for` reads a `const ref` asset parameter.
+      - Across two tasks it is refused. Two `spawn`s reading `this.path` are refused (KY-5).
+      - `Shared<immutable T>` works only for a `string`'s bytes, since an `immutable` type cannot hold an array, not even
+        an `InlineArray` (KY-18, filed 2026-11-05).
+    - **Kind 4.** A `type resource` chunk owning a `DynamicArray`, in a `FixedArray` of chunks, is split by
+      `parallel_for`, and each worker grows its chunk's array (exit 37, as expected). Its snapshot is `copy` of the
+      table: stepped twice afterwards, the live table reads 39 and the snapshot still reads 35.
+    - **What kama refuses, and why the kinds are shaped this way:**
+      - a `type value` that owns heap memory: "a `value` owns nothing, but … transitively owns a resource — declare it
+        `type resource`";
+      - a resource column inside a value chunk;
+      - a `parallel_for` body touching `this`: "pass the data in as a local".
+  - **Precedent:**
+    - **Kind 2 and the spill rule:** Unity's dynamic buffers hold up to a set capacity inline in the chunk, then move to
+      the heap ([manual](https://docs.unity3d.com/Packages/com.unity.entities@1.2/manual/components-buffer-introducing.html)).
+      Unity's course warns that every access after the move is a cache miss
+      ([DOTS best practices](https://learn.unity.com/course/dots-best-practices/unit/part-3-implementation-and-optimization/tutorial/part-3-3-minimizing-cache-misses)).
+    - **Kind 3:** Unity's blob assets are "immutable binary data… you can access them safely in parallel", referenced
+      from a component ([blob assets](https://docs.unity3d.com/Packages/com.unity.entities@6.6/manual/blob-assets-concept.html)).
+    - **World stores:** Minecraft's chunk columns of 16×16×16 sections, each with its own palette
+      ([chunk format](https://wiki.vg/Chunk_Format)).
+    - **Pre-fractured destruction:** Unreal Chaos's geometry collections, a tree of fracture levels joined by a
+      connection graph whose links break past a set impulse
+      ([destruction](https://dev.epicgames.com/documentation/unreal-engine/destruction-overview)).
+  - **What it costs:**
+    - A resource chunk's snapshot allocates and grows with the data. This weighs on rollback games, which can keep to
+      kinds 1–3.
+    - Two chunk shapes for the generator to write, value and resource.
+    - Kind 3 across tables waits on KY-5 or KY-18. Until then, the tables that read one asset run in one task, and each
+      table's chunks still split across workers.
+  - **Left to the later questions:**
+    - **question 6:** the default rule for a full list, and how kind-4 memory draws on a zone's budget;
+    - **question 9:** world stores.
+  - **Considered:**
+    - **(a) Always a plain value, with kind 4 deferred until a game asks** (the first recommendation). The owner refused
+      it: a general-purpose engine cannot wait for kind 4, and the reason given, `@noheap`, binds only games that opt in.
+    - **(b) Values, plus components that own memory kept in their own store outside the chunks.** It is flexible, but its
+      work is serial like a side store's. The resource chunk gives the same data with the parallel proof intact.

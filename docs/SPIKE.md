@@ -50,18 +50,24 @@ answer is recorded in its doc's *Decided*:
   - The chunk is the unit of parallel work, of a snapshot and of a budget. The generator fuses the systems of one
     table that do not conflict into one pass per chunk, because kama refuses two tasks on one table.
   - It was checked against its precedents (Unity Entities, gecs, Bevy, ecst) and probed on kama 0.9.845 and 0.9.850.
+- **[design/components.md](design/components.md), question 2** (2026-11-05): a component is a plain value, and all four
+  kinds of data are on day one: fixed data, bounded lists, shared read-only assets by handle, and owned per-entity data.
+  A prefab with owned data gets a resource chunk, which still splits across workers and is snapshotted by `copy`. Each
+  list states whether it refuses or spills when full. World data (voxels, terrain, destruction) is not a component; it
+  lives in world stores of cells, and the owner added question 9 for them, with procedural generation.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 2–8**, with question 5 decided beside project-database 11.
+1. **[design/components.md](design/components.md), questions 3–9**, with question 5 decided beside project-database 11.
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **41 questions remain:** components 7,
-   replay-and-determinism 5, project-database 8, web-and-native 7, target-platforms 4, rendering 4, ai-first-api 3,
-   examples 3. A few are taken together, so about 38 separate decisions.
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **41 questions remain:** components 7 (3–9, since
+   question 9 was added as question 2 was decided), replay-and-determinism 5, project-database 8, web-and-native 7,
+   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 38 separate
+   decisions. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
 
