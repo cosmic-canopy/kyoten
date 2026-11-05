@@ -89,6 +89,12 @@ answer is recorded in its doc's *Decided*:
   - KY-13 to KY-15, filed on 0.9.845, and KY-17 and KY-18, filed on 0.9.850.
 
   kama closed KY-9, KY-10 and KY-11 the same day, and KY-16 in 0.9.849.
+
+  **The KR-3 audit, done 2026-11-05 (KYR-59, [research/kr3-audit.md](research/kr3-audit.md)), is the whole list to
+  relay.** kama's KR-3 row was waiting on it. kama ruled KY-5, KY-12, KY-13 and KY-15 the same day. The audit answers
+  KR-326 (both shapes) and KR-327 (a per-build setting), and adds KY-19 (`reproducible-float` does not cover
+  `std::math`). It also maps what each open question leans on in kama, so the gaps that depend on an answer are known
+  in advance.
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -108,6 +114,12 @@ answer is recorded in its doc's *Decided*:
   - every game type, and the best engine;
   - budgets per element and per zone, with allocation up front or at least very controlled;
   - Output per platform over one simulation, and input as an abstraction with universal rebinding.
+- **Given 2026-11-05: kyoten writes its own systems as it goes.** In the owner's words: "ideally we would write our
+  own constraints system and UI systems, etc." and "we are building something unique here and do not want to be limited
+  by existing designs. I assume it should be fine to use them for now but build our own as we go?" So Jolt (the
+  peers' physics) and RmlUi (under `@kama/ui`, natively) may serve first, and kyoten replaces each with its own. *Proposed
+  the same day, to confirm:* each system's interface is kyoten's from the start, designed from the decided frame, so a
+  borrowed library sits behind it and leaving it changes no game.
 
 - **The evidence rows are done.** Each was checked against its sources before it was committed, and the design docs
   they feed point at them under *What already exists*:
@@ -253,8 +265,8 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15
-  and KY-17 and KY-18 are open there; take the next id from its counter.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
+  KY-17, KY-18 and KY-19 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

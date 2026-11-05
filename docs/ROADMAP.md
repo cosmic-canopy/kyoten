@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-59**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-60**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -22,6 +22,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-5 | **Measure the web first**: the cost of a `wgpu*` call crossing into JS, and the size of a minimal wasm build. **Done 2026-11-01** | [research/web-baseline.md](research/web-baseline.md) · [web-and-native.md](design/web-and-native.md) |
 | KYR-55 | **The rates, researched**: for each subsystem, the floor and what breaks below it, from perception studies, physics engines' guidance, engines' defaults and shipped games by genre, with sources. It ends in a universal default per subsystem, so frame-phases question 3's numbers are decided from evidence. **Done 2026-11-04** | [research/rates.md](research/rates.md) · [frame-phases.md](design/frame-phases.md) |
 | KYR-58 | **Game types, stress-tested**: walk each kind of game through the frame model, components options A and B (with chunk storage inside) and per-zone budgets, and record what each stresses and where the model holds or breaks. The kinds: FPS (the first example), RTS and the "generals" view, open worlds with streaming zones, fighting games with rollback, VR, simulation and city builders, MMO and server scale, turn-based and puzzle, 2D and mobile. The peers cover only a 2D game and a 3D co-op round game. Done before components question 1 is decided, so the component model serves every game type (the owner, 2026-11-04: "we want to support all game types"). **Done 2026-11-04**: no kind of game was found that the decided frame model cannot express; fourteen conditions (G1–G14) go to the questions they feed | [research/game-types.md](research/game-types.md) · [components.md](design/components.md) · [frame-phases.md](design/frame-phases.md) |
+| KYR-59 | **kama's KR-3 pool brief, audited against kyoten**: kama's KR-3 row waited on "an audit by the engine that asked". Check the brief's seventeen decisions against kyoten's decided designs, answer kama's two questions (KR-326, KR-327), and map what each of the spike's open questions leans on in kama (the owner, 2026-11-05: "a full picture of Kama Gaps from Kyoten as soon as we can"). **Done 2026-11-05**: the brief conflicts with nothing decided and answers KY-5, KY-12, KY-13 and KY-15; KR-326 needs both shapes; KR-327 is a per-build setting, as frame-phases decided; KY-19 found (`reproducible-float` does not cover `std::math`); needs added to KR-320, KR-325, KR-298, KR-79 and KY-18 | [research/kr3-audit.md](research/kr3-audit.md) · [KAMA_GAPS.md](KAMA_GAPS.md) |
 
 ## NEXT: the first slice, after which a game can start on kyoten
 
