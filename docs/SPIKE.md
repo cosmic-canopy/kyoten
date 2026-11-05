@@ -10,10 +10,10 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-04)
+## Where it stands (2026-11-05)
 
-**Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, every answer recorded in its
-*Decided*:
+**Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, and components.md has begun. Every
+answer is recorded in its doc's *Decided*:
 
 - **[design/architecture.md](design/architecture.md), its spike questions.**
   - **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
@@ -22,7 +22,7 @@ or in a temporary directory, and record what it measured in the design doc it se
     shaped like Three.js, `@kama/graphics`, which kama ruled first-party (KR-309, 2026-11-04).
   - **Question 2's module rule** (2026-11-04). A system never imports another system, so data moves between systems
     through components, in phase order. kama's `importsOnly` (0.9.842) now holds it, and KYR-53 checks the lists. The
-    layer names wait for components question 1.
+    layer names waited for frame-phases question 1 and components question 1, and both are now decided (*To raise*).
   - **Question 7.** The directories are `editor/`, `server/` and `tools/`. `@kama/<noun>` is for a package that can
     exist outside kyoten, and `@kyoten/<noun>` for what is kyoten's own.
 - **[design/frame-phases.md](design/frame-phases.md), all ten** (2026-11-04):
@@ -35,33 +35,42 @@ or in a temporary directory, and record what it measured in the design doc it se
   - **Interpolation.** A component declares how it interpolates, and Output blends two timestamped samples.
   - **Parallelism.**
     - It comes from stated access: relative order, a no-conflict rule, group iteration and a visible schedule.
-    - **It is proven by the compiler,** with an explicit opt-out the schedule shows. So components question 1 is
-      between options A and B. The owner's leaning is B built on A, with ECS-shaped chunk storage inside.
+    - **It is proven by the compiler,** with an explicit opt-out the schedule shows. So components question 1 was
+      between options A and B.
     - **It is serial by default, and switched on per group by measurement.** CI holds serial and parallel runs to one
       hash. The build decides whether threads exist, and start-up decides how they are used.
     - **On the web, a build is single-threaded by default.**
   - **Waits.** A wait is a deadline in simulation steps, held in each waiting subsystem's own queue. Designers'
     sequences come later (KYR-36).
   - **The headset** is one more frame source behind `run`.
+- **[design/components.md](design/components.md), question 1** (2026-11-05): B built on A.
+  - Records generate the world as plain kama, and the game writes system bodies whose signatures are their access.
+  - Storage is a table per (zone, prefab) of fixed-size value chunks, allocated when the zone loads, plus side stores
+    (sparse sets) for components gained at run time.
+  - The chunk is the unit of parallel work, of a snapshot and of a budget. The generator fuses the systems of one
+    table that do not conflict into one pass per chunk, because kama refuses two tasks on one table.
+  - It was checked against its precedents (Unity Entities, gecs, Bevy, ecst) and probed on kama 0.9.845 and 0.9.850.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), all eight**, with question 5 decided beside project-database 11.
-   - Its *What the vision asks* carries the owner's leaning, the per-zone budgets (input to question 6) and every game
-     type.
+1. **[design/components.md](design/components.md), questions 2–8**, with question 5 decided beside project-database 11.
+   - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **42 questions remain:** components 8,
+   - Question 1's *Decided* lists what it leaves to each later question.
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **41 questions remain:** components 7,
    replay-and-determinism 5, project-database 8, web-and-native 7, target-platforms 4, rendering 4, ai-first-api 3,
-   examples 3. A few are taken together, so about 39 separate decisions.
+   examples 3. A few are taken together, so about 38 separate decisions.
 
 **To raise with the owner:**
 
-- **KYR-58's G1 refines the owner's budget idea** ("allocation up front based on the machine it runs"). Where machines
-  simulate together (lockstep, rollback, replay, cross-play), a simulation budget is a rule of the game and cannot vary
-  per machine. Output's budgets can. One authority, a server or single player, may choose its own. Raise it at
-  components question 6.
+- **Architecture's layer names are unblocked.** They waited for frame-phases question 1 and components question 1.
+  Take them with components question 3. Under B a game's world is generated, so an engine system (render, audio)
+  cannot name its type, and how a system reads a world it did not write is question 3's matter.
+- **KYR-58's G1, at components question 6.** The owner agreed (2026-11-04) that where machines simulate together, a
+  simulation budget matches, negotiated at matchmaking if needed. Still to confirm there: Output's budgets vary per
+  machine, and one authority (a server or single player) may choose its own.
 - **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile

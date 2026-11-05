@@ -2,8 +2,8 @@
 
 **Status:** the spike's questions here are decided: 1–4 and question 7's directories on 2026-11-02, question 7's
 namespaces on 2026-11-03, and question 2's module rule (a system never imports another system) on 2026-11-04. The
-layer names wait for frame-phases question 1 and components question 1. Question 5 is settled with question 7's
-directories, question 6 moved to the platform product, and question 8 waits for KYR-37.
+layer names are unblocked (frame-phases 1 and components 1 are decided), for components question 3. Question 5 is
+settled with question 7's directories, question 6 moved to the platform product, and question 8 waits for KYR-37.
 
 ## What the vision asks
 
@@ -309,8 +309,10 @@ The tension between their lesson and that purpose is the first thing to settle.
         import, which never name another system.
       - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every system
         module has an `importsOnly`, and that none names a system. It no longer reads the source.
-  - **Still open: the layer names.** They wait for [frame-phases.md](frame-phases.md) question 1 and
-    [components.md](components.md) question 1. The draft has four layers, each importing only the ones above it:
+  - **Still open: the layer names.** They waited for [frame-phases.md](frame-phases.md) question 1 (2026-11-04) and
+    [components.md](components.md) question 1 (2026-11-05), and both are decided. They are proposed for components
+    question 3: a game's world is generated, so how an engine system reads a world it did not write is decided there.
+    The draft has four layers, each importing only the ones above it:
     1. the frame: phases, clocks, the scheduler and the input record;
     2. the world: components, their stores, and the contracts of published queries;
     3. one module per system (input, render, audio, net, and later physics and UI), each also importing its own

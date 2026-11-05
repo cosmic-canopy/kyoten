@@ -1,6 +1,7 @@
 # Components: how a game holds state and behaviour
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** question 1 decided on 2026-11-05: B built on A, with a table of chunks per (zone, prefab) and side stores
+for components gained at run time. Questions 2–8 are open.
 
 ## What the vision asks
 
@@ -20,8 +21,9 @@
   1 ([../research/game-types.md](../research/game-types.md), below).
 - **Parallel work proven by the compiler** ([frame-phases.md](frame-phases.md) § Decided, question 6, 2026-11-04).
   Component types are then known at build time, so question 1 is between options A and B. **The owner's leaning**
-  (2026-11-04, not yet decided): "B built on A with C internal storage when possible", meaning a world generated from
-  records, whose generated code is A's, with ECS-shaped storage (chunks) inside it.
+  (2026-11-04): "B built on A with C internal storage when possible", meaning a world generated from records, whose
+  generated code is A's, with ECS-shaped storage (chunks) inside it. It became question 1's decision (2026-11-05,
+  *Decided*).
 - **Budgets per element, per zone** (the owner, 2026-11-04; [../VISION.md](../VISION.md)): "each zone of a level can
   only have N number of X creatures and N number of bullets in flight", so a runtime footprint can be calculated and
   allocated up front, or at least in very controlled steps. This is input to question 6.
@@ -66,10 +68,10 @@
 
 ## The questions
 
-1. **ECS, or not?** Archetype ECS (entities as ids, components in per-archetype tables, queries), sparse-set ECS,
-   or FFD's shape (one owner of dense arrays, systems as ordered methods) made general. Which gives the vision's
-   "component-based" with the least machinery and the best fit to kama (no closures, contract bounds, `scope`'s
-   disjointness proof)?
+1. **ECS, or not?** *(Decided 2026-11-05, below.)* Archetype ECS (entities as ids, components in per-archetype
+   tables, queries), sparse-set ECS, or FFD's shape (one owner of dense arrays, systems as ordered methods) made
+   general. Which gives the vision's "component-based" with the least machinery and the best fit to kama (no closures,
+   contract bounds, `scope`'s disjointness proof)?
 2. **What is a component?** A plain `type value` (copyable, serializable, hashable field by field), always? How does a
    component that owns memory (a mesh, a path) fit?
 3. **What is a system?** A functor contract (`implements System`) with a phase and a rate, registered by the game? How
@@ -88,4 +90,109 @@
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-05, the owner: B built on A, with a table of chunks per (zone, prefab) and side stores for components
+  gained at run time (question 1).** The owner's leaning was "B built on A with C internal storage when possible"
+  (2026-11-04). The recommendation made it concrete, and the owner took it: "Yes I like your recommendation so far".
+  - **The world is generated from records, as code a person could write.**
+    - Records declare the components, the prefabs and the systems. A kyoten generator writes the world type, its stores
+      and its phase methods as plain kama (option A's code), which the compiler checks like any other.
+    - **The game writes system bodies, and a body's signature is its stated access.**
+      `fn void integrate(ref Pos p, const ref Vel v, float32 dt)` writes `Pos` and reads `Vel`. The generator runs it
+      on every prefab that has both. The match is made at build time, so there is no run-time query matching and no
+      type erasure.
+    - **A game may write a store or a system by hand** beside the generated ones (a voxel grid, say), as under A.
+  - **From option C it takes the storage, not the run time.** Each prefab is an archetype, fixed when the game is
+    built. There is no component registry, and no run-time queries or scheduler: frame-phases question 6 ruled those
+    out. In C, giving an entity a component moves it to another archetype's table. Here a prefab's table never changes
+    shape, so a component gained at run time lives in a side store.
+  - **A table** holds one prefab in one zone. It is the budget ÷ N chunks, rounded up, allocated once when the zone
+    loads and never grown.
+  - **A chunk** is a plain value holding up to N entities of that prefab: one array per component, plus a count of
+    live entities, packed at the front.
+    - **It is the unit of three things:** parallel work (a worker takes whole chunks), a snapshot (a copy of the
+      chunks, G3) and a budget (a zone's soldier budget is a number of chunks, G2 and G7).
+    - **An entity's handle reaches it through a lookup** (handle → table, chunk, slot), because removing an entity can
+      move another one within its chunk.
+  - **A side store** holds one component type that an entity of any prefab can gain or lose while running: Burning,
+    Stunned, a quest marker.
+    - It is a sparse set: the values packed together, each with its owner's handle, plus an index from handle to slot.
+      Its capacity is its own budget.
+    - **A system over the side store alone** (ticking down Burning's timer) runs in parallel over its packed values.
+    - **A system that writes a table through a side store's handles runs serially.** Burning writing the soldier's
+      `Hp` reaches the soldier through its handle, and kama cannot prove those writes land on different soldiers (the
+      family of [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-15). The other spelling writes a damage store, which a later
+      system over the table applies in parallel.
+  - **Later, without breaking games: a flag column.** A prefab that knows it may gain a component can hold it as a
+    column in its chunk with an on/off flag. These are Unity's enableable components, which "don't create structural
+    changes", count as absent while off, and are "ideal for states that you expect to change often and unpredictably"
+    ([manual](https://docs.unity3d.com/Packages/com.unity.entities@1.0/manual/components-enableable-intro.html)). Its
+    work stays parallel, at the cost of memory in every chunk. It would be a per-component choice in the records, as
+    Bevy's storage is. System bodies do not change, so it can arrive later.
+  - **The evidence: probes on kama 0.9.845, re-run on 0.9.850.**
+    - **Across the chunks of one table:** `parallel_for (ref SoldierChunk c in this.chunks, workers: cpuCount())`,
+      with the chunk a `type value` whose columns are `InlineArray<Pos>#(128)` and so on. It checks.
+    - **Across tables:** one task per table in a `scope` (soldiers and crates). It checks. One soldier stepped twice by
+      0.5 moved from 0 to 2.0 and regenerated to `hp` 2, and `kama run` exited 0.
+    - **Not across two systems of one table.** Two spawns on `this.soldiers`, for systems over different components,
+      are refused: *"two children in this `scope` borrow overlapping places (`this.soldiers` and `this.soldiers`)"*.
+      So the generator fuses the systems that do not conflict into one pass per chunk, and the parallel work comes from
+      the chunks. In Unity a job over several components is written as one by hand. Here the generator does it.
+    - **A snapshot copies the chunks**, as values.
+    - **KY-13 stays out of sight.** A spawn takes one argument, so the step's `dt` rides in the generated table.
+    - **An arena-backed table can be split with `parallel_for` but not handed to a task**, because
+      `BumpAllocator` is not `Sendable` (KY-17, filed 2026-11-04, on 0.9.850). Until kama closes it, each table takes
+      one allocation when its zone loads, which still keeps allocation up front and controlled.
+  - **Precedent: every piece exists elsewhere.**
+    - **Prefab tables of fixed-size chunks:** Unity Entities' archetype chunks are 16 KiB, holding at most 128
+      entities
+      ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)),
+      and Unreal Mass sets a chunk size per archetype
+      ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)).
+    - **Archetypes fixed at build time, with fixed capacity:** gecs (Rust, 0.3.0) needs "all archetypes to be known and
+      declared at compile-time", "precompiles all queries", and with fixed capacities "will perform zero allocations
+      after startup". Its stated limit is the one side stores answer: "adding or removing components from entities at
+      runtime isn't currently possible" ([README](https://docs.rs/crate/gecs/latest/source/README.md)).
+    - **The loop generated from a system's signature:** in Unity, an `IJobEntity` whose `Execute(ref A, in B)` takes
+      `ref` for read-write and `in` for read-only triggers source generation of a chunk job, with its query inferred
+      from the parameters
+      ([IJobEntity](https://docs.unity.com/en-us/engine/7000.0/script-reference/unity/entities/ijobentity.md)).
+    - **Side stores beside tables:** Bevy stores components in tables by default, with an opt-in sparse set per
+      component that gives "fast addition and removal of components, but slower iteration"
+      ([StorageType](https://docs.rs/bevy/0.13.1/bevy/ecs/component/enum.StorageType.html)).
+    - **A schedule built at compile time from declared access:** ecst (C++14, experimental, shown at C++Now 2016)
+      builds its dependency graph at compile time from each system's declared reads and writes. It has the probe's
+      two kinds of parallel work, systems side by side and one system split across threads
+      ([ecst](https://www.github.com/vittorioromeo/ecst)).
+    - **What kyoten adds is the compiler's check of the access.** Unity, Bevy, flecs, Mass and EnTT check it at run time
+      or not at all ([../research/component-models.md](../research/component-models.md)). ecst is the nearest, and
+      whether it holds a system's body to its declaration was not checked.
+  - **What it costs:**
+    - a generator to build and keep, and a build step on every schema change;
+    - errors in generated code, which the generator must map back to the records that caused them;
+    - the generator's output becomes a day-one commitment (question 8);
+    - a new component type needs a rebuild, until KY-14 (a typed way back from an erased store) and KY-15 (parts of a
+      container chosen at run time) close;
+    - the handle's lookup, and the serial rule for systems that write tables through side stores.
+  - **Left to the later questions:**
+    - **question 2:** what a component may hold, and how one that owns memory fits;
+    - **question 3:** how a system declares its phase, rate and access in its record, and how a system over a side store
+      states its access;
+    - **question 4:** removal inside a chunk (swap-and-pop moves the last entity into the gap, so order changes; a
+      tombstone leaves a hole) and the order a side store is iterated in;
+    - **question 5:** how records map to components, prefabs and systems, beside project-database question 11;
+    - **question 6:**
+      - N, as a count like 128 or a byte size like Unity's 16 KiB;
+      - side-store capacities, and what happens when a store is full;
+      - the matched budgets of a match (G1, the owner's matchmaking note);
+      - chunks kept in their table's heap block, never on the stack (the KM-29 lesson);
+    - **question 7:** the shortest prototype on this shape;
+    - **question 8:** the handle's form, and which parts of the generated output are a day-one commitment.
+  - **Considered:**
+    - **A, written by hand.** It has the least machinery. But the world and its phase methods grow with every component,
+      and per-file visibility pushes them into one file (FFD's 11,108 lines). And there are no records for agents to
+      edit.
+    - **B on A, with one sparse store per component type** (EnTT's shape, and KYR-3's `Store<T>`). Adding a component
+      at run time is easy everywhere. But data-parallel work over two components cannot be proven (KY-15), and a budget
+      maps to a component type rather than to a (zone, prefab).
+    - **C, an engine-owned archetype ECS.** Ruled out by frame-phases question 6, since its parallel work goes through
+      an `UnsafePtr` seam the compiler cannot check.
