@@ -55,10 +55,19 @@ answer is recorded in its doc's *Decided*:
   A prefab with owned data gets a resource chunk, which still splits across workers and is snapshotted by `copy`. Each
   list states whether it refuses or spills when full. World data (voxels, terrain, destruction) is not a component; it
   lives in world stores of cells, and the owner added question 9 for them, with procedural generation.
+- **[design/components.md](design/components.md), question 3, in part** (2026-11-05):
+  - **The vocabulary:** "system" is a function plus its record, render or audio is an "engine module", and
+    "subsystem" is retired.
+  - **Queued structural changes,** applied at the end of the phase, sorted by chunk.
+  - **Engine modules** are written the way a game's systems are, so the engine never names a game's world.
+  - **The layers:** frame, world, engine modules, the agent surface. This also decides architecture's layer names.
+  - **The model in one read** is now [REFERENCE.md](REFERENCE.md), and AGENTS.kyoten.md points agents at it.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 3–9**, with question 5 decided beside project-database 11.
+1. **[design/components.md](design/components.md), question 3's choices 2 and 3, then questions 4–9**, with question 5
+   decided beside project-database 11. When question 3 closes, frame-phases.md and architecture.md are reworded to the
+   new vocabulary ("subsystem" → system, render or audio → engine module).
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
@@ -71,9 +80,6 @@ answer is recorded in its doc's *Decided*:
 
 **To raise with the owner:**
 
-- **Architecture's layer names are unblocked.** They waited for frame-phases question 1 and components question 1.
-  Take them with components question 3. Under B a game's world is generated, so an engine system (render, audio)
-  cannot name its type, and how a system reads a world it did not write is question 3's matter.
 - **KYR-58's G1, at components question 6.** The owner agreed (2026-11-04) that where machines simulate together, a
   simulation budget matches, negotiated at matchmaking if needed. Still to confirm there: Output's budgets vary per
   machine, and one authority (a server or single player) may choose its own.

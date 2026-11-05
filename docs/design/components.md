@@ -2,7 +2,10 @@
 
 **Status:** questions 1 and 2 decided on 2026-11-05. Question 1: B built on A, with a table of chunks per (zone, prefab)
 and side stores for components gained at run time. Question 2: a component is a plain value, with all four kinds of data
-on day one, and world data is not a component. Questions 3–9 are open; question 9 was added at question 2.
+on day one, and world data is not a component. Question 3 is partly decided (2026-11-05): the vocabulary, queued
+structural changes, engine modules written like a game's systems, and the layers; its choices 2 and 3 are open.
+Questions 4–9 are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
+[../REFERENCE.md](../REFERENCE.md).
 
 ## What the vision asks
 
@@ -75,7 +78,8 @@ on day one, and world data is not a component. Questions 3–9 are open; questio
    contract bounds, `scope`'s disjointness proof)?
 2. **What is a component?** *(Decided 2026-11-05, below.)* A plain `type value` (copyable, serializable, hashable field
    by field), always? How does a component that owns memory (a mesh, a path) fit?
-3. **What is a system?** A functor contract (`implements System`) with a phase and a rate, registered by the game? How
+3. **What is a system?** *(Partly decided 2026-11-05, below: choices 1, 4, 5 and 6. Choices 2 and 3 are open.)* A
+   functor contract (`implements System`) with a phase and a rate, registered by the game? How
    does it declare what it reads and writes, so the scheduler can run disjoint systems in parallel and kama can check
    it?
 4. **Determinism.** Iteration order is part of the simulation (FFD). Does the component store guarantee a stable,
@@ -101,6 +105,21 @@ on day one, and world data is not a component. Questions 3–9 are open; questio
    - **How destruction divides:** pre-fractured pieces as entities (Unreal Chaos's geometry collections), or cut at
      run time into world data or an entity's owned data.
    - **What presentation derives:** meshes built from voxels, and terrain LOD. These are never saved (G8).
+   - **Coordinates in a very large world** *(added 2026-11-05, the owner's thought exercise)*. Far from the origin a
+     `float32` loses precision: about 1 m per step at 10⁷ m (Box3D,
+     [large worlds](https://box2d.org/documentation3d/large-worlds.html)). G7 already makes the zone the unit of
+     coordinates.
+     - *Proposed:* a position is a whole-number zone coordinate plus a `float32` offset inside the zone. An entity
+       crossing a boundary is rebased by a whole number of zones, which can be made exact and so stays deterministic
+       (to prove in the design).
+     - **Physics runs in a cluster's frame:** the zones around what is simulated, with at least 8 zones around a corner
+       of cubed zones, or 4 on a flat world (the owner's count). The cluster rebases when its centre zone changes, and a
+       server keeps one cluster per group of nearby players.
+     - **Output draws relative to the camera,** as Box3D keeps "a draw origin near the camera", so the GPU sees small
+       floats.
+     - **The alternative:** doubles for the absolute position only, and floats inside, as Box3D and Unreal 5's
+       [Large World Coordinates](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)
+       do. Box3D measures it at "a few percent, not the 2x of an all-double build".
 
    KYR-50 (AI-generated worlds) would fill the same stores.
 
@@ -288,3 +307,68 @@ on day one, and world data is not a component. Questions 3–9 are open; questio
       it: a general-purpose engine cannot wait for kind 4, and the reason given, `@noheap`, binds only games that opt in.
     - **(b) Values, plus components that own memory kept in their own store outside the chunks.** It is flexible, but its
       work is serial like a side store's. The resource chunk gives the same data with the parallel proof intact.
+- **2026-11-05, the owner: question 3, choices 1, 4, 5 and 6.** Choices 2 (what a system is made of) and 3 (how a
+  system reads other entities) are still open. The picture and the vocabulary are in [../REFERENCE.md](../REFERENCE.md).
+  - **The owner's words:**
+    - on the vocabulary: "1. yes";
+    - on queued structural changes: "4. Your spawn and despawning seems good";
+    - on engine modules: "5. I assume your read here is solid";
+    - on the layers: "6. so far this sounds good".
+  - **Under it all, the owner's frame:** "Ideally the engine doesn't need to change much to develop a game. Much of the
+    game development process work is done in the 'game' repo." A game's records, system bodies and generated world
+    are in its own repository. A game changes engine behaviour by layering its records over the engine's (the project
+    database's layers), never by editing the engine.
+  - **Choice 1, the vocabulary.**
+    - **System** means a function over components plus the record that schedules it, as Unity, Bevy and flecs use the
+      word.
+    - **Engine module** means one area of the engine: input, render, audio, net, physics or UI.
+    - **"Subsystem" is retired.** frame-phases.md and architecture.md are reworded once question 3 closes. Until then,
+      [../REFERENCE.md](../REFERENCE.md) maps the old wording.
+  - **Choice 4, structural changes.**
+    - A system that spawns, despawns, or makes an entity gain or lose a component queues a command.
+    - Commands apply at the end of their phase, sorted by chunk, so the order never depends on which thread recorded
+      them.
+    - A full budget refuses the command there, which is G2's stated rule.
+    - **Precedent:** Unity's command buffers play back sorted by a sort key, and its docs give the chunk's index as one
+      that is "consistent regardless of scheduling"
+      ([playback](https://docs.unity3d.com/Packages/com.unity.entities@1.3/manual/systems-entity-command-buffer-playback.html)).
+      Unity's docs add that sorting "can have an impact on performance, so some projects may choose to accept
+      non-determinism". kyoten always sorts, since its world hash requires it.
+  - **Choice 5, engine modules are written the way a game's systems are.**
+    - An engine module publishes its components (in the world layer), its records and its system bodies.
+    - The generator reads the engine's records together with the game's, so render's extraction is scheduled in Output
+      like any system, and the engine never names a game's world type.
+    - A module's long-lived state (the GPU device, the physics world while Jolt is its backend) is a singleton that the
+      module owns.
+    - `run` reaches the generated world through one contract, the `World` contract. *Probed on 0.9.852:* a system
+      generic over a contract the generated world implements splits the world's chunks with `parallel_for`, through a
+      `ref`-returning contract method, and reads them through a `const` one (exit 128, as expected).
+    - **Why:** the scheduler sees an engine system's access the way it sees a game's. Agents and humans learn one way
+      to write a system. And a borrowed backend sits behind records and components, so replacing Jolt with kyoten's own
+      solver changes no game (the owner's own-systems direction, [../SPIKE.md](../SPIKE.md) § Standing direction).
+    - **Considered:** engine modules as hand-written services that the world calls, as Godot's servers are *(not
+      re-checked here)*. Their access would be invisible to the scheduler, and each module would need its own bridge to
+      every game's generated world.
+  - **Choice 6, the layers.** Architecture question 2's draft holds, with two additions. Each layer imports only the
+    layers above it:
+    1. **frame:** the phases, the clock, the scheduler, the input record, the `World` contract and `run`;
+    2. **world:** the engine's component types; the table, chunk, side-store, command and lookup types; and the
+       contracts of published queries;
+    3. **one module per engine module:** input, render, audio, net, physics, UI. Each has its records, bodies and
+       singletons, and imports frame, world and its own library;
+    4. **the agent surface:** it reads every module, and no module imports it.
+
+    **The generated world lives in the game's package**, not in the engine.
+  - **Found while preparing the question, on 0.9.852:**
+    - **KY-20.** A `parallel_for` body may read the container it splits by `ref`. *Probed:* three runs read a counter
+      mid-count ([../KAMA_GAPS.md](../KAMA_GAPS.md)).
+    - **Reading the previous step's snapshot checks, and is sound** (exit 3).
+    - **Reading this step's values works in parallel when writes are staged.** The system writes its output to a
+      staging store beside the table, and a pass at the end of its group copies it in. kama proves it, since the table
+      is only read and the staging store is what is split (exit 7, as expected).
+  - **Still open in question 3:**
+    - **Choice 2:** a system as a function plus its record, with any state in a singleton, against Unity's system
+      object.
+    - **Choice 3:** which read modes a system may declare (the previous step's snapshot, this step's values with staged
+      writes, or this step's values serially), and which is the default. The owner wants "as much parallelism as we
+      can", and asked whether a serial system reading the live world drifts from parallel ones.

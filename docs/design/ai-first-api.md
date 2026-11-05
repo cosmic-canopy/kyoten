@@ -41,6 +41,12 @@
    a schema for project-database records ([project-database.md](project-database.md)), examples that compile in CI.
 5. **The iteration loop.** Edit, see the change: hot reload of tuning and assets, and of code (kama's hot-reload
    library is on its roadmap; see the kama research). How short can the loop be on web?
+   - *Noted 2026-11-05, the owner:* hot reload must be good, since every change to a record's schema regenerates the
+     world (components question 3's risk). kama also plans its own scripting in the same syntax: "Kama also eventually
+     wants to have it's own REPL scripting system in the same syntax so developers can output scripts during
+     development and compile for production or keep a hybrid approach." That is kama's 2.0, *"dual-mode: compiled +
+     scripting/REPL"* (kama KR-35, `docs/ROADMAP_DETAIL.md` § 7). A system body is plain kama, so the same body could
+     run as a script while a game is developed and be compiled when it ships.
 6. **Templates.** A `kyoten new` (or `kama seed`) that starts a game already wired to the engine, the frame model
    and the project database?
 7. **Errors that say what to do.** kama's diagnostics name the fix. What does kyoten add on top for engine-level
