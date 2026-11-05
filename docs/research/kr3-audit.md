@@ -187,7 +187,7 @@ Each row says what the question leans on in kama. **none** means the question wa
 |---|---|---|
 | 1 the seam | `@kama/gpu` and `@kama/window`, which kyoten builds (KR-25, KR-26) | **none** |
 | 2 the thread topology | KR-327; the pool on wasm (KR-3 step 10); `main` on a worker when threaded (KR-327 says it moves there) | KR-327 answered; *not checked:* OffscreenCanvas through kama's wasm harness |
-| 3 UI | `@kama/ui` and RmlUi natively. kama's roadmap has no row by that name (*read*) | **conditional** on question 3 |
+| 3 UI | HTML and CSS, the browser's own on the web and kyoten's counterpart natively (the owner, 2026-11-05, [../SPIKE.md](../SPIKE.md) § Standing direction). `kama-ui` and `kama-rmlui` already exist as packages, in their own repositories (the owner, 2026-11-05); kama's own roadmap has no row for them, and they were not read for this audit | **conditional** on question 3 |
 | 4 the size budget | Closure in a wasm release | KY-6 (kama KR-289) |
 | 5 what native gains | `@compileFor` | **none**; see target-platforms 1 for dependencies per target |
 | 6 the crossing cost | measured (KYR-5) | **none** |

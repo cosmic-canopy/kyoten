@@ -174,6 +174,7 @@ lives only in a conversation.
 | components 5, project-database 11: records and layers | component-models § Summary (overrides layer per property almost everywhere) and § 5.5 |
 | replay 1, 2, 5 | KY-4 (fixed in kama 0.9.809); harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
 | web-and-native 4: the size budget | web-baseline § What this means and § Candidate budgets. **The owner picks a number, a ratchet, or both** |
+| web-and-native 3: UI | the `kama-ui` and `kama-rmlui` packages, each in its own repository beside the other `kama-` packages (clone them); the owner's UI direction (*Standing direction*, 2026-11-05) |
 | web-and-native 6: the crossing cost | web-baseline § What this means, *For question 6* |
 | target-platforms 1–4 | harvest § 3 (the peers' platform headers) |
 | rendering 1: where it starts | harvest §§ 6–8 and *What this does not decide* 2 |
