@@ -126,6 +126,19 @@ answer is recorded in its doc's *Decided*:
     CSS, the browser's own on the web, and natively a counterpart kyoten builds, with RmlUi at most a stopgap.
     web-and-native question 3 keeps what is left: whether a game's UI is the same HTML on both, and how much of HTML and
     CSS the native counterpart covers, in what order.
+- **Given 2026-11-05: heavy assets are never stored with the code.** The owner: "We don't have to solve the full
+  pipeline now... I just want to make sure we don't store all of the heavy stuff with the code." Three things are kept
+  and moved apart, as studios do:
+  - **code and records,** light text in git (the engine's repository and each game's);
+  - **source assets,** authored and managed through cosmic-forge, in whatever store a team uses (git LFS, Perforce, a
+    custom store);
+  - **built runtime assets,** produced by asset builds, hosted, and downloaded to developer machines and players by a
+    delivery tool.
+
+  Code and a built asset set must agree on the contract that reads them (a record's schema, an asset format's
+  version), so the delivery tool fetches the asset build that matches the code. It bears on content-pipeline question
+  1, project-database questions 2 and 8, and examples question 4, and its build is KYR-29's. *Proposed, to settle at
+  those questions:* a record refers to an asset by id and content hash, never by embedding it.
 
 - **The evidence rows are done.** Each was checked against its sources before it was committed, and the design docs
   they feed point at them under *What already exists*:
@@ -272,8 +285,8 @@ KYR-1 is the walk-through itself.
   `Next id` counter and bump it).
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
-- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 and KY-18 to KY-20 are open there; take the next id from its counter.
+- **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
+  KY-17 to KY-20 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

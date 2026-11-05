@@ -25,7 +25,13 @@ From [../research/cosmic-forge.md](../research/cosmic-forge.md):
 
 ## The questions
 
-1. **Where is the boundary?** The research's reading of forge's own docs: forge stays an external process that owns a
+1. **Where is the boundary?** *(Narrowed 2026-11-05 by the owner's direction that heavy assets are never stored with
+   the code, [../SPIKE.md](../SPIKE.md) § Standing direction. The reading below puts forge's project directory, whose
+   `out/` holds GLB, PNG, MP4 and LoRA checkpoints, inside the game's repo, which that direction rules out for the heavy
+   files. forge's own plan already moves them out: a store "outside the game repo" with a catalogue, and "bundles keyed
+   to a range of game commits", which is the code-to-asset match the direction asks for
+   ([../research/cosmic-forge.md](../research/cosmic-forge.md) § 4, *Planned*).)* The research's reading of forge's
+   own docs: forge stays an external process that owns a
    forge project directory inside the game's repo, and kyoten talks to it only through its CLI (`--json`), its
    localhost API and its job stream, receiving finished assets through a kyoten adapter written as forge tools. Is
    that the boundary?

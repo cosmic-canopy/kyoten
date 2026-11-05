@@ -68,7 +68,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 | KYR-26 | **The human tool surface, first version**: a local web editor with the database's change feed, entities, timings per phase, and tuning that writes records | [human-tools.md](design/human-tools.md) |
 | KYR-27 | **Replay as a tool**: scrub, step, and compare two runs | [replay-and-determinism.md](design/replay-and-determinism.md) |
 | KYR-28 | **Slice C in kyoten-fps**: an agent builds and tunes a level through records while a human watches and adjusts | [examples.md](design/examples.md) |
-| KYR-29 | **The content pipeline**: the kyoten adapter for cosmic-forge, shared ids and provenance, and a live preview | [content-pipeline.md](design/content-pipeline.md) |
+| KYR-29 | **The content pipeline**: the kyoten adapter for cosmic-forge, shared ids and provenance, and a live preview. Heavy assets stay out of code repositories (the owner, 2026-11-05): source assets in a team's own store, built runtime assets hosted and fetched by a delivery tool that matches each asset build to the code that reads it ([SPIKE.md](SPIKE.md) § Standing direction) | [content-pipeline.md](design/content-pipeline.md) |
 | KYR-30 | **Templates**: `kyoten new`, a game born wired to the frame and the project database | [ai-first-api.md](design/ai-first-api.md) |
 
 ## XR AND MOBILE
