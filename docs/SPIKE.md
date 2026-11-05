@@ -46,18 +46,22 @@ or in a temporary directory, and record what it measured in the design doc it se
 
 **Next, in order:**
 
-1. **KYR-58: the game types, stress-tested.** Walk each kind of game (FPS, RTS, open world, rollback fighting games, VR,
-   simulation, MMO, turn-based, 2D and mobile) through the frame model, options A and B, and per-zone budgets. It is
-   done before components question 1, at the owner's direction ("we want to support all game types").
-2. **[design/components.md](design/components.md), all eight**, with question 5 decided beside project-database 11. Its
-   *What the vision asks* now carries the owner's leaning, the per-zone budgets (input to question 6) and every game
-   type.
-3. Then the rest of the [narrowed table](#narrowed-2026-11-01). **42 questions remain:** components 8,
+1. **[design/components.md](design/components.md), all eight**, with question 5 decided beside project-database 11.
+   - Its *What the vision asks* carries the owner's leaning, the per-zone budgets (input to question 6) and every game
+     type.
+   - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
+     on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
+     under components.md's *What already exists*, by question.
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **42 questions remain:** components 8,
    replay-and-determinism 5, project-database 8, web-and-native 7, target-platforms 4, rendering 4, ai-first-api 3,
    examples 3. A few are taken together, so about 39 separate decisions.
 
 **To raise with the owner:**
 
+- **KYR-58's G1 refines the owner's budget idea** ("allocation up front based on the machine it runs"). Where machines
+  simulate together (lockstep, rollback, replay, cross-play), a simulation budget is a rule of the game and cannot vary
+  per machine. Output's budgets can. One authority, a server or single player, may choose its own. Raise it at
+  components question 6.
 - **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
@@ -99,6 +103,9 @@ or in a temporary directory, and record what it measured in the design doc it se
   - KYR-5, [research/web-baseline.md](research/web-baseline.md): the web build's size, and what a WebGPU call costs
     from wasm.
   - KYR-55, [research/rates.md](research/rates.md) (2026-11-04): each subsystem's floor, and a default for any game.
+  - KYR-58, [research/game-types.md](research/game-types.md) (2026-11-04): thirteen kinds of game against the decided
+    model. It marks each claim by how it was checked (read, a search excerpt, or secondary), and lists the rest under
+    *Not verified*.
 - **KYR-4 is the owner's**: a Quest prototype in its own project. Frame-phases question 10 leaves its measurements to
   it.
 - **kama moves fast beside this work.**
@@ -130,7 +137,7 @@ lives only in a conversation.
 | frame-phases 1–3: the phases and their rates | harvest § 1 (FFD's `engine::phase`); component-models § 2 (flecs) and § Summary (rates) |
 | frame-phases 5–7: parallelism | component-models § 4, probes 1–4, and KY-5; harvest *What this does not decide* 3 (the renderers' statics) |
 | frame-phases 8, web-and-native 2: the web's threads | nothing measured yet (web-baseline § Not measured); recording costs land on whichever thread owns the device |
-| components 1–8 | KYR-58 first (the game types); then component-models § 5, one subsection per question, and § Options for the walk-through (A and B, after frame-phases question 6) |
+| components 1–8 | research/game-types.md (KYR-58, the game types); component-models § 5, one subsection per question, and § Options for the walk-through (A and B, after frame-phases question 6) |
 | components 5, project-database 11: records and layers | component-models § Summary (overrides layer per property almost everywhere) and § 5.5 |
 | replay 1, 2, 5 | KY-4 (fixed in kama 0.9.809); harvest *What this does not decide* 4, 6 and 8 (the input record, the ports' order, Jolt) |
 | web-and-native 4: the size budget | web-baseline § What this means and § Candidate budgets. **The owner picks a number, a ratchet, or both** |

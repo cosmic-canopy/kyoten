@@ -16,8 +16,8 @@
   MonoBehaviours composed on it per game, "and there may be some lessons we learn from that NOT to do". The aim is "as
   optimal as possible while being flexible and generic".
 - **Every game type**, with an FPS likely the first, and "on par or better than Godot, Unity, or Unreal" (the owner,
-  2026-11-04; [../VISION.md](../VISION.md)). KYR-58 stress-tests the model against each kind of game before question 1
-  is decided.
+  2026-11-04; [../VISION.md](../VISION.md)). KYR-58 stress-tested the model against each kind of game before question
+  1 ([../research/game-types.md](../research/game-types.md), below).
 - **Parallel work proven by the compiler** ([frame-phases.md](frame-phases.md) § Decided, question 6, 2026-11-04).
   Component types are then known at build time, so question 1 is between options A and B. **The owner's leaning**
   (2026-11-04, not yet decided): "B built on A with C internal storage when possible", meaning a world generated from
@@ -46,6 +46,21 @@
   world with written phases; B, that world generated from project-database records; C, an engine-owned archetype ECS).
   Two of its probes became kama gaps: KY-4 (a `SlotMap` reloaded through serde reuses slots in a different order;
   fixed in kama 0.9.809) and KY-5 (two `spawn`s cannot share a read-only borrow).
+- **KYR-58's stress test** ([../research/game-types.md](../research/game-types.md), 2026-11-04): thirteen kinds of
+  game, from the FPS to rhythm games, run on paper against the decided frame model, options A and B with chunk
+  storage, and per-zone budgets.
+  - **No kind was found that the model cannot express.** The conditions gather into fourteen findings, G1–G14.
+  - **For question 1:** A and B are the same at run time, and authoring scale favours B (G2, G11). Chunk storage per
+    (zone, prefab), at budget capacity, joins budgets, snapshots and kama's data-parallel proof (G3, G7, G14). It
+    still needs an answer for adding a component at run time.
+  - **For question 2:** components are plain values, so a world can be copied and restored (G3), and some keep a
+    declared history deeper than interpolation's two samples (G4).
+  - **For question 6:**
+    - a simulation budget is a game rule, and Output's budgets vary per machine (G1);
+    - budgets are data, kept per scope (a zone, a player, a match), with a stated rule for when one is full (G2);
+    - a zone is the unit of loading, budgets and coordinates (G7).
+  - **Probed on 0.9.845:** stores sized at start-up in one `Arena`, then a `@noheap` step and a `@noheap` snapshot into
+    a second block. It ran.
 
 ## The questions
 

@@ -604,7 +604,9 @@ run can both hold.
     - Output's render-command recording, on native. On the web, recording is tied to the thread that owns the GPU
       device (question 8).
     - Physics through its library's own threads, as TMM runs Jolt with two.
-    - Update after those, at large entity counts. KYR-58's RTS row says how large.
+    - Update after those, at large entity counts. How large is in
+      [../research/game-types.md](../research/game-types.md) G14: from tens of thousands of simple units on today's
+      pool, which slice B measures.
   - **What it means for kama's pool:** it does not block the first slice's code. It is needed when slice B starts
     measuring (KYR-12), which is the timing the owner's priority for KY-12 meets.
   - **Where the switch lives, in two places** (the owner, 2026-11-04: "Yes I agree with your split"):
