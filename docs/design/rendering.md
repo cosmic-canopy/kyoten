@@ -1,6 +1,7 @@
 # Rendering: WebGPU first
 
-**Status:** draft for the design spike. One decision is recorded; the rest are questions.
+**Status:** draft for the design spike. Two decisions are recorded, the latest closing question 3; the rest are
+questions.
 
 ## What the vision asks
 
@@ -53,7 +54,7 @@
 2. **The layers.** Raw WebGPU (safe handles), a render graph or frame graph, and a scene layer (meshes, materials,
    lights, cameras) that a prototype uses in a few lines. Which layers does the engine provide, and which does a
    game write?
-3. **The Three.js bar.** What does "a lit, spinning mesh in N lines" look like in kyoten, and what defaults make it
+3. **The Three.js bar.** *(Decided 2026-11-05 with components question 7, below.)* What does "a lit, spinning mesh in N lines" look like in kyoten, and what defaults make it
    short (a default camera, light and material)?
 4. **Rendering in the frame.** The Output phase reads the simulation's state, at the display's rate, and interpolates
    between simulation steps ([frame-phases.md](frame-phases.md)). How does it read state without stalling the next
@@ -87,3 +88,14 @@
   a texture that something else uses. So 2D is not a separate engine mode, and a 2D game, a HUD, and a game on a screen
   inside a 3D world are one mechanism. The renderer designed in the spike (questions 2 and 4) leaves room for layers
   and render targets; 2D itself is KYR-49, and the details are question 9.
+
+- **2026-11-05, the owner: question 3, the defaults that keep the hello cube short, decided with components question 7
+  and ai-first-api question 1.** "All in all I think I agree on all."
+  - **The default makeup of a world:** unless a record says otherwise, one window or canvas, a camera looking at the
+    origin, a directional light with ambient light, a lit default material, and a start zone.
+  - **Each default is an engine record** in the engine's content layer, which a game patches field by field
+    ([project-database.md](project-database.md) question 11). kama has no default parameters, so defaults live in data.
+  - **A mesh requires a transform and a material** *(proposed; components question 8 confirms it)*, so a prefab that
+    lists only a mesh is drawn.
+  - **Left to question 2:** which scene-layer types carry these defaults. The sketch and the reasons are in
+    [components.md](components.md) § Decided, question 7.

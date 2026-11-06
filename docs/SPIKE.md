@@ -90,19 +90,30 @@ answer is recorded in its doc's *Decided*:
   - **Nothing large travels on the stack.** A 32 KiB frame guard goes in every manifest but Windows' (kama's own
     `std::fs` frames fail it there, probed). A chain of frames under the guard overran wasm's 256 KiB stack, which
     became KY-22.
+- **[design/components.md](design/components.md) question 7, with ai-first-api question 1 and rendering question 3**
+  (2026-11-05): the hello cube is records plus one system, in at most 20 non-blank lines and seven concepts, held by CI
+  on web and native ([REFERENCE.md](REFERENCE.md) § The hello cube).
+  - **Defaults are engine records,** since kama has no default parameters.
+  - **Actions are generated fields,** and bindings are records of their own, so a bot or an agent drives the same
+    action.
+  - **Records stay data:** kama refuses unknown attributes.
+  - **The engine ships general-purpose components where the design is sound,** and several ways to move things are
+    fine (the owner).
+  - **Left to question 8:** required components (proposed: a mesh brings a transform and a material) and the generator's
+    naming rule, since kama has no shadowing.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 7–9.**
-   - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
+1. **[design/components.md](design/components.md), questions 8 and 9.**
+   - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **36 questions remain:** components 3 (7–9; question 9
-   was added as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
-   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 34 separate
-   decisions. The owner asked for the count of questions left each time one is put to them.
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **33 questions remain:** components 2 (8 and 9;
+   question 9 was added as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
+   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
+   were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
 

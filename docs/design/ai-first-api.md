@@ -1,6 +1,7 @@
 # Easy for AI from day one, as quick as Three.js
 
-**Status:** draft for the design spike. One decision is recorded; the rest are questions.
+**Status:** draft for the design spike. Two decisions are recorded, the latest closing question 1; the rest are
+questions.
 
 ## What the vision asks
 
@@ -29,7 +30,7 @@
 
 ## The questions
 
-1. **What is the "hello cube"?** The smallest program that opens a window (or a canvas), draws a lit, spinning mesh
+1. **What is the "hello cube"?** *(Decided 2026-11-05 with components question 7, below.)* The smallest program that opens a window (or a canvas), draws a lit, spinning mesh
    and reads input, on web and native. How many lines, and which concepts must a newcomer, human or agent, meet
    first? Three.js's answer is about 20 lines; kyoten's target should be written down.
 2. **One way to do each thing.** kama's own rule. How does the engine's API keep one obvious spelling per task,
@@ -60,3 +61,17 @@
     through query and MCP. Which questions and tools they answer, and how they sit beside `kama query`, stay open.
   - **On the roadmap:** KYR-25 moves into the first slice, so the first consumer can use the engine from its first
     version. The project database joins it with KYR-24.
+
+- **2026-11-05, the owner: question 1, the hello cube, decided with components question 7 and rendering question 3.**
+  "All in all I think I agree on all." The sketch, its probes, the reasons and what was considered are in
+  [components.md](components.md) § Decided, question 7.
+  - **The target:** a lit, spinning cube that reads input, on web and native, in at most 20 non-blank lines across all
+    its files (records and kama), with seven concepts: app, record, zone, prefab, component, system and action.
+    Three.js takes 35 non-blank lines lit, with about eleven concepts, and reads no input.
+  - **Its shape:** records plus one system. Defaults are engine records, actions are generated fields, and bindings
+    are records of their own, so a bot or an agent drives the same action a key does.
+  - **How it is kept:** an example built and run in CI on web and native, whose line count fails CI when it grows
+    (KYR-14).
+  - **One way to do a thing, for what agents write.** The owner: it "is mostly a kama GOAL, but yes it does make sense
+    to apply to systems that AI will be writing so we always prefer the BEST solution for something". This bears on
+    question 2.

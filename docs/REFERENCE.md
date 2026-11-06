@@ -97,6 +97,36 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
             Its signature is its access:  ref = writes,  const ref = reads
 ```
 
+## The hello cube
+
+*Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
+§ Decided). A sketch: the file format is project-database question 2, and the spelling is components question 8.
+
+```json
+{ "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 } } },
+  "systems":  { "turn": { "phase": "Update" } },
+  "actions":  { "faster": { "kind": "button" } },
+  "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
+  "zones":    { "start": { "spawn": ["cube"] } } }
+```
+```kama
+@generate(Serializable, Deserializable, of)
+type value Spin { @field(default) public float32 rate = 1; }
+
+fn void turn(ref Transform t, ref Spin s, const ref Actions input, float32 dt) {
+    if (input.faster.held) { s.rate = s.rate + dt; }
+    t.yaw = t.yaw + s.rate * dt;
+}
+```
+
+- **The game writes** a prefab, a component (`Spin`), a system (`turn`), an action and its bindings, and a zone. It also
+  owns a `main` of about two lines, which `kyoten new` writes.
+- **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material and a start
+  zone. `mesh` requires a transform and a material *(proposed)*.
+- **The generator writes the rest:** the cube's table, an `Actions` type with one field per action, and Update's call
+  to `turn`.
+- **The target:** at most 20 non-blank lines across all files and seven concepts, on web and native, held by CI.
+
 ## The vocabulary
 
 *Decided at components question 3, choice 1 (2026-11-05):* "system" means the function, as in Unity, Bevy and flecs;
@@ -138,6 +168,9 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Frame** | one display refresh; Output runs once per frame | decided |
 | **Snapshot** | the world, or the columns other systems read, as it stood at the end of a step. A system reading other entities sees it by default | decided (question 3, choice 3) |
 | **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
+| **Action** | a semantic input a game declares (`faster`, a button). The generator writes one field per action, and a player, bot, agent or remote player drives it | decided (question 7, choice 4) |
+| **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player | decided (question 7, choice 4) |
+| **Required component** | a component another component's record requires (a mesh requires a transform), added to the archetype with its defaults at build time | proposed (question 7; question 8 confirms) |
 
 **Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
 were reworded to this vocabulary on 2026-11-05, except inside quotes. Research docs written before then, and quotes,
@@ -213,6 +246,8 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | The counterexample: the last source wins the whole record | Bethesda's "rule of one", *"the last-loaded plugin's version overrides all others"* ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)) | patches per field, so two mods changing different fields do not collide |
 | A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
 | Caps as data, not code | Cities: Skylines' fixed caps (16,384 vehicles), raised only by a mod patching every routine that assumed them ([research/game-types.md](research/game-types.md) G2; from players' logs, not verified) | every cap is a budget record, and nothing in code repeats its number (question 6) |
+| A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with a system | records plus one system, at most 20 non-blank lines and seven concepts, reading input, held by CI (question 7) |
+| Components that bring the ones they need | Bevy's required components, "when A is inserted, B will also be initialized and inserted (if it was not manually specified)" ([Component](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html), 0.20.1); Unity's `RequireComponent` ([RequireComponent](https://docs.unity.com/en-us/engine/current/script-reference/unityengine/requirecomponent)) | resolved at build time, when the archetype is made *(proposed)* |
 | A frame-size guard in the manifest | friendly-fire-department's `-Wframe-larger-than=32768 -Werror=frame-larger-than` on every arm but Windows; the-mallow-man's `tools/check-frames` for Windows | a computed bound per entry point, asked of kama as KY-22 (question 6) |
 
 ## Where to read more
