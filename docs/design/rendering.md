@@ -95,7 +95,7 @@ questions.
     origin, a directional light with ambient light, a lit default material, and a start zone.
   - **Each default is an engine record** in the engine's content layer, which a game patches field by field
     ([project-database.md](project-database.md) question 11). kama has no default parameters, so defaults live in data.
-  - **A mesh requires a transform and a material** *(proposed; components question 8 confirms it)*, so a prefab that
-    lists only a mesh is drawn.
+  - **A mesh requires a transform and a material** *(confirmed at components question 8, 2026-11-06)*, so a prefab
+    that lists only a mesh is drawn.
   - **Left to question 2:** which scene-layer types carry these defaults. The sketch and the reasons are in
     [components.md](components.md) § Decided, question 7.

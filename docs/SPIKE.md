@@ -10,7 +10,7 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-05)
+## Where it stands (2026-11-06)
 
 **Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, and components.md has begun. Every
 answer is recorded in its doc's *Decided*:
@@ -101,6 +101,9 @@ answer is recorded in its doc's *Decided*:
     fine (the owner).
   - **Left to question 8:** required components (proposed: a mesh brings a transform and a material) and the generator's
     naming rule, since kama has no shadowing.
+- **[design/components.md](design/components.md), question 8 in part** (2026-11-06): required components. Any component
+  may require others, the engine's or a game's. One with defaults is added at build time, and one without must be
+  listed. The generator shows where each came from, and a query answers it.
 
 **Next, in order:**
 

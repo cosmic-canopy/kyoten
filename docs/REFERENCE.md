@@ -122,7 +122,7 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, float32 dt) {
 - **The game writes** a prefab, a component (`Spin`), a system (`turn`), an action and its bindings, and a zone. It also
   owns a `main` of about two lines, which `kyoten new` writes.
 - **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material and a start
-  zone. `mesh` requires a transform and a material *(proposed)*.
+  zone. `mesh` requires a transform and a material (question 8).
 - **The generator writes the rest:** the cube's table, an `Actions` type with one field per action, and Update's call
   to `turn`.
 - **The target:** at most 20 non-blank lines across all files and seven concepts, on web and native, held by CI.
@@ -170,7 +170,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
 | **Action** | a semantic input a game declares (`faster`, a button). The generator writes one field per action, and a player, bot, agent or remote player drives it | decided (question 7, choice 4) |
 | **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player | decided (question 7, choice 4) |
-| **Required component** | a component another component's record requires (a mesh requires a transform), added to the archetype with its defaults at build time | proposed (question 7; question 8 confirms) |
+| **Required component** | a component another component's record requires (a mesh requires a transform), the engine's or a game's. One with defaults is added to the archetype at build time; one without must be listed, or the build refuses the prefab. The generator shows where each came from, and a query answers it | decided (question 8, 2026-11-06); its spelling is the rest of question 8 |
 
 **Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
 were reworded to this vocabulary on 2026-11-05, except inside quotes. Research docs written before then, and quotes,
@@ -247,7 +247,7 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
 | Caps as data, not code | Cities: Skylines' fixed caps (16,384 vehicles), raised only by a mod patching every routine that assumed them ([research/game-types.md](research/game-types.md) G2; from players' logs, not verified) | every cap is a budget record, and nothing in code repeats its number (question 6) |
 | A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with a system | records plus one system, at most 20 non-blank lines and seven concepts, reading input, held by CI (question 7) |
-| Components that bring the ones they need | Bevy's required components, "when A is inserted, B will also be initialized and inserted (if it was not manually specified)" ([Component](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html), 0.20.1); Unity's `RequireComponent` ([RequireComponent](https://docs.unity.com/en-us/engine/current/script-reference/unityengine/requirecomponent)) | resolved at build time, when the archetype is made *(proposed)* |
+| Components that bring the ones they need | Bevy's required components, "when A is inserted, B will also be initialized and inserted (if it was not manually specified)" ([Component](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html), 0.20.1); Unity's `RequireComponent` ([RequireComponent](https://docs.unity.com/en-us/engine/current/script-reference/unityengine/requirecomponent)) | resolved at build time, when the archetype is made, and one without defaults must be listed (question 8) |
 | A frame-size guard in the manifest | friendly-fire-department's `-Wframe-larger-than=32768 -Werror=frame-larger-than` on every arm but Windows; the-mallow-man's `tools/check-frames` for Windows | a computed bound per entry point, asked of kama as KY-22 (question 6) |
 
 ## Where to read more

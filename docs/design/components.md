@@ -1,6 +1,6 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1–7 decided on 2026-11-05.
+**Status:** questions 1–7 decided on 2026-11-05, and part of question 8 on 2026-11-06.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -16,8 +16,10 @@
 - **Question 7,** with ai-first-api question 1 and rendering question 3: the hello cube is records plus one system, in at
   most 20 non-blank lines and seven concepts. Defaults are records, actions are generated fields, and bindings are
   records of their own.
+- **Question 8, in part (2026-11-06):** required components. Any component may require others; one with defaults is
+  added at build time, one without must be listed, and the mapping is shown and can be queried.
 
-Questions 8 and 9 are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
+The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
 
 ## What the vision asks
@@ -102,7 +104,8 @@ Questions 8 and 9 are open; question 9 was added at question 2. The model's pict
    How are large components kept off the stack (the KM-29 lesson)?
 7. **The prototype path.** *(Decided 2026-11-05, below.)* A Three.js-style prototype wants "make a cube, give it a spin". What is the shortest correct
    spelling in the component model ([ai-first-api.md](ai-first-api.md))?
-8. **Growing in phases.** Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
+8. **Growing in phases.** *(Required components decided 2026-11-06, below; the rest is open.)* Unity's component
+   model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
 9. **World data.** *(Added 2026-11-05 at question 2.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
@@ -640,7 +643,7 @@ Questions 8 and 9 are open; question 9 was added at question 2. The model's pict
     ```
     - **How the pieces connect:**
       - **`cube` is a prefab** listing two components: the engine's `mesh` and the game's `spin`, whose type is `Spin`.
-      - **Its transform is not listed.** *Proposed:* `mesh`'s record, in the engine's content layer, says it requires a
+      - **Its transform is not listed.** *Proposed, and confirmed at question 8 on 2026-11-06:* `mesh`'s record, in the engine's content layer, says it requires a
         transform and a material, and the generator adds both with their defaults when it makes the archetype. These
         are Bevy's required components, where "when A is inserted, B will also be initialized and inserted (if it was
         not manually specified)" ([Component](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html),
@@ -725,5 +728,27 @@ Questions 8 and 9 are open; question 9 was added at question 2. The model's pict
       before it runs.
   - **Left to later questions:**
     - **question 8:** the spelling of records and how their names connect, the naming rule, required components
-      (proposed), and which built-in components are on day one;
+      (decided there on 2026-11-06), and which built-in components are on day one;
     - **project-database question 2:** the records' file format.
+
+- **2026-11-06, the owner: required components, part of question 8.** "Ya I think your required component type makes
+  sense... It also makes sense to allow authors to require components with their components. There should be a good
+  visible mapping of required components and likley a query for that? If a comonent doesn't have defaults it must be
+  explicitly added."
+  - **Any component may require others,** the engine's and a game's alike. `mesh` requires a transform and a material,
+    and a game's `Vehicle` may require its own `Fuel`. The requirement is written in the component's record, because
+    kama refuses an attribute it does not know (question 7, choice 5). Its spelling is the rest of question 8.
+  - **A required component with defaults is added** with them when the generator makes the archetype, unless the
+    prefab lists it.
+  - **One without defaults must be listed.** A component has defaults when every field has one, so an empty record
+    reads, as question 7 probed for `Spin`. A prefab that lacks a required component without defaults is refused at
+    build time, and the error names the component that requires it.
+  - **The mapping is visible.** The generator reports each prefab's archetype and where each component came from
+    ("transform: required by mesh"). A query answers what a component requires, what requires it, and what a prefab
+    resolves to (ai-first-api question 4, KYR-25).
+  - **Why at build time:** archetypes are fixed when the game is built (question 5). So a requirement costs nothing at
+    run time, and a missing one is a build error rather than a surprise in play.
+  - **Prior art:** Bevy's required components and Unity's `RequireComponent` (question 7, above) add the required
+    component when the first is added. kyoten resolves it when the archetype is made.
+  - **Left to the rest of question 8:** the spelling, and whether a requirement may name a default of its own, such as
+    a material other than the engine's.
