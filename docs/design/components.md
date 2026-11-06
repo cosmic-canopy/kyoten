@@ -1,6 +1,7 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1–7 decided on 2026-11-05, and part of question 8 on 2026-11-06.
+**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, part of question 8 was decided and question 7's hello
+cube revised.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -18,6 +19,8 @@
   records of their own.
 - **Question 8, in part (2026-11-06):** required components. Any component may require others; one with defaults is
   added at build time, one without must be listed, and the mapping is shown and can be queried.
+- **Question 7, revised (2026-11-06):** actions belong to a player, not to the world. The cube names the player that
+  drives it, and a scene places it instead of a start zone, so the hello cube has eight concepts.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -654,7 +657,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       - **`turn` is a system.** Its record puts it in Update. Its signature is its access: it writes `Transform` and
         `Spin` and reads `Actions`. The generator runs it on every table whose archetype has both components.
       - **`faster` is an action of the whole game,** not of a zone. **`start` is a zone,** which spawns one cube when it
-        loads.
+        loads. *(Revised 2026-11-06, below: the cube names the player that drives it, and a scene places it.)*
       - **The generator writes the rest:** the table type for the cube's archetype, an `Actions` type with one field per
         action, and Update's call to `turn` over each chunk.
       - **`main` is the game's, not generated.** The game owns it and calls `run` (architecture question 4,
@@ -690,7 +693,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Choice 2: the target, written down (ai-first-api question 1).**
     - **The target:** choice 1's hello cube is a lit, spinning cube that reads input, on web and native. It takes at
       most 20 non-blank lines across all its files, and seven concepts: app, record, zone, prefab, component, system
-      and action.
+      and action. *(Eight since 2026-11-06, below.)*
     - **The bar:** Three.js takes 25 lines (17 non-blank) unlit and 54 (35 non-blank) lit, with about eleven
       concepts, and reads no input.
     - **How it is kept:** the hello cube is an example built and run in CI on web and native. CI counts its lines and
@@ -698,6 +701,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Choice 3: the defaults are records (rendering question 3).**
     - **The default makeup:** unless a record says otherwise, a world starts with one window or canvas, a camera
       looking at the origin, a directional light with ambient light, a lit default material and a start zone.
+      *(Revised 2026-11-06, below: the app's first scene replaces the start zone, and one player joins the defaults.)*
     - **Each is an engine record** in the engine's content layer, which a game patches field by field
       (project-database question 11).
     - **Why data:** kama has no default parameters, so defaults live in data. A field's default is its
@@ -709,7 +713,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       So the game declares `faster` as a button, and its bindings are a record of their own: a default per device,
       which the developer and the player rebind, the player in the local layer.
     - **Anything can drive an action.** A bot, an agent or a remote player sets `faster` directly at Input's hand-off,
-      recorded. The system never sees a key, and a rebind cannot move the hash (KYR-54).
+      recorded. The system never sees a key, and a rebind cannot move the hash (KYR-54). *(Revised 2026-11-06,
+      below: every source drives an action through a player.)*
   - **Choice 5: records stay data, not attributes on the code.** kama refuses an attribute it does not know. *Probed:*
     *"unknown attribute `@system` here — expected `@interrupt`, `@section("...")`, `@noheap`, …"*. Layering also needs
     records to be data. So the minimum is two files, which an agent or `kyoten new` writes (ai-first-api question 6,
@@ -752,3 +757,39 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     component when the first is added. kyoten resolves it when the archetype is made.
   - **Left to the rest of question 8:** the spelling, and whether a requirement may name a default of its own, such as
     a material other than the engine's.
+
+- **2026-11-06, the owner: the hello cube revised (question 7, choices 2–4).** "Yes we need to revise hello cube with
+  our revised vision we have been building out here."
+  - **Why:** the owner asked: "Is 'actions' global? how is it bound to 'turn'? Globals typically have a bad smell.
+    Also Who/what provided the action? controller 1, Controller 2, an AI bot, networked player?" In question 7's
+    sketch `Actions` was one value for the whole world. It could not say who acted, so split screen, bots and remote
+    players had no place. Bevy's input crate says the same: "freely bind keys to distinct entities, rather than
+    worrying about singular global state" (leafwing-input-manager 0.22.0,
+    [docs](https://docs.rs/leafwing-input-manager/latest/leafwing_input_manager/)).
+  - **The revised sketch** (the kama half is unchanged):
+    ```json
+    { "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
+                              "actions": { "player": 1 } } },
+      "systems":  { "turn": { "phase": "Update" } },
+      "actions":  { "faster": { "kind": "button" } },
+      "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
+      "scenes":   { "hello": { "place": ["cube"] } } }
+    ```
+  - **What changed:**
+    - **`Actions` is the cube's own component.** Its record names the player that drives the entity, and the Input
+      phase fills its fields from that player each step. `turn` reads it as before. A player is a slot that a device,
+      a network slot, a bot or an agent is bound to (KYR-54). It is Bevy's model, and Unreal's, where a player's
+      controller and an AI's possess a character alike *(general knowledge)*.
+    - **`Actions` has no default player,** so a prefab must list it, by today's rule at question 8.
+    - **A scene places the cube,** not a start zone. The owner: "I don't think you would have a hard coded 'start'
+      instead you would have a property on the 'scenes' or 'zones'." The app's record names the first scene, which is
+      by default the only one, and a scene has one zone and one layer by default (the owner's model of scenes, zones
+      and layers, 2026-11-06, [../REFERENCE.md](../REFERENCE.md)).
+    - **The engine's defaults** gain one player, bound to the local keyboard and the first gamepad.
+  - **Probed on 0.9.855** against mocks: two cubes, driven by players 1 and 2. With only player 1 holding `faster`,
+    its cube turned to yaw 2.25 at rate 2.5, and player 2's to yaw 2 at rate 2. A prefab whose `actions` named no
+    player was refused when read.
+  - **The target, revised:** at most 20 non-blank lines, unchanged (the sketch takes 12, plus `main`'s two), and eight
+    concepts: app, record, scene, prefab, component, system, action and player. Scene replaces zone, which the cube no
+    longer writes, and player is new.
+  - **Left to KYR-54:** player bindings, adapters and input contexts, recorded there as the owner's direction.

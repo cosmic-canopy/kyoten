@@ -92,7 +92,9 @@ questions.
 - **2026-11-05, the owner: question 3, the defaults that keep the hello cube short, decided with components question 7
   and ai-first-api question 1.** "All in all I think I agree on all."
   - **The default makeup of a world:** unless a record says otherwise, one window or canvas, a camera looking at the
-    origin, a directional light with ambient light, a lit default material, and a start zone.
+    origin, a directional light with ambient light, a lit default material, and a start zone. *(Revised 2026-11-06:
+    the app's first scene, with one zone and one layer, replaces the start zone, and one player bound to the local
+    keyboard and first gamepad joins the defaults; [components.md](components.md) § Decided.)*
   - **Each default is an engine record** in the engine's content layer, which a game patches field by field
     ([project-database.md](project-database.md) question 11). kama has no default parameters, so defaults live in data.
   - **A mesh requires a transform and a material** *(confirmed at components question 8, 2026-11-06)*, so a prefab

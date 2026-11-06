@@ -41,6 +41,17 @@
 4. **What can a human change, and where does it go?** A tuning change writes a project-database record, exactly
    as an agent's would ([project-database.md](project-database.md)), so the human and the AI share one history.
    Is that the rule?
+   - *Noted 2026-11-06, the owner:* "The same sort of 'adapter' abstraction will be used for specifying editor gui
+     control types and such as well so a float value can be decorated as a knob, slider, etc." Input's adapters map a
+     device's control to an action (KYR-54), and an editor control maps a field to a widget the same way.
+     - **Prior art:** Godot 4.7's `@export_range` shows a float as a slider, with `exp`, a unit `suffix:m`, and
+       `radians_as_degrees`, which "stores radians but displays and edits degrees"
+       ([exports](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_exports.html)).
+     - **One difference:** an editor control works both ways, showing the value and editing it, so its adapter
+       converts back as well.
+     - **Where the hint lives:** in the component's record, as a requirement does (components question 8), because
+       kama refuses an attribute it does not know.
+     - **A game's own UI** binds a settings slider to a value by the same means.
 5. **Record and replay as a tool:** scrub a recorded session, step frame by frame, and compare two runs. How much
    of that comes for free from the Input phase's recording ([replay-and-determinism.md](replay-and-determinism.md))?
 6. **Profiling:** what is measured per phase, per component, per rate, and how is it shown?

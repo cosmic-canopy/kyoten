@@ -1,7 +1,7 @@
 # Easy for AI from day one, as quick as Three.js
 
-**Status:** draft for the design spike. Two decisions are recorded, the latest closing question 1; the rest are
-questions.
+**Status:** draft for the design spike. Three decisions are recorded, the latest revising question 1's target; the
+rest are questions.
 
 ## What the vision asks
 
@@ -67,7 +67,8 @@ questions.
   [components.md](components.md) § Decided, question 7.
   - **The target:** a lit, spinning cube that reads input, on web and native, in at most 20 non-blank lines across all
     its files (records and kama), with seven concepts: app, record, zone, prefab, component, system and action.
-    Three.js takes 35 non-blank lines lit, with about eleven concepts, and reads no input.
+    Three.js takes 35 non-blank lines lit, with about eleven concepts, and reads no input. *(Eight concepts since
+    2026-11-06, below.)*
   - **Its shape:** records plus one system. Defaults are engine records, actions are generated fields, and bindings
     are records of their own, so a bot or an agent drives the same action a key does.
   - **How it is kept:** an example built and run in CI on web and native, whose line count fails CI when it grows
@@ -75,3 +76,8 @@ questions.
   - **One way to do a thing, for what agents write.** The owner: it "is mostly a kama GOAL, but yes it does make sense
     to apply to systems that AI will be writing so we always prefer the BEST solution for something". This bears on
     question 2.
+
+- **2026-11-06, the owner: question 1's target revised** with components question 7's hello cube. Actions belong to a
+  player rather than the world, so the cube names the player that drives it, and a scene places it instead of a start
+  zone. The concepts are now eight: app, record, scene, prefab, component, system, action and player. The 20-line
+  limit is unchanged. The reasons and the probe are in [components.md](components.md) § Decided, 2026-11-06.

@@ -100,14 +100,16 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 ## The hello cube
 
 *Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
-§ Decided). A sketch: the file format is project-database question 2, and the spelling is components question 8.
+§ Decided), and revised on 2026-11-06 so actions belong to a player. A sketch: the file format is project-database
+question 2, and the spelling is components question 8.
 
 ```json
-{ "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 } } },
+{ "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
+                          "actions": { "player": 1 } } },
   "systems":  { "turn": { "phase": "Update" } },
   "actions":  { "faster": { "kind": "button" } },
   "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
-  "zones":    { "start": { "spawn": ["cube"] } } }
+  "scenes":   { "hello": { "place": ["cube"] } } }
 ```
 ```kama
 @generate(Serializable, Deserializable, of)
@@ -119,13 +121,15 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, float32 dt) {
 }
 ```
 
-- **The game writes** a prefab, a component (`Spin`), a system (`turn`), an action and its bindings, and a zone. It also
-  owns a `main` of about two lines, which `kyoten new` writes.
-- **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material and a start
-  zone. `mesh` requires a transform and a material (question 8).
-- **The generator writes the rest:** the cube's table, an `Actions` type with one field per action, and Update's call
-  to `turn`.
-- **The target:** at most 20 non-blank lines across all files and seven concepts, on web and native, held by CI.
+- **The game writes** a prefab, a component (`Spin`), a system (`turn`), an action and its bindings, and a scene that
+  places the cube. It also owns a `main` of about two lines, which `kyoten new` writes.
+- **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material, one player
+  bound to the local keyboard and first gamepad, and the scene's one zone and one layer. The app's first scene is the
+  only one unless its record names another. `mesh` requires a transform and a material (question 8).
+- **The generator writes the rest:** the cube's table; an `Actions` component with one field per action, which the
+  Input phase fills each step from the player the cube names; and Update's call to `turn`.
+- **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
+  component, system, action, player), on web and native, held by CI.
 
 ## The vocabulary
 
@@ -168,8 +172,13 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Frame** | one display refresh; Output runs once per frame | decided |
 | **Snapshot** | the world, or the columns other systems read, as it stood at the end of a step. A system reading other entities sees it by default | decided (question 3, choice 3) |
 | **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
-| **Action** | a semantic input a game declares (`faster`, a button). The generator writes one field per action, and a player, bot, agent or remote player drives it | decided (question 7, choice 4) |
-| **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player | decided (question 7, choice 4) |
+| **Action** | a semantic input a game declares (`faster`, a button or an axis). The generator writes one field per action into an `Actions` component, which an entity carries to name the player that drives it; the Input phase fills it each step | decided (question 7, choice 4, revised 2026-11-06) |
+| **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player. It passes through adapters | decided (question 7, choice 4); adapters are the owner's direction for KYR-54 |
+| **Player** | a numbered slot that drives entities through their `Actions`. A local device, a network slot, a bot or an agent is bound to it, and a budget caps how many there are | that actions belong to a player is decided (question 7, revised 2026-11-06); the rest is the owner's direction for KYR-54 |
+| **Player binding** | what attaches a source to a player: keyboard 1, gamepad 2, a network slot, a bot or an agent | the owner's direction (2026-11-06), decided at KYR-54 |
+| **Adapter** | a step in a binding that filters a control's value or converts it to the action's kind: a dead zone, a scale, a stick or trigger as a button, a button as an axis, two buttons as −1 to 1, a filtered accelerometer. Editor controls may use the same idea (human-tools question 4) | the owner's direction (2026-11-06), decided at KYR-54 |
+| **Input context** | a set of bindings a player switches on or off, with a priority (on foot, driving) | the owner's direction (2026-11-06), decided at KYR-54 |
+| **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | proposed (the owner's model, 2026-11-06) |
 | **Required component** | a component another component's record requires (a mesh requires a transform), the engine's or a game's. One with defaults is added to the archetype at build time; one without must be listed, or the build refuses the prefab. The generator shows where each came from, and a query answers it | decided (question 8, 2026-11-06); its spelling is the rest of question 8 |
 
 **Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
@@ -246,7 +255,12 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | The counterexample: the last source wins the whole record | Bethesda's "rule of one", *"the last-loaded plugin's version overrides all others"* ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)) | patches per field, so two mods changing different fields do not collide |
 | A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
 | Caps as data, not code | Cities: Skylines' fixed caps (16,384 vehicles), raised only by a mod patching every routine that assumed them ([research/game-types.md](research/game-types.md) G2; from players' logs, not verified) | every cap is a budget record, and nothing in code repeats its number (question 6) |
-| A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with a system | records plus one system, at most 20 non-blank lines and seven concepts, reading input, held by CI (question 7) |
+| A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with a system | records plus one system, at most 20 non-blank lines and eight concepts, reading input, held by CI (question 7, revised 2026-11-06) |
+| Actions on the entity a player drives, not in one world value | leafwing-input-manager 0.22.0, for Bevy: "freely bind keys to distinct entities, rather than worrying about singular global state" ([docs](https://docs.rs/leafwing-input-manager/latest/leafwing_input_manager/)) | the entity names a player slot, which any source can drive (question 7, revised) |
+| Adapters between a control and an action | Unity's processors (axis and stick dead zones, invert, scale, normalize, clamp) and composite bindings (two buttons as a 1D axis, four as a 2D vector) ([processors](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/Processors.html), [bindings](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/ActionBindings.html)); Unreal's Enhanced Input modifiers (dead zone, negate, swizzle) and triggers (hold, chorded) ([Enhanced Input](https://dev.epicgames.com/documentation/en-us/unreal-engine/enhanced-input-in-unreal-engine)) | the owner's direction for KYR-54 |
+| Input contexts with a priority | Unreal's Input Mapping Contexts, applied per local player: "the context with the highest priority will be considered and the others ignored" ([Enhanced Input](https://dev.epicgames.com/documentation/en-us/unreal-engine/enhanced-input-in-unreal-engine)) | the owner's direction for KYR-54 |
+| Local players joining on their devices | Unity's PlayerInputManager: a player joins by pressing a button on an unpaired device, with a maximum count and split screen ([PlayerInputManager](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/PlayerInputManager.html)) | a player slot that a remote player, bot or agent binds to as well (KYR-54) |
+| An editor control chosen per field | Godot 4.7's `@export_range`: a slider, `exp`, `suffix:m`, and `radians_as_degrees`, which "stores radians but displays and edits degrees" ([exports](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_exports.html)) | the hint is data in the component's record, an adapter like input's (human-tools question 4) |
 | Components that bring the ones they need | Bevy's required components, "when A is inserted, B will also be initialized and inserted (if it was not manually specified)" ([Component](https://docs.rs/bevy/latest/bevy/ecs/component/trait.Component.html), 0.20.1); Unity's `RequireComponent` ([RequireComponent](https://docs.unity.com/en-us/engine/current/script-reference/unityengine/requirecomponent)) | resolved at build time, when the archetype is made, and one without defaults must be listed (question 8) |
 | A frame-size guard in the manifest | friendly-fire-department's `-Wframe-larger-than=32768 -Werror=frame-larger-than` on every arm but Windows; the-mallow-man's `tools/check-frames` for Windows | a computed bound per entry point, asked of kama as KY-22 (question 6) |
 

@@ -104,9 +104,19 @@ answer is recorded in its doc's *Decided*:
 - **[design/components.md](design/components.md), question 8 in part** (2026-11-06): required components. Any component
   may require others, the engine's or a game's. One with defaults is added at build time, and one without must be
   listed. The generator shows where each came from, and a query answers it.
+- **[design/components.md](design/components.md), question 7 revised** (2026-11-06), with ai-first-api question 1 and
+  rendering question 3: actions belong to a player, not the world. The cube's `Actions` component names the player that
+  drives it, and a scene places the cube instead of a start zone, so the hello cube has eight concepts. Probed on
+  0.9.855.
+  - **The owner's direction on input** (players, player bindings, adapters, input contexts) is on KYR-54, to decide
+    when that row comes up, and editor controls as adapters are noted at human-tools question 4.
 
 **Next, in order:**
 
+0. **The owner's model of scenes, zones and layers** (2026-11-06), with the proposed adjustments: views drive what is
+   drawn and streaming sources what is simulated; zone size in metres and depth in rings of zones; layers that may
+   nest, may be non-spatial, and turn on by ring as an LOD control. REFERENCE.md lists *Scene* as proposed. The owner
+   is choosing whether it is recorded as decided now or taken as a new components question 10.
 1. **[design/components.md](design/components.md), questions 8 and 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
