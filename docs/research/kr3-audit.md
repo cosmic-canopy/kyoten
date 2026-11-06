@@ -28,7 +28,8 @@ and line), or *not checked*.
 - **A second bug was found the same day, while components question 3 was prepared, and it touches the pool directly.**
   A `parallel_for` body may read the container it splits by `ref`, so a worker reads an element another worker is
   writing (KY-20). *Probed:* three runs read a counter mid-count. KR-323 closed the write half on 0.9.851. Moving
-  `parallel_for` onto the pool is the moment to close the read half.
+  `parallel_for` onto the pool is the moment to close the read half. *(Later the same day, kama filed it as KR-333 and
+  fixed it in `c39d620c`.)*
 - **kyoten's needs, added to five rows kama already has:**
   - **KR-320:** long jobs arrive with the held `Job<R>`, not later.
   - **KR-325:** names, priorities and core classes for threads.

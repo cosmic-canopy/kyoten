@@ -80,25 +80,32 @@ answer is recorded in its doc's *Decided*:
   - **Checks and history:** checks run per source, then over the stack. The stack's identity is in every save, replay
     and match.
   - **Probed** on 0.9.854, which found KY-21. Mods with code are roadmapped as KYR-60: "code is content".
+- **[design/components.md](design/components.md), question 6** (2026-11-05): every store has a ceiling from a budget
+  record. It is reserved up front by default, or committed chunk by chunk up to the ceiling as an opt-in, probed on
+  0.9.854. A full budget refuses by default, with eviction as an opt-in, and development behaves as release does.
+  - **N per archetype,** from a 16 KiB target, is measured in slice B.
+  - **The footprint is computed and shown** per scope.
+  - **G1 is settled:** Output's budgets vary per machine, a sole authority chooses its own simulation budgets, and a
+    match agrees them.
+  - **Nothing large travels on the stack.** A 32 KiB frame guard goes in every manifest but Windows' (kama's own
+    `std::fs` frames fail it there, probed). A chain of frames under the guard overran wasm's 256 KiB stack, which
+    became KY-22.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), questions 6–9.**
+1. **[design/components.md](design/components.md), questions 7–9.**
    - Its *What the vision asks* carries the per-zone budgets (input to question 6) and every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **37 questions remain:** components 4 (6–9; question 9
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **36 questions remain:** components 3 (7–9; question 9
    was added as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
-   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 35 separate
+   target-platforms 4, rendering 4, ai-first-api 3, examples 3. A few are taken together, so about 34 separate
    decisions. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
 
-- **KYR-58's G1, at components question 6.** The owner agreed (2026-11-04) that where machines simulate together, a
-  simulation budget matches, negotiated at matchmaking if needed. Still to confirm there: Output's budgets vary per
-  machine, and one authority (a server or single player) may choose its own.
 - **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
@@ -118,9 +125,9 @@ answer is recorded in its doc's *Decided*:
   `std::math`). It also maps what each open question leans on in kama, so the gaps that depend on an answer are known
   in advance.
 
-  **kama ported the audit the same day** (`b6847d37`): KY-18 is now KR-329 and KY-19 is KR-328. **Still to relay:**
-  KY-20 (a `parallel_for` body reading the container it splits), which is not in kama's roadmap yet, and KY-21 (an
-  overfull list reported as a type mismatch).
+  **kama ported the audit the same day** (`b6847d37`): KY-18 is now KR-329 and KY-19 is KR-328. Then KY-20 became
+  KR-333, fixed in `c39d620c` and to be re-checked on the next binary built here, and KY-21 became KR-334. **Still to
+  relay:** KY-22 (a computed stack bound per entry point, beside kama's KR-79).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -312,7 +319,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-21 are open there; take the next id from its counter.
+  KY-17 to KY-22 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

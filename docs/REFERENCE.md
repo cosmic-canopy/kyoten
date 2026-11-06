@@ -117,13 +117,15 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Zone** | a region of the world: the unit of loading, budgets and coordinates | decided (G7) |
+| **Budget** | a record limiting one scope (world, zone, match, player, team). A (zone, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
+| **Footprint** | the sum of every ceiling per scope, which the generator reports as the game's simulation floor | decided (question 6) |
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
 | **Prefab** | a named archetype with its defaults. Prefabs of one archetype share generated code, so a record alone can add one | decided (question 5, choice 3) |
 | **Entity** | one thing in the world, an instance of a prefab | decided |
 | **Handle** | an entity's id, reaching it through a lookup (handle → table, chunk, slot) | decided; its form is question 8 |
 | **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
-| **Table** | all the entities of one prefab in one zone, made from its archetype's table type | decided |
-| **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget | decided |
+| **Table** | all the entities of one prefab in one zone, made from its archetype's table type. Its ceiling is its (zone, prefab) budget | decided |
+| **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
 | **Singleton** | a store holding one value per world or per zone: the physics world, an RNG, a spatial grid. A system's state between steps lives in one | decided (question 3, choice 2) |
@@ -171,13 +173,25 @@ Whether the simulation is also bit-identical across platforms is
 - **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes
   while running applies at a step boundary as a recorded input.
 
+**How memory is bounded** (*decided*, components question 6):
+- **Every store has a ceiling from a budget record.** By default it is reserved when its zone or world is created; a
+  table may instead commit chunks one at a time up to its ceiling, at the end of a phase, never moving earlier ones.
+- **A full budget refuses by default,** and the spawning system sees the refusal. Evicting (oldest spawn step, then
+  handle) is an opt-in per budget, and development reports every refusal but behaves as release does.
+- **The footprint is computed:** the generator sums every ceiling per scope, snapshots, staging and command buffers
+  included, and shows the result.
+- **Nothing large travels on the stack.** Chunks live in heap blocks reached by `ref`, and every manifest carries a
+  32 KiB frame guard on every arm but Windows. A bound on the whole chain is asked of kama (KY-22).
+- **Simulation budgets are game rules,** chosen by the sole authority or agreed at matchmaking; Output's vary per
+  machine.
+
 ## Prior art
 
 Each row is a choice kyoten made or proposes, the engines that made it before, and where kyoten differs.
 
 | kyoten | Prior art | Where kyoten differs |
 |---|---|---|
-| A table of fixed-size chunks per (zone, prefab) | Unity Entities' archetype chunks, 16 KiB with at most 128 entities ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)); Unreal Mass, a chunk size per archetype ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)) | prefabs fixed at build time, tables per zone, sized from budgets |
+| A table of fixed-size chunks per (zone, prefab) | Unity Entities' archetype chunks, 16 KiB with at most 128 entities ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)); Unreal Mass, a chunk size per archetype ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)) | archetypes fixed at build time, tables per zone with ceilings from budgets, N per archetype from the same 16 KiB target (questions 5 and 6) |
 | Archetypes fixed at build time, queries precompiled | gecs ([README](https://docs.rs/crate/gecs/latest/source/README.md)) | side stores for components gained at run time |
 | The loop generated from a system's signature | Unity's `IJobEntity` ([IJobEntity](https://docs.unity.com/en-us/engine/7000.0/script-reference/unity/entities/ijobentity.md)) | the whole world is generated, and kama checks it |
 | Side stores beside tables | Bevy's opt-in sparse sets ([StorageType](https://docs.rs/bevy/0.13.1/bevy/ecs/component/enum.StorageType.html)) | — |
@@ -198,6 +212,8 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | Overrides per field, inherited where unnamed | Unity's prefab variants and Godot's instances per property, Bevy's BSN patches per field ([research/component-models.md](research/component-models.md) § 5.5) | RFC 7396 patches, which kama's merge implements |
 | The counterexample: the last source wins the whole record | Bethesda's "rule of one", *"the last-loaded plugin's version overrides all others"* ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)) | patches per field, so two mods changing different fields do not collide |
 | A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
+| Caps as data, not code | Cities: Skylines' fixed caps (16,384 vehicles), raised only by a mod patching every routine that assumed them ([research/game-types.md](research/game-types.md) G2; from players' logs, not verified) | every cap is a budget record, and nothing in code repeats its number (question 6) |
+| A frame-size guard in the manifest | friendly-fire-department's `-Wframe-larger-than=32768 -Werror=frame-larger-than` on every arm but Windows; the-mallow-man's `tools/check-frames` for Windows | a computed bound per entry point, asked of kama as KY-22 (question 6) |
 
 ## Where to read more
 
