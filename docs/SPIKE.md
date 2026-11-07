@@ -166,7 +166,7 @@ answer is recorded in its doc's *Decided*:
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md): question 8 is decided, and question 9 is next.**
+1. **[design/components.md](design/components.md) is decided, questions 1–9** (2026-11-05 to 2026-11-07).
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
@@ -196,16 +196,19 @@ answer is recorded in its doc's *Decided*:
      world store belongs to a layer; the **world generator**, a pure function of seed, zone and records, never
      recorded, bit-identical native and web under `reproducible-float` (probed); a zone file adds unless
      `"generate": false`.
-   - **Then question 9's round 3:** saving (whole or edits, by layer, unchanging layers), destruction, and what
-     presentation builds.
+   - **Question 9, round 3 of 3** (the owner: "All of this is great. I agree"): a changed section is saved whole and
+     an untouched one regenerates; a zone's changeable layers are saved whole; a **read-only layer**
+     (`"readOnly": true`) is never saved, needs no snapshot and stays out of the per-step hash; destruction is cell
+     edits and pre-fractured prefabs; derived data is rebuilt, never saved. **Question 9, and components.md, are
+     decided.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **32 questions remain:** components 1 (9, added
-   as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
-   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
+2. **Next: [design/replay-and-determinism.md](design/replay-and-determinism.md),** questions 1–3, 5 and 6, then the
+   rest of the [narrowed table](#narrowed-2026-11-01). **31 questions remain:** replay-and-determinism 5,
+   project-database 7, web-and-native 7, target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
    were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**

@@ -71,6 +71,9 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
      source that changes while running applies at a step boundary as a recorded input.
 3. **The log format.** Shared with the network wire, as FFD's is, so there is one serializer? Versioned, so a recording
    survives an engine update, or explicitly tied to a build?
+   - *Noted 2026-11-07 ([components.md](components.md) question 9, round 3):* a save's file format joins this one,
+     so there is one serializer. A save holds each loaded zone's changeable layers and changed sections, and the
+     identity: the stack, the engine's version, the world generator's version and the seed.
 4. **What does replay give humans?** Scrubbing, stepping, comparing two runs, reproducing a bug from a recording, and
    filming at capture quality ([human-tools.md](human-tools.md)). What does it give agents: tests from recordings, a
    regression suite of play sessions?

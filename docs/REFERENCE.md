@@ -123,6 +123,10 @@ which are question 9.
   to a spatial layer and loads with it; the game chooses the cell type and sizes, and the engine encodes each
   section from its contents. A world generator fills a zone from the scene's seed, the zone's coordinate and the
   records: never recorded, the same bits on every platform under kama's `reproducible-float`.
+- **A save holds only what cannot be rebuilt** (question 9, 2026-11-07): each loaded zone's changeable layers and
+  its changed sections, whole. Untouched sections regenerate, a `readOnly` layer reloads from content, and derived
+  data (meshes, LOD, colliders, navigation meshes) is rebuilt. Destruction is cell edits or pre-fractured prefabs,
+  and visual debris is Output's.
 
 ## One step, then a display frame
 
@@ -353,7 +357,7 @@ content/
 | Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
 | Scene | `inBuild` (true); `zoneSize` in whole metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a world generator); `worldGenerator`, a function by kama path (none) |
-| Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
+| Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab; `readOnly` (false; true: processors read it and never write it, and it is never saved) |
 | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
 | Layer group | `on` (true); `groups`, nested |
 | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
@@ -397,6 +401,7 @@ words.
 | **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |
 | **Layer**, or **scene layer** | a set of entities declared at design time that spans every zone and loads as one: the unit of loading and memory. Spatial or not, simulated or drawn only, on in a range of rings, and off, loaded or active | decided (2026-11-06); its name is question 8 |
 | **Layer group** | a set inside one layer that switches as one, nested freely: an id per entity, and no memory of its own | decided (2026-11-06); named at question 8 part b (2026-11-07) |
+| **Read-only layer** | a layer marked `"readOnly": true`: processors read it and never write it, so it needs no snapshot, stays out of the per-step hash, and is never saved | decided (question 9, 2026-11-07) |
 | **Screen layer** | rendering's target composed onto the screen: a 2D layer over a 3D scene, or alone. Always written so, since a bare "layer" is a scene's | rendering's (2026-11-01); named at question 8 part b (2026-11-07) |
 | **Budget** | a record limiting one scope (world, scene, zone, layer, match, player, team). A (zone, layer, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
 | **Footprint** | the sum of every ceiling per scope, which the generator reports as the game's simulation floor | decided (question 6) |

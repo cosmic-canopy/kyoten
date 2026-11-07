@@ -1,10 +1,9 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, question 8's first part was decided (required
-components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided. On
-2026-11-07, part b began: a system's parameters mean what their types say, the step's time is a `Time`, the
-generator's output is split into files and not committed, systems are functions named by their kama path, and a
-singleton is now a world component.
+**Status:** every question is decided: 1–7 on 2026-11-05; 8 on 2026-11-06 (required components, what is promised,
+the handle, with question 7's hello cube revised and how a world is divided) and 2026-11-07 (part b, the spellings
+and names); and 9, added at question 2, on 2026-11-07. The *Decided* entries keep the words they were written in
+("system" for a processor until 2026-11-07); [../REFERENCE.md](../REFERENCE.md) has today's.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -40,8 +39,12 @@ singleton is now a world component.
   engine's levels of code are tiers, and a content layer is in full a content database priority level. A create
   queue creates its prefab's family. The day-one engine components are Transform (on std::math, with a quaternion),
   Mesh, Material, Camera, Light and Actions, with the world components Time and Environment.
+- **Question 9 (2026-11-07), world data, in three rounds:** a position is a zone and a `float32` offset from its
+  centre; cells in sections, encoded by the engine, in world stores that belong to layers; the world generator, never
+  recorded; changed sections saved whole, read-only layers never saved; destruction as cell edits and pre-fractured
+  prefabs; derived data rebuilt, never saved.
 
-Question 9 is open; it was added at question 2. The model's picture and vocabulary are gathered in
+Every question in this doc is decided. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
 
 ## What the vision asks
@@ -129,7 +132,7 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
 8. **Growing in phases.** *(Decided: required components and part a on 2026-11-06, and part b, the spellings and
    names, on 2026-11-07, below.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
-9. **World data.** *(Added 2026-11-05 at question 2. Coordinates and cells decided 2026-11-07, below.)* Some data belongs to space, not to an entity: a voxel world, a
+9. **World data.** *(Added 2026-11-05 at question 2. Decided 2026-11-07 in three rounds, below.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
    coordinate within a zone (G7). The questions are:
    - **The cell's format:** *(decided 2026-11-07, round 2: the game the cell, the engine the encoding)* dense,
@@ -140,12 +143,14 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
    - **Procedural generation:** *(decided 2026-11-07, round 2: the world generator)* a generator fills cells from a
      seed and rules, off the simulation as streaming is, and
      its result enters at Input's hand-off, recorded (G12).
-   - **How cells are saved:** whole, or only the edits over a cell that can be regenerated. The second needs
+   - **How cells are saved:** *(decided, round 3: a changed section whole; an untouched one regenerates)* whole, or only the edits over a cell that can be regenerated. The second needs
      generation that is bit-identical on every platform, which is replay-and-determinism's to settle.
-   - **How destruction divides:** pre-fractured pieces as entities (Unreal Chaos's geometry collections), or cut at
+   - **How destruction divides:** *(decided, round 3: cell edits, pre-fractured prefabs, visual debris on Output)*
+     pre-fractured pieces as entities (Unreal Chaos's geometry collections), or cut at
      run time into world data or an entity's owned data.
-   - **What presentation derives:** meshes built from voxels, and terrain LOD. These are never saved (G8).
-   - **Saving by layer** *(added 2026-11-07, the owner: "if you have a terrain layer that CAN NOT be deformed it would
+   - **What presentation derives:** *(decided, round 3: per changed section, by Output; derived data is never
+     saved)* meshes built from voxels, and terrain LOD. These are never saved (G8).
+   - **Saving by layer** *(decided, round 3: `"readOnly": true`; added 2026-11-07, the owner: "if you have a terrain layer that CAN NOT be deformed it would
      not take up space in a save but dynamic layers would? I assume that may go question 9 edits?")*. A save already
      skips drawn-only layers. *Proposed:* a simulated layer may be declared unchanging. Processors read it but never
      write it: the generated loops leave its tables out of every writing processor, and no queue may create, destroy,
@@ -1716,3 +1721,47 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
        2, piece 4's "whether a zone file adds to or replaces generated content".
   7. **Bare "generator" stays the code generator,** and procedural generation is always the **world generator**, as
      "layer" was settled. Records part 2's "the scene's generator" meant the world generator.
+- **2026-11-07, the owner: question 9, round 3 of 3 — saving, destruction and what presentation builds; question 9,
+  and so this doc, is decided.** "All of this is great. I agree." Round 2's probe carries it: generation is
+  bit-identical on every platform under `reproducible-float`, so what regenerates is never saved.
+  1. **What a save holds.** Per zone that has been loaded: its changeable layers' tables (entities with their saved
+     components), its layer groups' switches, and its changed sections. For the world: the non-spatial layers, the
+     saved world components (the step number), the lookup slots of unloaded entities (KYR-61), pending deadlines, and
+     the identity: the stack, the engine's version, the world generator's version and the seed. Never saved:
+     drawn-only layers, components marked `saved: false`, read-only layers and derived data.
+  2. **A changed section is saved whole, in its encoded form, and an untouched one not at all;** it regenerates on load.
+     - **Why not edits over the regenerated section:** a game update that changed the world generator would lay old
+       edits on new terrain, a hole dug into a hill that has moved. Saved whole, untouched places take the new
+       generation, and what a player changed stays as they left it.
+     - Minecraft saves every chunk it has generated, touched or not *(from memory)*, so its saves grow with
+       exploration; here they grow with change.
+     - Saving only a section's changed cells where that is smaller can come later, as the engine's choice, as
+       encodings are.
+  3. **A zone's changeable layers are saved whole.** Entities move and change constantly, so per-entity differences
+     would not pay. A zone never loaded is not saved.
+  4. **A read-only layer,** the owner's "terrain layer that CAN NOT be deformed": a layer marked `"readOnly": true`.
+     - Processors may read its entities and stores and never write them. The generated loops leave its tables out of
+       every writing processor, and no `Create`, `Destroy`, `Gain`, `Lose` or `Edit` may target it; the build refuses
+       one that tries, naming the layer.
+     - It is never saved, and reloads from content and the world generator. It needs no last-step snapshot, since the
+       last step and now are the same, and the per-step world hash skips it, since the stack's identity covers it.
+     - **Not "static":** `static` is a kama keyword, what the generator refuses in a module, and a word Unity and
+       Unreal use otherwise. Something that must break, a destructible wall, belongs in a changeable layer.
+  5. **The save's file format is replay question 3's,** with the log's, so there is one serializer.
+  6. **Destruction, on mechanisms already decided:**
+     - **terrain and voxels are cell edits** (`Edit<S>`, round 2);
+     - **objects are pre-fractured prefabs:** breaking one destroys it and creates its pieces (`Destroy` and
+       `Create<P>`), the fracture authored or precomputed at build, like Unreal Chaos's geometry collections (cited at
+       question 2). Pieces separating under force are physics's (KYR-17). A burst of pieces needs a budget, and
+       `whenFull: EvictOldest` suits simulated debris;
+     - **purely visual debris is Output's,** recycled per machine (question 6), never simulated or saved;
+     - **cutting meshes at run time** would be an entity's own mesh data, a kind question 2 allows, and can arrive later
+       without a break.
+  7. **What presentation builds:** meshes from cells and terrain LOD are Output's, rebuilt per section when it changes,
+     on Output's workers, from the snapshot. Detail falls by ring, through the layers' ring ranges, with a coarse
+     heightfield in a drawn-only layer for far rings. Never saved, hashed or read by the simulation (G8). The meshing
+     method is rendering's.
+  8. **Derived data is rebuilt, never saved:** render meshes and LOD (Output's, per machine), and colliders built from
+     cells and navigation meshes (the simulation's, deterministic, rebuilt from cells). A save stays the minimal truth.
+  - **Every question in this doc is now decided:** 1–7 on 2026-11-05, 8 on 2026-11-06 and 2026-11-07, and 9 on
+    2026-11-07.
