@@ -153,6 +153,10 @@ answer is recorded in its doc's *Decided*:
     folder; content records sit under `content/`, a scene as a folder with a file per zone. Strict JSON with a `note`
     field instead of comments; enum values as kama's case names; processor groups as records; only what differs from
     the defaults; whole hertz. This also answers project-database question 2 in part. KY-30 and KY-31 filed.
+  - **Records, part 2, in part:** content records under `content/` (the app, prefabs, bindings, scenes as folders),
+    prefab variants written `from`, `main` as the default layer, actions as code records with bindings as content
+    (action kinds are KYR-54's), and count rules per player or team later. The hello cube is 15 lines in this
+    layout; the owner: the 20-line target is "probably a good gauge. It shouldn't limit our designs though."
 
 **Next, in order:**
 
@@ -160,8 +164,8 @@ answer is recorded in its doc's *Decided*:
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
-   - **Then:** the content records (prefab, scene, budget, bindings, actions and app, with the hello cube in the new
-     layout), the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
+   - **Then:** the rest of records part 2 (which layer a created entity joins, and zone files in an infinite scene),
+     the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
      `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.

@@ -133,36 +133,54 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 ## The hello cube
 
 *Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
-§ Decided), and revised on 2026-11-06 so actions belong to a player. A sketch: the file format is project-database
-question 2, and the spelling is components question 8 (`const ref Time time` since 2026-11-07, part b).
+§ Decided); revised on 2026-11-06 so actions belong to a player, and laid out in question 8 part b's record files
+(2026-11-07). A sketch: no engine compiles it yet, and an action's kind is KYR-54's.
 
-```json
-{ "prefabs":    { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
-                            "actions": { "player": 1 } } },
-  "processors": { "turn": { "phase": "Update" } },
-  "actions":    { "faster": { "kind": "Button" } },
-  "bindings":   { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
-  "scenes":     { "hello": { "place": ["cube"] } } }
+```kama
+// src/app.kama, written by `kyoten new`
+import { kyoten::run };
+fn uint8 main() { return run(); }
 ```
 ```kama
+// src/cube.kama
+import { kyoten::Transform, kyoten::Time, hello::generated::Actions };
+export { Spin, turn };
 @generate(Serializable, Deserializable, of)
 type value Spin { @field(default) public float32 rate = 1; }
-
 fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Time time) {
     if (input.faster.held) { s.rate = s.rate + time.dt; }
     t.yaw = t.yaw + s.rate * time.dt;
 }
 ```
 
-- **The game writes** a prefab, a component (`Spin`), a processor (`turn`), an action and its bindings, and a scene that
-  places the cube. It also owns a `main` of about two lines, which `kyoten new` writes.
+`src/cube.records.json`, the code records:
+
+```json
+{ "processors": { "turn": { "phase": "Update" } },
+  "actions":    { "faster": { "kind": "Button" } } }
+```
+
+`content/cube.records.json`, and the scene's one zone, `content/scenes/hello/zone.0.0.records.json`:
+
+```json
+{ "prefabs":  { "cube": { "mesh": { "shape": "Box" }, "spin": { "rate": 2 }, "actions": { "player": 1 } } },
+  "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } } }
+```
+```json
+{ "place": { "cube": { "prefab": "cube" } } }
+```
+
+- **The game writes** a prefab, a component (`Spin`), a processor (`turn`), an action and its bindings, and a zone
+  that places the cube. It also owns a two-line `main`, which `kyoten new` writes.
 - **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material, one player
-  bound to the local keyboard and first gamepad, and the scene's one zone and one layer. The app's first scene is the
-  only one unless its record names another. `mesh` requires a transform and a material (question 8).
+  bound to the local keyboard and first gamepad, and the scene's one zone and its layer, `main`. The app's first scene
+  is the only one unless its record names another. `mesh` requires a transform and a material (question 8).
 - **The generator writes the rest:** the cube's table; an `Actions` component with one field per action, which the
   Input phase fills each step from the player the cube names; and Update's call to `turn`.
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
-  component, processor, action, player), on web and native, held by CI.
+  component, processor, action, player), on web and native, held by CI. This layout is 15, counting its imports and
+  its export. The owner (2026-11-07): "The 20-line target is obviously arbitrary but probably a good gauge. It
+  shouldn't limit our designs though."
 
 ## What a processor takes
 
@@ -255,7 +273,55 @@ kyoten-towers/
 
 Every record kind also takes an optional `note`, a string.
 
-The content records (prefab, scene, budget, bindings, actions, app) are the rest of question 8.
+**The content records** *(part 2, 2026-11-07; which layer a created entity joins, and zone files in an infinite
+scene, are still open):*
+
+```
+content/
+├─ app.records.json
+├─ prefabs.records.json          or a file per prefab, as part 1's tree has it: files merge by key
+├─ bindings.records.json
+└─ scenes/battle/                the folder names the scene
+   ├─ scene.records.json         the scene's own record
+   └─ zone.0.0.records.json      the file name names the zone
+```
+
+```json
+{ "app": { "firstScene": "battle", "title": "Towers" } }
+```
+```json
+{ "prefabs": {
+    "tower":  { "transform": {}, "turret": { "cooldown": 2 }, "health": { "hp": 100 } },
+    "bullet": { "transform": {}, "shot": { "power": 12 } },
+    "keep":   { "from": "tower", "health": { "hp": 300 }, "note": "the boss tower" } } }
+```
+```json
+{ "bindings": { "fire": { "keyboard": "Space", "gamepad": "RightTrigger" } } }
+```
+```json
+{ "place": {
+    "tower-west": { "prefab": "tower", "values": { "transform": { "x": -20 }, "turret": { "target": "tower-east" } } },
+    "tower-east": { "prefab": "keep", "group": "boss",
+                    "values": { "transform": { "x": 20 }, "turret": { "target": "tower-west" } } } } }
+```
+
+| Record | Fields, with their defaults |
+|---|---|
+| App | `firstScene` (the only scene); `title` |
+| Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none) |
+| Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
+| Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
+| Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
+| Budget | `max` per zone; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
+| Layer group | `on` (true); `groups`, nested |
+| Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
+| Zone | `place`: placements keyed by placed name |
+| Placement | `prefab` (required); `layer` (`main`); `group` (none); `values`, laid over the prefab's |
+| Action, a code record | in a module's records file, under `actions`: its `kind` (KYR-54's to name) |
+
+- **A prefab variant starts `from` another,** and lays its values over it, as a placement does.
+- **The default layer is `main`,** where a placement that names no layer goes.
+- **Actions are code records and bindings are content.** Action kinds are KYR-54's.
 
 ## The vocabulary
 

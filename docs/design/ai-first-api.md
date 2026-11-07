@@ -81,3 +81,8 @@ rest are questions.
   player rather than the world, so the cube names the player that drives it, and a scene places it instead of a start
   zone. The concepts are now eight: app, record, scene, prefab, component, system, action and player. The 20-line
   limit is unchanged. The reasons and the probe are in [components.md](components.md) § Decided, 2026-11-06.
+
+- **2026-11-07, the owner on the target, with components question 8 part b:** "The 20-line target is obviously
+  arbitrary but probably a good gauge. It shouldn't limit our designs though." The hello cube in the record files
+  decided there is 15 non-blank lines across five files, counting its imports and export
+  ([../REFERENCE.md](../REFERENCE.md) § The hello cube).

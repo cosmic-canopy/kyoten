@@ -34,7 +34,9 @@ singleton is now a world component.
   is now a world component. Then the vocabulary: a **module** (engine or game) is one kama module, a **processor** is
   what this doc called a system, "system" is retired, and the generator refuses a module `static`. What a processor
   takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
-  as `src/<module>/*.records.json`, and content records sit under `content/`.
+  as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
+  prefab variants and `main` as the default layer, except which layer a created entity joins and how zone files
+  work in an infinite scene.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1298,3 +1300,85 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       travels with a package (kama's `docs/packages.md`, read, not probed).
   - **Left to part 2:** the content records (prefab, scene, budget, bindings, actions and app), and the hello cube in
     this layout within its 20 lines.
+- **2026-11-07, the owner: how records are written, part 2, in part — the content records.** Six pieces were new, and
+  the owner took them one by one: (1) "sounds good so far", (2) "sounds good", (5) "the general idea otherwise is good
+  so far", (6) "sounds good". Pieces 3 and 4 are open, below. The rest of the field table restates earlier decisions
+  (layers, rings, layer groups, budgets, count rules and placed names) and was shown with them.
+  - **The content tree,** in the layout part 1 decided:
+
+    ```
+    content/
+    ├─ app.records.json
+    ├─ prefabs.records.json          or a file per prefab, as part 1's tree has it: files merge by key
+    ├─ bindings.records.json
+    └─ scenes/battle/                the folder names the scene
+       ├─ scene.records.json         the scene's own record
+       └─ zone.0.0.records.json      the file name names the zone
+    ```
+
+  - **A towers game's content,** read strictly as the engine's kama types (the app, the prefabs, the bindings, and zone
+    (0,0)). A handle field is written as a placed name (part a, choice 4): `"target": "tower-east"`.
+
+    ```json
+    { "app": { "firstScene": "battle", "title": "Towers" } }
+    ```
+    ```json
+    { "prefabs": {
+        "tower":  { "transform": {}, "turret": { "cooldown": 2 }, "health": { "hp": 100 } },
+        "bullet": { "transform": {}, "shot": { "power": 12 } },
+        "keep":   { "from": "tower", "health": { "hp": 300 }, "note": "the boss tower" } } }
+    ```
+    ```json
+    { "bindings": { "fire": { "keyboard": "Space", "gamepad": "RightTrigger" } } }
+    ```
+    ```json
+    { "place": {
+        "tower-west": { "prefab": "tower", "values": { "transform": { "x": -20 }, "turret": { "target": "tower-east" } } },
+        "tower-east": { "prefab": "keep", "group": "boss",
+                        "values": { "transform": { "x": 20 }, "turret": { "target": "tower-west" } } } } }
+    ```
+
+  - **The fields:**
+
+    | Record | Fields, with their defaults |
+    |---|---|
+    | App | `firstScene` (the only scene); `title` |
+    | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none) |
+    | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
+    | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
+    | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
+    | Budget | `max` per zone; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
+    | Layer group | `on` (true); `groups`, nested |
+    | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
+    | Zone | `place`: placements keyed by placed name |
+    | Placement | `prefab` (required); `layer` (`main`); `group` (none); `values`, laid over the prefab's |
+    | Action, a code record | in a module's records file, under `actions`: its `kind` (KYR-54's to name) |
+
+    Every record kind also takes an optional `note`, a string.
+
+  - **The pieces decided:**
+    1. **A prefab variant starts `from` another prefab** and lays its own values over it, as a placement does: `keep`
+       starts from `tower` and changes only its health. Unity's prefab variants work this way *(from memory, not
+       checked)*. Part a counted variants among what could arrive later without a break; this gives them their
+       spelling now.
+    2. **The engine's default layer is `main`.** It is the layer every scene starts with, and a placement that names
+       no layer goes there.
+    5. **Actions are code records, and bindings are content.** An action is declared in a module's records file and
+       becomes a generated field on `Actions`, so a typo is a compile error (question 7); its default bindings per
+       device are content records, rebound in the developer's and the player's layers. **Not settled:** the action
+       kinds. The owner: "Not sure we can settle on 'Button' and 'Axis' yet". They are KYR-54's, with its adapters
+       between kinds and its control names; `"kind": "Button"` stays in the sketches until then.
+    6. **Count rules per player, team or match wait** until players and teams exist (KYR-54 and networking). Today a
+       limit counts per world, zone or layer.
+  - **Open:**
+    - **3, which layer a created entity joins.** Proposed: its creator's. The owner: "this should be a default but
+      overridable... projectiles may make sense on their own layer for example. They may be fast moving and could
+      travel through zones quickly."
+    - **4, a scene's zone files named by coordinates** (`zone.-1.0`). The owner: "How does this work for infinite
+      scenes?"
+  - **The hello cube in this layout** is 15 non-blank lines across five files, now counting the imports and the export
+    the earlier sketch left out, with the same eight concepts. The owner: "The 20-line target is obviously arbitrary
+    but probably a good gauge. It shouldn't limit our designs though." REFERENCE's *The hello cube* has it.
+  - **Probed on 0.9.860:** the app, the prefabs with a variant, the bindings, a scene with two layers and nested layer
+    groups (a layer group record nested in itself), and a zone with two placements all read strictly; a misspelt
+    component in a placement is named (``unknown field `place.t.values.turet` ``).
