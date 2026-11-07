@@ -2,8 +2,9 @@
 
 **Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, question 8's first part was decided (required
 components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided. On
-2026-11-07, part b began: a system's parameters mean what their types say, the step's time is a `Time`, and the
-generator's output is split into files and not committed.
+2026-11-07, part b began: a system's parameters mean what their types say, the step's time is a `Time`, the
+generator's output is split into files and not committed, systems are functions named by their kama path, and a
+singleton is now a world component.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -29,7 +30,8 @@ generator's output is split into files and not committed.
   in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
 - **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
   meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
-  into files and not committed.
+  into files and not committed. Systems are free functions named by their kama path (`towers::fire`), the generator
+  refuses a module `static`, the parameter list is decided, and a singleton is now a world component.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1082,3 +1084,29 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     - The generator refuses a module `static` in a game's package.
     - A singleton is a field of the generated world or of a zone, passed only to the systems that name it, and is
       renamed a **world component**, since "singleton" suggests global access.
+- **2026-11-07, the owner: world components, and systems as functions named by their path.** The owner: "You
+  answered my singleton concern and yes we should steer clear of that term... world component sounds much better",
+  "Functions are fine and it sounds like you are adding scope now which helps the collision problem", and, on a
+  manifest step that runs the generator, "yes you can file that as a gap". This settles the collisions, readability and
+  soundness items raised above.
+  - **A singleton is now a world component:** a component the world, or a zone, holds one of, rather than each entity.
+    - It is a field of the generated world or zone, passed only to the systems that name it as a parameter. So it is
+      injected, never reached globally, and the scheduler sees every reader and writer.
+    - It is not called a "resource", Bevy's word, since a kama `type resource` is an owning type.
+    - Earlier entries keep the word "singleton".
+  - **Systems are free functions,** not methods or statics of a type. One parameter list states all of a system's
+    access, and a system that writes the engine's `Transform` needs no type to live on.
+  - **A system is named by its kama path** (`towers::fire`), never the bare name: in its record, an error, the
+    profiler and the schedule view. kama keeps the path unique.
+  - **Offered with those two answers, and not objected to:**
+    - The generator refuses a module `static` in a game's package, so no state lives outside the world.
+    - The rest of the parameter list in the entry above is decided, with `ref S` and `const ref S` naming a world
+      component.
+  - **Filed:**
+    - KY-28: no manifest step runs a generator before analysis.
+    - KY-29: a listed module whose folder is missing is reported as unlisted. That is the first message a fresh clone
+      of a game shows.
+  - **Raised the same day, and open:** the owner's first meaning of "system" was the large area: audio, networking,
+    graphics, UI, AI and gameplay. [../VISION.md](../VISION.md) says "Each system updates at the frequency that makes
+    sense for it", and question 3, choice 1 named that area an engine module. The open question is whether "system"
+    goes back to the area, with the function taking another word.

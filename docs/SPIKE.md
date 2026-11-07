@@ -59,7 +59,7 @@ answer is recorded in its doc's *Decided*:
   - **The vocabulary:** "system" is a function plus its record, render or audio is an "engine module", and
     "subsystem" is retired. frame-phases.md and architecture.md were reworded to it the same day, apart from quotes.
   - **A system's parts:** its record holds phase, group, order, rate and iterations, its signature is its access, and
-    any state it keeps between steps is a singleton in the world.
+    any state it keeps between steps is a world component (called a singleton until 2026-11-07).
   - **Reading other entities:** a system declares the previous step (the default, always parallel) or this step
     (ordered after the writers, with its writes staged when parallel). The scheduler never changes what a system sees.
   - **Queued structural changes,** applied at the end of the phase, sorted by chunk.
@@ -133,19 +133,21 @@ answer is recorded in its doc's *Decided*:
   - **A system's parameters mean what their types say,** and names are free. The generator reads only the functions a
     system record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
   - **The step's time is `const ref Time time`,** replacing the hello cube's `float32 dt`.
-  - **The rest of the list is proposed,** with a probe of two towers shooting at each other on 0.9.857: typed queues
+  - **The rest of the list is decided,** with a probe of two towers shooting at each other on 0.9.857: typed queues
     for create, destroy and send, `Previous` or `Current` always written, and keyed draws whose purposes the system's
     record lists.
   - **The generator's output is split into files and not committed** (the owner: "perhaps we do start with that").
     Probed: a debug build recompiles only the files that changed, until a declaration changes; KY-27 filed.
-  - **Raised by the owner, and open:** collisions, readability and soundness. *Proposed:* a system is named by its kama
-    path (`towers::fire`), systems are functions only, the generator refuses a module `static` in a game, and a
-    singleton is renamed a world component.
+  - **Collisions, readability and soundness,** the owner's concerns: a system is a free function named by its kama path
+    (`towers::fire`), the generator refuses a module `static` in a game, and a singleton is now a **world component**,
+    injected as a parameter and never reached globally. KY-28 (a manifest step to run the generator) and KY-29 filed.
+  - **Open:** whether "system" goes back to the owner's first meaning, the large area (audio, networking, graphics, UI,
+    AI, gameplay), with the function taking another word.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), the rest of question 8 part b** (the rest of the spellings, the day-one engine
-   components, the generator's naming rule and the names), **then question 9.**
+1. **[design/components.md](design/components.md), the rest of question 8 part b** (what "system" names, the record spellings, the
+   day-one engine components, the generator's naming rule and the names), **then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
@@ -182,7 +184,9 @@ answer is recorded in its doc's *Decided*:
   relay:** KY-22 (a computed stack bound per entry point, beside kama's KR-79), and from 2026-11-07 KY-23 (`spawn` as a
   method name), KY-24 (`kama query` loses `ref` and `const ref`, which the generator reads), KY-25 (a typo'd field
   before a method call is reported as an unknown receiver), KY-26 (an element passed by `ref` beside its container by
-  `const ref` is not refused) and KY-27 (SPEC still describes the debug build's C units and object cache as they were).
+  `const ref` is not refused), KY-27 (SPEC still describes the debug build's C units and object cache as they were),
+  KY-28 (a manifest step that runs a generator before analysis) and KY-29 (a listed module whose folder is missing is
+  reported as unlisted).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -374,7 +378,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-19 and KY-21 to KY-27 are open there; take the next id from its counter.
+  KY-17 to KY-19 and KY-21 to KY-29 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

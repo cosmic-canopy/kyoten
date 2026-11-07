@@ -21,7 +21,7 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  ┌─ the game's repo ─────────────────────┐
  │ records: components, prefabs,         │──┐   ┌─ the World (plain kama) ──┐
  │   systems, budgets, zones             │  ├──►│ zones · tables · chunks   │──► run(world)
- │ system bodies:                        │  │   │ side stores · singletons  │    in the frame
+ │ system bodies:                        │  │   │ side and world components │    in the frame
  │   fn void integrate(ref Pos p,        │──┤   │ input() update()          │    layer
  │       const ref Vel v, Step s) { … }  │  │   │ constraints() output()    │
  └───────────────────────────────────────┘  │   └───────────────────────────┘
@@ -78,7 +78,7 @@ which are question 9.
   ├─ Zone (1,0) …
   ├─ Non-spatial layers ("rules", "inventory"): one block each for the scene
   ├─ Side stores: Burning, Stunned       any entity may gain or lose one
-  ├─ Singletons: physics world, RNG      one per world or zone, owned by a module
+  ├─ World components: Time, RNG         one per world or zone, owned by a module
   └─ Assets (read-only, by handle): meshes, clips, navmeshes
  Entity = Handle (slot, generation) ──lookup──► (zone, layer, table, chunk, row), and a group id it carries
 ```
@@ -170,7 +170,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | Term | Means | Status |
 |---|---|---|
 | **Engine** | kyoten: one kama package in four layers | decided |
-| **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and singletons. It never imports another | decided |
+| **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and world components. It never imports another | decided |
 | **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface. The word is shared with a scene's layers (below) until question 8 names them | decided |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
 | **Game** | a separate package and repository: its records, its system bodies, and the world generated from them | decided |
@@ -200,9 +200,9 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
-| **Singleton** | a store holding one value per world or per zone: the physics world, an RNG, a spatial grid. A system's state between steps lives in one | decided (question 3, choice 2) |
+| **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the systems that name it, never reached globally. A system's state between steps lives in one | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
-| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free | decided (question 3, choices 1 and 2; types only at question 8 part b, 2026-11-07) |
+| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`) | decided (question 3, choices 1 and 2; types only, functions and paths at question 8 part b, 2026-11-07) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
 | **Group** (of systems) | systems of one phase ordered together; a Constraints group may iterate as a whole. The word is shared with a group of entities until question 8 names them | decided |
 | **Schedule** | the resolved order of every system, with its access, rate and cost, shown to humans and agents | decided |
