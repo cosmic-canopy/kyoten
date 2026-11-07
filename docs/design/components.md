@@ -37,7 +37,8 @@ singleton is now a world component.
   as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
   prefab variants, `main` as the default layer, a prefab naming its layer, and zone files only where something is
   authored, within a scene's bounds. The generator's naming rule is decided, a bare "layer" is a scene's layer, the
-  engine's levels of code are tiers, and the record stack's content layers are priority levels.
+  engine's levels of code are tiers, and a content layer is in full a content database priority level. A create
+  queue creates its prefab's family.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1517,15 +1518,51 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **New rows in REFERENCE's *Coming from another engine*** (general knowledge, not checked): Unity's Layer, which is
     not a layer here, with Unreal's Data Layer the closest; Minecraft's chunk, a zone here; Minecraft's block, a cell
     of world data; a level or map, a scene; Godot's scene, a prefab.
-  - **A content layer is a priority level.** The owner: "content layer is probably fine but we could probably find a
-    better term for it... it is basically a content database priority level", and then "yes yoru recommendation.
-    priority level and content patch".
-    - The default priority levels, lowest first: engine, game, DLC, content patch, mod, local. Each holds any number
-      of sources, each with its own priority within it. A stack record would hold `"priorityLevels"`; its spelling is
-      KYR-24's. **Considered:** "priority band".
-    - **The level for what ships after release is the content patch.** It holds a game's patches, current and
+  - **A content layer keeps its name, and in full is a content database priority level.** The owner: "content layer
+    is probably fine but we could probably find a better term for it... it is basically a content database priority
+    level". "Priority level" was proposed and taken ("yes yoru recommendation. priority level and content patch"),
+    then the same day: "Content Database Priority Level may be the fully qualified... even content layer actually
+    sounds good for short now that I think about it. it gies context."
+    - It is always written with "content", since a bare "layer" is a scene's. The defaults, lowest first: engine,
+      game, DLC, content patch, mod, local. Each holds any number of sources, each with its own priority within it.
+      **Considered:** "priority level" alone, and "priority band".
+    - **The content layer for what ships after release is the content patch.** It holds a game's patches, current and
       superseded, and live tuning. "Live" was proposed and withdrawn. The owner: "Patches are not always live if it
       is an old patch and another takes it's place... content patch?"
   - **What a source says about a record is a merge patch:** only the fields it changes, merged by RFC 7396, whose own
     name ("JSON Merge Patch") tells an agent how it merges. A bare "patch" then means a game's patch, as players say
     it.
+- **2026-11-07, the owner: a create queue creates its prefab's family.** "So far I think everything you mentioned seems
+  good." Point by point: (1) "sounds good", (2) "sounds good", (3) "seems to make sense so far", (4) "I trust your
+  judgement on this one", (5) "I think this sounds correct so far on budgets".
+  1. **The family.** `Create<BulletPrefab>` creates `bullet`, or any prefab made `from` it, directly or through a chain,
+     with the same components, including a variant a mod adds without a build (question 5's promise).
+     - A variant that adds or drops a component is another archetype: it needs a build and gets its own type.
+     - Two unrelated prefabs with the same components (a rock and a crate) are two families. They share a table type
+       for storage, but code names each on purpose.
+  2. **Data chooses the member.** A component field of type `BulletPrefabId` names a prefab of the family. A record
+     writes it as the prefab's name (`"Turret": { "shot": "plasmaBullet" }`), as it writes a handle field as a placed
+     name. The loader resolves it and refuses a name outside the family. Absent, it is the family's base.
+  3. **The processor starts from the prefab's values and changes what it needs:**
+
+     ```kama
+     fn void fire(ref Turret t, const ref Transform at, const ref Prefabs prefabs, ref Create<BulletPrefab> bullets) {
+         BulletPrefab b = prefabs.bullet(id: t.shot);   // bullet, or the variant the turret's record names
+         b.transform = at;
+         bullets.add(prefab: b);
+     }
+     ```
+
+     - `prefabs.bullet(id:)` is generated, one method per family, since kama has no generic methods. `Create<P>` is an
+       ordinary generic type.
+     - Each prefab the build knows also has a generated id, for code that names it directly.
+  4. **What the signature tells the engine.** A queue adds rows only to its family's tables, so the scheduler orders
+     and budgets the processor from its signature alone, and the build's layer check (part 2, piece 3) knows what a
+     scene can hold. A member a mod adds is checked when the stack loads.
+  5. **A variant with no budget of its own lives in its base's table** and counts against its base's budget, so a mod's
+     new bullet needs no merge patch in every scene. A scene that gives it a budget gives it its own table. This refines
+     "a table per (zone, layer, prefab)" to "per (zone, layer, budgeted prefab)". **Considered:** refusing a variant
+     with no budget, so a mod patches every scene that can create it.
+  - **Probed on 0.9.867,** in one file with the generated parts written by hand: a generic `Create<P>`; a family of
+    three (`bullet`, `fastBullet`, and a mod's `plasmaBullet` appended at load, with no build); two turrets holding
+    different `BulletPrefabId`s, firing through one queue. It printed *"queued 2 bullets from a family of 3 prefabs"*.

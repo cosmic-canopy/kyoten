@@ -32,9 +32,9 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  └───────────────────────────────────────┘
 ```
 
-- **A game changes engine behaviour without editing the engine.** Its records sit in a priority level above the
+- **A game changes engine behaviour without editing the engine.** Its records sit in a content layer above the
   engine's, so a game tunes a physics iteration count or replaces an engine processor's record by stacking its own
-  (the project database's priority levels, [design/project-database.md](design/project-database.md) § Decided).
+  (the project database's content layers, [design/project-database.md](design/project-database.md) § Decided).
 - **When a game needs something the engine lacks,** the engine gains it as a pattern or a component every game can use
   (*decided*, [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Rules).
 - **The generator's output is not committed** (components question 8 part b, 2026-11-07). It is split into files by
@@ -217,6 +217,9 @@ fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Tr
 ```
 
 - **Every queue adds with `.add(…)`,** and what it queues applies at the end of the phase, sorted by chunk.
+- **`Create<BulletPrefab>` creates `bullet`'s family:** `bullet` and its variants with the same components, a mod's
+  included. A component field of type `BulletPrefabId`, written in records as a prefab's name, lets data choose:
+  `BulletPrefab b = prefabs.bullet(id: t.shot); b.transform = at; bullets.add(prefab: b);`.
 - **A random key's counter is a derived key:** `random.spread.nth(n: i).unit(who: me)` for pellet `i`.
 - **The generator refuses** a processor that writes C and reads `Current<C>`, a module `static` in a game, and any
   parameter outside this list, each with a message naming the fix.
@@ -259,7 +262,7 @@ kyoten-towers/
   (`kyoten::Transform`) reaches another.
 - **Records hold only what differs from the defaults,** enum values are kama's case names (`"Update"`), rates are
   whole hertz, and a `note` string replaces comments, which kama's JSON refuses.
-- **A module may split its records across files;** they merge by key, and a key twice in one priority level is refused.
+- **A module may split its records across files;** they merge by key, and a key twice in one content layer is refused.
 
 ```json
 { "rate": 30,
@@ -349,8 +352,8 @@ words.
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
 | **Source** | anything that satisfies the record-source contract: files in git, a baked pack, a database, a URI where the platform allows | decided (project-database question 11); the name is proposed |
-| **Priority level** | a named slot in the order of sources: engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it | decided (project-database question 11); named at components question 8 part b (2026-11-07), "content layer" until then |
-| **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, which the content patch level holds | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
+| **Content layer** | short for a **content database priority level**: a named slot in the order of sources, engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it. Always written with "content", since a bare "layer" is a scene's | decided (project-database question 11); named in full at components question 8 part b (2026-11-07) |
+| **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, and the content patch is the content layer that holds them | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
@@ -370,7 +373,7 @@ words.
 | **Handle** | an entity's runtime id: 8 bytes, a 32-bit slot in the world's lookup table and a 32-bit generation, the same on every platform. The slot says where the entity lives now; the generation, bumped when the slot is freed, makes a stale handle answer "gone". A lookup answers here, gone or unloaded | decided (question 8, 2026-11-06) |
 | **Placed name** | a placed entity's name in its scene's records ("door-12"), which other records use to refer to it. The loader resolves it to a handle when its zone loads, and may key it by a 64-bit hash | decided (question 8, 2026-11-06) |
 | **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
-| **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06) |
+| **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type, with the prefab's variants that have no budget of their own. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06; variants at question 8 part b, 2026-11-07) |
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
@@ -443,7 +446,7 @@ Whether the simulation is also bit-identical across platforms is
   build has, so data alone can add one; a new component, archetype or processor needs a build.
 - **A source's merge patch changes fields,** never whole records. Keyed maps merge per key, `null` removes, and plain
   lists are replaced whole. A prefab variant is its base plus its own merge patches.
-- **The order is data.** Named priority levels (engine, game, DLC, content patch, mod, local by default) each hold any
+- **The order is data.** Named content layers (engine, game, DLC, content patch, mod, local by default) each hold any
   number of sources by priority, and the stack resolves to one order or refuses a cycle.
 - **Checks run per source, strictly, then over the stack,** and an error names the topmost source that set the value.
 - **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes

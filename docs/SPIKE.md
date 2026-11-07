@@ -75,7 +75,7 @@ answer is recorded in its doc's *Decided*:
   [design/project-database.md](design/project-database.md) question 11** (2026-11-05):
   - **Records and components:** a component is a kama type plus its record, and a record's format is the type, one to
     one through serde. Prefabs of one archetype share generated code, so data alone can add a prefab.
-  - **Layers:** sources merge-patch fields (RFC 7396, kama's merge). The order is data, with named priority levels
+  - **Layers:** sources merge-patch fields (RFC 7396, kama's merge). The order is data, with named content layers
     each holding any number of sources by priority, and a source may be files, a pack, a database or a URI where the
     platform allows.
   - **Checks and history:** checks run per source, then over the stack. The stack's identity is in every save, replay
@@ -178,10 +178,13 @@ answer is recorded in its doc's *Decided*:
    - **Names, in part** (the owner: "I pretty much agree with everything stated"): a bare "layer" is a scene's
      layer, the engine's levels of code are **tiers**, and a screen layer is always called so. REFERENCE maps Unity's
      Layer, Minecraft's chunk and block, a level and Godot's scene for agents.
-   - **Names, the rest** (the owner: "priority level and content patch"): a content layer is a **priority level**,
-     the default level for what ships after release is the **content patch**, and a source's field changes are a
-     **merge patch**.
-   - **Then:** which prefabs a create queue may create, and the day-one engine components.
+   - **Names, the rest:** a content layer keeps its name, in full a **content database priority level** (the owner:
+     "content layer actually sounds good for short... it gies context"); the content layer for what ships after
+     release is the **content patch**; and a source's field changes are a **merge patch**.
+   - **A create queue creates its prefab's family** (the owner: "So far I think everything you mentioned seems
+     good"): the prefab and its variants with the same components, a mod's included, chosen by data through a
+     generated `BulletPrefabId`. A variant with no budget of its own lives in its base's table.
+   - **Then:** the day-one engine components, which closes question 8.
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game

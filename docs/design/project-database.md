@@ -2,8 +2,8 @@
 
 **Status:** draft for the design spike; its build is KYR-24. Five decisions are recorded, the latest closing question
 11 (layers) on 2026-11-05; the rest are questions. Question 2 was answered in part on 2026-11-07: records kept in
-git are strict JSON, beside the code they describe or under `content/`. On 2026-11-07 a content layer became a
-**priority level**, and a source's field changes a **merge patch**.
+git are strict JSON, beside the code they describe or under `content/`. On 2026-11-07 a content layer was named in
+full a **content database priority level**, and a source's field changes a **merge patch**.
 
 ## What the vision asks
 
@@ -188,10 +188,12 @@ least prior art in the peers, and the one most worth getting right before code.
     `content/`. A scene is a folder with a file per zone, as this question's 2026-11-06 note proposed.
   - **Still open in question 2:** which backend is the reference, and how two agents' work on one record merges.
 - **2026-11-07, the owner: question 11's words renamed,** at [components.md](components.md) question 8 part b, where the
-  full entry is. "yes yoru recommendation. priority level and content patch".
-  - **A content layer is a priority level:** "it is basically a content database priority level". The defaults, lowest
-    first, are engine, game, DLC, content patch, mod and local.
-  - **The level named "patch" is the content patch,** holding a game's patches, current and superseded, and live tuning.
+  full entry is.
+  - **A content layer keeps its name, and in full is a content database priority level.** The owner: "it is basically
+    a content database priority level", and after "priority level" was proposed and taken: "Content Database
+    Priority Level may be the fully qualified... even content layer actually sounds good for short now that I think
+    about it. it gies context." The defaults, lowest first, are engine, game, DLC, content patch, mod and local.
+  - **The content layer named "patch" is the content patch** ("priority level and content patch"), holding a game's patches, current and superseded, and live tuning.
   - **What a source says about a record is a merge patch** (RFC 7396's "JSON Merge Patch"), so a bare "patch" is a
     game's patch.
   - The entries above keep the words they were written in.
