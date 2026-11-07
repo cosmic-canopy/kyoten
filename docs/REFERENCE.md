@@ -32,9 +32,9 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  └───────────────────────────────────────┘
 ```
 
-- **A game changes engine behaviour without editing the engine.** Its records sit in a content layer above the
+- **A game changes engine behaviour without editing the engine.** Its records sit in a priority level above the
   engine's, so a game tunes a physics iteration count or replaces an engine processor's record by stacking its own
-  (the project database's content layers, [design/project-database.md](design/project-database.md) § Decided).
+  (the project database's priority levels, [design/project-database.md](design/project-database.md) § Decided).
 - **When a game needs something the engine lacks,** the engine gains it as a pattern or a component every game can use
   (*decided*, [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Rules).
 - **The generator's output is not committed** (components question 8 part b, 2026-11-07). It is split into files by
@@ -259,7 +259,7 @@ kyoten-towers/
   (`kyoten::Transform`) reaches another.
 - **Records hold only what differs from the defaults,** enum values are kama's case names (`"Update"`), rates are
   whole hertz, and a `note` string replaces comments, which kama's JSON refuses.
-- **A module may split its records across files;** they merge by key, and a key twice in one layer is refused.
+- **A module may split its records across files;** they merge by key, and a key twice in one priority level is refused.
 
 ```json
 { "rate": 30,
@@ -349,8 +349,8 @@ words.
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
 | **Source** | anything that satisfies the record-source contract: files in git, a baked pack, a database, a URI where the platform allows | decided (project-database question 11); the name is proposed |
-| **Content layer** | a named slot in the order of sources: engine, game, DLC, patch, mod, local by default. Each holds any number of sources, each with a priority | decided (project-database question 11); the name is proposed |
-| **Patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 | decided (project-database question 11) |
+| **Priority level** | a named slot in the order of sources: engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it | decided (project-database question 11); named at components question 8 part b (2026-11-07), "content layer" until then |
+| **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, which the content patch level holds | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
@@ -441,10 +441,10 @@ Whether the simulation is also bit-identical across platforms is
 **How records layer** (*decided*, components question 5 with project-database question 11):
 - **A component is a kama type plus its record,** and a record's format is that type. A prefab names an archetype the
   build has, so data alone can add one; a new component, archetype or processor needs a build.
-- **A source patches fields,** never whole records. Keyed maps merge per key, `null` removes, and plain lists are
-  replaced whole. A prefab variant is its base plus its own patches.
-- **The order is data.** Named content layers (engine, game, DLC, patch, mod, local by default) each hold any number of
-  sources by priority, and the stack resolves to one order or refuses a cycle.
+- **A source's merge patch changes fields,** never whole records. Keyed maps merge per key, `null` removes, and plain
+  lists are replaced whole. A prefab variant is its base plus its own merge patches.
+- **The order is data.** Named priority levels (engine, game, DLC, content patch, mod, local by default) each hold any
+  number of sources by priority, and the stack resolves to one order or refuses a cycle.
 - **Checks run per source, strictly, then over the stack,** and an error names the topmost source that set the value.
 - **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes
   while running applies at a step boundary as a recorded input.

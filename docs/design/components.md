@@ -36,8 +36,8 @@ singleton is now a world component.
   takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
   as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
   prefab variants, `main` as the default layer, a prefab naming its layer, and zone files only where something is
-  authored, within a scene's bounds. The generator's naming rule is decided, a bare "layer" is a scene's layer, and
-  the engine's levels of code are tiers.
+  authored, within a scene's bounds. The generator's naming rule is decided, a bare "layer" is a scene's layer, the
+  engine's levels of code are tiers, and the record stack's content layers are priority levels.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1495,8 +1495,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       file that imports `fire`.
     - **So the split into files is the fix:** tables are declared in files that import no processor, and the passes
       that call processors only read `row.spin`. No renaming scheme is needed, and nothing reaches a game.
-- **2026-11-07, the owner: the remaining names, in part — "layer", the engine's tiers and screen layers.** The owner: "We
-  can optionally still qualify 'scene layer'", "Engine tiers sound good to me", "screen layer is pretty good yes", "the
+- **2026-11-07, the owner: the remaining names — "layer", the engine's tiers, screen layers, priority levels and
+  patches.** The owner: "We can optionally still qualify 'scene layer'", "Engine tiers sound good to me", "screen layer is pretty good yes", "the
   new rows sound fine for now", and "I pretty much agree with everything stated".
   - **Why:** "layer" meant four things (the engine's levels of code, content layers, rendering's screen layers and a
     scene's layers), each with strong precedent elsewhere (layered architecture, Docker's and USD's layer stacks,
@@ -1517,9 +1517,15 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **New rows in REFERENCE's *Coming from another engine*** (general knowledge, not checked): Unity's Layer, which is
     not a layer here, with Unreal's Data Layer the closest; Minecraft's chunk, a zone here; Minecraft's block, a cell
     of world data; a level or map, a scene; Godot's scene, a prefab.
-  - **Still open:**
-    - **a better word for a content layer.** The owner: "content layer is probably fine but we could probably find a
-      better term for it... it is basically a content database priority level."
-    - **the default content layer "patch",** beside a patch of a record (only the fields a source changes, RFC 7396).
-      Proposed: "live". The owner: "Patches are not always live if it is an old patch and another takes it's place...
-      content patch?"
+  - **A content layer is a priority level.** The owner: "content layer is probably fine but we could probably find a
+    better term for it... it is basically a content database priority level", and then "yes yoru recommendation.
+    priority level and content patch".
+    - The default priority levels, lowest first: engine, game, DLC, content patch, mod, local. Each holds any number
+      of sources, each with its own priority within it. A stack record would hold `"priorityLevels"`; its spelling is
+      KYR-24's. **Considered:** "priority band".
+    - **The level for what ships after release is the content patch.** It holds a game's patches, current and
+      superseded, and live tuning. "Live" was proposed and withdrawn. The owner: "Patches are not always live if it
+      is an old patch and another takes it's place... content patch?"
+  - **What a source says about a record is a merge patch:** only the fields it changes, merged by RFC 7396, whose own
+    name ("JSON Merge Patch") tells an agent how it merges. A bare "patch" then means a game's patch, as players say
+    it.

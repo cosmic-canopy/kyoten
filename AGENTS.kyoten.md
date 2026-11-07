@@ -14,7 +14,7 @@ and modules, the world, processors and phases fit together, the vocabulary to us
 a "processor" is a function over components that the scheduler runs (what Bevy, flecs and Unity call a system), and
 a "module" is an area of code, one kama module: an engine module such as render or audio, or a game module. kyoten
 says neither "system" nor "subsystem". A bare "layer" is a scene's layer; the engine's levels of code are its "tiers",
-and the other layers are always qualified (content layer, screen layer).
+a screen layer is always called so, and the record stack's levels are "priority levels".
 
 **Read [docs/SPIKE.md](docs/SPIKE.md) first.** The repository was seeded to be walked through with the owner.
 The design drafts under [docs/design/](docs/design/) list questions; they do not answer them. **No engine code is
