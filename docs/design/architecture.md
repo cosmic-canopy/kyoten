@@ -8,6 +8,8 @@ question 8 waits for KYR-37. *Reworded 2026-11-05 to the vocabulary of [componen
 render, audio or net is an "engine module" (this doc first called it a "system"), and a "system" is a function over
 components. Quotes keep their words.*
 
+*Since 2026-11-07 ([components.md](components.md) question 8 part b), a function the scheduler runs is a **processor**, an area of code (an engine's or a game's) is a **module**, and a singleton is a **world component**. This doc's entries keep the words they were written in.*
+
 ## What the vision asks
 
 - **The engine is the driver for games and is never hard-coded to one.** It offers clean patterns each game project

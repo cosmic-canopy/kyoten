@@ -4,7 +4,7 @@
 they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
 the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
 that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
-owner's words.*
+owner's words.* *Since 2026-11-07 ([components.md](components.md) question 8 part b), that function is a **processor**, an area of code (an engine's or a game's) is a **module**, and a singleton is a **world component**. This doc's entries keep the words they were written in.*
 
 ## What the vision asks
 

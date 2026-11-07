@@ -20,25 +20,26 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  A GAME'S DEVELOPERS AND AGENTS WRITE        THE GENERATOR WRITES               KYOTEN RUNS IT
  ┌─ the game's repo ─────────────────────┐
  │ records: components, prefabs,         │──┐   ┌─ the World (plain kama) ──┐
- │   systems, budgets, zones             │  ├──►│ zones · tables · chunks   │──► run(world)
- │ system bodies:                        │  │   │ side and world components │    in the frame
+ │   modules, processors, budgets, zones │  ├──►│ zones · tables · chunks   │──► run(world)
+ │ processors:                           │  │   │ side and world components │    in the frame
  │   fn void integrate(ref Pos p,        │──┤   │ input() update()          │    layer
- │       const ref Vel v, Step s) { … }  │  │   │ constraints() output()    │
- └───────────────────────────────────────┘  │   └───────────────────────────┘
+ │       const ref Vel v,                │  │   │ constraints() output()    │
+ │       const ref Time t) { … }         │  │   └───────────────────────────┘
+ └───────────────────────────────────────┘  │
  ┌─ kyoten, written once by its team ────┐  │    generated into the game's build, and
  │ each engine module ships records and  │──┘    checked by kama like hand-written code
- │ bodies of the same kinds              │
+ │ processors of the same kinds          │
  └───────────────────────────────────────┘
 ```
 
 - **A game changes engine behaviour without editing the engine.** Its records sit in a layer above the engine's, so a
-  game tunes a physics iteration count or replaces an engine system's record by stacking its own (the project database's
+  game tunes a physics iteration count or replaces an engine processor's record by stacking its own (the project database's
   layers, [design/project-database.md](design/project-database.md) § Decided).
 - **When a game needs something the engine lacks,** the engine gains it as a pattern or a component every game can use
   (*decided*, [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Rules).
 - **The generator's output is not committed** (components question 8 part b, 2026-11-07). It is split into files by
   archetype and by phase, in a git-ignored folder of the game's package, and the generator runs before a build or a
-  check. The repository holds the records and the system bodies.
+  check. The repository holds the records and the processors.
 
 ## The engine's layers
 
@@ -124,8 +125,9 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
  │               │  │   target ← snapshot  │  │   arenaBounds     │  │  netSend           │
  └───────────────┘  └──────────────────────┘  └───────────────────┘  └────────────────────┘
    spawns and despawns are queued, and apply at the end of each phase, sorted by chunk
- A system = a function + its record.  Record: phase · group · order · rate · iterations
-            Its signature is its access:  ref = writes,  const ref = reads
+ A processor = a function + its record.  Record: phase · processor group · order · rate · iterations
+               Its signature is its access:  ref = writes,  const ref = reads
+ A module's record sets the default rate its processors inherit.
 ```
 
 ## The hello cube
@@ -135,12 +137,12 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 question 2, and the spelling is components question 8 (`const ref Time time` since 2026-11-07, part b).
 
 ```json
-{ "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
-                          "actions": { "player": 1 } } },
-  "systems":  { "turn": { "phase": "Update" } },
-  "actions":  { "faster": { "kind": "button" } },
-  "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
-  "scenes":   { "hello": { "place": ["cube"] } } }
+{ "prefabs":    { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
+                            "actions": { "player": 1 } } },
+  "processors": { "turn": { "phase": "Update" } },
+  "actions":    { "faster": { "kind": "button" } },
+  "bindings":   { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
+  "scenes":     { "hello": { "place": ["cube"] } } }
 ```
 ```kama
 @generate(Serializable, Deserializable, of)
@@ -152,7 +154,7 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 }
 ```
 
-- **The game writes** a prefab, a component (`Spin`), a system (`turn`), an action and its bindings, and a scene that
+- **The game writes** a prefab, a component (`Spin`), a processor (`turn`), an action and its bindings, and a scene that
   places the cube. It also owns a `main` of about two lines, which `kyoten new` writes.
 - **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material, one player
   bound to the local keyboard and first gamepad, and the scene's one zone and one layer. The app's first scene is the
@@ -160,21 +162,23 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 - **The generator writes the rest:** the cube's table; an `Actions` component with one field per action, which the
   Input phase fills each step from the player the cube names; and Update's call to `turn`.
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
-  component, system, action, player), on web and native, held by CI.
+  component, processor, action, player), on web and native, held by CI.
 
 ## The vocabulary
 
-*Decided at components question 3, choice 1 (2026-11-05):* "system" means the function, as in Unity, Bevy and flecs;
-the large engine areas are **engine modules**; "subsystem" is retired.
+*Decided at components question 3, choice 1 (2026-11-05), and renamed at question 8 part b (2026-11-07):* a
+**processor** is a function the scheduler runs, and a **module** is an area of code, one kama module: an engine module
+or a game module. "System" and "subsystem" are retired. *Coming from another engine*, below the table, maps their
+words.
 
 | Term | Means | Status |
 |---|---|---|
 | **Engine** | kyoten: one kama package in four layers | decided |
-| **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and world components. It never imports another | decided |
+| **Module** | an area of code, exactly one kama module, with its own records, processors, components and world components. Its record sets the default rate its processors inherit. An **engine module** is the engine's (input, render, audio, net, physics, UI) and never imports another; a **game module** is a game's (gameplay, AI, towers) | decided (engine modules at question 3, choice 1; module and game module at question 8 part b, 2026-11-07) |
 | **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface. The word is shared with a scene's layers (below) until question 8 names them | decided |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
-| **Game** | a separate package and repository: its records, its system bodies, and the world generated from them | decided |
-| **Record** | a project-database entry declaring a component, prefab, system, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
+| **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
+| **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
 | **Source** | anything that satisfies the record-source contract: files in git, a baked pack, a database, a URI where the platform allows | decided (project-database question 11); the name is proposed |
 | **Content layer** | a named slot in the order of sources: engine, game, DLC, patch, mod, local by default. Each holds any number of sources, each with a priority | decided (project-database question 11); the name is proposed |
 | **Patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 | decided (project-database question 11) |
@@ -187,7 +191,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Streaming source** | a component on a simulated entity that loads the zones around it for the simulation, the same on every machine. Each player's character has one by default | decided (2026-11-06) |
 | **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |
 | **Layer** (of a scene) | a set of entities declared at design time that spans every zone and loads as one: the unit of loading and memory. Spatial or not, simulated or drawn only, on in a range of rings, and off, loaded or active | decided (2026-11-06); its name is question 8 |
-| **Group** (of entities) | a set inside one layer that switches as one, nested freely: an id per entity, and no memory of its own | decided (2026-11-06); its name is question 8, since a group of systems is below |
+| **Layer group** | a set inside one layer that switches as one, nested freely: an id per entity, and no memory of its own | decided (2026-11-06); named at question 8 part b (2026-11-07) |
 | **Budget** | a record limiting one scope (world, scene, zone, layer, match, player, team). A (zone, layer, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
 | **Footprint** | the sum of every ceiling per scope, which the generator reports as the game's simulation floor | decided (question 6) |
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
@@ -200,15 +204,16 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
-| **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the systems that name it, never reached globally. A system's state between steps lives in one | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07) |
+| **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the processors that name it, never reached globally, and owned by a module. A processor's state between steps lives in one | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
-| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`) | decided (question 3, choices 1 and 2; types only, functions and paths at question 8 part b, 2026-11-07) |
+| **Processor** | a function over components that the scheduler runs, plus a record that schedules it (phase, processor group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`: module `towers`, processor `fire`). What Bevy, flecs and Unity Entities call a system | decided (question 3, choices 1 and 2, as "system"; types only, functions and paths, and the name, at question 8 part b, 2026-11-07) |
+| **Random key** | a processor's key for one purpose its record lists (`random.crit`, in a generated `<Processor>RandomKeys`). The same entity, step and counter give the same value on any thread, in any order: a counter-based generator, holding no state | decided (question 8 part b, 2026-11-07); the counter's spelling is the rest of question 8 |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
-| **Group** (of systems) | systems of one phase ordered together; a Constraints group may iterate as a whole. The word is shared with a group of entities until question 8 names them | decided |
-| **Schedule** | the resolved order of every system, with its access, rate and cost, shown to humans and agents | decided |
+| **Processor group** | the processors of one phase ordered together; a Constraints processor group may iterate as a whole | decided (named at question 8 part b, 2026-11-07) |
+| **Schedule** | the resolved order of every processor, with its access, rate and cost, shown to humans and agents | decided |
 | **Step** | one tick of the simulation's one clock | decided |
 | **Frame** | one display refresh; Output runs once per frame | decided |
-| **Snapshot** | the world, or the columns other systems read, as it stood at the end of a step. A system reading other entities sees it by default | decided (question 3, choice 3) |
+| **Snapshot** | the world, or the columns other processors read, as it stood at the end of a step. A processor reading other entities sees it by default | decided (question 3, choice 3) |
 | **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
 | **Action** | a semantic input a game declares (`faster`, a button or an axis). The generator writes one field per action into an `Actions` component, which an entity carries to name the player that drives it; the Input phase fills it each step | decided (question 7, choice 4, revised 2026-11-06) |
 | **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player. It passes through adapters | decided (question 7, choice 4); adapters are the owner's direction for KYR-54 |
@@ -218,11 +223,27 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Input context** | a set of bindings a player switches on or off, with a priority (on foot, driving) | the owner's direction (2026-11-06), decided at KYR-54 |
 | **Required component** | a component another component's record requires (a mesh requires a transform), the engine's or a game's. One with defaults is added to the archetype at build time; one without must be listed, or the build refuses the prefab. The generator shows where each came from, and a query answers it | decided (question 8, 2026-11-06); its spelling is the rest of question 8 |
 
-**Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
-were reworded to this vocabulary on 2026-11-05, except inside quotes. Research docs written before then, and quotes,
-may still say "subsystem" for **system**, or "system" for an **engine module** such as render or audio.
+**Older wording.** Until 2026-11-07 these docs said "system" for a **processor** and "singleton" for a **world
+component**, and the design docs' *Decided* entries keep the words they were written in. Before 2026-11-05,
+[design/frame-phases.md](design/frame-phases.md), [design/architecture.md](design/architecture.md) and the research
+docs also said "subsystem" for a processor, or "system" for an **engine module** such as render or audio. Quotes keep
+their words.
 
-**How a system reads other entities** (*decided*, question 3, choice 3). It declares one of two modes, and the scheduler
+**Coming from another engine** (the owner's concern for agents, 2026-11-07). These words mean something else here.
+*Unreal Mass's processor is in [research/component-models.md](research/component-models.md); the rest is general
+knowledge, not checked against each engine's docs.*
+
+| Their word | Here |
+|---|---|
+| a **system** (Bevy, flecs, Unity Entities) | a processor |
+| a **processor** (Unreal Mass) | a processor |
+| a **plugin** (Bevy), a **module** (flecs) | a module |
+| a **server** (Godot's `RenderingServer`, `AudioServer`) | an engine module |
+| a **resource** (Bevy), a **singleton** (Unity Entities, flecs) | a world component |
+| a **system group** (Unity Entities) | a processor group |
+| a **random number generator** (a stream, such as kama's `Rng`) | not a random key, which holds no state |
+
+**How a processor reads other entities** (*decided*, question 3, choice 3). It declares one of two modes, and the scheduler
 never changes it, so serial and parallel runs see the same values:
 - **the previous step**, the default: other entities as they were at the end of the last step. It always runs in
   parallel, needs no order against writers, and may write what it reads;
@@ -232,9 +253,10 @@ never changes it, so serial and parallel runs see the same values:
 **The order promise** (*decided*, question 4). The engine promises it for every game, and nothing is opted into:
 - **the same history gives the same order** on every run and machine, and a save keeps chunks, free slots and handle
   generations exactly. Threads still take work in any order; only the order results are joined in is fixed;
-- **removal is swap-and-pop**, in tables and side stores. Spawn order is not promised; a system that needs an order
+- **removal is swap-and-pop**, in tables and side stores. Spawn order is not promised; a processor that needs an order
   sorts by a key component;
-- **randomness is keyed** by world seed, step, handle and purpose, so a draw does not depend on visiting order;
+- **randomness is keyed** by world seed, step, handle, purpose and a counter, so a value does not depend on visiting
+  order. A processor reaches it through its random keys (question 8 part b);
 - **a combined result** (a sum, a minimum, "who hit first") folds within each chunk, then over chunks in chunk order,
   and ties break by handle.
 
@@ -243,7 +265,7 @@ Whether the simulation is also bit-identical across platforms is
 
 **How records layer** (*decided*, components question 5 with project-database question 11):
 - **A component is a kama type plus its record,** and a record's format is that type. A prefab names an archetype the
-  build has, so data alone can add one; a new component, archetype or system needs a build.
+  build has, so data alone can add one; a new component, archetype or processor needs a build.
 - **A source patches fields,** never whole records. Keyed maps merge per key, `null` removes, and plain lists are
   replaced whole. A prefab variant is its base plus its own patches.
 - **The order is data.** Named content layers (engine, game, DLC, patch, mod, local by default) each hold any number of
@@ -254,7 +276,7 @@ Whether the simulation is also bit-identical across platforms is
 
 **What is promised** (*decided*, components question 8, 2026-11-06):
 - **Nothing is frozen before 1.0.0.** kyoten iterates freely, as kama does at 0.9.x.
-- **From 1.0.0, the promise covers what a game touches:** its records, its system signatures, the engine components
+- **From 1.0.0, the promise covers what a game touches:** its records, its processor signatures, the engine components
   and generated names it uses, handles, and the order. Tables, chunks, N, the generated loops, the scheduler and the
   layout of side stores are not promised, because a game never names them.
 - **It is kept** by records that never change meaning silently (wire names and ids, `@deprecated`, new fields with
@@ -264,7 +286,7 @@ Whether the simulation is also bit-identical across platforms is
 **How memory is bounded** (*decided*, components question 6):
 - **Every store has a ceiling from a budget record.** By default it is reserved when its zone or world is created; a
   table may instead commit chunks one at a time up to its ceiling, at the end of a phase, never moving earlier ones.
-- **A full budget refuses by default,** and the spawning system sees the refusal. Evicting (oldest spawn step, then
+- **A full budget refuses by default,** and the spawning processor sees the refusal. Evicting (oldest spawn step, then
   handle) is an opt-in per budget, and development reports every refusal but behaves as release does.
 - **The footprint is computed:** the generator sums every ceiling per scope, snapshots, staging and command buffers
   included, and shows the result.
@@ -281,15 +303,15 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 |---|---|---|
 | A table of fixed-size chunks per (zone, layer, prefab) | Unity Entities' archetype chunks, 16 KiB with at most 128 entities ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)); Unreal Mass, a chunk size per archetype ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)) | archetypes fixed at build time, tables per zone with ceilings from budgets, N per archetype from the same 16 KiB target (questions 5 and 6) |
 | Archetypes fixed at build time, queries precompiled | gecs ([README](https://docs.rs/crate/gecs/latest/source/README.md)) | side stores for components gained at run time |
-| The loop generated from a system's signature | Unity's `IJobEntity` ([IJobEntity](https://docs.unity.com/en-us/engine/7000.0/script-reference/unity/entities/ijobentity.md)) | the whole world is generated, and kama checks it |
+| The loop generated from a processor's signature | Unity's `IJobEntity` ([IJobEntity](https://docs.unity.com/en-us/engine/7000.0/script-reference/unity/entities/ijobentity.md)) | the whole world is generated, and kama checks it |
 | Side stores beside tables | Bevy's opt-in sparse sets ([StorageType](https://docs.rs/bevy/0.13.1/bevy/ecs/component/enum.StorageType.html)) | — |
-| A schedule built from declared access, at compile time | ecst ([ecst](https://www.github.com/vittorioromeo/ecst)) | **the compiler proves a system stays inside its access**; Unity, Bevy, flecs, Mass and EnTT check at run time or not at all ([research/component-models.md](research/component-models.md)) |
+| A schedule built from declared access, at compile time | ecst ([ecst](https://www.github.com/vittorioromeo/ecst)) | **the compiler proves a processor stays inside its access**; Unity, Bevy, flecs, Mass and EnTT check at run time or not at all ([research/component-models.md](research/component-models.md)) |
 | Order by groups, before and after, first and last | Unity Entities' `UpdateInGroup`, `UpdateBefore`, `UpdateAfter`, `OrderFirst`, `OrderLast` ([update order](https://docs.unity3d.com/Packages/com.unity.entities%401.2/manual/systems-update-order.html)) | a cycle or an unordered conflict is refused at start-up |
 | Flags for components that come and go often (later) | Unity's enableable components ([manual](https://docs.unity3d.com/Packages/com.unity.entities@1.0/manual/components-enableable-intro.html)) | — |
 | Bounded lists inline in a chunk, with a stated rule when full | Unity's dynamic buffers ([manual](https://docs.unity3d.com/Packages/com.unity.entities@1.2/manual/components-buffer-introducing.html)) | refuse or spill, stated per list |
 | Shared read-only assets by handle | Unity's blob assets ([blob assets](https://docs.unity3d.com/Packages/com.unity.entities@6.6/manual/blob-assets-concept.html)) | — |
 | Queued structural changes, played back in an order threads cannot change | Unity's command buffers, sorted by a sort key such as the chunk's index ([playback](https://docs.unity3d.com/Packages/com.unity.entities@1.3/manual/systems-entity-command-buffer-playback.html)) | the sort is always on |
-| Reading other entities from a parallel system | Unity's `ComponentLookup` reads them live, checked by the safety system at run time ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)) | the previous step's snapshot by default, or this step's values declared by the system, both proven at compile time (question 3, choice 3) |
+| Reading other entities from a parallel processor | Unity's `ComponentLookup` reads them live, checked by the safety system at run time ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)) | the previous step's snapshot by default, or this step's values declared by the system, both proven at compile time (question 3, choice 3) |
 | World data in cells with palettes | Minecraft's sections of 16×16×16, each with its own palette ([chunk format](https://wiki.vg/Chunk_Format)) | question 9 |
 | Pre-fractured destruction | Unreal Chaos's geometry collections ([destruction](https://dev.epicgames.com/documentation/unreal-engine/destruction-overview)) | question 9 |
 | Grid cells loaded around streaming sources | Unreal's World Partition: "Each Player Controller is used as a World Partition streaming source", with a cell size and loading range per grid ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)) | distance in rings of zones; streaming sources load the simulation and views load what is drawn (2026-11-06) |
@@ -308,7 +330,7 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | The counterexample: the last source wins the whole record | Bethesda's "rule of one", *"the last-loaded plugin's version overrides all others"* ([LOOT](https://loot.github.io/docs/help/introduction-to-load-orders/)) | patches per field, so two mods changing different fields do not collide |
 | A load order resolved from dependencies | Factorio: dependency depth first, then names in natural order ([data lifecycle](https://lua-api.factorio.com/latest/auxiliary/data-lifecycle.html)) | within named content layers, each holding any number of sources by priority (project-database question 11) |
 | Caps as data, not code | Cities: Skylines' fixed caps (16,384 vehicles), raised only by a mod patching every routine that assumed them ([research/game-types.md](research/game-types.md) G2; from players' logs, not verified) | every cap is a budget record, and nothing in code repeats its number (question 6) |
-| A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with a system | records plus one system, at most 20 non-blank lines and eight concepts, reading input, held by CI (question 7, revised 2026-11-06) |
+| A hello cube in few lines | Three.js: 25 lines (17 non-blank) unlit, 54 (35 non-blank) lit, about eleven concepts ([research/component-models.md](research/component-models.md) § 2); Bevy's `3d_rotation`, 55 lines with one Bevy system | records plus one processor, at most 20 non-blank lines and eight concepts, reading input, held by CI (question 7, revised 2026-11-06) |
 | Actions on the entity a player drives, not in one world value | leafwing-input-manager 0.22.0, for Bevy: "freely bind keys to distinct entities, rather than worrying about singular global state" ([docs](https://docs.rs/leafwing-input-manager/latest/leafwing_input_manager/)) | the entity names a player slot, which any source can drive (question 7, revised) |
 | Adapters between a control and an action | Unity's processors (axis and stick dead zones, invert, scale, normalize, clamp) and composite bindings (two buttons as a 1D axis, four as a 2D vector) ([processors](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/Processors.html), [bindings](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/ActionBindings.html)); Unreal's Enhanced Input modifiers (dead zone, negate, swizzle) and triggers (hold, chorded) ([Enhanced Input](https://dev.epicgames.com/documentation/en-us/unreal-engine/enhanced-input-in-unreal-engine)) | the owner's direction for KYR-54 |
 | Input contexts with a priority | Unreal's Input Mapping Contexts, applied per local player: "the context with the highest priority will be considered and the others ignored" ([Enhanced Input](https://dev.epicgames.com/documentation/en-us/unreal-engine/enhanced-input-in-unreal-engine)) | the owner's direction for KYR-54 |

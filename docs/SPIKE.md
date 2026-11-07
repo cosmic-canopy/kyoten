@@ -18,9 +18,9 @@ answer is recorded in its doc's *Decided*:
 - **[design/architecture.md](design/architecture.md), its spike questions.**
   - **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
     gated; kyoten builds `@kama/window` and `@kama/gpu` (KYR-51, KYR-52); and the game's `main` calls `run`.
-  - **The libraries.** Each system sits on a general-purpose library, and the graphics one is a standalone package
+  - **The libraries.** Each engine module sits on a general-purpose library, and the graphics one is a standalone package
     shaped like Three.js, `@kama/graphics`, which kama ruled first-party (KR-309, 2026-11-04).
-  - **Question 2's module rule** (2026-11-04). A system never imports another system, so data moves between systems
+  - **Question 2's module rule** (2026-11-04). An engine module never imports another, so data moves between them
     through components, in phase order. kama's `importsOnly` (0.9.842) now holds it, and KYR-53 checks the lists. The
     layer names waited for frame-phases question 1 and components question 1, and both are now decided (*To raise*).
   - **Question 7.** The directories are `editor/`, `server/` and `tools/`. `@kama/<noun>` is for a package that can
@@ -44,10 +44,10 @@ answer is recorded in its doc's *Decided*:
     sequences come later (KYR-36).
   - **The headset** is one more frame source behind `run`.
 - **[design/components.md](design/components.md), question 1** (2026-11-05): B built on A.
-  - Records generate the world as plain kama, and the game writes system bodies whose signatures are their access.
+  - Records generate the world as plain kama, and the game writes processors whose signatures are their access.
   - Storage is a table per (zone, prefab) of fixed-size value chunks, allocated when the zone loads, plus side stores
     (sparse sets) for components gained at run time.
-  - The chunk is the unit of parallel work, of a snapshot and of a budget. The generator fuses the systems of one
+  - The chunk is the unit of parallel work, of a snapshot and of a budget. The generator fuses the processors of one
     table that do not conflict into one pass per chunk, because kama refuses two tasks on one table.
   - It was checked against its precedents (Unity Entities, gecs, Bevy, ecst) and probed on kama 0.9.845 and 0.9.850.
 - **[design/components.md](design/components.md), question 2** (2026-11-05): a component is a plain value, and all four
@@ -56,14 +56,14 @@ answer is recorded in its doc's *Decided*:
   list states whether it refuses or spills when full. World data (voxels, terrain, destruction) is not a component; it
   lives in world stores of cells, and the owner added question 9 for them, with procedural generation.
 - **[design/components.md](design/components.md), question 3** (2026-11-05):
-  - **The vocabulary:** "system" is a function plus its record, render or audio is an "engine module", and
-    "subsystem" is retired. frame-phases.md and architecture.md were reworded to it the same day, apart from quotes.
-  - **A system's parts:** its record holds phase, group, order, rate and iterations, its signature is its access, and
+  - **The vocabulary:** a function plus its record ("system" then, a **processor** since 2026-11-07); render or audio
+    is an "engine module"; "subsystem" is retired. frame-phases.md and architecture.md were reworded to it the same day, apart from quotes.
+  - **A processor's parts:** its record holds phase, processor group, order, rate and iterations, its signature is its access, and
     any state it keeps between steps is a world component (called a singleton until 2026-11-07).
-  - **Reading other entities:** a system declares the previous step (the default, always parallel) or this step
-    (ordered after the writers, with its writes staged when parallel). The scheduler never changes what a system sees.
+  - **Reading other entities:** a processor declares the previous step (the default, always parallel) or this step
+    (ordered after the writers, with its writes staged when parallel). The scheduler never changes what a processor sees.
   - **Queued structural changes,** applied at the end of the phase, sorted by chunk.
-  - **Engine modules** are written the way a game's systems are, so the engine never names a game's world.
+  - **Engine modules** are written the way a game's processors are, so the engine never names a game's world.
   - **The layers:** frame, world, engine modules, the agent surface. This also decides architecture's layer names.
   - **The model in one read** is now [REFERENCE.md](REFERENCE.md), and AGENTS.kyoten.md points agents at it.
 - **[design/components.md](design/components.md), question 4** (2026-11-05): the engine promises the order for every
@@ -91,7 +91,7 @@ answer is recorded in its doc's *Decided*:
     `std::fs` frames fail it there, probed). A chain of frames under the guard overran wasm's 256 KiB stack, which
     became KY-22.
 - **[design/components.md](design/components.md) question 7, with ai-first-api question 1 and rendering question 3**
-  (2026-11-05): the hello cube is records plus one system, in at most 20 non-blank lines and seven concepts, held by CI
+  (2026-11-05): the hello cube is records plus one processor, in at most 20 non-blank lines and seven concepts, held by CI
   on web and native ([REFERENCE.md](REFERENCE.md) § The hello cube).
   - **Defaults are engine records,** since kama has no default parameters.
   - **Actions are generated fields,** and bindings are records of their own, so a bot or an agent drives the same
@@ -122,7 +122,7 @@ answer is recorded in its doc's *Decided*:
   - Streaming is KYR-61.
 - **[design/components.md](design/components.md), question 8, part a** (2026-11-06):
   - **Nothing is frozen before 1.0.0** (the owner: "Kyoten has no consumers yet"). From 1.0.0 the promise covers what
-    a game touches (records, system signatures, engine components and generated names, handles, the order), and
+    a game touches (records, processor signatures, engine components and generated names, handles, the order), and
     nothing behind it.
   - **The handle** is kyoten's own, 8 bytes: a 32-bit slot and a 32-bit generation, the same on every platform. kama's
     `Handle` is 16 bytes natively and 8 on wasm (probed on 0.9.855), which would give chunks different counts per
@@ -130,15 +130,15 @@ answer is recorded in its doc's *Decided*:
   - **Records name entities by string,** resolved to handles when a zone loads and hashed only inside the engine.
   - **A lookup answers here, gone or unloaded.**
 - **[design/components.md](design/components.md), question 8 part b, in part** (2026-11-07):
-  - **A system's parameters mean what their types say,** and names are free. The generator reads only the functions a
-    system record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
+  - **A processor's parameters mean what their types say,** and names are free. The generator reads only the functions
+    a processor record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
   - **The step's time is `const ref Time time`,** replacing the hello cube's `float32 dt`.
   - **The rest of the list is proposed,** with a probe of two towers shooting at each other on 0.9.857: typed queues
-    for create, destroy and send, `Previous` or `Current` always written, and keyed draws whose purposes the system's
+    for create, destroy and send, `Previous` or `Current` always written, and random keys for the purposes the processor's
     record lists.
   - **The generator's output is split into files and not committed** (the owner: "perhaps we do start with that").
     Probed: a debug build recompiles only the files that changed, until a declaration changes; KY-27 filed.
-  - **Collisions, readability and soundness,** the owner's concerns: a system is a free function named by its kama path
+  - **Collisions, readability and soundness,** the owner's concerns: a processor is a free function named by its kama path
     (`towers::fire`), and a singleton is now a **world component**, injected as a parameter and never reached
     globally. KY-28 (a manifest step to run the generator) and KY-29 filed. The generator refuses a module `static` in
     a game.
@@ -150,11 +150,9 @@ answer is recorded in its doc's *Decided*:
 **Next, in order:**
 
 1. **[design/components.md](design/components.md), the rest of question 8 part b.**
-   - **First, reword** REFERENCE.md, AGENTS.kyoten.md and this file's current text to module and processor (decided
-     2026-11-07), with the map for agents: Bevy's, flecs's and Unity's system is a processor, and Bevy's plugin is a
-     module. Decided entries keep their words.
-     Decided since: keyed random values are `<Processor>RandomKeys`, a `RandomKey` per purpose, and the group inside
-     a layer is a **layer group**.
+   - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
+     engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
+     per purpose, and the group inside a layer is a **layer group**.
    - **Then:** the rest of the parameter list, the record spellings (with a random key's counter argument), the
      day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
      `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
@@ -171,7 +169,7 @@ answer is recorded in its doc's *Decided*:
 
 **To raise with the owner:**
 
-- **Audio and networking in the first slice?** The owner expects much of the initial work to be engine systems:
+- **Audio and networking in the first slice?** The owner expects much of the initial work to be engine modules:
   audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
   audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
   started audio's slice 1, sound effects, with music and ambience next
@@ -217,11 +215,11 @@ answer is recorded in its doc's *Decided*:
   - every game type, and the best engine;
   - budgets per element and per zone, with allocation up front or at least very controlled;
   - Output per platform over one simulation, and input as an abstraction with universal rebinding.
-- **Given 2026-11-05: kyoten writes its own systems as it goes.** In the owner's words: "ideally we would write our
+- **Given 2026-11-05: kyoten writes its own engine modules as it goes.** In the owner's words: "ideally we would write our
   own constraints system and UI systems, etc." and "we are building something unique here and do not want to be limited
   by existing designs. I assume it should be fine to use them for now but build our own as we go?" So Jolt (the
   peers' physics) and RmlUi (under `@kama/ui`, natively) may serve first, and kyoten replaces each with its own. *Proposed
-  the same day, to confirm:* each system's interface is kyoten's from the start, designed from the decided frame, so a
+  the same day, to confirm:* each engine module's interface is kyoten's from the start, designed from the decided frame, so a
   borrowed library sits behind it and leaving it changes no game.
   - **UI is the largest case of it** (the owner, the same day): "everything should ideally leverage best in class native
     web tech for web and have counterparts we build natively. The UI system is a BIG part of that. The web ( html and

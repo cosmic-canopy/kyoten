@@ -10,8 +10,10 @@ general purpose, MIT OR Apache-2.0. The owner's brief is [docs/VISION.md](docs/V
 ## Where things stand: the design spike
 
 **Learn kyoten's model from [docs/REFERENCE.md](docs/REFERENCE.md)**: the picture of how a game, the engine's layers
-and modules, the world, systems and phases fit together, the vocabulary to use, and the prior art. Use its terms:
-"system" is a function over components, and render or audio is an "engine module".
+and modules, the world, processors and phases fit together, the vocabulary to use, and the prior art. Use its terms:
+a "processor" is a function over components that the scheduler runs (what Bevy, flecs and Unity call a system), and
+a "module" is an area of code, one kama module: an engine module such as render or audio, or a game module. kyoten
+says neither "system" nor "subsystem".
 
 **Read [docs/SPIKE.md](docs/SPIKE.md) first.** The repository was seeded to be walked through with the owner.
 The design drafts under [docs/design/](docs/design/) list questions; they do not answer them. **No engine code is
@@ -28,7 +30,7 @@ measure, then ask.
 | `docs/VISION.md` | the owner's brief |
 | `docs/SPIKE.md` | the kickoff brief for the design spike |
 | `docs/REFERENCE.md` | the model in one read: the picture, the vocabulary and the prior art, each item decided or proposed. The future SPEC's core, built into kyotenengine.com's docs (KYR-39) |
-| `docs/design/` | one draft per system, each ending in its open questions |
+| `docs/design/` | one draft per area (rendering, audio, networking…), each ending in its open questions |
 | `docs/research/` | what the peer projects and kama already offer, with pointers |
 | `docs/ROADMAP.md` | the order of work (ids `KYR-<n>`) |
 | `docs/KAMA_GAPS.md` | what kyoten hits in kama (ids `KY-<n>`) |
