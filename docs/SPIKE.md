@@ -174,8 +174,12 @@ answer is recorded in its doc's *Decided*:
      names that become fields are identifiers, one meaning across the game; generated types with a suffix for their
      kind (`BulletPrefab`); records name code as the code does, so a prefab's component keys are type names
      (`"Turret"`), bare where unique; internal names are the generator's own, kept apart by its files.
-   - **Then:** the remaining names (the engine's layers against a scene's layers), which prefabs a create queue may
-     create, and the day-one engine components.
+   - **Names, in part** (the owner: "I pretty much agree with everything stated"): a bare "layer" is a scene's
+     layer, the engine's levels of code are **tiers**, and a screen layer is always called so. REFERENCE maps Unity's
+     Layer, Minecraft's chunk and block, a level and Godot's scene for agents.
+   - **Then:** a better word for a content layer ("basically a content database priority level", the owner) and
+     for the default content layer "patch", which prefabs a create queue may create, and the day-one engine
+     components.
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game

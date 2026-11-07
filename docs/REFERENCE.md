@@ -22,7 +22,7 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  │ records: components, prefabs,         │──┐   ┌─ the World (plain kama) ──┐
  │   modules, processors, budgets, zones │  ├──►│ zones · tables · chunks   │──► run(world)
  │ processors:                           │  │   │ side and world components │    in the frame
- │   fn void integrate(ref Pos p,        │──┤   │ input() update()          │    layer
+ │   fn void integrate(ref Pos p,        │──┤   │ input() update()          │    tier
  │       const ref Vel v,                │  │   │ constraints() output()    │
  │       const ref Time t) { … }         │  │   └───────────────────────────┘
  └───────────────────────────────────────┘  │
@@ -32,19 +32,20 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
  └───────────────────────────────────────┘
 ```
 
-- **A game changes engine behaviour without editing the engine.** Its records sit in a layer above the engine's, so a
-  game tunes a physics iteration count or replaces an engine processor's record by stacking its own (the project database's
-  layers, [design/project-database.md](design/project-database.md) § Decided).
+- **A game changes engine behaviour without editing the engine.** Its records sit in a content layer above the
+  engine's, so a game tunes a physics iteration count or replaces an engine processor's record by stacking its own
+  (the project database's content layers, [design/project-database.md](design/project-database.md) § Decided).
 - **When a game needs something the engine lacks,** the engine gains it as a pattern or a component every game can use
   (*decided*, [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Rules).
 - **The generator's output is not committed** (components question 8 part b, 2026-11-07). It is split into files by
   archetype and by phase, in a git-ignored folder of the game's package, and the generator runs before a build or a
   check. The repository holds the records and the processors.
 
-## The engine's layers
+## The engine's tiers
 
 *Decided at components question 3, choice 6 (2026-11-05), on architecture question 2's module rule* ([design/architecture.md](design/architecture.md)
-§ Decided, question 2). Each layer imports only the layers above it.
+§ Decided, question 2), and named tiers at components question 8 part b (2026-11-07). Each tier imports only the
+tiers above it.
 
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
@@ -77,7 +78,7 @@ which are question 9.
   │   ├─ Table ((0,0) × "actors" × Crate) ──── Chunk             Pos[N] Vel[N] Hp[N] …
   │   └─ World store: terrain or voxel cells (question 9)
   ├─ Zone (1,0) …
-  ├─ Non-spatial layers ("rules", "inventory"): one block each for the scene
+  ├─ Non-spatial layers ("rules", "inventory"): each held once for the scene
   ├─ Side stores: Burning, Stunned       any entity may gain or lose one
   ├─ World components: Time, RNG         one per world or zone, owned by a module
   └─ Assets (read-only, by handle): meshes, clips, navmeshes
@@ -94,9 +95,9 @@ which are question 9.
   │           loaded by rings: around each streaming source for the simulation,
   │           around each view for drawing. Depth k loads (2k+1)² or (2k+1)³ per source
   ├─ Layers   declared at design time, flat, each spanning every zone          loading and memory
-  │             "actors"     spatial      simulated    rings 0–2   a block per zone
+  │             "actors"     spatial      simulated    rings 0–2   held per zone
   │             "props-far"  spatial      drawn only   rings 2–6   per machine
-  │             "rules"      non-spatial  simulated                one block for the scene
+  │             "rules"      non-spatial  simulated                held once for the scene
   │             "hud"        non-spatial  drawn only
   │           states: off · loaded (frozen and hidden) · active
   └─ Groups   inside a layer, nested freely, an id per entity                   switching
@@ -109,7 +110,8 @@ which are question 9.
   **What is drawn comes from views,** which are Output's and may differ per machine.
 - **Two units of distance:** metres, and rings of zones away.
 - **Every scene starts with one zone, one layer and one group,** so each is there to be found.
-- **An entity crossing a zone, or changing layer,** moves blocks at the end of the phase, and its handle stays valid.
+- **An entity crossing a zone, or changing layer,** moves to that zone's or layer's table at the end of the phase,
+  and its handle stays valid.
 - **A zone loads from its saved state,** else from the scene's generator with its zone file laid over it, else
   empty (question 8 part b, 2026-11-07). A scene's `bounds` keep zones beyond them from being created: by default
   the box around its zone files, and none for a scene with a generator, so an infinite world is a generated one.
@@ -340,9 +342,9 @@ words.
 
 | Term | Means | Status |
 |---|---|---|
-| **Engine** | kyoten: one kama package in four layers | decided |
+| **Engine** | kyoten: one kama package in four tiers | decided |
 | **Module** | an area of code, exactly one kama module, with its own records, processors, components and world components. Its record sets the default rate its processors inherit. An **engine module** is the engine's (input, render, audio, net, physics, UI) and never imports another; a **game module** is a game's (gameplay, AI, towers) | decided (engine modules at question 3, choice 1; module and game module at question 8 part b, 2026-11-07) |
-| **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface. The word is shared with a scene's layers (below) until question 8 names them | decided |
+| **Tier** | a group of modules with an import rule: frame, world, engine modules, the agent surface, each importing only the tiers above it. A module's own levels of code are tiers too | decided; named at question 8 part b (2026-11-07), "layer" until then |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
@@ -357,8 +359,9 @@ words.
 | **Ring** | a distance in zones: ring 0 is a source's own zone, ring k the zones k steps away. A depth of k loads (2k+1)² zones in 2D, (2k+1)³ in 3D | decided (2026-11-06) |
 | **Streaming source** | a component on a simulated entity that loads the zones around it for the simulation, the same on every machine. Each player's character has one by default | decided (2026-11-06) |
 | **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |
-| **Layer** (of a scene) | a set of entities declared at design time that spans every zone and loads as one: the unit of loading and memory. Spatial or not, simulated or drawn only, on in a range of rings, and off, loaded or active | decided (2026-11-06); its name is question 8 |
+| **Layer**, or **scene layer** | a set of entities declared at design time that spans every zone and loads as one: the unit of loading and memory. Spatial or not, simulated or drawn only, on in a range of rings, and off, loaded or active | decided (2026-11-06); its name is question 8 |
 | **Layer group** | a set inside one layer that switches as one, nested freely: an id per entity, and no memory of its own | decided (2026-11-06); named at question 8 part b (2026-11-07) |
+| **Screen layer** | rendering's target composed onto the screen: a 2D layer over a 3D scene, or alone. Always written so, since a bare "layer" is a scene's | rendering's (2026-11-01); named at question 8 part b (2026-11-07) |
 | **Budget** | a record limiting one scope (world, scene, zone, layer, match, player, team). A (zone, layer, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
 | **Footprint** | the sum of every ceiling per scope, which the generator reports as the game's simulation floor | decided (question 6) |
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
@@ -409,6 +412,11 @@ knowledge, not checked against each engine's docs.*
 | a **resource** (Bevy), a **singleton** (Unity Entities, flecs) | a world component |
 | a **system group** (Unity Entities) | a processor group |
 | a **random number generator** (a stream, such as kama's `Rng`) | not a random key, which holds no state |
+| a **Layer** (Unity: a 32-slot mask for physics and camera culling) | not a layer. Unreal's **Data Layer** is the closest to a layer here |
+| a **chunk** (Minecraft) | a zone. A chunk here is Unity Entities' chunk: up to N entities of one archetype |
+| a **block** (Minecraft) | a cell of world data (question 9) |
+| a **level** or **map** (Unreal, most games) | a scene |
+| a **scene** (Godot: a reusable node tree) | a prefab |
 
 **How a processor reads other entities** (*decided*, question 3, choice 3). It declares one of two modes, and the scheduler
 never changes it, so serial and parallel runs see the same values:

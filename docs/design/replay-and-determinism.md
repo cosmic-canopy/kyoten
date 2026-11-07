@@ -55,10 +55,10 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
    a third-party physics engine may not be deterministic across CPUs. Is determinism a promise the engine makes, or a
    pattern a game opts into?
    - *Narrowed 2026-11-05 at [components.md](components.md) question 4:* on one platform, the engine promises the order
-     to every game, with no opt-in. This question keeps the cross-platform tier: floats, libm (KY-19) and physics. Jolt's
-     cross-platform build is "approximately 8% slower". The owner asked whether any game should opt in, and this tier is
-     where a reason could turn up.
-   - *Learned the same day (kama KR-328's brief, `8813060d`):* the tier is wider than platforms. One Windows executable
+     to every game, with no opt-in. This question keeps the cross-platform guarantee: floats, libm (KY-19) and physics. Jolt's
+     cross-platform build is "approximately 8% slower". The owner asked whether any game should opt in, and this
+     guarantee is where a reason could turn up.
+   - *Learned the same day (kama KR-328's brief, `8813060d`):* the guarantee is wider than platforms. One Windows executable
      gives different `std::math` bits with UCRT's FMA3 paths on and off, so two PCs can disagree, and kama says *"a
      program that never targets wasm still needs one implementation compiled in"*. musl compiled in gives wasm's bits
      on all 28 functions at risk.

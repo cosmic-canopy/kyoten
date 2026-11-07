@@ -315,6 +315,8 @@ The tension between their lesson and that purpose is the first thing to settle.
         import, which never name another engine module.
       - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every engine
         module has an `importsOnly`, and that none names another engine module. It no longer reads the source.
+  - *Renamed 2026-11-07 ([components.md](components.md) question 8 part b): these layers are the engine's **tiers**,
+    since a bare "layer" now means a scene's layer. This entry keeps its words.*
   - **The layer names: decided 2026-11-05 at [components.md](components.md) question 3, choice 6.** The four layers
     are frame, world, one module per engine module, and the agent surface. The `World` contract and `run` sit in the
     frame layer, and the generated world in the game's package. The draft as first written follows. The names waited

@@ -9,11 +9,12 @@ general purpose, MIT OR Apache-2.0. The owner's brief is [docs/VISION.md](docs/V
 
 ## Where things stand: the design spike
 
-**Learn kyoten's model from [docs/REFERENCE.md](docs/REFERENCE.md)**: the picture of how a game, the engine's layers
+**Learn kyoten's model from [docs/REFERENCE.md](docs/REFERENCE.md)**: the picture of how a game, the engine's tiers
 and modules, the world, processors and phases fit together, the vocabulary to use, and the prior art. Use its terms:
 a "processor" is a function over components that the scheduler runs (what Bevy, flecs and Unity call a system), and
 a "module" is an area of code, one kama module: an engine module such as render or audio, or a game module. kyoten
-says neither "system" nor "subsystem".
+says neither "system" nor "subsystem". A bare "layer" is a scene's layer; the engine's levels of code are its "tiers",
+and the other layers are always qualified (content layer, screen layer).
 
 **Read [docs/SPIKE.md](docs/SPIKE.md) first.** The repository was seeded to be walked through with the owner.
 The design drafts under [docs/design/](docs/design/) list questions; they do not answer them. **No engine code is

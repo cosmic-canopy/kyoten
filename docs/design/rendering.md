@@ -54,6 +54,9 @@ questions.
 2. **The layers.** Raw WebGPU (safe handles), a render graph or frame graph, and a scene layer (meshes, materials,
    lights, cameras) that a prototype uses in a few lines. Which layers does the engine provide, and which does a
    game write?
+   - *Noted 2026-11-07 ([components.md](components.md) question 8 part b):* a bare "layer" now means a scene's
+     layer, and levels of code are tiers, so these are the render module's tiers, and the "scene layer" here needs
+     another word.
 3. **The Three.js bar.** *(Decided 2026-11-05 with components question 7, below.)* What does "a lit, spinning mesh in N lines" look like in kyoten, and what defaults make it
    short (a default camera, light and material)?
 4. **Rendering in the frame.** The Output phase reads the simulation's state, at the display's rate, and interpolates
@@ -75,7 +78,7 @@ questions.
    - *Noted 2026-11-06:* a scene now has layers of its own ([components.md](components.md) § Decided). A HUD or a 2D
      canvas is a non-spatial, drawn-only scene layer, and a view (a camera drawing into a target) loads what is drawn.
      How a drawn-only scene layer reaches a screen layer is this question's, and the shared word is components
-     question 8's.
+     question 8's. *(Named 2026-11-07: a bare "layer" is a scene's layer, and a screen layer is always called so.)*
 10. **Generative worlds, later** (KYR-50; the owner, 2026-11-02: traditional engines "for a while… especially on
     current hardware… but generative games are likely the future"). Wizard (Yuzhe Wu, Zijun Lin and Yeying Jin;
     Tencent, NUS and NTU; arXiv 2610.40339, 2026-10-29; <https://wyzardwu.github.io/wizard/>, code "soon") splits a

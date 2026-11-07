@@ -36,7 +36,8 @@ singleton is now a world component.
   takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
   as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
   prefab variants, `main` as the default layer, a prefab naming its layer, and zone files only where something is
-  authored, within a scene's bounds.
+  authored, within a scene's bounds. The generator's naming rule is decided, a bare "layer" is a scene's layer, and
+  the engine's levels of code are tiers.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1494,3 +1495,31 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       file that imports `fire`.
     - **So the split into files is the fix:** tables are declared in files that import no processor, and the passes
       that call processors only read `row.spin`. No renaming scheme is needed, and nothing reaches a game.
+- **2026-11-07, the owner: the remaining names, in part — "layer", the engine's tiers and screen layers.** The owner: "We
+  can optionally still qualify 'scene layer'", "Engine tiers sound good to me", "screen layer is pretty good yes", "the
+  new rows sound fine for now", and "I pretty much agree with everything stated".
+  - **Why:** "layer" meant four things (the engine's levels of code, content layers, rendering's screen layers and a
+    scene's layers), each with strong precedent elsewhere (layered architecture, Docker's and USD's layer stacks,
+    compositing, Unreal's Data Layers), so the word could not be made unique. The question was which meaning gets it
+    bare.
+  - **A bare "layer" is a scene's layer,** and "scene layer" is its qualified form where another kind is near. Records
+    (`"layers"`, `"layer": "main"`) and generated constants use it.
+  - **The engine's levels of code are tiers:** frame, world, engine modules and the agent surface are the engine's four
+    tiers, each importing only the tiers above it. A module's own levels of code are tiers too, so rendering question
+    2's "scene layer" needs another word. replay-and-determinism's "cross-platform tier" becomes "the cross-platform
+    guarantee".
+  - **A screen layer** (rendering's target composed onto the screen, 2D over 3D) is always written so. In XR, OpenXR's
+    composition layers keep the platform's word.
+  - **Left as they are:** "group", since each record kind has one kind of group (a placement's `"group"` is a layer
+    group, a module record's `"groups"` processor groups); and "source", a record source, while the zone loader's is
+    always a "streaming source".
+  - **The docs' informal "block"** (a layer's memory in one zone) leaves the prose, since Minecraft's block is a voxel.
+  - **New rows in REFERENCE's *Coming from another engine*** (general knowledge, not checked): Unity's Layer, which is
+    not a layer here, with Unreal's Data Layer the closest; Minecraft's chunk, a zone here; Minecraft's block, a cell
+    of world data; a level or map, a scene; Godot's scene, a prefab.
+  - **Still open:**
+    - **a better word for a content layer.** The owner: "content layer is probably fine but we could probably find a
+      better term for it... it is basically a content database priority level."
+    - **the default content layer "patch",** beside a patch of a record (only the fields a source changes, RFC 7396).
+      Proposed: "live". The owner: "Patches are not always live if it is an old patch and another takes it's place...
+      content patch?"
