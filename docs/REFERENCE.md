@@ -112,6 +112,9 @@ which are question 9.
 - **Every scene starts with one zone, one layer and one group,** so each is there to be found.
 - **An entity crossing a zone, or changing layer,** moves to that zone's or layer's table at the end of the phase,
   and its handle stays valid.
+- **A position is a zone and a `float32` offset from the zone's centre** (question 9, 2026-11-07): Y up,
+  right-handed, metres. Zone sizes are whole metres, so moving an entity into the next zone is exact, and precision
+  is the same in every zone of an endless world.
 - **A zone loads from its saved state,** else from the scene's generator with its zone file laid over it, else
   empty (question 8 part b, 2026-11-07). A scene's `bounds` keep zones beyond them from being created: by default
   the box around its zone files, and none for a scene with a generator, so an infinite world is a generated one.
@@ -231,7 +234,7 @@ components' fields, and more arrive with their roadmap rows.
 
 | Component | Tier or module | Holds |
 |---|---|---|
-| `Transform` | world tier | `position` and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` and the like |
+| `Transform` | world tier | `zone` (an `int32` per axis), `position` (the `float32` offset from the zone's centre) and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)`, `offsetTo(other:)`, `place(zone:, position:)` |
 | `Mesh` | render | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
 | `Material` | render | a lit material (base colour, metallic, roughness), or a glTF one |
 | `Camera` | render | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
@@ -341,7 +344,7 @@ content/
 | App | `firstScene` (the only scene); `title` |
 | Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
-| Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
+| Scene | `inBuild` (true); `zoneSize` in whole metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
 | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
 | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
 | Layer group | `on` (true); `groups`, nested |
@@ -380,7 +383,7 @@ words.
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | decided (2026-11-06) |
-| **Zone** | a cell of the scene's grid, a square or a cube sized in metres: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
+| **Zone** | a cell of the scene's grid, a square or a cube sized in whole metres, with its origin at its centre: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
 | **Ring** | a distance in zones: ring 0 is a source's own zone, ring k the zones k steps away. A depth of k loads (2k+1)² zones in 2D, (2k+1)³ in 3D | decided (2026-11-06) |
 | **Streaming source** | a component on a simulated entity that loads the zones around it for the simulation, the same on every machine. Each player's character has one by default | decided (2026-11-06) |
 | **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |

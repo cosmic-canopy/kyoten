@@ -129,7 +129,7 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
 8. **Growing in phases.** *(Decided: required components and part a on 2026-11-06, and part b, the spellings and
    names, on 2026-11-07, below.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
-9. **World data.** *(Added 2026-11-05 at question 2.)* Some data belongs to space, not to an entity: a voxel world, a
+9. **World data.** *(Added 2026-11-05 at question 2. Coordinates decided 2026-11-07, below.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
    coordinate within a zone (G7). The questions are:
    - **The cell's format:** dense, palette or sparse, and who chooses it. Minecraft's sections are 16×16×16 blocks,
@@ -150,7 +150,8 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
      gain or lose in it. It then reloads from content and the generator and is never saved. A world store that
      cannot be edited, such as terrain that cannot be deformed, is the same case. Dynamic layers and stores save per
      touched zone, whole or as edits.
-   - **Coordinates in a very large world** *(added 2026-11-05, the owner's thought exercise)*. Far from the origin a
+   - **Coordinates in a very large world** *(added 2026-11-05, the owner's thought exercise; decided 2026-11-07,
+     below: a zone and a `float32` offset from its centre)*. Far from the origin a
      `float32` loses precision: about 1 m per step at 10⁷ m (Box3D,
      [large worlds](https://box2d.org/documentation3d/large-worlds.html)). G7 already makes the zone the unit of
      coordinates.
@@ -1619,3 +1620,37 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
      is door-12" for the agent surface (KYR-25), so no string rides on every entity, and a created bullet has none. A
      `Name` component can arrive later without a break.
   - **Question 8 is decided:** required components and part a on 2026-11-06, and part b on 2026-11-07.
+- **2026-11-07, the owner: question 9, round 1 of 3 — coordinates.** "I agree with all of the above", and on the zone
+  and offset: "I love the zone and offset idea", "Yes zone and offset to keep precision in infinite worlds". Round 2
+  takes the cells (format, streaming, procedural generation) and round 3 saving, destruction and what presentation
+  builds.
+  1. **A position is a zone and a `float32` offset.** `Transform` is `{ zone, position, rotation, scale }`: `zone` a
+     whole-number zone coordinate, and `position` the offset from the zone's centre, a `std::math::Vec3`.
+     - **Why not an absolute `float64`** (Unreal 5's Large World Coordinates, Box3D's option): it is the same 24 bytes,
+       but kama has no implicit numeric conversion and std::math's vectors are `float32` only, so every movement
+       processor would cast between `float64` positions and `float32` velocities. With an offset, processors do
+       ordinary `float32` maths and never see zones.
+     - **The zone is in the component,** not only implied by the table, so a non-spatial entity, or another entity's
+       `Previous<Transform>`, carries its whole position.
+  2. **A zone's origin is its centre.** Zone (0,0,0) spans −32 to 32 m, so a scene built around the origin sits in one
+     zone, and precision is the same in every direction: under 8 µm anywhere in a 64 m zone. **Considered:** a corner,
+     which puts anything at a negative coordinate in zone −1.
+  3. **Rebasing is exact for whole-metre zones.** An offset that leaves its zone moves whole zones at the end of the
+     phase, with the table move already decided (how a world is divided, choice 5).
+     - *Probed on 0.9.867:* a million offsets past the edge, rebased one zone in `float32` and compared with the same
+       subtraction in `float64`: none inexact for 64 m, 100 m and 8,192 m zones, and 23,548 inexact for 50.3 m.
+     - So a scene's `zoneSize` is a whole number of metres; the scene record held a `float32`.
+  4. **Y up, right-handed, metres,** as glTF has it, so assets and XR poses arrive unconverted (glTF's from its
+     specification; WebXR, Three.js, Godot and Bevy the same, from general knowledge). Square zones are a grid on x and
+     z, and height stays in the offset (about 1 mm at 8 km up).
+  5. **Between zones:** `t.offsetTo(other: o)` gives the vector from one Transform to another, the zone difference times
+     the size plus the offset difference, in `float32`; near things are precise, and far ones lose only what does not
+     matter at that distance. A teleport writes both parts: `t.place(zone:, position:)`.
+  6. **Directions for elsewhere:** Output draws relative to the camera's zone, so the GPU sees small floats (rendering
+     question 4), and physics runs in a frame around the simulated zones, rebased as its centre zone changes (KYR-17).
+  7. **A zone coordinate is an `int32` per axis:** ±137 million km per axis at 64 m.
+  - **The owner asked whether `float64` vectors are a kama gap** ("Would we even need it?"). std::math has `float32`
+    vectors only, while its scalar functions come at both widths, and kama's roadmap names none. kyoten does not need
+    them now, since the offset keeps every processor in `float32`; a physics backend in double precision or a tool
+    showing absolute coordinates might at a border. A general-purpose maths library usually has both (glam's `DVec3`,
+    Unity.Mathematics' `double3`, GLM's `dvec3`; general knowledge), so it is filed as KY-35, not blocking.

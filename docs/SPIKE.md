@@ -188,7 +188,11 @@ answer is recorded in its doc's *Decided*:
      will be refining and adding as we build"): Transform on std::math with a quaternion, Mesh, Material, Camera,
      Light and Actions, with the world components Time and Environment. Parent and child (the transform hierarchy)
      is KYR-62, and KY-34 is filed. **Question 8 is decided.**
-   - **Then question 9.**
+   - **Question 9, round 1 of 3, coordinates** (the owner: "I love the zone and offset idea"): a position is a zone
+     and a `float32` offset from its centre, rebased exactly with whole-metre zones; Y up, right-handed, metres;
+     `int32` zone coordinates. KY-35 filed (`float64` vectors, not blocking).
+   - **Then question 9's rounds 2 (cells: format, streaming, procedural generation) and 3 (saving, destruction,
+     what presentation builds).**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
@@ -226,7 +230,8 @@ answer is recorded in its doc's *Decided*:
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
   **Still to relay:** KY-31's other half (`docs/packages.md` still shows comments in `kama.json` examples), KY-32
   (`kama check` passes a manifest whose `entry` value is unquoted, and `kama run` calls it missing), KY-33 (a module
-  missing an imported symbol is spelt `game.gen`) and KY-34 (std::math's `Vec3` and `Quat` are not serializable).
+  missing an imported symbol is spelt `game.gen`) KY-34 (std::math's `Vec3` and `Quat` are not serializable) and KY-35 (std::math
+  has no `float64` vectors; not blocking).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -418,7 +423,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 to KY-19, KY-21 to KY-23, KY-28 and KY-31 to KY-34 are open there; take the next id from its counter.
+  KY-17 to KY-19, KY-21 to KY-23, KY-28 and KY-31 to KY-35 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

@@ -64,6 +64,8 @@ questions.
 4. **Rendering in the frame.** The Output phase reads the simulation's state, at the display's rate, and interpolates
    between simulation steps ([frame-phases.md](frame-phases.md)). How does it read state without stalling the next
    Update: double-buffered state, a snapshot, or extraction into render-only data?
+   - *Noted 2026-11-07 ([components.md](components.md) question 9):* a position is a zone and a `float32` offset,
+     so Output draws relative to the camera's zone and the GPU sees small floats.
 5. **Command recording in parallel.** WebGPU encoders can be recorded on several threads natively; on the web, only
    where the device lives (see the thread topology in [web-and-native.md](web-and-native.md)). How is that kept
    portable?
