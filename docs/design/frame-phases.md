@@ -652,6 +652,9 @@ run can both hold.
       `tools/check-target.sh:188-189`), and one public report says the same
       ([KBVE PR #8218](https://github.com/KBVE/kbve/pull/8218)). MDN's rule covers `no-cors` loads, which a WebSocket
       is not. The browser CI leg settles it (web-and-native question 7).
+      *Settled 2026-11-07 at [web-and-native.md](web-and-native.md) question 2:* the headers do not break it. Fetch
+      never treats a WebSocket as "opaque", and a cross-origin WebSocket opened under both COEP values in headless
+      Edge 157. KY-36 asks kama to correct its note.
     - **kama moves `main` to a worker in any build that spawns** (`PROXY_TO_PTHREAD`). The worker has no `document`,
       so the canvas needs an OffscreenCanvas, and input such as the gamepad is read on the page and forwarded.
   - **What keeps the door open:** kama's web glue already queues browser events for the program to poll

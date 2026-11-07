@@ -66,6 +66,13 @@ Borrowed backends are the owner's direction of 2026-11-05: Jolt and RmlUi may se
 as it goes. A game's UI is HTML and CSS, the browser's own on the web and kyoten's counterpart natively
 ([SPIKE.md](SPIKE.md) § Standing direction).
 
+**On the web** (*decided*, web-and-native questions 1 and 2, 2026-11-07): the libraries below the engine modules are
+kama packages shaped after the browser's API, and a game touches only kyoten's interfaces. A web build is
+single-threaded, everything on the page, unless a game turns threads on. Then the page is the browser's edge (input,
+the gamepad, the DOM UI, the AudioContext), kama's `main` runs the steps and renders through WebGPU on a worker, the
+job pool takes further workers, and shared-memory rings join them. Such a game is hosted with COOP `same-origin` and
+COEP `require-corp`, and ships its single-threaded build as the fallback.
+
 ## The world at run time
 
 *Decided at components questions 1 and 2* ([design/components.md](design/components.md) § Decided), except world stores,

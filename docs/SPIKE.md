@@ -214,10 +214,13 @@ answer is recorded in its doc's *Decided*:
 3. **[design/web-and-native.md](design/web-and-native.md), in part** (2026-11-07): questions 1, 4, 5 and 6 are
    decided. Libraries below, shaped after the browser and built as kama packages, and kyoten's own interfaces
    above; a size ratchet with a 150 KB gauge for the hello cube; native's gains behind the same interfaces, and no
-   capability in the simulation; the renderer designed around call count. **Next: question 2, the web thread
-   topology,** then 3 (UI) and 8 (the headset), then the rest of the [narrowed table](#narrowed-2026-11-01).
-   **22 questions remain:** web-and-native 3, project-database 7, target-platforms 4, rendering 3, ai-first-api 2,
-   examples 3. Some may be taken together, as the hello cube's three
+   capability in the simulation; the renderer designed around call count. **Question 2, the web thread topology**
+   (the owner: "All sounds good to me so far"): two builds with the same game code; threaded, the page is the
+   browser's edge and `main` steps and renders on a worker; COOP `same-origin` and COEP `require-corp`, with the
+   single-threaded build as the fallback; `whenHidden`. Probed in headless Edge 157, with a research agent's sources;
+   KY-36 filed. **Next: questions 3 (UI) and 8 (the headset),** then the rest of the
+   [narrowed table](#narrowed-2026-11-01). **21 questions remain:** web-and-native 2, project-database 7,
+   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
    were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**

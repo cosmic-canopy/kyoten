@@ -120,8 +120,10 @@ From [../research/peer-games.md](../research/peer-games.md) § 2 and § 7:
       direction for later (KYR-64):*
       - **Output may use the GPU freely:** particles, cosmetic cloth and fluids, culling, skinning.
       - **The simulation stays on the CPU by contract,** because GPU floating point is not the same bits across vendors
-        and drivers (WGSL states error bounds for its built-ins rather than exact results; from memory, not checked),
-        and a reduction across workgroups has no fixed order unless one is imposed.
+        and drivers, and a reduction across workgroups has no fixed order unless one is imposed. *Checked 2026-11-07
+        in the WGSL specification (§ 15.7):* "No rounding mode is specified", `sin` and `cos` have an "Absolute
+        error at most 2⁻¹¹ when x is in the interval [-π, π]", and "An implementation may reassociate operations"
+        and "may fuse operations". Integer arithmetic is exact: an overflow is "modulo 2^bitwidth" (§ 6.2.3).
       - **A simulation kernel could run on the GPU later in two ways:** integer or fixed-point arithmetic with a fixed
         reduction order, which WGSL defines exactly, proved by a cross-GPU hash in CI (a falling-sand world store is the
         natural first case); or as an outside computation whose result enters at Input's hand-off, recorded, like an

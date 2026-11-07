@@ -1,6 +1,6 @@
 # Web first, native at parity
 
-**Status:** questions 1, 4, 5 and 6 decided on 2026-11-07; 2, 3 and 8 are open in the spike, and 7 waits for
+**Status:** questions 1, 2, 4, 5 and 6 decided on 2026-11-07; 3 and 8 are open in the spike, and 7 waits for
 KYR-13.
 
 ## What the vision asks
@@ -49,7 +49,7 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
    implementing each one, per the rule. Which interfaces are kyoten's own, and which does kyoten take from kama's
    packages once they exist (`@kama/gpu`, `@kama/window`, `@kama/ui`)? Does kyoten build them, wait for them, or build
    them *as* those packages?
-2. **The web thread topology.** This is the hardest web question, and it decides the frame model's parallelism on
+2. **The web thread topology.** *(Decided 2026-11-07, below.)* This is the hardest web question, and it decides the frame model's parallelism on
    the web ([frame-phases.md](frame-phases.md)). Options:
    - a single-threaded wasm `main` on the page thread, with no parallel phases on the web at first;
    - `main` on a worker, rendering through an OffscreenCanvas transferred to it, and the DOM driven by messages;
@@ -116,3 +116,53 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
     need no batching; about 10⁴ do (instancing, fewer state changes); 32-bit draw arguments, with shared buffers bound
     once; one `writeBuffer` a frame for per-object data; a JS-side command list only if calls still reach 10⁴ after
     that. Native is not uniformly cheaper, so designing against the browser does not penalize it.
+- **2026-11-07, the owner: question 2, the web thread topology.** "All sounds good to me so far."
+  - **The evidence.** A probe in headless Edge 157 here (a page and a second origin served locally), a research agent's
+    reading of the specs, MDN's browser-compat-data and release notes, and two claims checked at their source (the Fetch
+    Standard's WebSocket rule, and Safari's missing `credentialless`):
+
+    | Fact | Where |
+    |---|---|
+    | COOP/COEP does not block a cross-origin WebSocket: Fetch sets a `"websocket"` request's tainting to `"basic"`, and applies the CORP check only *"If either request's response tainting or response's type is "opaque""* | every browser; probed under `require-corp`, `credentialless` and none. kama's `tools/check-target.sh` says otherwise, which is KY-36 |
+    | `credentialless` gives `crossOriginIsolated` and still loads a cross-origin image without CORP; `require-corp` blocks it | Chrome 96, Firefox 119, not Safari (browser-compat-data); `require-corp` from Safari 15.2. Probed |
+    | WebGPU in a dedicated worker, rendering into an `OffscreenCanvas` the page transferred | Chrome 113, Firefox 141 on Windows (macOS on Apple Silicon from 145 and 147; Linux not yet in release), Safari 26. Probed |
+    | `requestAnimationFrame` in a dedicated worker, which needs an owning window; emscripten's threads always have one | Chrome 69, Firefox 99, Safari 16.4 |
+    | The Gamepad API is `[Exposed=Window]` | every browser |
+    | A SharedArrayBuffer reaches an AudioWorklet, which writes it | probed; WebKit fixed its bugs here in 2022 |
+    | emscripten's `PROXY_TO_PTHREAD` runs `main` on a pthread worker, and `OFFSCREENCANVAS_SUPPORT` transfers the canvas to it; emdawnwebgpu accepts a transferred canvas, and keeps its objects per worker | emscripten 6.0.13 and Dawn's source; no official document |
+    | A hidden tab stops `requestAnimationFrame`, in windows and workers; Chrome checks page timers about once a second, and once a minute after 5 minutes hidden; worker timers are mostly not throttled | MDN; Chrome's documentation |
+
+  1. **Two web builds, one engine.** Single-threaded is the default and threads are a switch a game turns on by
+     measurement (frame-phases questions 7 and 8). The topology is the platform libraries' (question 1), below the seam,
+     so a game's code is the same in both.
+  2. **The single-threaded build runs everything on the page:** `requestAnimationFrame` drives frames, WebGPU draws on
+     the page's canvas, and the DOM UI and Web Audio are used directly. It needs no headers, so it runs on any host and
+     in any iframe.
+  3. **The threaded build: the page is the browser's edge, and the game runs on workers.**
+     - **The page thread** holds the frame source and visibility. Each frame it writes input events and the gamepad's
+       poll into an input ring in shared memory, applies the DOM UI from a ring Output fills, and owns the AudioContext,
+       whose worklet reads an audio ring in shared memory.
+     - **kama's `main` runs on a worker,** as kama does for any build that spawns, since `Atomics.wait` throws on the
+       page thread. It runs the step loop (Input's hand-off drains the input ring, then Update and Constraints) and
+       Output's rendering through WebGPU into the canvas transferred at start. The loop returns to the worker's event
+       loop each frame, so the worker's own `requestAnimationFrame` fires.
+     - **The job pool's workers** take the parallel chunks.
+     - **Why render on `main`'s worker:** the page stays free for input, layout and UI, so a long frame never delays an
+       input event's timestamp; WebGPU objects belong to the thread that made them; and every engine that ships WebGPU
+       supports it in a worker.
+     - **Considered:** `main` on the page with workers for the simulation only (kama moves `main` to a worker anyway,
+       and rendering on the page puts encoding back on the busy thread); and no threaded web build (the web capped at one
+       core).
+  4. **The hosting headers are COOP `same-origin` and COEP `require-corp`, the same everywhere,** the one pair that
+     isolates in Safari too, with the WebSocket unaffected. kyoten's host sends `Cross-Origin-Resource-Policy` on every
+     file it serves, and a game embedding a third-party image loads it with CORS. **Considered:** `credentialless`,
+     friendlier but missing in Safari; choosing headers per browser by user agent is fragile. **COOP's cost:**
+     cross-origin popups lose their opener, so OAuth and payment flows use redirects.
+  5. **A threaded game also ships its single-threaded build,** and the loader picks one at start by
+     `crossOriginIsolated`. Results are the same (parallel equals serial, and the same on every platform), so the
+     fallback is only slower. It covers hosts that cannot send headers and embeds on other sites. Chromium's
+     `Document-Isolation-Policy` (137) may later isolate an embedded game without its host; Firefox and Safari lack it.
+  6. **Hidden tabs:** Output stops. A game's record chooses `"whenHidden": "Pause"` or `"Run"`. Running, the threaded
+     build steps on the worker's timer; the single-threaded build steps as the throttled page timer allows and catches
+     up through frame-phases' owed steps to a cap on return, past which networking resyncs (KYR-18). So a networked web
+     game that must keep pace while hidden runs threaded.
