@@ -166,7 +166,7 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 `content/cube.records.json`, and the scene's one zone, `content/scenes/hello/zone.0.0.records.json`:
 
 ```json
-{ "prefabs":  { "cube": { "mesh": { "shape": "Box" }, "spin": { "rate": 2 }, "actions": { "player": 1 } } },
+{ "prefabs":  { "cube": { "Mesh": { "shape": "Box" }, "Spin": { "rate": 2 }, "Actions": { "player": 1 } } },
   "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } } }
 ```
 ```json
@@ -197,10 +197,10 @@ The generator reads the types from the compiler and refuses any other.
 | `ref W`, `const ref W` (W a world component) | the world's or the zone's one W | writes or reads W |
 | `Handle` | this entity's handle | nothing |
 | `const ref Previous<C>`, `const ref Current<C>` | any entity's C, as of the last step or live; one is always written | nothing to wait for, or after C's writers |
-| `ref Create<P>` (P a prefab), `ref Destroy`, `ref Gain<C>`, `ref Lose<C>` | queued structural changes, applied at the end of the phase | adds or removes rows |
+| `ref Create<P>` (P a prefab's generated type, `BulletPrefab`), `ref Destroy`, `ref Gain<C>`, `ref Lose<C>` | queued structural changes, applied at the end of the phase | adds or removes rows |
 | `ref Send<C>` | sends a C to other entities, combined as C's record says and delivered at the end of the phase | writes C at the end of the phase |
 | `const ref Prefabs` | the prefab records' values, to start a new entity from | nothing |
-| `const ref <Processor>RandomKeys` | a random key per purpose the processor's record lists | nothing |
+| `const ref <Processor>RandomKeys` | a random key per purpose the processor's record lists, generated into the processor's module | nothing |
 | `const ref Time` | the step's length and number | nothing |
 
 ```kama
@@ -229,7 +229,7 @@ describe code sit beside it, and content records sit under `content/`. The gener
 ```
 kyoten-towers/
 ├─ kama.json
-├─ .gitignore                       src/generated/ and out/
+├─ .gitignore                       src/generated/, *.generated.kama and out/
 ├─ src/                             code: what a build compiles
 │  ├─ app.kama                      main, which calls run
 │  ├─ towers/                       module towers
@@ -237,6 +237,7 @@ kyoten-towers/
 │  │  ├─ fire.kama                  processors, one or a few per file
 │  │  ├─ fly.kama
 │  │  ├─ hurt.kama
+│  │  ├─ towers.generated.kama      its random keys, generated, never committed
 │  │  └─ towers.records.json        the module: rate, groups, processors, components
 │  └─ generated/                    the generator's kama, never committed
 └─ content/                         data: no build needed, hot-reloads, layered by DLC and mods
@@ -294,24 +295,24 @@ content/
 ```
 ```json
 { "prefabs": {
-    "tower":  { "transform": {}, "turret": { "cooldown": 2 }, "health": { "hp": 100 } },
-    "bullet": { "transform": {}, "shot": { "power": 12 } },
-    "keep":   { "from": "tower", "health": { "hp": 300 }, "note": "the boss tower" } } }
+    "tower":  { "Transform": {}, "Turret": { "cooldown": 2 }, "Health": { "hp": 100 } },
+    "bullet": { "Transform": {}, "Shot": { "power": 12 } },
+    "keep":   { "from": "tower", "Health": { "hp": 300 }, "note": "the boss tower" } } }
 ```
 ```json
 { "bindings": { "fire": { "keyboard": "Space", "gamepad": "RightTrigger" } } }
 ```
 ```json
 { "place": {
-    "tower-west": { "prefab": "tower", "values": { "transform": { "x": -20 }, "turret": { "target": "tower-east" } } },
+    "tower-west": { "prefab": "tower", "values": { "Transform": { "x": -20 }, "Turret": { "target": "tower-east" } } },
     "tower-east": { "prefab": "keep", "group": "boss",
-                    "values": { "transform": { "x": 20 }, "turret": { "target": "tower-west" } } } } }
+                    "values": { "Transform": { "x": 20 }, "Turret": { "target": "tower-west" } } } } }
 ```
 
 | Record | Fields, with their defaults |
 |---|---|
 | App | `firstScene` (the only scene); `title` |
-| Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
+| Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
 | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
 | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |

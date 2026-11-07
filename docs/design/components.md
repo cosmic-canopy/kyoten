@@ -1352,7 +1352,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     | Record | Fields, with their defaults |
     |---|---|
     | App | `firstScene` (the only scene); `title` |
-    | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
+    | Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
     | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
     | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
     | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
@@ -1440,3 +1440,41 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Probed on 0.9.860:** the app, the prefabs with a variant, the bindings, a scene with two layers and nested layer
     groups (a layer group record nested in itself), and a zone with two placements all read strictly; a misspelt
     component in a placement is named (``unknown field `place.t.values.turet` ``).
+- **2026-11-07, the owner: the generator's naming rule, in part.** Rules 1, 3 and 4 of five. On rule 1: "The only issue
+  I see is clearing generated files. Still a fairly easy thing to do though." On rules 3 and 4: "Seems good so far".
+  Rules 2 and 5 were explained again.
+  - **1. Names a module's own code uses are generated into that module,** in a git-ignored file beside its code.
+    - `towers::fire`'s `FireRandomKeys` is in `src/towers/towers.generated.kama`, and the processor imports it as a
+      file next door does (`import { FireRandomKeys };`). So `towers::FireRandomKeys` and `player::FireRandomKeys`
+      never clash.
+    - Output for the whole game (tables, passes, `Actions`, `Prefabs`) stays in `src/generated/`, and `.gitignore`
+      gains `*.generated.kama`. This refines the decision that generated output sits in one git-ignored folder.
+    - **Why not `src/generated/towers/`:** a folder `kama.json` does not list belongs to the nearest listed module, so
+      every generated folder would be one module and clash again, unless the generator edited `kama.json` for each.
+    - **Clearing them,** the owner's concern. *Proposed:*
+      - every generated file opens with a header saying it is generated;
+      - each run writes the whole set, and deletes every `*.generated.kama`, and every file under `src/generated/`, that
+        it did not write. A renamed processor or a removed module then leaves nothing stale, which would still compile
+        and could mislead an agent;
+      - a file under those names without the header is refused, never deleted;
+      - `kyoten clean` removes them all, as `git clean -fX` does with every other ignored file.
+    - **Probed on 0.9.867:** two modules, each with a processor `fire` and its own `FireRandomKeys`. The generated pass
+      imports both renamed (`game::towers::fire as towersFire`), and the two modules import each other (`towers` reads
+      `generated::Actions`, and `generated` calls `towers::fire`), which kama accepts. It ran.
+  - **3. Generated types a game writes take a suffix naming their kind:** `FireRandomKeys`, and `BulletPrefab` for the
+    type behind a create queue, `ref Create<BulletPrefab> bullets`. A prefab `bullet` then never clashes with a
+    component `Bullet`. **Open:** which prefabs one queue may create (the prefab's variants, or one a mod added without
+    a build), with the shape of `Prefabs`.
+  - **4. Records name code exactly as the code does.** A prefab's component keys are the components' type names:
+    `"Turret": { "cooldown": 2 }`. One search then finds a type in code and in data (the owner's concern about grep),
+    and a prefab's own fields (`from`, `layer`, `note`) read apart from its components.
+    - **Bare or full path:** content belongs to no module. A bare name works while exactly one component in the game
+      and the engine has it, and the full path (`"towers::Health"`) always works. When two share a name, the bare one
+      is refused, naming both. After 1.0.0, a new engine component with a game's component name would do this to that
+      game, and a tool rewrites it.
+    - **How:** kama serde has no alias, so the generator writes a field per spelling for each component and refuses a
+      record that writes both. *Probed on 0.9.867:* `"Health"` and `"towers::Health"` read, and `"health"` is refused.
+    - The examples now write `"Transform"` and `"Turret"`, and the hello cube `"Mesh"`, `"Spin"` and `"Actions"`, with
+      the same line count. The part 2 entry above keeps the lower-case keys it was shown with.
+  - **Explained again:** rule 2 (names that become generated fields are identifiers, unique per kind across the game)
+    and rule 5 (the generator's internal names are its own, and its split into files keeps them from clashing).
