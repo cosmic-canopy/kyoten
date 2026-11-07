@@ -1150,7 +1150,16 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       scheduler cannot see it.
     - **How:** `kama query --symbols` lists each static, and `--refs` finds every use (probed on 0.9.857).
   - **Still open:**
-    - a better name for a processor's keyed random values (`FlyDraws`), since "draw" reads as rendering;
-    - the entity group's name (the owner called it a layer group);
+    - a better name for a processor's keyed random values (`FlyDraws`), since "draw" reads as rendering. The owner
+      asked about `RandomGenerator`. *Proposed the same day:* `<Processor>RandomKeys`, each purpose a `RandomKey`.
+      - **The technique has a name:** a counter-based random number generator, a stateless function of a key and a
+        counter (Random123's Philox, SC11, "Parallel Random Numbers: As Easy as 1, 2, 3"). Games know it as a
+        noise-based RNG (Squirrel Eiserloh, GDC 2017).
+      - **Why not "generator":** a generator usually holds state and returns the next number on each call, as std's
+        `Rng` does. A key returns the same value for the same entity, which is the point.
+      - **A gap found while naming it:** several values for one entity in one step (eight pellets) need a counter
+        argument (`n:`), which the probed spelling lacks.
+    - the entity group's name. The owner's "layer group" is the group of entities inside a layer ("Groups divide a
+      layer", 2026-11-06), so the name is proposed for it, beside processor group;
     - the rest of the parameter list.
   - **Next:** reword REFERENCE, AGENTS.kyoten.md and SPIKE's current text to module and processor, with the map above.
