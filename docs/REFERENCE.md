@@ -164,6 +164,39 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
   component, processor, action, player), on web and native, held by CI.
 
+## What a processor takes
+
+*Decided at components question 8 part b (2026-11-07).* Each parameter means what its type says, and its name is free.
+The generator reads the types from the compiler and refuses any other.
+
+| A processor takes | It gets | The scheduler learns |
+|---|---|---|
+| `ref C`, `const ref C` (C a component) | this entity's C, written or only read | writes or reads C |
+| `ref W`, `const ref W` (W a world component) | the world's or the zone's one W | writes or reads W |
+| `Handle` | this entity's handle | nothing |
+| `const ref Previous<C>`, `const ref Current<C>` | any entity's C, as of the last step or live; one is always written | nothing to wait for, or after C's writers |
+| `ref Create<P>` (P a prefab), `ref Destroy`, `ref Gain<C>`, `ref Lose<C>` | queued structural changes, applied at the end of the phase | adds or removes rows |
+| `ref Send<C>` | sends a C to other entities, combined as C's record says and delivered at the end of the phase | writes C at the end of the phase |
+| `const ref Prefabs` | the prefab records' values, to start a new entity from | nothing |
+| `const ref <Processor>RandomKeys` | a random key per purpose the processor's record lists | nothing |
+| `const ref Time` | the step's length and number | nothing |
+
+```kama
+fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Transform> others,
+            ref Send<Damage> damage, ref Destroy destroy, const ref FlyRandomKeys random, const ref Time time) {
+    match (others.get(of: s.target)) {
+        case Here(value: goal): { … if (random.crit.chance(who: me, p: 0.25)) { power = power * 2; } … }
+        case Gone: { destroy.add(who: me); }
+        case Unloaded: { destroy.add(who: me); }
+    };
+}
+```
+
+- **Every queue adds with `.add(…)`,** and what it queues applies at the end of the phase, sorted by chunk.
+- **A random key's counter is a derived key:** `random.spread.nth(n: i).unit(who: me)` for pellet `i`.
+- **The generator refuses** a processor that writes C and reads `Current<C>`, a module `static` in a game, and any
+  parameter outside this list, each with a message naming the fix.
+
 ## The vocabulary
 
 *Decided at components question 3, choice 1 (2026-11-05), and renamed at question 8 part b (2026-11-07):* a
@@ -207,14 +240,14 @@ words.
 | **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the processors that name it, never reached globally, and owned by a module. A processor's state between steps lives in one | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
 | **Processor** | a function over components that the scheduler runs, plus a record that schedules it (phase, processor group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`: module `towers`, processor `fire`). What Bevy, flecs and Unity Entities call a system | decided (question 3, choices 1 and 2, as "system"; types only, functions and paths, and the name, at question 8 part b, 2026-11-07) |
-| **Random key** | a processor's key for one purpose its record lists (`random.crit`, in a generated `<Processor>RandomKeys`). The same entity, step and counter give the same value on any thread, in any order: a counter-based generator, holding no state | decided (question 8 part b, 2026-11-07); the counter's spelling is the rest of question 8 |
+| **Random key** | a processor's key for one purpose its record lists (`random.crit`, in a generated `<Processor>RandomKeys`). The same entity, step and counter give the same value on any thread, in any order: a counter-based generator, holding no state. `random.spread.nth(n: i)` derives the key for value `i` | decided (question 8 part b, 2026-11-07) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
 | **Processor group** | the processors of one phase ordered together; a Constraints processor group may iterate as a whole | decided (named at question 8 part b, 2026-11-07) |
 | **Schedule** | the resolved order of every processor, with its access, rate and cost, shown to humans and agents | decided |
 | **Step** | one tick of the simulation's one clock | decided |
 | **Frame** | one display refresh; Output runs once per frame | decided |
 | **Snapshot** | the world, or the columns other processors read, as it stood at the end of a step. A processor reading other entities sees it by default | decided (question 3, choice 3) |
-| **Command** | a queued structural change (spawn, despawn, gain, lose), applied at the end of its phase | decided (question 3, choice 4) |
+| **Command** | a queued change, applied at the end of its phase: structural through `Create<P>`, `Destroy`, `Gain<C>` and `Lose<C>`, or a value sent to another entity through `Send<C>` | decided (question 3, choice 4; the queues at question 8 part b, 2026-11-07) |
 | **Action** | a semantic input a game declares (`faster`, a button or an axis). The generator writes one field per action into an `Actions` component, which an entity carries to name the player that drives it; the Input phase fills it each step | decided (question 7, choice 4, revised 2026-11-06) |
 | **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player. It passes through adapters | decided (question 7, choice 4); adapters are the owner's direction for KYR-54 |
 | **Player** | a numbered slot that drives entities through their `Actions`. A local device, a network slot, a bot or an agent is bound to it, and a budget caps how many there are | that actions belong to a player is decided (question 7, revised 2026-11-06); the rest is the owner's direction for KYR-54 |

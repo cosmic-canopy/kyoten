@@ -133,7 +133,7 @@ answer is recorded in its doc's *Decided*:
   - **A processor's parameters mean what their types say,** and names are free. The generator reads only the functions
     a processor record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
   - **The step's time is `const ref Time time`,** replacing the hello cube's `float32 dt`.
-  - **The rest of the list is proposed,** with a probe of two towers shooting at each other on 0.9.857: typed queues
+  - **The rest of the list is decided,** with a probe of two towers shooting at each other on 0.9.857: typed queues
     for create, destroy and send, `Previous` or `Current` always written, and random keys for the purposes the processor's
     record lists.
   - **The generator's output is split into files and not committed** (the owner: "perhaps we do start with that").
@@ -146,6 +146,8 @@ answer is recorded in its doc's *Decided*:
     its records, processors, components and world components, and its record sets a default rate. A processor is the
     function the scheduler runs, until now called a system, with a processor record and processor groups.
     "System" is retired, as "subsystem" was; Bevy's, flecs's and Unity's system is a processor.
+  - **What a processor takes is decided** (the owner: "Yes this all sounds good so far"), with `Send<C>` for
+    sending and a random key's counter as a derived key, `random.spread.nth(n: i)`. REFERENCE has the list.
 
 **Next, in order:**
 
@@ -153,8 +155,8 @@ answer is recorded in its doc's *Decided*:
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
-   - **Then:** the rest of the parameter list, the record spellings (with a random key's counter argument), the
-     day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
+   - **Then:** the record spellings (processor, module, component, prefab, budget, requirement, sort key, scene and
+     app records), the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
      `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.

@@ -32,7 +32,8 @@ singleton is now a world component.
   meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
   into files and not committed. Systems are free functions named by their kama path (`towers::fire`), and a singleton
   is now a world component. Then the vocabulary: a **module** (engine or game) is one kama module, a **processor** is
-  what this doc called a system, "system" is retired, and the generator refuses a module `static`.
+  what this doc called a system, "system" is retired, and the generator refuses a module `static`. What a processor
+  takes is decided, with `Send<C>` and a random key's `nth(n:)`.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1171,3 +1172,28 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     one step (eight pellets). Its spelling comes with the record spellings.
   - **Layer group** names the group of entities inside a layer, and **processor group** the processors of one phase
     ordered together.
+- **2026-11-07, the owner: what a processor takes is decided.** The owner: "Yes this all sounds good so far."
+  - **The list:**
+
+    | A processor takes | It gets | The scheduler learns |
+    |---|---|---|
+    | `ref C`, `const ref C` (C a component) | this entity's C, written or only read | writes or reads C |
+    | `ref W`, `const ref W` (W a world component) | the world's or the zone's one W | writes or reads W |
+    | `Handle` | this entity's handle | nothing |
+    | `const ref Previous<C>`, `const ref Current<C>` | any entity's C, as of the last step or live. One is always written; neither is implied | nothing to wait for, or after C's writers |
+    | `ref Create<P>` (P a prefab), `ref Destroy`, `ref Gain<C>`, `ref Lose<C>` | queued structural changes, applied at the end of the phase | adds or removes rows |
+    | `ref Send<C>` | sends a C to other entities, combined as C's record says and delivered at the end of the phase | writes C at the end of the phase |
+    | `const ref Prefabs` | the prefab records' values, to start a new entity from | nothing |
+    | `const ref <Processor>RandomKeys` | a random key per purpose the processor's record lists | nothing |
+    | `const ref Time` | the step's length and number | nothing |
+
+  - **Every queue adds with `.add(…)`:** `bullets.add(prefab: b)`, `destroy.add(who: me)`,
+    `damage.add(to: s.target, value: Damage.of(amount: power))`.
+  - **`Send<C>` replaces the proposed `Inbox<C>`,** which read as receiving. The other queues are verbs, and `Send`
+    matches them.
+  - **A random key's counter is a derived key:** `random.spread.nth(n: i).unit(who: me)` gives pellet `i` its own
+    value, and `random.crit.chance(who: me, p: 0.5)` stays the usual call.
+    - kama has no default parameters and no overloading, so the counter cannot be an optional argument.
+    - JAX derives keys the same way, rather than advancing a stream *(from memory, not checked)*.
+  - **Probed on 0.9.860:** eight pellets drew distinct spreads, pellet 1 asked twice gave the same value, and a type
+    named `Send` compiles.
