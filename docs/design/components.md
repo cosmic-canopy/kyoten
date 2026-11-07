@@ -35,8 +35,8 @@ singleton is now a world component.
   what this doc called a system, "system" is retired, and the generator refuses a module `static`. What a processor
   takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
   as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
-  prefab variants, `main` as the default layer and a prefab naming its layer, except how zone files work in an
-  infinite scene.
+  prefab variants, `main` as the default layer, a prefab naming its layer, and zone files only where something is
+  authored, within a scene's bounds.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -140,6 +140,13 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
    - **How destruction divides:** pre-fractured pieces as entities (Unreal Chaos's geometry collections), or cut at
      run time into world data or an entity's owned data.
    - **What presentation derives:** meshes built from voxels, and terrain LOD. These are never saved (G8).
+   - **Saving by layer** *(added 2026-11-07, the owner: "if you have a terrain layer that CAN NOT be deformed it would
+     not take up space in a save but dynamic layers would? I assume that may go question 9 edits?")*. A save already
+     skips drawn-only layers. *Proposed:* a simulated layer may be declared unchanging. Processors read it but never
+     write it: the generated loops leave its tables out of every writing processor, and no queue may create, destroy,
+     gain or lose in it. It then reloads from content and the generator and is never saved. A world store that
+     cannot be edited, such as terrain that cannot be deformed, is the same case. Dynamic layers and stores save per
+     touched zone, whole or as edits.
    - **Coordinates in a very large world** *(added 2026-11-05, the owner's thought exercise)*. Far from the origin a
      `float32` loses precision: about 1 m per step at 10⁷ m (Box3D,
      [large worlds](https://box2d.org/documentation3d/large-worlds.html)). G7 already makes the zone the unit of
@@ -1302,10 +1309,10 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       travels with a package (kama's `docs/packages.md`, read, not probed).
   - **Left to part 2:** the content records (prefab, scene, budget, bindings, actions and app), and the hello cube in
     this layout within its 20 lines.
-- **2026-11-07, the owner: how records are written, part 2, in part — the content records.** Six pieces were new, and
-  the owner took them one by one: (1) "sounds good so far", (2) "sounds good", (5) "the general idea otherwise is good
-  so far", (6) "sounds good". Piece 3 was decided after them, and piece 4 is open, below. The rest of the field table restates earlier decisions
-  (layers, rings, layer groups, budgets, count rules and placed names) and was shown with them.
+- **2026-11-07, the owner: how records are written, part 2 — the content records.** Six pieces were new, and the
+  owner took them one by one: (1) "sounds good so far", (2) "sounds good", (5) "the general idea otherwise is good so
+  far", (6) "sounds good". Pieces 3 and 4 were decided after them. The rest of the field table restates earlier
+  decisions (layers, rings, layer groups, budgets, count rules and placed names) and was shown with them.
   - **The content tree,** in the layout part 1 decided:
 
     ```
@@ -1347,7 +1354,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     | App | `firstScene` (the only scene); `title` |
     | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
     | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
-    | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
+    | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
     | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
     | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
     | Layer group | `on` (true); `groups`, nested |
@@ -1385,6 +1392,41 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
          - A non-spatial entity keeps running where its zone is not loaded, so a bullet's lifetime ends it. Passing
            through a wall at speed is physics's continuous collision, not storage's.
        - **Probed on 0.9.867:** a prefab's `layer` and a non-spatial `shots` layer read strictly.
+    4. **A zone file holds only what someone authored there, and a scene may state its bounds.** Decided after the
+       others. The owner asked "How does this work for infinite scenes?", was given the detail below, and: "Apart from
+       that I think I agree with everything you have recommended."
+       - **Where a zone's state comes from,** the first that applies:
+         1. the game's saved state for that zone, if it has been loaded before, since a handle into an unloaded zone
+            stays valid (part a);
+         2. else its start state: the scene's generator output for that zone, with the zone file laid over it by
+            placed name;
+         3. else empty.
+
+         So the content folder grows with what is authored, not with the world, and loaded zones stay bounded at
+         sources × zones per source.
+       - **Three kinds of scene:** a hand-made arena (a file per zone with something placed, no generator); an infinite
+         generated world (no files, or a few hand-made places, with a generator); a generated dungeon floor (a
+         generator and stated bounds).
+       - **`bounds`, in zones, inclusive:** `"bounds": { "from": [-4, -4], "to": [3, 3] }`.
+         - **Zones outside are never created.** A player in the corner zone of an 8×8 arena, loading two rings,
+           creates 9 zones rather than 25, and each would reserve its stores' ceilings (question 6).
+         - **Absent, the bounds are the box around the scene's zone files,** so the hello cube's one file makes a
+           one-zone scene. A zone with nothing in it has no file, so an edge of empty zones would fall outside the box:
+           the build reports each scene's bounds, as it reports the footprint, and the editor draws them.
+         - **A scene with a generator is unbounded** unless it states bounds.
+         - **Considered:** every scene stating its bounds, one more line and file for the hello cube.
+         - An entity that tries to leave them meets KYR-61's open rule for leaving the loaded area.
+       - **Zone files may sit in subfolders** of the scene's folder; the file's name, `zone.<x>.<y>` or
+         `zone.<x>.<y>.<z>`, names the zone. A 16 km square at 64 m is 62,500 zones. A DLC or a mod adds to a zone with
+         a file of the same name in its own source, merged by placed name.
+       - **Coordinates:** as a 32-bit whole number of 64 m zones, a zone coordinate reaches ±137 million km per axis
+         (Unreal 5's default world limit is 88 million km, [../research/game-types.md](../research/game-types.md) G7).
+         A position is under 8 µm precise anywhere if it is a zone plus a `float32` offset (question 9, proposed).
+       - **Left to question 9:** the generator's spelling, whether a zone file adds to or replaces generated content,
+         whether a save keeps a zone whole or as edits over what regenerates (which needs generation that is
+         bit-identical on every platform), the coordinate type, and saving by layer, the owner's question, added there.
+         A zone where simulated things moved counts as touched, so edits save most on world data.
+       - **Probed on 0.9.867:** a scene's `bounds`, and a scene without them, read strictly.
     5. **Actions are code records, and bindings are content.** An action is declared in a module's records file and
        becomes a generated field on `Actions`, so a typo is a compile error (question 7); its default bindings per
        device are content records, rebound in the developer's and the player's layers. **Not settled:** the action
@@ -1392,9 +1434,6 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
        between kinds and its control names; `"kind": "Button"` stays in the sketches until then.
     6. **Count rules per player, team or match wait** until players and teams exist (KYR-54 and networking). Today a
        limit counts per world, zone or layer.
-  - **Open:**
-    - **4, a scene's zone files named by coordinates** (`zone.-1.0`). The owner: "How does this work for infinite
-      scenes?"
   - **The hello cube in this layout** is 15 non-blank lines across five files, now counting the imports and the export
     the earlier sketch left out, with the same eight concepts. The owner: "The 20-line target is obviously arbitrary
     but probably a good gauge. It shouldn't limit our designs though." REFERENCE's *The hello cube* has it.

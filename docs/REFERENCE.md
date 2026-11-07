@@ -110,6 +110,9 @@ which are question 9.
 - **Two units of distance:** metres, and rings of zones away.
 - **Every scene starts with one zone, one layer and one group,** so each is there to be found.
 - **An entity crossing a zone, or changing layer,** moves blocks at the end of the phase, and its handle stays valid.
+- **A zone loads from its saved state,** else from the scene's generator with its zone file laid over it, else
+  empty (question 8 part b, 2026-11-07). A scene's `bounds` keep zones beyond them from being created: by default
+  the box around its zone files, and none for a scene with a generator, so an infinite world is a generated one.
 
 ## One step, then a display frame
 
@@ -274,7 +277,7 @@ kyoten-towers/
 
 Every record kind also takes an optional `note`, a string.
 
-**The content records** *(part 2, 2026-11-07; zone files in an infinite scene are still open):*
+**The content records** *(part 2, 2026-11-07):*
 
 ```
 content/
@@ -310,7 +313,7 @@ content/
 | App | `firstScene` (the only scene); `title` |
 | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
-| Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
+| Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
 | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
 | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
 | Layer group | `on` (true); `groups`, nested |
@@ -323,6 +326,8 @@ content/
 - **The default layer is `main`,** where a placement that names no layer goes.
 - **A prefab may name its layer,** where it is placed and created; a created entity otherwise joins its creator's.
   How a game uses its layers is its own choice.
+- **Zone files exist only where something is authored,** and may sit in subfolders: the file's name names the
+  zone.
 - **Actions are code records and bindings are content.** Action kinds are KYR-54's.
 
 ## The vocabulary
