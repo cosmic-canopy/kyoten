@@ -191,8 +191,13 @@ answer is recorded in its doc's *Decided*:
    - **Question 9, round 1 of 3, coordinates** (the owner: "I love the zone and offset idea"): a position is a zone
      and a `float32` offset from its centre, rebased exactly with whole-metre zones; Y up, right-handed, metres;
      `int32` zone coordinates. KY-35 filed (`float64` vectors, not blocking).
-   - **Then question 9's rounds 2 (cells: format, streaming, procedural generation) and 3 (saving, destruction,
-     what presentation builds).**
+   - **Question 9, round 2 of 3, cells** (the owner: "All of this sounds great so far"): cells in sections of
+     16×16×16; the game picks the cell, the engine the encoding; `Edit<S>` queues and per-section processors; a
+     world store belongs to a layer; the **world generator**, a pure function of seed, zone and records, never
+     recorded, bit-identical native and web under `reproducible-float` (probed); a zone file adds unless
+     `"generate": false`.
+   - **Then question 9's round 3:** saving (whole or edits, by layer, unchanging layers), destruction, and what
+     presentation builds.
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized

@@ -115,9 +115,14 @@ which are question 9.
 - **A position is a zone and a `float32` offset from the zone's centre** (question 9, 2026-11-07): Y up,
   right-handed, metres. Zone sizes are whole metres, so moving an entity into the next zone is exact, and precision
   is the same in every zone of an endless world.
-- **A zone loads from its saved state,** else from the scene's generator with its zone file laid over it, else
-  empty (question 8 part b, 2026-11-07). A scene's `bounds` keep zones beyond them from being created: by default
-  the box around its zone files, and none for a scene with a generator, so an infinite world is a generated one.
+- **A zone loads from its saved state,** else from the scene's world generator with its zone file laid over it,
+  else empty (question 8 part b, 2026-11-07). A zone file with `"generate": false` replaces the generated zone. A
+  scene's `bounds` keep zones beyond them from being created: by default the box around its zone files, and none
+  for a scene with a world generator, so an infinite world is a generated one.
+- **World data lives in world stores of cells,** in sections of 16×16×16 (question 9, 2026-11-07). A store belongs
+  to a spatial layer and loads with it; the game chooses the cell type and sizes, and the engine encodes each
+  section from its contents. A world generator fills a zone from the scene's seed, the zone's coordinate and the
+  records: never recorded, the same bits on every platform under kama's `reproducible-float`.
 
 ## One step, then a display frame
 
@@ -207,6 +212,9 @@ The generator reads the types from the compiler and refuses any other.
 | `const ref Prefabs` | the prefab records' values, to start a new entity from | nothing |
 | `const ref <Processor>RandomKeys` | a random key per purpose the processor's record lists, generated into the processor's module | nothing |
 | `const ref Time` | the step's length and number | nothing |
+| `const ref S`, `const ref Current<S>` (S a world store) | its cells by position across loaded zones, as of the last step or live | nothing to wait for, or after S's writers |
+| `ref Edit<S>` | cell edits, applied at the end of the phase in sorted order and combined as S's record says | writes S at the end of the phase |
+| `ref Section<S>` with `const ref Previous<S>` | a processor over the store itself: its own section, and its neighbours as of the last step | writes S, section by section |
 
 ```kama
 fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Transform> others,
@@ -344,7 +352,7 @@ content/
 | App | `firstScene` (the only scene); `title` |
 | Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
-| Scene | `inBuild` (true); `zoneSize` in whole metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a generator) |
+| Scene | `inBuild` (true); `zoneSize` in whole metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a world generator); `worldGenerator`, a function by kama path (none) |
 | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
 | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
 | Layer group | `on` (true); `groups`, nested |
@@ -380,7 +388,7 @@ words.
 | **Content layer** | short for a **content database priority level**: a named slot in the order of sources, engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it. Always written with "content", since a bare "layer" is a scene's | decided (project-database question 11); named in full at components question 8 part b (2026-11-07) |
 | **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, and the content patch is the content layer that holds them | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
-| **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
+| **Generator** | the kyoten tool that writes the World from records, as plain kama. Procedural generation is the **world generator**, always so called | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | decided (2026-11-06) |
 | **Zone** | a cell of the scene's grid, a square or a cube sized in whole metres, with its origin at its centre: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
@@ -401,7 +409,10 @@ words.
 | **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type, with the prefab's variants that have no budget of their own. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06; variants at question 8 part b, 2026-11-07) |
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
-| **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
+| **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction. One kind of cell for every zone, belonging to a spatial layer | decided; designed at question 9 (2026-11-07) |
+| **Cell** | one value of a world store at one grid point: a voxel, a height sample (Minecraft's block) | decided (question 9, 2026-11-07) |
+| **Section** | a fixed block of cells, 16×16×16 or 16×16: the unit of a world store's memory, encoding, parallel work, streaming and saving, as a chunk is for entities | decided (question 9, 2026-11-07) |
+| **World generator** | a function named in a scene's record that fills a zone, its cells and entities, from the scene's seed, the zone's coordinate and the records. Never recorded; what is not deterministic (an LLM) is input | decided (question 9, 2026-11-07) |
 | **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the processors that name it, never reached globally, and owned by a module. A processor's state between steps lives in one | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
 | **Processor** | a function over components that the scheduler runs, plus a record that schedules it (phase, processor group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`: module `towers`, processor `fire`). What Bevy, flecs and Unity Entities call a system | decided (question 3, choices 1 and 2, as "system"; types only, functions and paths, and the name, at question 8 part b, 2026-11-07) |

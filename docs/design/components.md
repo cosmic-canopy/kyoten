@@ -129,14 +129,16 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
 8. **Growing in phases.** *(Decided: required components and part a on 2026-11-06, and part b, the spellings and
    names, on 2026-11-07, below.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
-9. **World data.** *(Added 2026-11-05 at question 2. Coordinates decided 2026-11-07, below.)* Some data belongs to space, not to an entity: a voxel world, a
+9. **World data.** *(Added 2026-11-05 at question 2. Coordinates and cells decided 2026-11-07, below.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
    coordinate within a zone (G7). The questions are:
-   - **The cell's format:** dense, palette or sparse, and who chooses it. Minecraft's sections are 16×16×16 blocks,
+   - **The cell's format:** *(decided 2026-11-07, round 2: the game the cell, the engine the encoding)* dense,
+     palette or sparse, and who chooses it. Minecraft's sections are 16×16×16 blocks,
      each with its own palette and packed indices of at least 4 bits.
-   - **How cells stream** in and out with their zone. *(Zones load by rings around streaming sources and views since
+   - **How cells stream** in and out with their zone *(decided 2026-11-07, round 2: with their layer)*. *(Zones load by rings around streaming sources and views since
      2026-11-06, § Decided.)*
-   - **Procedural generation:** a generator fills cells from a seed and rules, off the simulation as streaming is, and
+   - **Procedural generation:** *(decided 2026-11-07, round 2: the world generator)* a generator fills cells from a
+     seed and rules, off the simulation as streaming is, and
      its result enters at Input's hand-off, recorded (G12).
    - **How cells are saved:** whole, or only the edits over a cell that can be regenerated. The second needs
      generation that is bit-identical on every platform, which is replay-and-determinism's to settle.
@@ -1654,3 +1656,63 @@ Question 9 is open; it was added at question 2. The model's picture and vocabula
     them now, since the offset keeps every processor in `float32`; a physics backend in double precision or a tool
     showing absolute coordinates might at a border. A general-purpose maths library usually has both (glam's `DVec3`,
     Unity.Mathematics' `double3`, GLM's `dvec3`; general knowledge), so it is filed as KY-35, not blocking.
+- **2026-11-07, the owner: question 9, round 2 of 3 — cells.** "All of this sounds great so far. I don't think I have any
+  comments on this."
+  - **The evidence, probed on 0.9.867 natively and on wasm under node:**
+
+    | Build | A terrain generator: three zones of 64×64 heights from a seed, through `sin`, `cos` and `floor` | A million scattered `sin`, `cos` and `exp` (`float64`) |
+    |---|---|---|
+    | native and wasm, debug and release, with `"reproducible-float": true` | the same three hashes everywhere | native 1290205407, wasm 1290205407 |
+    | without the key | the same too: these inputs happened to agree | native 1405493178, wasm 1290205407 |
+
+    So generation can be bit-identical on every platform, and kama's `reproducible-float` is what makes it so: under
+    the key the functions IEEE 754 leaves loose come from musl compiled into the program (kama's `docs/targets.md`).
+  1. **The words.** A **cell** is one value at one grid point (a voxel, a height sample; Minecraft's block). A
+     **section** is a fixed block of cells, 16×16×16 or 16×16 for a heightfield: the unit of memory, encoding,
+     parallel work, streaming and saving, as a chunk is for entities. A **world store** holds one kind of cell for
+     every zone.
+  2. **The game chooses the cell, and the engine the encoding.**
+     - The store's record sets the cell's kama type, `cellSize` in metres, `sectionCells` (16), `Height` (one value per
+       column) or `Volume`, and for square zones the vertical range in sections. A zone is a whole number of sections,
+       so a section never straddles two zones; the build checks it.
+     - The engine encodes each section from its contents: a single value (all air, all stone), a short list of the
+       cells that differ, a palette of packed indices (Minecraft's), or dense. The API is the same for each, and the
+       encoding is not promised (part a). Since the choice follows from the contents, every machine holds the same
+       bytes and the world hash can hash them. A store's record may pin an encoding if measurement says so.
+     - **Considered:** the game choosing dense, palette or sparse per store, one more decision for every author.
+  3. **Budgets follow question 6.** A store's ceiling per zone is its sections at their dense size, so the footprint
+     stays computed. With question 6's opt-in, a store commits sections only as they stop being uniform. A full store
+     refuses an edit, as a gameplay result.
+  4. **How code reaches cells,** mirroring the entity rules:
+     - **Reading:** a processor takes the store, `const ref Terrain terrain`, and reads by position across loaded
+       zones. It sees cells as of the last step unless it declares `Current<Terrain>`.
+     - **Writing from an entity's processor:** a queue, `ref Edit<Terrain> edits`, with `edits.add(cell:, value:)`.
+       Edits apply at the end of the phase in sorted order, and two edits to one cell combine as the store's record
+       says (`First`, `Min`, `Max`, `Sum`), as `Send<C>` does.
+     - **A processor over the store itself** (water flowing, fire spreading, crops growing) runs per section, in
+       parallel. It writes its own section and reads its neighbours as of the last step:
+       `fn void flow(ref Section<Water> here, const ref Previous<Water> around)`.
+  5. **A world store belongs to a layer,** as the owner's "terrain layer" had it, so it takes the layer's rings, its
+     state (off, loaded, active), and simulated or drawn only (a grass-density map is drawn only), and in round 3 the
+     unchanging flag. Only a spatial layer holds stores. Meshes built from cells are Output's, stream with views, and
+     are never saved (G8).
+  6. **The world generator.**
+     - **A function named in the scene's record,** `"worldGenerator": "worldgen::fill"`, that fills one zone, its cells
+       and its entities, from the scene's seed, the zone's coordinate and the records. It takes the processor
+       parameters that fit: stores by `ref`, `Create<P>` queues, and random keys keyed by zone instead of entity. The
+       build refuses anything that reads the running simulation (`Time`, other entities).
+     - **Never recorded or sent.** Its output is a pure function of the seed, the coordinate and the records, so a
+       replay regenerates it, and in multiplayer each machine generates its own zones. Its identity, the code's version
+       and the seed, joins the stack's identity in saves and replays.
+     - **What is not deterministic is input:** an LLM building a zone (KYR-50), a web service. Its result enters at
+       Input's hand-off, recorded, as all I/O does (frame-phases question 9). This refines the question's "its result
+       enters at Input's hand-off, recorded".
+     - **Ahead of need, off the simulation:** on workers, one ring beyond the simulated rings. The simulation uses a
+       zone at the step its own rule activates it (G8), and a machine not ready waits, which changes wall time and no
+       result.
+     - **A game that generates builds with `reproducible-float`;** whether every game does is replay question 1's.
+     - **A zone file adds to the generated zone:** its placements add entities, and its cell edits overwrite cells. A
+       zone file with `"generate": false` replaces it, for a hand-made place in a generated world. This answers part
+       2, piece 4's "whether a zone file adds to or replaces generated content".
+  7. **Bare "generator" stays the code generator,** and procedural generation is always the **world generator**, as
+     "layer" was settled. Records part 2's "the scene's generator" meant the world generator.
