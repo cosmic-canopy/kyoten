@@ -1,7 +1,8 @@
 # The project database and wiki
 
 **Status:** draft for the design spike; its build is KYR-24. Five decisions are recorded, the latest closing question
-11 (layers) on 2026-11-05; the rest are questions.
+11 (layers) on 2026-11-05; the rest are questions. Question 2 was answered in part on 2026-11-07: records kept in
+git are strict JSON, beside the code they describe or under `content/`.
 
 ## What the vision asks
 
@@ -176,3 +177,12 @@ least prior art in the peers, and the one most worth getting right before code.
     - **question 8:** where the bake boundary sits, and how a baked pack keeps its patches' provenance;
     - **[replay-and-determinism.md](replay-and-determinism.md) question 3:** how the stack's identity is written in the
       log.
+- **2026-11-07, the owner: question 2, in part — the format and layout of records kept as files in git.** Decided at
+  [components.md](components.md) question 8 part b, where the full entry is. "I will take your recommendation on both
+  yes."
+  - **Strict JSON, typed by kama serde,** with an optional `note` string on every record kind instead of comments, which
+    kama's JSON reader refuses (KY-31).
+  - **A record lives with what it describes:** records that describe code as `src/<module>/*.records.json` beside it,
+    named by their folder as kama code is; content records (prefabs, scenes, budgets, bindings, the app) under
+    `content/`. A scene is a folder with a file per zone, as this question's 2026-11-06 note proposed.
+  - **Still open in question 2:** which backend is the reference, and how two agents' work on one record merges.

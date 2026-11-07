@@ -140,7 +140,7 @@ question 2, and the spelling is components question 8 (`const ref Time time` sin
 { "prefabs":    { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
                             "actions": { "player": 1 } } },
   "processors": { "turn": { "phase": "Update" } },
-  "actions":    { "faster": { "kind": "button" } },
+  "actions":    { "faster": { "kind": "Button" } },
   "bindings":   { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } },
   "scenes":     { "hello": { "place": ["cube"] } } }
 ```
@@ -196,6 +196,66 @@ fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Tr
 - **A random key's counter is a derived key:** `random.spread.nth(n: i).unit(who: me)` for pellet `i`.
 - **The generator refuses** a processor that writes C and reads `Current<C>`, a module `static` in a game, and any
   parameter outside this list, each with a message naming the fix.
+
+## Records and their files
+
+*Decided at components question 8 part b, with project-database question 2 in part (2026-11-07).* A record is the
+engine's own kama type, read from strict JSON (question 5). **A record lives with what it describes:** records that
+describe code sit beside it, and content records sit under `content/`. The generator and the loader read every
+`*.records.json` under both.
+
+```
+kyoten-towers/
+├─ kama.json
+├─ .gitignore                       src/generated/ and out/
+├─ src/                             code: what a build compiles
+│  ├─ app.kama                      main, which calls run
+│  ├─ towers/                       module towers
+│  │  ├─ components.kama            Turret, Shot, Health, Damage
+│  │  ├─ fire.kama                  processors, one or a few per file
+│  │  ├─ fly.kama
+│  │  ├─ hurt.kama
+│  │  └─ towers.records.json        the module: rate, groups, processors, components
+│  └─ generated/                    the generator's kama, never committed
+└─ content/                         data: no build needed, hot-reloads, layered by DLC and mods
+   ├─ app.records.json              the first scene, the window
+   ├─ bindings.records.json         default bindings per device
+   ├─ prefabs/
+   │  ├─ tower.records.json
+   │  └─ bullet.records.json
+   └─ scenes/
+      └─ battle/
+         ├─ scene.records.json      the grid, layers, layer groups, budgets
+         ├─ zone.0.0.records.json   what is placed in zone (0,0)
+         └─ zone.1.0.records.json
+```
+
+- **A file's module is its folder,** as a kama file's is. A bare name is the module's own, and a full kama path
+  (`kyoten::Transform`) reaches another.
+- **Records hold only what differs from the defaults,** enum values are kama's case names (`"Update"`), rates are
+  whole hertz, and a `note` string replaces comments, which kama's JSON refuses.
+- **A module may split its records across files;** they merge by key, and a key twice in one layer is refused.
+
+```json
+{ "rate": 30,
+  "groups":     { "combat": { "phase": "Update" } },
+  "processors": { "fire": { "group": "combat" },
+                  "fly":  { "group": "combat", "after": ["fire"], "rate": 60, "random": ["crit"] },
+                  "hurt": { "group": "combat" } },
+  "components": { "Health": { "requires": ["kyoten::Transform"] },
+                  "Damage": { "store": "Side", "combine": "Sum", "saved": false } } }
+```
+
+| Record | Fields, with their defaults |
+|---|---|
+| Module | `rate` in Hz (the engine's default for the phase) |
+| Processor group | `phase` (required); `after`, `before` ([]); `first`, `last` (false); `iterations` (1; a Constraints group may raise it); `parallel` (false: serial until measurement says otherwise) |
+| Processor | `phase` or `group` (one is required); `after`, `before`, `first`, `last`; `rate` (its module's); `iterations` (1); `random`, its purposes ([]); `orderBy`, a sort key such as `"towers::Initiative.value"`, ties broken by handle (none) |
+| Component | `store`, `Table` or `Side` (Table); `blend`, `Snap`, `Linear` or `Custom` (Snap); `history` in steps (0); `saved` (true; false is rebuilt for display); `requires` ([]); `combine`, `Sum`, `Min`, `Max` or `First`, needed by a component sent with `Send<C>` (none) |
+
+Every record kind also takes an optional `note`, a string.
+
+The content records (prefab, scene, budget, bindings, actions, app) are the rest of question 8.
 
 ## The vocabulary
 

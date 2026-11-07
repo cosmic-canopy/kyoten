@@ -148,6 +148,11 @@ answer is recorded in its doc's *Decided*:
     "System" is retired, as "subsystem" was; Bevy's, flecs's and Unity's system is a processor.
   - **What a processor takes is decided** (the owner: "Yes this all sounds good so far"), with `Send<C>` for
     sending and a random key's counter as a derived key, `random.spread.nth(n: i)`. REFERENCE has the list.
+  - **Records, part 1** (the owner: "I will take your recommendation on both yes"): a record lives with what it
+    describes. Code records sit beside the code as `src/<module>/*.records.json`, nested by module and named by their
+    folder; content records sit under `content/`, a scene as a folder with a file per zone. Strict JSON with a `note`
+    field instead of comments; enum values as kama's case names; processor groups as records; only what differs from
+    the defaults; whole hertz. This also answers project-database question 2 in part. KY-30 and KY-31 filed.
 
 **Next, in order:**
 
@@ -155,8 +160,8 @@ answer is recorded in its doc's *Decided*:
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
-   - **Then:** the record spellings (processor, module, component, prefab, budget, requirement, sort key, scene and
-     app records), the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
+   - **Then:** the content records (prefab, scene, budget, bindings, actions and app, with the hello cube in the new
+     layout), the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
      `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.

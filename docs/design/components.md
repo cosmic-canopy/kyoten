@@ -33,7 +33,8 @@ singleton is now a world component.
   into files and not committed. Systems are free functions named by their kama path (`towers::fire`), and a singleton
   is now a world component. Then the vocabulary: a **module** (engine or game) is one kama module, a **processor** is
   what this doc called a system, "system" is retired, and the generator refuses a module `static`. What a processor
-  takes is decided, with `Send<C>` and a random key's `nth(n:)`.
+  takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
+  as `src/<module>/*.records.json`, and content records sit under `content/`.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1197,3 +1198,103 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     - JAX derives keys the same way, rather than advancing a stream *(from memory, not checked)*.
   - **Probed on 0.9.860:** eight pellets drew distinct spreads, pellet 1 asked twice gave the same value, and a type
     named `Send` compiles.
+- **2026-11-07, the owner: how records are written, part 1 — the records that describe code, and the files records
+  live in.** The owner: "I think overall I do agree with your 5 things", then on nesting by module and the files,
+  "I will take your recommendation on both yes". Their questions shaped it: "Should 'groups', 'processors', and
+  'components' be nested in 'modules' for towers? that could remove the 'towers::' scope redundancy", and on the
+  files, "src typically implies code... I guess in a way it is 'code' as it is json source that generator uses to build
+  code."
+  - **A record lives with what it describes.**
+    - **Records that describe code** (a module's own record, its processor groups, processors and components) sit
+      beside the code, as `src/<module>/*.records.json`. The generator turns them into the world, a processor record
+      means nothing without its function, and a rename changes both in one folder and one commit.
+    - **Records that describe content** (prefabs, scenes, budgets, bindings, the app) sit under `content/`. Data
+      alone changes them, they hot-reload, and DLC and mods layer them.
+    - **One discovery rule:** the generator and the loader read every `*.records.json` under `src/` and `content/`. A
+      DLC or a mod is a source of the same shape.
+
+    ```
+    kyoten-towers/
+    ├─ kama.json
+    ├─ .gitignore                       src/generated/ and out/
+    ├─ src/                             code: what a build compiles
+    │  ├─ app.kama                      main, which calls run
+    │  ├─ towers/                       module towers
+    │  │  ├─ components.kama            Turret, Shot, Health, Damage
+    │  │  ├─ fire.kama                  processors, one or a few per file
+    │  │  ├─ fly.kama
+    │  │  ├─ hurt.kama
+    │  │  └─ towers.records.json        the module: rate, groups, processors, components
+    │  └─ generated/                    the generator's kama, never committed
+    └─ content/                         data: no build needed, hot-reloads, layered by DLC and mods
+       ├─ app.records.json              the first scene, the window
+       ├─ bindings.records.json         default bindings per device
+       ├─ prefabs/
+       │  ├─ tower.records.json
+       │  └─ bullet.records.json
+       └─ scenes/
+          └─ battle/
+             ├─ scene.records.json      the grid, layers, layer groups, budgets
+             ├─ zone.0.0.records.json   what is placed in zone (0,0)
+             └─ zone.1.0.records.json
+    ```
+
+  - **Nested by module, named by the folder.** A file's module is its folder, as a kama file's is, so a module's file
+    holds its record with no wrapper.
+    - A bare name is the module's own, and a full kama path reaches another module (and may be written for this one).
+    - A game tunes the engine from a file in its root `src/` folder, keyed by full path (`kyoten::physics::solve`).
+    - A module may split its records over several files in its folder. They merge by key, and the same key twice in
+      one layer is refused.
+    - Content files belong to no module: they name code by its short name, or by its full path where two modules share
+      a name. The exact rule is the generator's naming rule, still open.
+    - **A scene is a folder** with a file for the scene and one per zone, so people editing different zones never
+      touch one file (project-database question 2's note on Unreal's one file per actor).
+  - **The towers module's file** (`src/towers/towers.records.json`):
+
+    ```json
+    { "rate": 30,
+      "groups":     { "combat": { "phase": "Update" } },
+      "processors": { "fire": { "group": "combat" },
+                      "fly":  { "group": "combat", "after": ["fire"], "rate": 60, "random": ["crit"] },
+                      "hurt": { "group": "combat" } },
+      "components": { "Health": { "requires": ["kyoten::Transform"] },
+                      "Damage": { "store": "Side", "combine": "Sum", "saved": false } } }
+    ```
+
+  - **The fields,** taken with the five below (the owner agreed "overall"). Each comes from an earlier decision; this
+    step names them.
+
+    | Record | Fields, with their defaults |
+    |---|---|
+    | Module | `rate` in Hz (the engine's default for the phase) |
+    | Processor group | `phase` (required); `after`, `before` ([]); `first`, `last` (false); `iterations` (1; a Constraints group may raise it); `parallel` (false: serial until measurement says otherwise) |
+    | Processor | `phase` or `group` (one is required); `after`, `before`, `first`, `last`; `rate` (its module's); `iterations` (1); `random`, its purposes ([]); `orderBy`, a sort key such as `"towers::Initiative.value"`, ties broken by handle (none) |
+    | Component | `store`, `Table` or `Side` (Table); `blend`, `Snap`, `Linear` or `Custom` (Snap); `history` in steps (0); `saved` (true; false is rebuilt for display); `requires` ([]); `combine`, `Sum`, `Min`, `Max` or `First`, needed by a component sent with `Send<C>` (none) |
+
+    Every record kind also takes an optional `note`, a string.
+
+  - **The five, as agreed:**
+    1. Names: nested by module, as above (this replaced "every key is a full kama path").
+    2. **Enum values are kama's case names, case-sensitive:** `"Update"`, `"Side"`, `"Sum"`. The hello cube's
+       `"button"` becomes `"Button"`. A typo reads as "malformed input" until kama names the value (KY-30).
+    3. **Processor groups are records of their own,** with the phase, the order, the iterations and the parallel
+       switch. A processor names its group, or its phase if it has none.
+    4. **Records hold only what differs from the defaults.** A component or module with no record takes every default,
+       so `Turret`, `Shot` and the hello cube's `Spin` need none. Tools write only differences: kama's writer spells out
+       every field, and a written-out default would no longer follow the engine's.
+    5. **Rates are whole hertz,** since frame-phases question 2 takes the base clock as their least common multiple.
+  - **The format is strict JSON, and a note is data.** kama's only text format is JSON (YAML is scheduled, KR-189,
+    unbuilt), and its reader refuses comments and trailing commas, as `kama.json`'s does (KY-31). Every record kind
+    takes an optional `note` string instead: it survives a tool's rewrite and a merge, and the editor, the wiki and
+    agents read it. **Considered:** asking kama for a reader that takes comments, which a rewriting tool would still
+    have to preserve.
+  - **Probed on 0.9.860** (records as the engine's own kama types, read strictly):
+    - the towers module nested, with short names, read as written;
+    - a later layer set `fly`'s rate from 60 to 120, and `fly` kept its group, `after` and `random`;
+    - an engine module patched by its full path (`kyoten::physics`), and a module's own file read as its record;
+    - a misspelt field is named (``unknown field `processors.towers::fire.phse` ``), while a misspelt or lower-case enum
+      value is only "malformed input" (KY-30);
+    - a comment and a trailing comma are refused (KY-31). `kama publish` ships every file git tracks, so either tree
+      travels with a package (kama's `docs/packages.md`, read, not probed).
+  - **Left to part 2:** the content records (prefab, scene, budget, bindings, actions and app), and the hello cube in
+    this layout within its 20 lines.
