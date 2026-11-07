@@ -211,9 +211,13 @@ answer is recorded in its doc's *Decided*:
    for now, the owner: "the cost is probably not enough to warrant it right now"), the simulation on the CPU with
    GPU compute a later direction (KYR-64), one recorded log of Input's hand-off, `KNUM` saves and `POS` logs,
    the tripwires, and Output read-only by structure.
-3. **Next: [design/web-and-native.md](design/web-and-native.md),** questions 1–6 and 8, then the rest of the
-   [narrowed table](#narrowed-2026-11-01). **26 questions remain:** web-and-native 7, project-database 7,
-   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
+3. **[design/web-and-native.md](design/web-and-native.md), in part** (2026-11-07): questions 1, 4, 5 and 6 are
+   decided. Libraries below, shaped after the browser and built as kama packages, and kyoten's own interfaces
+   above; a size ratchet with a 150 KB gauge for the hello cube; native's gains behind the same interfaces, and no
+   capability in the simulation; the renderer designed around call count. **Next: question 2, the web thread
+   topology,** then 3 (UI) and 8 (the headset), then the rest of the [narrowed table](#narrowed-2026-11-01).
+   **22 questions remain:** web-and-native 3, project-database 7, target-platforms 4, rendering 3, ai-first-api 2,
+   examples 3. Some may be taken together, as the hello cube's three
    were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
@@ -267,9 +271,9 @@ answer is recorded in its doc's *Decided*:
 - **Given 2026-11-05: kyoten writes its own engine modules as it goes.** In the owner's words: "ideally we would write our
   own constraints system and UI systems, etc." and "we are building something unique here and do not want to be limited
   by existing designs. I assume it should be fine to use them for now but build our own as we go?" So Jolt (the
-  peers' physics) and RmlUi (under `@kama/ui`, natively) may serve first, and kyoten replaces each with its own. *Proposed
-  the same day, to confirm:* each engine module's interface is kyoten's from the start, designed from the decided frame, so a
-  borrowed library sits behind it and leaving it changes no game.
+  peers' physics) and RmlUi (under `@kama/ui`, natively) may serve first, and kyoten replaces each with its own.
+  *Confirmed 2026-11-07 at web-and-native question 1:* each engine module's interface is kyoten's from the start,
+  designed from the decided frame, so a borrowed library sits behind it and leaving it changes no game.
   - **UI is the largest case of it** (the owner, the same day): "everything should ideally leverage best in class native
     web tech for web and have counterparts we build natively. The UI system is a BIG part of that. The web ( html and
     CSS3 ) is the best UI platform out there today IMHO and it saves a TON on native web." So a game's UI is HTML and

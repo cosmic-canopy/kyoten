@@ -1,6 +1,7 @@
 # Web first, native at parity
 
-**Status:** draft for the design spike. These are questions, not decisions.
+**Status:** questions 1, 4, 5 and 6 decided on 2026-11-07; 2, 3 and 8 are open in the spike, and 7 waits for
+KYR-13.
 
 ## What the vision asks
 
@@ -44,7 +45,7 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
 
 ## The questions
 
-1. **Where is the seam?** Designed against the browser's API (WebGPU, Web Audio, DOM events, WebRTC), with native
+1. **Where is the seam?** *(Decided 2026-11-07, below.)* Designed against the browser's API (WebGPU, Web Audio, DOM events, WebRTC), with native
    implementing each one, per the rule. Which interfaces are kyoten's own, and which does kyoten take from kama's
    packages once they exist (`@kama/gpu`, `@kama/window`, `@kama/ui`)? Does kyoten build them, wait for them, or build
    them *as* those packages?
@@ -64,11 +65,11 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
      7's browser leg should settle it.
 3. **UI in HTML/CSS.** The game's UI is the browser's DOM on the web. Natively: RmlUi through `@kama/ui`, as the peers
    do, or a webview? Is a game's UI the same HTML on both?
-4. **"Light on the web": what is the budget?** The wasm and JS size of the examples ([examples.md](examples.md))
+4. **"Light on the web": what is the budget?** *(Decided 2026-11-07, below.)* The wasm and JS size of the examples ([examples.md](examples.md))
    on their first slice, and a number to hold it to.
-5. **What does native gain beyond parity?** Threads without COOP/COEP, files, raw UDP. How does a game ask for a
+5. **What does native gain beyond parity?** *(Decided 2026-11-07, below.)* Threads without COOP/COEP, files, raw UDP. How does a game ask for a
    capability one target lacks (kama's `@compileFor` gates whole declarations, so per-platform types)?
-6. **The cost of crossing into JS.** Measure the `wgpu*` call cost on the web before designing a renderer that makes
+6. **The cost of crossing into JS.** *(Decided 2026-11-07, below.)* Measure the `wgpu*` call cost on the web before designing a renderer that makes
    thousands of calls per frame ([rendering.md](rendering.md)).
 7. **CI for the web.** kama's wasm leg runs under node, not a browser. kyoten needs a browser leg (headless Chrome)
    to test COOP/COEP, workers and WebGPU for real.
@@ -78,4 +79,40 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
 
 ## Decided
 
-*(nothing yet — filled in during the walk-through)*
+- **2026-11-07, the owner: questions 1, 4, 5 and 6.** "All of this sounds good to me so far." Question 2 is next, then
+  3 and 8; 7 waits for KYR-13.
+  - **Question 1: the seam has two levels.**
+    - **Below, the libraries:** `@kama/window`, `@kama/gpu`, `@kama/graphics`, `@kama/ui`, and audio's later. Each is
+      a general kama package shaped after the browser's API (WebGPU, DOM events, HTML/CSS, Web Audio), with native
+      implementing the same API. kyoten builds them *as* those packages, in their own repositories (decided for window,
+      gpu and graphics: KYR-51, KYR-52, KYR-9), so any kama program can use them. A platform's implementation lives
+      here, and how platforms plug in is target-platforms questions 1–4; nothing assumes two.
+    - **Above, the engine modules' interfaces are kyoten's own:** input, render, audio, net, physics and UI present
+      components, records, world components and processors, which components question 8 part a promises a game. A
+      library sits behind a module, and a borrowed backend (Jolt, RmlUi) behind that; replacing either changes no game.
+      **This confirms the proposal of 2026-11-05** (SPIKE's standing direction) that each engine module's interface is
+      kyoten's from the start.
+    - **A game never sees wgpu handles, html5 events or GLFW,** only `Mesh`, `Camera`, `Actions` and their kind. **The
+      escape hatch:** an Output processor may call `@kama/graphics` directly to draw something of its own, since Output
+      is outside the simulation.
+  - **Question 4: "light on the web" is a ratchet with a gauge.**
+    - **The ratchet:** CI measures each example's code (wasm plus JS, release, brotli -q 11, without the page shell or
+      assets) and fails when it grows; raising the number is a decision recorded with its reason, the rule chosen the
+      same day for the hello cube's lines ([ai-first-api.md](ai-first-api.md)).
+    - **The gauge:** at most 150 KB of code for the hello cube, about Three.js's whole WebGL library minified (153 KB),
+      with room for kyoten's core, a renderer and one C library above the WebGPU binding's 16–23 KB
+      ([../research/web-baseline.md](../research/web-baseline.md) § Candidate budgets). It is tightened once the hello
+      cube first builds and is measured.
+    - **The free savings first:** Closure (4.6 KB on the triangle; kama's release build does not run it, KY-6),
+      `ENVIRONMENT=web`, and kyoten's own page shell (emscripten's is 12.9 KB).
+    - **Assets get a budget of their own,** rendering question 6 and KYR-10's.
+  - **Question 5: native's gains are mostly invisible to a game.** The engine uses them behind the same interfaces:
+    threads without COOP/COEP, raw UDP in the net module (WebRTC or WebSocket on the web), files. Where a game must
+    know (pointer lock, a file dialog, haptics), it asks for a capability at run time, spelled at target-platforms
+    question 3. **The simulation never branches on a capability:** one may shape Input and Output, since two machines
+    in one match differ, and a file a player opens enters as recorded I/O.
+  - **Question 6: the renderer is designed around the number of calls.** KYR-5 measured an empty crossing at about
+    5 ns, with the browser's WebGPU 60–70% of a call. The rules for rendering question 2: a few thousand draws a frame
+    need no batching; about 10⁴ do (instancing, fewer state changes); 32-bit draw arguments, with shared buffers bound
+    once; one `writeBuffer` a frame for per-object data; a JS-side command list only if calls still reach 10⁴ after
+    that. Native is not uniformly cheaper, so designing against the browser does not penalize it.
