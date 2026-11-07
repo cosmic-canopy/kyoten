@@ -995,7 +995,9 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       `fly`), which is the one naming convention.
     - For each, it asks the kama compiler for every parameter's name, mode (`ref`, `const ref`, a copy) and type, and
       looks the type up in a fixed list. `kama query` drops the mode today and gives no signature at a declaration,
-      which is KY-24, so until kama answers the generator would read the signature line itself.
+      which is KY-24, so until kama answers the generator would read the signature line itself. *(Fixed in kama
+      0.9.863, 2026-11-07: `--type` at a declaration answers the signature, and `--json` gives each parameter's name,
+      mode and type, so the generator asks the compiler.)*
     - **Names carry no meaning.** `Handle me` is this entity's handle because its type is `Handle`, and renaming it
       changes nothing. The generator uses the names only to write the call, since kama calls are named
       (`me: c.handle[i]`). It never reads the body, which kama checks.
