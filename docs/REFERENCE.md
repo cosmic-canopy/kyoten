@@ -129,7 +129,7 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 
 *Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
 § Decided), and revised on 2026-11-06 so actions belong to a player. A sketch: the file format is project-database
-question 2, and the spelling is components question 8.
+question 2, and the spelling is components question 8 (`const ref Time time` since 2026-11-07, part b).
 
 ```json
 { "prefabs":  { "cube": { "mesh": { "shape": "box" }, "spin": { "rate": 2 },
@@ -143,9 +143,9 @@ question 2, and the spelling is components question 8.
 @generate(Serializable, Deserializable, of)
 type value Spin { @field(default) public float32 rate = 1; }
 
-fn void turn(ref Transform t, ref Spin s, const ref Actions input, float32 dt) {
-    if (input.faster.held) { s.rate = s.rate + dt; }
-    t.yaw = t.yaw + s.rate * dt;
+fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Time time) {
+    if (input.faster.held) { s.rate = s.rate + time.dt; }
+    t.yaw = t.yaw + s.rate * time.dt;
 }
 ```
 
@@ -199,7 +199,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
 | **Singleton** | a store holding one value per world or per zone: the physics world, an RNG, a spatial grid. A system's state between steps lives in one | decided (question 3, choice 2) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
-| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access | decided (question 3, choices 1 and 2) |
+| **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free | decided (question 3, choices 1 and 2; types only at question 8 part b, 2026-11-07) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
 | **Group** (of systems) | systems of one phase ordered together; a Constraints group may iterate as a whole. The word is shared with a group of entities until question 8 names them | decided |
 | **Schedule** | the resolved order of every system, with its access, rate and cost, shown to humans and agents | decided |

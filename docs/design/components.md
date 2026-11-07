@@ -1,7 +1,8 @@
 # Components: how a game holds state and behaviour
 
 **Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, question 8's first part was decided (required
-components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided.
+components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided. On
+2026-11-07, part b began: a system's parameters mean what their types say, and the step's time is a `Time`.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -25,6 +26,8 @@ components, what is promised, the handle), question 7's hello cube revised, and 
   drives it, and a scene places it instead of a start zone, so the hello cube has eight concepts.
 - **How a world is divided (2026-11-06),** the owner's model, without a question of its own: one active scene, zones
   in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
+- **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
+  meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -650,6 +653,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
         t.yaw = t.yaw + s.rate * dt;
     }
     ```
+    *(Revised 2026-11-07, question 8 part b: `const ref Time time` replaces `float32 dt`, and the body reads `time.dt`.)*
     - **How the pieces connect:**
       - **`cube` is a prefab** listing two components: the engine's `mesh` and the game's `spin`, whose type is `Spin`.
       - **Its transform is not listed.** *Proposed, and confirmed at question 8 on 2026-11-06:* `mesh`'s record, in the engine's content layer, says it requires a
@@ -974,3 +978,58 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     very large world, and the lookup table's own ceiling, are KYR-61's.
   - **Left to part b:** the spellings (a lookup, a command, the two read modes, a keyed draw, a sort key, a budget, a
     requirement, scene records), the day-one engine components, the generator's naming rule, and the names.
+- **2026-11-07, the owner: question 8 part b, in part — a parameter's meaning comes from its type alone, and the step's
+  time is `const ref Time time`.** The owner: "Yes types only I like your proposed const ref Time time", and "Yes file
+  KY-24".
+  - **How the generator reads a system:**
+    - It reads only the functions a system record names. The record's key is the function's name (`"fly"` names
+      `fly`), which is the one naming convention.
+    - For each, it asks the kama compiler for every parameter's name, mode (`ref`, `const ref`, a copy) and type, and
+      looks the type up in a fixed list. `kama query` drops the mode today and gives no signature at a declaration,
+      which is KY-24, so until kama answers the generator would read the signature line itself.
+    - **Names carry no meaning.** `Handle me` is this entity's handle because its type is `Handle`, and renaming it
+      changes nothing. The generator uses the names only to write the call, since kama calls are named
+      (`me: c.handle[i]`). It never reads the body, which kama checks.
+    - Anything outside the list is refused, with a message naming the fix.
+  - **`const ref Time time`** gives the step's length and number (`time.dt`, `time.step`). It replaces the hello cube's
+    `float32 dt`, which only its name could identify, so the rule has no exception. The hello cube keeps its line count
+    (question 7, revised below and in [../REFERENCE.md](../REFERENCE.md)).
+  - **Why:** a rename never changes behaviour, a person or an agent learns one list, and the generator can check every
+    parameter. Bevy's systems work the same way: their parameter types tell its scheduler what they touch.
+  - **Considered:**
+    - **Conventions by name,** such as `dt` or `me`. A typo or a rename would silently change what is passed.
+    - **Access declared in the record** instead of read from the signature. It states the signature twice, against
+      question 1's "a body's signature is its stated access", though kama would then check the generated call against
+      the function, so a mismatch could not compile.
+  - **Proposed with it, and still open:** the rest of the list. *Probed on 0.9.857* with two towers shooting at each
+    other (three systems, hand-written stand-ins for the engine and the generator's output): seed 7 ended with both
+    towers destroyed in one step, seed 8 with one left on 12 hp after a critical hit, and the same seed replayed the
+    same battle.
+
+    | A system takes | It means | The scheduler learns |
+    |---|---|---|
+    | `ref C`, `const ref C` (C a component) | this entity's C, written or only read | writes or reads C |
+    | `ref S`, `const ref S` (S a singleton) | the world's or zone's one S | writes or reads S |
+    | `Handle` | this entity's handle | nothing |
+    | `const ref Previous<C>`, `const ref Current<C>` | any entity's C, as of last step or live; always written, neither is implied | nothing to wait for, or after C's writers |
+    | `ref Create<P>` (P a prefab), `ref Destroy`, `ref Gain<C>`, `ref Lose<C>` | queued structural changes | adds or removes rows |
+    | `ref Inbox<C>` | sends a C to other entities, combined by C's record and delivered at the phase's end | writes C at the phase's end |
+    | `const ref Prefabs` | the prefab records' values, to start a new entity from | nothing |
+    | `const ref <System>Draws` | keyed draws for the purposes the system's record lists, hashed by the generator | nothing |
+    | `const ref Time` | the step's length and number | nothing |
+
+    - **Why typed queues, and not `cmd.spawn(prefab:)`:** `spawn` is a kama keyword (KY-23 asks for it as a method name),
+      kama has no generic methods (a recorded non-goal), and a typed queue puts what a system creates in its signature,
+      which the scheduler and the budgets read.
+    - **Why purposes are declared, and not strings:** a typo is a compile error, as actions' are (question 7). *Measured
+      on 0.9.857:* hashing the string at every draw cost nothing in release, where the C compiler hoisted it, and 31 ns
+      against 18 ns per draw in debug (125 ns for a 33-byte purpose). kama's `comptime fn` takes no strings by design;
+      the generator runs first and bakes the key.
+    - **The costs, measured on 0.9.857, release:** a keyed draw 1.9 ns against 0.5 ns for std's sequential `Rng`
+      (xoshiro256\*\*), and a queued message 2.4 ns against 1.35 ns for a direct write. Neither ordinary form keeps a
+      parallel run deterministic.
+  - **Found while preparing it, on 0.9.857:** KY-23 (`spawn` as a method name), KY-24 (`kama query` and parameter
+    modes), KY-25 (a method called through a misspelled field) and KY-26 (an element passed by `ref` beside its
+    container by `const ref` is not refused, though the same with a field is). KY-20 is fixed and removed.
+  - **Left to part b:** the rest of the list above, the record spellings, the day-one engine components, the
+    generator's naming rule and the names.

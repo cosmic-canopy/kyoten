@@ -10,7 +10,7 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-06)
+## Where it stands (2026-11-07)
 
 **Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, and components.md has begun. Every
 answer is recorded in its doc's *Decided*:
@@ -129,10 +129,17 @@ answer is recorded in its doc's *Decided*:
     platform. UUIDv7 was considered and fits ids made across machines instead (project-database questions 6 and 10).
   - **Records name entities by string,** resolved to handles when a zone loads and hashed only inside the engine.
   - **A lookup answers here, gone or unloaded.**
+- **[design/components.md](design/components.md), question 8 part b, in part** (2026-11-07):
+  - **A system's parameters mean what their types say,** and names are free. The generator reads only the functions a
+    system record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
+  - **The step's time is `const ref Time time`,** replacing the hello cube's `float32 dt`.
+  - **The rest of the list is proposed,** with a probe of two towers shooting at each other on 0.9.857: typed queues
+    for create, destroy and send, `Previous` or `Current` always written, and keyed draws whose purposes the system's
+    record lists.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), question 8 part b** (the spellings, the day-one engine
+1. **[design/components.md](design/components.md), the rest of question 8 part b** (the rest of the spellings, the day-one engine
    components, the generator's naming rule and the names), **then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
@@ -169,7 +176,8 @@ answer is recorded in its doc's *Decided*:
   KR-333, fixed in `c39d620c` (refused on 0.9.857 and removed, 2026-11-07), and KY-21 became KR-334. **Still to
   relay:** KY-22 (a computed stack bound per entry point, beside kama's KR-79), and from 2026-11-07 KY-23 (`spawn` as a
   method name), KY-24 (`kama query` loses `ref` and `const ref`, which the generator reads) and KY-25 (a typo'd field
-  before a method call is reported as an unknown receiver).
+  before a method call is reported as an unknown receiver), and KY-26 (an element passed by `ref` beside its container by
+  `const ref` is not refused).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -361,7 +369,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-19 and KY-21 to KY-25 are open there; take the next id from its counter.
+  KY-17 to KY-19 and KY-21 to KY-26 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
