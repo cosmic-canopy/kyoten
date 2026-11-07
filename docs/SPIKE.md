@@ -133,16 +133,17 @@ answer is recorded in its doc's *Decided*:
   - **A system's parameters mean what their types say,** and names are free. The generator reads only the functions a
     system record names, and asks the compiler for each parameter's mode and type (KY-24: `kama query` drops the mode).
   - **The step's time is `const ref Time time`,** replacing the hello cube's `float32 dt`.
-  - **The rest of the list is decided,** with a probe of two towers shooting at each other on 0.9.857: typed queues
+  - **The rest of the list is proposed,** with a probe of two towers shooting at each other on 0.9.857: typed queues
     for create, destroy and send, `Previous` or `Current` always written, and keyed draws whose purposes the system's
     record lists.
   - **The generator's output is split into files and not committed** (the owner: "perhaps we do start with that").
     Probed: a debug build recompiles only the files that changed, until a declaration changes; KY-27 filed.
   - **Collisions, readability and soundness,** the owner's concerns: a system is a free function named by its kama path
-    (`towers::fire`), the generator refuses a module `static` in a game, and a singleton is now a **world component**,
-    injected as a parameter and never reached globally. KY-28 (a manifest step to run the generator) and KY-29 filed.
+    (`towers::fire`), and a singleton is now a **world component**, injected as a parameter and never reached
+    globally. KY-28 (a manifest step to run the generator) and KY-29 filed. *Proposed:* the generator refuses a module
+    `static` in a game.
   - **Open:** whether "system" goes back to the owner's first meaning, the large area (audio, networking, graphics, UI,
-    AI, gameplay), with the function taking another word.
+    AI, gameplay), with the function taking another word. The owner leans that way ("processor" or "handler").
 
 **Next, in order:**
 

@@ -30,8 +30,8 @@ singleton is now a world component.
   in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
 - **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
   meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
-  into files and not committed. Systems are free functions named by their kama path (`towers::fire`), the generator
-  refuses a module `static`, the parameter list is decided, and a singleton is now a world component.
+  into files and not committed. Systems are free functions named by their kama path (`towers::fire`), and a singleton
+  is now a world component.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1098,10 +1098,10 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     access, and a system that writes the engine's `Transform` needs no type to live on.
   - **A system is named by its kama path** (`towers::fire`), never the bare name: in its record, an error, the
     profiler and the schedule view. kama keeps the path unique.
-  - **Offered with those two answers, and not objected to:**
+  - **Still proposed, and open** (first recorded here as decided, and corrected the same day):
     - The generator refuses a module `static` in a game's package, so no state lives outside the world.
-    - The rest of the parameter list in the entry above is decided, with `ref S` and `const ref S` naming a world
-      component.
+    - The rest of the parameter list in the entry above, with `ref S` and `const ref S` naming a world component.
+      The owner: "I'm not sure yet if the rest of the parameter list was decided, but it may be".
   - **Filed:**
     - KY-28: no manifest step runs a generator before analysis.
     - KY-29: a listed module whose folder is missing is reported as unlisted. That is the first message a fresh clone
@@ -1109,4 +1109,6 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Raised the same day, and open:** the owner's first meaning of "system" was the large area: audio, networking,
     graphics, UI, AI and gameplay. [../VISION.md](../VISION.md) says "Each system updates at the frequency that makes
     sense for it", and question 3, choice 1 named that area an engine module. The open question is whether "system"
-    goes back to the area, with the function taking another word.
+    goes back to the area, with the function taking another word. The owner leans that way: "'processor' or
+    'handler' or something along those lines do seem to describe these small functions better", with one concern,
+    the muscle memory agents bring from Bevy and Unity.
