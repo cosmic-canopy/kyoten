@@ -1,7 +1,7 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, part of question 8 was decided and question 7's hello
-cube revised.
+**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, part of question 8 was decided, question 7's hello
+cube revised, and how a world is divided decided.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -21,6 +21,8 @@ cube revised.
   added at build time, one without must be listed, and the mapping is shown and can be queried.
 - **Question 7, revised (2026-11-06):** actions belong to a player, not to the world. The cube names the player that
   drives it, and a scene places it instead of a start zone, so the hello cube has eight concepts.
+- **How a world is divided (2026-11-06),** the owner's model, without a question of its own: one active scene, zones
+  in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -115,7 +117,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
    coordinate within a zone (G7). The questions are:
    - **The cell's format:** dense, palette or sparse, and who chooses it. Minecraft's sections are 16×16×16 blocks,
      each with its own palette and packed indices of at least 4 bits.
-   - **How cells stream** in and out with their zone.
+   - **How cells stream** in and out with their zone. *(Zones load by rings around streaming sources and views since
+     2026-11-06, § Decided.)*
    - **Procedural generation:** a generator fills cells from a seed and rules, off the simulation as streaming is, and
      its result enters at Input's hand-off, recorded (G12).
    - **How cells are saved:** whole, or only the edits over a cell that can be regenerated. The second needs
@@ -161,7 +164,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     shape, so a component gained at run time lives in a side store.
   - **A table** holds one prefab in one zone. It is the budget ÷ N chunks, rounded up, allocated once when the zone
     loads and never grown. *(Refined at question 6: that is the default. A table may opt in to committing its chunks
-    one at a time, up to the same ceiling.)*
+    one at a time, up to the same ceiling.)* *(Refined 2026-11-06 with scenes, zones and layers: a table holds one
+    prefab in one zone and one layer.)*
   - **A chunk** is a plain value holding up to N entities of that prefab: one array per component, plus a count of
     live entities, packed at the front.
     - **It is the unit of three things:** parallel work (a worker takes whole chunks), a snapshot (a copy of the
@@ -793,3 +797,105 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     concepts: app, record, scene, prefab, component, system, action and player. Scene replaces zone, which the cube no
     longer writes, and player is new.
   - **Left to KYR-54:** player bindings, adapters and input contexts, recorded there as the owner's direction.
+
+- **2026-11-06, the owner: how a world is divided, into scenes, zones, layers and groups.** It has no question of its
+  own: the owner brought the model while question 8 was being prepared, and it was decided with the proposed
+  adjustments. "Yes that all sounds good to me and is exactly the split I was considering as well. Layers give budget
+  and more granular control per zone... groups give nested structure and organization."
+  - **The owner's model:**
+    - **A scene** is what a designer opens and the build lists. "Only one Scene is active at a time." A game may use
+      one per level, one for the whole game, or scenes as demos and playgrounds. The app's record names the first, and
+      a scene says whether it is in the build: "I don't think you would have a hard coded 'start'".
+    - **Zones divide a scene spatially:** a regular grid of squares in 2D or cubes in 3D, sized in metres by the
+      designer. This is G7's zone, the unit of loading, budgets and coordinates, made a grid, which question 9's
+      coordinates assumed.
+    - **Layers divide it logically:** "all layers must be specified at design time and all layers span across all
+      zones... since a prefab ( bullet, enemy, character, etc. ) can belong to a layer and move between zones."
+    - **Groups divide a layer:** "This would allow enemeies to be grouped within a layer for example."
+    - **Every scene has at least one zone, every zone at least one layer, and every layer a group,** so "now the user
+      knows they exist and can opt in".
+    - **Two units of distance:** "you can measure the scene ( game world ) in units of measure like 'meters' or in
+      units of zone 'x zones away'."
+  - **Choice 1: two drivers decide what loads.**
+    - **A streaming source decides which zones are simulated.** It is a component on a simulated entity: each
+      player's character by default, a teleport target to load ahead, a camera a player watches inside the game. It is
+      computed from the simulation's own state, so it is the same on every machine (G8). Unreal: "Each Player
+      Controller is used as a World Partition streaming source"
+      ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)).
+    - **A view decides what is drawn.** The owner: "'views' are probably render targets... aka output systems?" A
+      view is Output's: a camera drawing into a target, which is the screen, part of it in split screen, a texture, or
+      an eye in a headset. It streams meshes and textures and may differ per machine.
+    - **Why two:** Output varies per machine, so if views loaded the simulation's zones, two machines would simulate
+      different worlds. A headless server has no views at all. Minecraft keeps simulation distance apart from render
+      distance the same way (G8). The two usually coincide, because the camera follows the player.
+  - **Choice 2: distance in rings of zones.** Ring 0 is the zone a source is in, and ring k holds the zones k steps
+    away along whichever of x, y and z is largest. A depth of k loads (2k+1)² zones per source in 2D (1, 9, 25, 49)
+    and (2k+1)³ in 3D (1, 27, 125, 343).
+    - **Against the owner's earlier count** of 4 or 8 zones around a corner: that is cheaper at the smallest depth,
+      but gives no zone a fixed distance, and LOD by "zones away" needs one.
+    - **Loaded zones stay bounded** at sources × zones per source, so the footprint (question 6) is computed even for
+      an infinite world.
+    - **Zone size also bounds precision,** since a position is a zone coordinate plus a `float32` offset (question
+      9, proposed): within a zone of about 8 km, about 1 mm (G7's arithmetic).
+  - **Choice 3: layers are the unit of loading and of memory.**
+    - **Flat, declared at design time, and a block per zone.** Tables become per (zone, layer, prefab), refining
+      question 1's (zone, prefab). A layer's budget is its ceiling, so layers give "budget and more granular control
+      per zone".
+    - **Each is spatial or not.** A spatial layer's entities live in zones, a block per zone. A non-spatial layer is
+      one block for the scene, present while it is on, wherever its entities are (Unreal's "Is Spatially Loaded",
+      turned off).
+    - **Each is simulated or drawn only.** A drawn-only layer is loaded by views, per machine, and is never saved,
+      hashed or read by the simulation. Unreal draws the same line: a client-only data layer is switched on the client,
+      and a runtime one on the server, which replicates it
+      ([SetDataLayerInstanceRuntimeState](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UDataLayerManager/SetDataLayerInstanceRuntimeState)).
+
+      | | Spatial | Non-spatial |
+      |---|---|---|
+      | **Simulated** | mobs, items on the ground, doors: a block per zone, loaded by rings from the streaming sources | rules, score, a match timer, inventories: one block for the scene |
+      | **Drawn only** | LOD meshes, grass, far silhouettes: loaded by rings from each view | the HUD, menus, a 2D canvas |
+    - **Its states:** off (not in memory), loaded (in memory, neither simulated nor drawn, ready to switch at once),
+      and active. A switch is a recorded command at a step boundary, and a fade is Output's. Unreal's runtime data
+      layers are "loaded but not visible" or "loaded and visible", and Epic's sample uses them for "the transition
+      between the Light World and the Dark World"
+      ([Data Layers](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---data-layers-in-unreal-engine)),
+      the owner's two realities.
+    - **Ring ranges are an LOD control.** The owner: "a designer could use layers as an LOD level control. Layers can
+      be turned off and on based on how far the zone is away from the viewer ( zone count not measured distance in
+      meters )." A spatial layer names the rings it is on in: detailed props on rings 0–1, low-detail buildings on
+      0–3, far silhouettes on 2–6. A far zone then holds only the coarse layers' blocks, and the footprint per source
+      is the zones in each ring times the layers on there. Unreal gives each HLOD layer its own grid, with its own cell
+      size and loading range, and warns that "Using more than one grid can negatively impact performance"
+      ([HLOD](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine)).
+      kyoten does it on one grid.
+  - **Choice 4: groups are the unit of switching and organisation.** A group lives in one layer and nests freely. It
+    costs an id per entity and a flag the generated loop checks, like Unity's enableable components. A child group is
+    on only if its parents are. Turning a group off stops its members being simulated and drawn, and its memory stays.
+    - **The rule for a designer:** a layer if the things should leave memory, a group if they only switch. Realities,
+      LOD bands and UI are layers; waves, a puzzle's pieces and a room's lights are groups.
+    - **An entity is in one layer and at most one group.** A set it shares with others, many to many, is a marker
+      component, which already exists.
+    - **Considered: nested layers,** proposed first and withdrawn. Each layer reserves its own ceiling in every loaded
+      zone, so nesting multiplies blocks. Five waves of one enemy, as five layers, reserve five ceilings in each of 27
+      zones; as one layer with five groups, they reserve one ceiling sized to the most alive at once. Unreal nests its
+      data layers freely because each of its objects is allocated alone, so a layer there is only a label.
+  - **Choice 5: moves.** An entity crossing into another zone moves to the same layer's block there, at the end of the
+    phase and in sorted order, and its handle stays valid (G7). Changing layer is the same kind of move: an item picked
+    up goes from a spatial "items" layer to a non-spatial "inventory".
+  - **Where non-spatial is weak:** something that must always simulate yet roams, like a dragon. In a non-spatial
+    layer it keeps running, but the ground under it may not be loaded, so it cannot rely on zone data there. A
+    streaming source on it loads its surroundings instead, at the cost of one more set of rings. A game picks per
+    case. Things that span many zones (rivers, roads, terrain) are world data (question 9).
+  - **Left open:**
+    - **an entity leaving the loaded area.** The lean: it is saved with the zone it enters and freezes until that zone
+      loads, as Minecraft simulates only within simulation distance;
+    - **what survives a scene change** (players, bindings, settings, the save). Proposed: the app keeps its own state;
+    - **the cost of zone size.** Large zones load more than is needed; small ones mean more crossings and partly
+      filled chunks. Slice B measures it (KYR-12), and the generator reports it;
+    - **the names (question 8).** "Layer" already names the engine's layers, content layers, rendering's screen layers
+      and its scene layer. "Group" also names a group of systems. Minecraft calls a zone a chunk, which kyoten's chunk
+      is not;
+    - **a scene's storage (project-database question 2).** A scene is what a designer opens, but it may be stored as
+      a folder of records per zone: Unreal stores one file per actor, so "you do not need to check out the Level file
+      from source control to make changes to the Actors in the world", and streaming reads one zone without the rest;
+    - **how a drawn-only layer reaches rendering's screen layers** (rendering question 9).
+  - **On the roadmap:** KYR-61. The first slice needs only one scene, one zone, one layer and one group (KYR-7).

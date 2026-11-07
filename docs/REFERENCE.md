@@ -67,17 +67,45 @@ as it goes. A game's UI is HTML and CSS, the browser's own on the web and kyoten
 which are question 9.
 
 ```
- World  (a value: copied, saved, restored — G3)
-  ├─ Zone "harbor"  (the unit of loading, budgets and coordinates — G7)
-  │   ├─ Table (harbor × Soldier) ── Chunk ── Chunk ── Chunk    a chunk: up to N soldiers,
-  │   ├─ Table (harbor × Crate) ──── Chunk                      Pos[N] Vel[N] Hp[N] …
+ World  (a value: copied, saved, restored — G3), holding the active scene
+  ├─ Zone (0,0)  (a cell of the scene's grid: the unit of loading, budgets and coordinates — G7)
+  │   ├─ Table ((0,0) × "actors" × Soldier) ── Chunk ── Chunk    a chunk: up to N soldiers,
+  │   ├─ Table ((0,0) × "actors" × Crate) ──── Chunk             Pos[N] Vel[N] Hp[N] …
   │   └─ World store: terrain or voxel cells (question 9)
-  ├─ Zone "keep" …
+  ├─ Zone (1,0) …
+  ├─ Non-spatial layers ("rules", "inventory"): one block each for the scene
   ├─ Side stores: Burning, Stunned       any entity may gain or lose one
   ├─ Singletons: physics world, RNG      one per world or zone, owned by a module
   └─ Assets (read-only, by handle): meshes, clips, navmeshes
- Entity = Handle ──lookup──► (table, chunk, slot)
+ Entity = Handle ──lookup──► (table, chunk, slot), and a group id it carries
 ```
+
+## How a world is divided
+
+*Decided 2026-11-06, the owner's model* ([design/components.md](design/components.md) § Decided).
+
+```
+ Scene "level-1"   one is active at a time; the app's record names the first
+  ├─ Zones    a grid of squares (2D) or cubes (3D), sized in metres            spatial
+  │           loaded by rings: around each streaming source for the simulation,
+  │           around each view for drawing. Depth k loads (2k+1)² or (2k+1)³ per source
+  ├─ Layers   declared at design time, flat, each spanning every zone          loading and memory
+  │             "actors"     spatial      simulated    rings 0–2   a block per zone
+  │             "props-far"  spatial      drawn only   rings 2–6   per machine
+  │             "rules"      non-spatial  simulated                one block for the scene
+  │             "hud"        non-spatial  drawn only
+  │           states: off · loaded (frozen and hidden) · active
+  └─ Groups   inside a layer, nested freely, an id per entity                   switching
+                "actors" ▸ "wave 3" ▸ "flankers"
+```
+
+- **A layer if the things should leave memory, a group if they only switch.** Realities, LOD bands and UI are layers;
+  waves, a puzzle's pieces and a room's lights are groups.
+- **What is simulated comes from streaming sources,** components on simulated entities, the same on every machine.
+  **What is drawn comes from views,** which are Output's and may differ per machine.
+- **Two units of distance:** metres, and rings of zones away.
+- **Every scene starts with one zone, one layer and one group,** so each is there to be found.
+- **An entity crossing a zone, or changing layer,** moves blocks at the end of the phase, and its handle stays valid.
 
 ## One step, then a display frame
 
@@ -140,7 +168,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 |---|---|---|
 | **Engine** | kyoten: one kama package in four layers | decided |
 | **Engine module** | one area of the engine (input, render, audio, net, physics, UI), one kama module, with its own records, system bodies and singletons. It never imports another | decided |
-| **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface | decided |
+| **Layer** | a group of modules with an import rule: frame, world, engine modules, the agent surface. The word is shared with a scene's layers (below) until question 8 names them | decided |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi) | decided (the direction) |
 | **Game** | a separate package and repository: its records, its system bodies, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, system, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
@@ -150,15 +178,21 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
-| **Zone** | a region of the world: the unit of loading, budgets and coordinates | decided (G7) |
-| **Budget** | a record limiting one scope (world, zone, match, player, team). A (zone, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
+| **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | decided (2026-11-06) |
+| **Zone** | a cell of the scene's grid, a square or a cube sized in metres: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
+| **Ring** | a distance in zones: ring 0 is a source's own zone, ring k the zones k steps away. A depth of k loads (2k+1)² zones in 2D, (2k+1)³ in 3D | decided (2026-11-06) |
+| **Streaming source** | a component on a simulated entity that loads the zones around it for the simulation, the same on every machine. Each player's character has one by default | decided (2026-11-06) |
+| **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |
+| **Layer** (of a scene) | a set of entities declared at design time that spans every zone and loads as one: the unit of loading and memory. Spatial or not, simulated or drawn only, on in a range of rings, and off, loaded or active | decided (2026-11-06); its name is question 8 |
+| **Group** (of entities) | a set inside one layer that switches as one, nested freely: an id per entity, and no memory of its own | decided (2026-11-06); its name is question 8, since a group of systems is below |
+| **Budget** | a record limiting one scope (world, scene, zone, layer, match, player, team). A (zone, layer, prefab) budget sizes a table, and a limit over a group is a count rule. Every store's ceiling comes from one | decided (question 6) |
 | **Footprint** | the sum of every ceiling per scope, which the generator reports as the game's simulation floor | decided (question 6) |
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
 | **Prefab** | a named archetype with its defaults. Prefabs of one archetype share generated code, so a record alone can add one | decided (question 5, choice 3) |
 | **Entity** | one thing in the world, an instance of a prefab | decided |
 | **Handle** | an entity's id, reaching it through a lookup (handle → table, chunk, slot) | decided; its form is question 8 |
 | **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
-| **Table** | all the entities of one prefab in one zone, made from its archetype's table type. Its ceiling is its (zone, prefab) budget | decided |
+| **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06) |
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
 | **Side store** | one component type any entity can gain or lose at run time | decided |
 | **World store** | data that belongs to space, not to an entity: terrain, voxels, destruction | decided; its design is question 9 |
@@ -166,7 +200,7 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
 | **System** | a function over components, plus a record that schedules it (phase, group, order, rate, iterations). Its signature is its access | decided (question 3, choices 1 and 2) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |
-| **Group** | systems of one phase ordered together; a Constraints group may iterate as a whole | decided |
+| **Group** (of systems) | systems of one phase ordered together; a Constraints group may iterate as a whole. The word is shared with a group of entities until question 8 names them | decided |
 | **Schedule** | the resolved order of every system, with its access, rate and cost, shown to humans and agents | decided |
 | **Step** | one tick of the simulation's one clock | decided |
 | **Frame** | one display refresh; Output runs once per frame | decided |
@@ -178,7 +212,6 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Player binding** | what attaches a source to a player: keyboard 1, gamepad 2, a network slot, a bot or an agent | the owner's direction (2026-11-06), decided at KYR-54 |
 | **Adapter** | a step in a binding that filters a control's value or converts it to the action's kind: a dead zone, a scale, a stick or trigger as a button, a button as an axis, two buttons as −1 to 1, a filtered accelerometer. Editor controls may use the same idea (human-tools question 4) | the owner's direction (2026-11-06), decided at KYR-54 |
 | **Input context** | a set of bindings a player switches on or off, with a priority (on foot, driving) | the owner's direction (2026-11-06), decided at KYR-54 |
-| **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | proposed (the owner's model, 2026-11-06) |
 | **Required component** | a component another component's record requires (a mesh requires a transform), the engine's or a game's. One with defaults is added to the archetype at build time; one without must be listed, or the build refuses the prefab. The generator shows where each came from, and a query answers it | decided (question 8, 2026-11-06); its spelling is the rest of question 8 |
 
 **Older wording.** [design/frame-phases.md](design/frame-phases.md) and [design/architecture.md](design/architecture.md)
@@ -233,7 +266,7 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 
 | kyoten | Prior art | Where kyoten differs |
 |---|---|---|
-| A table of fixed-size chunks per (zone, prefab) | Unity Entities' archetype chunks, 16 KiB with at most 128 entities ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)); Unreal Mass, a chunk size per archetype ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)) | archetypes fixed at build time, tables per zone with ceilings from budgets, N per archetype from the same 16 KiB target (questions 5 and 6) |
+| A table of fixed-size chunks per (zone, layer, prefab) | Unity Entities' archetype chunks, 16 KiB with at most 128 entities ([archetypes](https://docs.unity3d.com/Packages/com.unity.entities%401.4/manual/concepts-archetypes.html)); Unreal Mass, a chunk size per archetype ([Mass](https://dev.epicgames.com/documentation/unreal-engine/overview-of-mass-entity-in-unreal-engine)) | archetypes fixed at build time, tables per zone with ceilings from budgets, N per archetype from the same 16 KiB target (questions 5 and 6) |
 | Archetypes fixed at build time, queries precompiled | gecs ([README](https://docs.rs/crate/gecs/latest/source/README.md)) | side stores for components gained at run time |
 | The loop generated from a system's signature | Unity's `IJobEntity` ([IJobEntity](https://docs.unity.com/en-us/engine/7000.0/script-reference/unity/entities/ijobentity.md)) | the whole world is generated, and kama checks it |
 | Side stores beside tables | Bevy's opt-in sparse sets ([StorageType](https://docs.rs/bevy/0.13.1/bevy/ecs/component/enum.StorageType.html)) | — |
@@ -246,6 +279,11 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | Reading other entities from a parallel system | Unity's `ComponentLookup` reads them live, checked by the safety system at run time ([ComponentLookup](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.ComponentLookup-1.html)) | the previous step's snapshot by default, or this step's values declared by the system, both proven at compile time (question 3, choice 3) |
 | World data in cells with palettes | Minecraft's sections of 16×16×16, each with its own palette ([chunk format](https://wiki.vg/Chunk_Format)) | question 9 |
 | Pre-fractured destruction | Unreal Chaos's geometry collections ([destruction](https://dev.epicgames.com/documentation/unreal-engine/destruction-overview)) | question 9 |
+| Grid cells loaded around streaming sources | Unreal's World Partition: "Each Player Controller is used as a World Partition streaming source", with a cell size and loading range per grid ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)) | distance in rings of zones; streaming sources load the simulation and views load what is drawn (2026-11-06) |
+| Simulation distance apart from render distance | Minecraft ([research/game-types.md](research/game-types.md) G8) | the same split, between streaming sources and views |
+| Sets that load as one, across the whole world | Unreal's Data Layers, "loaded but not visible" or "loaded and visible", used for "the transition between the Light World and the Dark World" ([Data Layers](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---data-layers-in-unreal-engine)); client-only layers switched per machine, runtime ones by the server ([API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UDataLayerManager/SetDataLayerInstanceRuntimeState)) | flat layers, each a memory block per zone; nested groups switch without memory (2026-11-06) |
+| Far content by distance | Unreal's HLOD layers, each with its own grid, cell size and loading range: "Using more than one grid can negatively impact performance" ([HLOD](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine)) | one grid, and each layer names the rings it is on in (2026-11-06) |
+| Content loaded wherever it is | Unreal's "Is Spatially Loaded", turned off ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)) | non-spatial layers, one block for the scene (2026-11-06) |
 | Large worlds: doubles only at the absolute position, floats inside | Box3D ([large worlds](https://box2d.org/documentation3d/large-worlds.html)); Unreal 5's double-precision types ([LWC](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)) | proposed: zone-local floats with whole-number zone coordinates (question 9) |
 | An order every game is promised | Godot specifies its order; Unity, Bevy, EnTT and Unreal disclaim it, and Unity's chunk order is "deterministic per world" ([research/component-models.md](research/component-models.md) § 5.4) | promised by the engine, serial and parallel alike (question 4) |
 | Cross-platform physics as a build option | Jolt: deterministic on one platform given the same calls and binary; `CROSS_PLATFORM_DETERMINISTIC` is "approximately 8% slower" ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)) | replay question 1 |

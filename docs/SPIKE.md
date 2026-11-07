@@ -110,14 +110,20 @@ answer is recorded in its doc's *Decided*:
   0.9.855.
   - **The owner's direction on input** (players, player bindings, adapters, input contexts) is on KYR-54, to decide
     when that row comes up, and editor controls as adapters are noted at human-tools question 4.
+- **[design/components.md](design/components.md), how a world is divided** (2026-11-06), the owner's model, decided
+  without a question of its own ([REFERENCE.md](REFERENCE.md) § How a world is divided).
+  - **One active scene,** named first by the app's record.
+  - **Zones** form a grid sized in metres, loaded by rings around streaming sources (the simulation) and views
+    (drawing).
+  - **Layers** are flat and declared at design time, the unit of loading and memory: spatial or not, simulated or
+    drawn only, on by ring as an LOD control. Nested layers were proposed and withdrawn, because each layer is a block
+    in every zone.
+  - **Groups** nest inside a layer, as switches without memory.
+  - Streaming is KYR-61.
 
 **Next, in order:**
 
-0. **The owner's model of scenes, zones and layers** (2026-11-06), with the proposed adjustments: views drive what is
-   drawn and streaming sources what is simulated; zone size in metres and depth in rings of zones; layers that may
-   nest, may be non-spatial, and turn on by ring as an LOD control. REFERENCE.md lists *Scene* as proposed. The owner
-   is choosing whether it is recorded as decided now or taken as a new components question 10.
-1. **[design/components.md](design/components.md), questions 8 and 9.**
+1. **[design/components.md](design/components.md), the rest of question 8, then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized

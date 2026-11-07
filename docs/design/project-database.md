@@ -39,6 +39,11 @@ least prior art in the peers, and the one most worth getting right before code.
 2. **Where does it live?** Plain text in the game's repo (JSON or markdown, with git as history, diff and review),
    an embedded database (SQLite) exported to text for review, or a service. What does each mean for merging two
    agents' work, and for a human reading a diff?
+   - *Noted 2026-11-06:* a scene is what a designer opens ([components.md](components.md) § Decided, scenes, zones
+     and layers), but it may be stored as a folder of records per zone. Unreal stores one file per actor, so "you do
+     not need to check out the Level file from source control to make changes to the Actors in the world"
+     ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)),
+     and streaming reads one zone without the rest.
 3. **Database and wiki: one source or two?** Is the wiki generated from the records (one truth, always current),
    or written prose that links to records by id?
 4. **Who defines the schema?** The engine ships the core schemas (transform, mesh, sound, timeline…) and a game
