@@ -158,6 +158,8 @@ answer is recorded in its doc's *Decided*:
     prefab variants written `from`, `main` as the default layer, actions as code records with bindings as content
     (action kinds are KYR-54's), and count rules per player or team later. The hello cube is 15 lines in this
     layout; the owner: the 20-line target is "probably a good gauge. It shouldn't limit our designs though."
+    CI fails when it grows, and raising the number is a decision made with its reason. A prefab may name its layer,
+    and a created entity otherwise joins its creator's.
 
 **Next, in order:**
 
@@ -165,7 +167,7 @@ answer is recorded in its doc's *Decided*:
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
-   - **Then:** the rest of records part 2 (which layer a created entity joins, and zone files in an infinite scene),
+   - **Then:** the rest of records part 2 (zone files in an infinite scene),
      the day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
      `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
    - **Then question 9.**

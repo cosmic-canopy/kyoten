@@ -86,3 +86,6 @@ rest are questions.
   arbitrary but probably a good gauge. It shouldn't limit our designs though." The hello cube in the record files
   decided there is 15 non-blank lines across five files, counting its imports and export
   ([../REFERENCE.md](../REFERENCE.md) § The hello cube).
+  - **How CI holds it (KYR-14):** CI still fails when the count grows, and the number may be raised, with the reason
+    in the commit that raises it. The owner: "yes your recommendation. It points to a decision that needs to be
+    made."

@@ -180,7 +180,8 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
   component, processor, action, player), on web and native, held by CI. This layout is 15, counting its imports and
   its export. The owner (2026-11-07): "The 20-line target is obviously arbitrary but probably a good gauge. It
-  shouldn't limit our designs though."
+  shouldn't limit our designs though." CI fails when the count grows, and raising the number is a decision, made
+  with its reason.
 
 ## What a processor takes
 
@@ -273,8 +274,7 @@ kyoten-towers/
 
 Every record kind also takes an optional `note`, a string.
 
-**The content records** *(part 2, 2026-11-07; which layer a created entity joins, and zone files in an infinite
-scene, are still open):*
+**The content records** *(part 2, 2026-11-07; zone files in an infinite scene are still open):*
 
 ```
 content/
@@ -308,19 +308,21 @@ content/
 | Record | Fields, with their defaults |
 |---|---|
 | App | `firstScene` (the only scene); `title` |
-| Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none) |
+| Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
 | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
 | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
-| Budget | `max` per zone; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
+| Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
 | Layer group | `on` (true); `groups`, nested |
 | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
 | Zone | `place`: placements keyed by placed name |
-| Placement | `prefab` (required); `layer` (`main`); `group` (none); `values`, laid over the prefab's |
+| Placement | `prefab` (required); `layer` (its prefab's, else `main`); `group` (none); `values`, laid over the prefab's |
 | Action, a code record | in a module's records file, under `actions`: its `kind` (KYR-54's to name) |
 
 - **A prefab variant starts `from` another,** and lays its values over it, as a placement does.
 - **The default layer is `main`,** where a placement that names no layer goes.
+- **A prefab may name its layer,** where it is placed and created; a created entity otherwise joins its creator's.
+  How a game uses its layers is its own choice.
 - **Actions are code records and bindings are content.** Action kinds are KYR-54's.
 
 ## The vocabulary

@@ -35,8 +35,8 @@ singleton is now a world component.
   what this doc called a system, "system" is retired, and the generator refuses a module `static`. What a processor
   takes is decided, with `Send<C>` and a random key's `nth(n:)`. Records that describe code are written, beside it,
   as `src/<module>/*.records.json`, and content records sit under `content/`. The content records are written, with
-  prefab variants and `main` as the default layer, except which layer a created entity joins and how zone files
-  work in an infinite scene.
+  prefab variants, `main` as the default layer and a prefab naming its layer, except how zone files work in an
+  infinite scene.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1304,7 +1304,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     this layout within its 20 lines.
 - **2026-11-07, the owner: how records are written, part 2, in part — the content records.** Six pieces were new, and
   the owner took them one by one: (1) "sounds good so far", (2) "sounds good", (5) "the general idea otherwise is good
-  so far", (6) "sounds good". Pieces 3 and 4 are open, below. The rest of the field table restates earlier decisions
+  so far", (6) "sounds good". Piece 3 was decided after them, and piece 4 is open, below. The rest of the field table restates earlier decisions
   (layers, rings, layer groups, budgets, count rules and placed names) and was shown with them.
   - **The content tree,** in the layout part 1 decided:
 
@@ -1345,15 +1345,15 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     | Record | Fields, with their defaults |
     |---|---|
     | App | `firstScene` (the only scene); `title` |
-    | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none) |
+    | Prefab | an entry per component it has, holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
     | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
     | Scene | `inBuild` (true); `zoneSize` in metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits` |
     | Layer | `spatial` (true); `simulated` (true; false is drawn only); `rings`, `{from, to}` (every loaded ring); `start`, `Active`, `Loaded` or `Off` (Active); `groups`, nested; `budgets` by prefab |
-    | Budget | `max` per zone; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
+    | Budget | `max` per zone, or for the scene in a non-spatial layer; `grow` (false: reserved up front); `whenFull`, `Refuse` or `EvictOldest` (Refuse) |
     | Layer group | `on` (true); `groups`, nested |
     | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
     | Zone | `place`: placements keyed by placed name |
-    | Placement | `prefab` (required); `layer` (`main`); `group` (none); `values`, laid over the prefab's |
+    | Placement | `prefab` (required); `layer` (its prefab's, else `main`); `group` (none); `values`, laid over the prefab's |
     | Action, a code record | in a module's records file, under `actions`: its `kind` (KYR-54's to name) |
 
     Every record kind also takes an optional `note`, a string.
@@ -1365,6 +1365,26 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
        spelling now.
     2. **The engine's default layer is `main`.** It is the layer every scene starts with, and a placement that names
        no layer goes there.
+    3. **A prefab may name its layer, and a created entity otherwise joins its creator's.** Decided after the others.
+       The owner had asked that the creator's layer be "a default but overridable... projectiles may make sense on
+       their own layer for example. They may be fast moving and could travel through zones quickly", and then: "yes.
+       The layer suggestion is just that as any game can decide what it wants to do with layers."
+       - **A placement** goes to its own `layer` if it names one, else its prefab's, else `main`. **A created entity**
+         goes to its prefab's layer, else its creator's.
+       - **Why the prefab:** where a kind of thing lives is said once, so every processor that creates it agrees.
+       - **The build refuses a scene that lacks a layer its prefabs name,** naming both. It knows what a scene can hold
+         from what the scene places and what their processors create, since each `Create<P>` names its prefab.
+       - **A single create naming its own layer** can arrive later without a break, as a second method (kama has no
+         default parameters or overloading). Not now, to keep one way.
+       - **For a game to choose, not a rule:** fast projectiles may sit in a non-spatial layer
+         (`"bullet": { "layer": "shots", … }` with `"shots": { "spatial": false, … }`).
+         - A crossing is cheap either way: one row moved at the end of the phase. At 1,000 m/s, 60 Hz and 64 m zones a
+           bullet crosses about every 4 steps, so 256 bullets make about 67 moves a step (arithmetic, not measured).
+         - The difference is the budget. A spatial layer reserves the bullet's ceiling in every loaded zone (25 per
+           source at two rings in 2D); a non-spatial one reserves one ceiling for the scene.
+         - A non-spatial entity keeps running where its zone is not loaded, so a bullet's lifetime ends it. Passing
+           through a wall at speed is physics's continuous collision, not storage's.
+       - **Probed on 0.9.867:** a prefab's `layer` and a non-spatial `shots` layer read strictly.
     5. **Actions are code records, and bindings are content.** An action is declared in a module's records file and
        becomes a generated field on `Actions`, so a typo is a compile error (question 7); its default bindings per
        device are content records, rebound in the developer's and the player's layers. **Not settled:** the action
@@ -1373,9 +1393,6 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     6. **Count rules per player, team or match wait** until players and teams exist (KYR-54 and networking). Today a
        limit counts per world, zone or layer.
   - **Open:**
-    - **3, which layer a created entity joins.** Proposed: its creator's. The owner: "this should be a default but
-      overridable... projectiles may make sense on their own layer for example. They may be fast moving and could
-      travel through zones quickly."
     - **4, a scene's zone files named by coordinates** (`zone.-1.0`). The owner: "How does this work for infinite
       scenes?"
   - **The hello cube in this layout** is 15 non-blank lines across five files, now counting the imports and the export
