@@ -166,8 +166,10 @@ answer is recorded in its doc's *Decided*:
   in advance.
 
   **kama ported the audit the same day** (`b6847d37`): KY-18 is now KR-329 and KY-19 is KR-328. Then KY-20 became
-  KR-333, fixed in `c39d620c` and to be re-checked on the next binary built here, and KY-21 became KR-334. **Still to
-  relay:** KY-22 (a computed stack bound per entry point, beside kama's KR-79).
+  KR-333, fixed in `c39d620c` (refused on 0.9.857 and removed, 2026-11-07), and KY-21 became KR-334. **Still to
+  relay:** KY-22 (a computed stack bound per entry point, beside kama's KR-79), and from 2026-11-07 KY-23 (`spawn` as a
+  method name), KY-24 (`kama query` loses `ref` and `const ref`, which the generator reads) and KY-25 (a typo'd field
+  before a method call is reported as an unknown receiver).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -359,7 +361,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-22 are open there; take the next id from its counter.
+  KY-17 to KY-19 and KY-21 to KY-25 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 

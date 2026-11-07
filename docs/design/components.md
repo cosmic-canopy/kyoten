@@ -387,7 +387,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     **The generated world lives in the game's package**, not in the engine.
   - **Found while preparing the question, on 0.9.852:**
     - **KY-20.** A `parallel_for` body may read the container it splits by `ref`. *Probed:* three runs read a counter
-      mid-count ([../KAMA_GAPS.md](../KAMA_GAPS.md)).
+      mid-count ([../KAMA_GAPS.md](../KAMA_GAPS.md)). *(Fixed in kama KR-333: refused on 0.9.857, 2026-11-07.)*
     - **Reading the previous step's snapshot checks, and is sound** (exit 3).
     - **Reading this step's values works in parallel when writes are staged.** The system writes its output to a
       staging store beside the table, and a pass at the end of its group copies it in. kama proves it, since the table
