@@ -230,8 +230,8 @@ answer is recorded in its doc's *Decided*:
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
   **Still to relay:** KY-31's other half (`docs/packages.md` still shows comments in `kama.json` examples), KY-32
   (`kama check` passes a manifest whose `entry` value is unquoted, and `kama run` calls it missing), KY-33 (a module
-  missing an imported symbol is spelt `game.gen`) KY-34 (std::math's `Vec3` and `Quat` are not serializable) and KY-35 (std::math
-  has no `float64` vectors; not blocking).
+  missing an imported symbol is spelt `game.gen`), KY-34 (std::math's `Vec3` and `Quat` are not serializable) and
+  KY-35 (std::math has no `float64` vectors; not blocking).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
