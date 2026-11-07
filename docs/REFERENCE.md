@@ -493,6 +493,17 @@ Whether the simulation is also bit-identical across platforms is
 - **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes
   while running applies at a step boundary as a recorded input.
 
+**Determinism and the record** (*decided*, replay-and-determinism questions 1–3, 5 and 6, 2026-11-07):
+- **The same inputs give the same world hash on every platform,** browser and native, debug and release. kyoten's
+  manifest declares kama's `reproducible-float`, which reaches every game. The simulation never runs on the GPU.
+- **One ordered log per step of Input's hand-off:** actions after adapters, network receives, outside clocks, every
+  I/O result. Nothing deterministic is recorded, and the simulation never reads the wall clock.
+- **One serializer:** records in JSON, saves in kama's numbered binary (`KNUM`, migrates), the log and the wire in
+  its positional binary (`POS`, tied to the build).
+- **Tripwires:** a world hash every step, replay at exit in development, serial against parallel, watched against
+  unwatched, and `kyoten test --replay` across platforms.
+- **Output is read-only by structure:** `const ref` parameters only, and its own state marked `"output": true`.
+
 **What is promised** (*decided*, components question 8, 2026-11-06):
 - **Nothing is frozen before 1.0.0.** kyoten iterates freely, as kama does at 0.9.x.
 - **From 1.0.0, the promise covers what a game touches:** its records, its processor signatures, the engine components

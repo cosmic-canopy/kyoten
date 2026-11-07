@@ -206,9 +206,14 @@ answer is recorded in its doc's *Decided*:
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. **Next: [design/replay-and-determinism.md](design/replay-and-determinism.md),** questions 1–3, 5 and 6, then the
-   rest of the [narrowed table](#narrowed-2026-11-01). **31 questions remain:** replay-and-determinism 5,
-   project-database 7, web-and-native 7, target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
+2. **[design/replay-and-determinism.md](design/replay-and-determinism.md) is decided,** questions 1–3, 5 and 6
+   (2026-11-07): determinism across platforms for every game through the engine's `reproducible-float` (no opt-out
+   for now, the owner: "the cost is probably not enough to warrant it right now"), the simulation on the CPU with
+   GPU compute a later direction (KYR-64), one recorded log of Input's hand-off, `KNUM` saves and `POS` logs,
+   the tripwires, and Output read-only by structure.
+3. **Next: [design/web-and-native.md](design/web-and-native.md),** questions 1–6 and 8, then the rest of the
+   [narrowed table](#narrowed-2026-11-01). **26 questions remain:** web-and-native 7, project-database 7,
+   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
    were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
