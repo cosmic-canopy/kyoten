@@ -1440,9 +1440,9 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Probed on 0.9.860:** the app, the prefabs with a variant, the bindings, a scene with two layers and nested layer
     groups (a layer group record nested in itself), and a zone with two placements all read strictly; a misspelt
     component in a placement is named (``unknown field `place.t.values.turet` ``).
-- **2026-11-07, the owner: the generator's naming rule, in part.** Rules 1, 3 and 4 of five. On rule 1: "The only issue
-  I see is clearing generated files. Still a fairly easy thing to do though." On rules 3 and 4: "Seems good so far".
-  Rules 2 and 5 were explained again.
+- **2026-11-07, the owner: the generator's naming rule.** Five rules. On rule 1: "The only issue I see is clearing
+  generated files. Still a fairly easy thing to do though." On rules 3 and 4: "Seems good so far". Rules 2 and 5, and
+  the clearing rule, were explained again, and the owner: "All sounds good so far... proceed".
   - **1. Names a module's own code uses are generated into that module,** in a git-ignored file beside its code.
     - `towers::fire`'s `FireRandomKeys` is in `src/towers/towers.generated.kama`, and the processor imports it as a
       file next door does (`import { FireRandomKeys };`). So `towers::FireRandomKeys` and `player::FireRandomKeys`
@@ -1451,7 +1451,7 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       gains `*.generated.kama`. This refines the decision that generated output sits in one git-ignored folder.
     - **Why not `src/generated/towers/`:** a folder `kama.json` does not list belongs to the nearest listed module, so
       every generated folder would be one module and clash again, unless the generator edited `kama.json` for each.
-    - **Clearing them,** the owner's concern. *Proposed:*
+    - **Clearing them,** the owner's concern:
       - every generated file opens with a header saying it is generated;
       - each run writes the whole set, and deletes every `*.generated.kama`, and every file under `src/generated/`, that
         it did not write. A renamed processor or a removed module then leaves nothing stale, which would still compile
@@ -1476,5 +1476,21 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       record that writes both. *Probed on 0.9.867:* `"Health"` and `"towers::Health"` read, and `"health"` is refused.
     - The examples now write `"Transform"` and `"Turret"`, and the hello cube `"Mesh"`, `"Spin"` and `"Actions"`, with
       the same line count. The part 2 entry above keeps the lower-case keys it was shown with.
-  - **Explained again:** rule 2 (names that become generated fields are identifiers, unique per kind across the game)
-    and rule 5 (the generator's internal names are its own, and its split into files keeps them from clashing).
+  - **2. Names that become generated fields are identifiers, unique per kind across the game.**
+    - An action `faster` becomes a field `faster` on `Actions` (`input.faster.held`), and prefabs (`prefabs.bullet`),
+      layers and layer groups become fields and constants the same way, which is what makes a typo a compile error
+      (question 7).
+    - Such a name is a lowerCamel identifier and not a kama or C reserved word. The build refuses `"fast-bullet"` or
+      `"match"` and names the fix (`fastBullet`).
+    - One name means one thing across the game: `Actions` has one field per action, so an action declared by two
+      modules is refused, naming both.
+    - Placed names (`"tower-west"`) and notes never become kama names, so any string works.
+  - **5. The generator's internal names are its own.** A table type per archetype with a field per component, and a
+    pass per phase that calls each processor, are never written by a game and never promised (part a), so the
+    generator chooses their names and may change them in any release.
+    - **The one trap,** found at question 7: kama has no shadowing, so a column `spin` beside a processor `spin` is
+      refused. *Probed on 0.9.867:* the refusal (*"field `fire` has the name of a function in scope"*) comes only in
+      the file that declares the field while the function is in scope. A member access, `row.fire`, is fine in a
+      file that imports `fire`.
+    - **So the split into files is the fix:** tables are declared in files that import no processor, and the passes
+      that call processors only read `row.spin`. No renaming scheme is needed, and nothing reaches a game.

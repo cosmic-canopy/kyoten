@@ -169,11 +169,13 @@ answer is recorded in its doc's *Decided*:
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
-   - **The naming rule, in part:** a module's generated names (`FireRandomKeys`) in a git-ignored file beside its
-     code, cleared by the generator each run; generated types with a suffix for their kind (`BulletPrefab`); records
-     name code as the code does, so a prefab's component keys are type names (`"Turret"`), bare where unique.
-   - **Then:** the rest of the naming rule (rules 2 and 5, explained again), the remaining names (the engine's
-     layers against a scene's layers), which prefabs a create queue may create, and the day-one engine components.
+   - **The naming rule** (the owner: "All sounds good so far... proceed"): a module's generated names
+     (`FireRandomKeys`) in a git-ignored file beside its code, cleared by the generator of whatever it did not write;
+     names that become fields are identifiers, one meaning across the game; generated types with a suffix for their
+     kind (`BulletPrefab`); records name code as the code does, so a prefab's component keys are type names
+     (`"Turret"`), bare where unique; internal names are the generator's own, kept apart by its files.
+   - **Then:** the remaining names (the engine's layers against a scene's layers), which prefabs a create queue may
+     create, and the day-one engine components.
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
