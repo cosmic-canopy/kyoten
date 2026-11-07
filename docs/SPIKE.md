@@ -153,9 +153,11 @@ answer is recorded in its doc's *Decided*:
    - **First, reword** REFERENCE.md, AGENTS.kyoten.md and this file's current text to module and processor (decided
      2026-11-07), with the map for agents: Bevy's, flecs's and Unity's system is a processor, and Bevy's plugin is a
      module. Decided entries keep their words.
-   - **Then:** a name for a processor's keyed random values (not "draws", which reads as rendering), the entity
-     group's name (the owner called it a layer group), the rest of the parameter list, the record spellings, the
-     day-one engine components, the generator's naming rule and the remaining names.
+     Decided since: keyed random values are `<Processor>RandomKeys`, a `RandomKey` per purpose, and the group inside
+     a layer is a **layer group**.
+   - **Then:** the rest of the parameter list, the record spellings (with a random key's counter argument), the
+     day-one engine components, the generator's naming rule (two modules' `fire` processors would both generate a
+     `FireRandomKeys`) and the remaining names (the engine's layers against a scene's layers).
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game

@@ -1163,3 +1163,11 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       layer", 2026-11-06), so the name is proposed for it, beside processor group;
     - the rest of the parameter list.
   - **Next:** reword REFERENCE, AGENTS.kyoten.md and SPIKE's current text to module and processor, with the map above.
+- **2026-11-07, the owner: keyed random values are random keys, and the group inside a layer is a layer group.** The
+  owner: "I like your keys spelling and yes we need to address the gap you found", and on the layer group, "yes agreed".
+  - **A processor takes `const ref <Processor>RandomKeys`,** with one `RandomKey` per purpose its record lists:
+    `random.crit.chance(who: me, p: 0.25)`. The parameter's name is free. "Draws" is retired.
+  - **The gap is to be closed:** a random key takes a counter beside the entity, so one entity can get several values in
+    one step (eight pellets). Its spelling comes with the record spellings.
+  - **Layer group** names the group of entities inside a layer, and **processor group** the processors of one phase
+    ordered together.
