@@ -197,7 +197,8 @@ answer is recorded in its doc's *Decided*:
   before a method call is reported as an unknown receiver), KY-26 (an element passed by `ref` beside its container by
   `const ref` is not refused), KY-27 (SPEC still describes the debug build's C units and object cache as they were),
   KY-28 (a manifest step that runs a generator before analysis), KY-29 (a listed module whose folder is missing is
-  reported as unlisted) and KY-30 (an enum value outside its cases is read as "malformed input", without either).
+  reported as unlisted), KY-30 (an enum value outside its cases is read as "malformed input", without either) and
+  KY-31 (kama's docs show comments in `kama.json`, which its reader refuses without a line number).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -389,7 +390,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15 and
-  KY-17 to KY-19 and KY-21 to KY-30 are open there; take the next id from its counter.
+  KY-17 to KY-19 and KY-21 to KY-31 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
