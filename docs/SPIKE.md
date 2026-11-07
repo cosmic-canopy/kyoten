@@ -140,15 +140,23 @@ answer is recorded in its doc's *Decided*:
     Probed: a debug build recompiles only the files that changed, until a declaration changes; KY-27 filed.
   - **Collisions, readability and soundness,** the owner's concerns: a system is a free function named by its kama path
     (`towers::fire`), and a singleton is now a **world component**, injected as a parameter and never reached
-    globally. KY-28 (a manifest step to run the generator) and KY-29 filed. *Proposed:* the generator refuses a module
-    `static` in a game.
-  - **Open:** whether "system" goes back to the owner's first meaning, the large area (audio, networking, graphics, UI,
-    AI, gameplay), with the function taking another word. The owner leans that way ("processor" or "handler").
+    globally. KY-28 (a manifest step to run the generator) and KY-29 filed. The generator refuses a module `static` in
+    a game.
+  - **The vocabulary is module and processor.** A module (an engine module or a game module) is one kama module with
+    its records, processors, components and world components, and its record sets a default rate. A processor is the
+    function the scheduler runs, until now called a system, with a processor record and processor groups.
+    "System" is retired, as "subsystem" was; Bevy's, flecs's and Unity's system is a processor.
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), the rest of question 8 part b** (what "system" names, the record spellings, the
-   day-one engine components, the generator's naming rule and the names), **then question 9.**
+1. **[design/components.md](design/components.md), the rest of question 8 part b.**
+   - **First, reword** REFERENCE.md, AGENTS.kyoten.md and this file's current text to module and processor (decided
+     2026-11-07), with the map for agents: Bevy's, flecs's and Unity's system is a processor, and Bevy's plugin is a
+     module. Decided entries keep their words.
+   - **Then:** a name for a processor's keyed random values (not "draws", which reads as rendering), the entity
+     group's name (the owner called it a layer group), the rest of the parameter list, the record spellings, the
+     day-one engine components, the generator's naming rule and the remaining names.
+   - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized

@@ -31,7 +31,8 @@ singleton is now a world component.
 - **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
   meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
   into files and not committed. Systems are free functions named by their kama path (`towers::fire`), and a singleton
-  is now a world component.
+  is now a world component. Then the vocabulary: a **module** (engine or game) is one kama module, a **processor** is
+  what this doc called a system, "system" is retired, and the generator refuses a module `static`.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1112,3 +1113,44 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     goes back to the area, with the function taking another word. The owner leans that way: "'processor' or
     'handler' or something along those lines do seem to describe these small functions better", with one concern,
     the muscle memory agents bring from Bevy and Unity.
+- **2026-11-07, the owner: the vocabulary is module and processor, and the generator refuses a module `static`.**
+  - **The owner's words:**
+    - on statics: "AH... so basically the generator refuses statics? I agree with this... I was hesitant to add globals
+      to kama for this very reason but as you noted they are something a general purpose systems language does need
+      for some things";
+    - on the area: "I think module makes more sense as it maps to the kama module usage as well. engine module, game
+      module, either in general is a 'module'";
+    - on the function: "I do still like 'processor' better here ( system implies something large and processors can
+      be small ). it also describes what they do", and "processor record sounds good";
+    - on groups: "group still makes sense. should likely be qualified though to not confuse with layer groups.
+      processor groups";
+    - on rates and state: "A module's record sets a default rate sounds good to me. world component yes. owned by
+      module".
+  - **Module:** an area of code, exactly one kama module, with its own records, processors, components and world
+    components.
+    - An **engine module** is the engine's (input, render, audio, net, physics, UI). A **game module** is a game's
+      (gameplay, AI, towers).
+    - A library is still what an engine module sits on. The engine's third layer keeps its name, engine modules.
+  - **Processor:** a function over components that the scheduler runs, whose parameters are its access. Until now this
+    doc called it a system.
+    - Its record is a **processor record**.
+    - Its name is its kama path: module `towers`, processor `fire`, written `towers::fire`.
+  - **Processor group:** the processors of one phase ordered together. It is qualified so that it is not confused with
+    a group of entities.
+  - **A module's record sets a default rate,** and a processor's record may override it.
+  - **A world component is owned by a module.**
+  - **"System" is retired,** as "subsystem" was.
+    - What Bevy, flecs and Unity Entities call a system is a processor. What Bevy calls a plugin, and flecs a module,
+      is a module.
+    - That map goes into REFERENCE and AGENTS.kyoten.md, for the muscle memory agents bring.
+    - Earlier entries keep the word "system".
+  - **The generator refuses a module `static`** in a game's package, and points to a world component.
+    - **Why:** a static sits outside the world. A save, a rollback or a replay does not restore it. kama gives each
+      isolate its own copy, so a processor split across workers would count differently than a serial run. The
+      scheduler cannot see it.
+    - **How:** `kama query --symbols` lists each static, and `--refs` finds every use (probed on 0.9.857).
+  - **Still open:**
+    - a better name for a processor's keyed random values (`FlyDraws`), since "draw" reads as rendering;
+    - the entity group's name (the owner called it a layer group);
+    - the rest of the parameter list.
+  - **Next:** reword REFERENCE, AGENTS.kyoten.md and SPIKE's current text to module and processor, with the map above.
