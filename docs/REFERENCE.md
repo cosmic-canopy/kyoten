@@ -51,7 +51,7 @@ tiers above it.
  ┌───────────────────────────────────────────────────────────────────────────────┐
  │ 1 frame   phases · the clock · scheduler · input record · World contract · run │
  ├───────────────────────────────────────────────────────────────────────────────┤
- │ 2 world   engine components (Transform, MeshRef…) · table, chunk, side-store,  │
+ │ 2 world   engine components (Transform, Mesh…) · table, chunk, side-store,     │
  │           command and lookup types · query contracts (a raycast, a nav path)   │
  ├────────┬─────────┬─────────┬────────┬─────────┬────────┬──────────────────────┤
  │ 3 input│ render  │ audio   │ net    │ physics │ UI     │ engine modules; none  │
@@ -154,7 +154,7 @@ export { Spin, turn };
 type value Spin { @field(default) public float32 rate = 1; }
 fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Time time) {
     if (input.faster.held) { s.rate = s.rate + time.dt; }
-    t.yaw = t.yaw + s.rate * time.dt;
+    t.rotateY(by: s.rate * time.dt);
 }
 ```
 
@@ -223,6 +223,28 @@ fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Tr
 - **A random key's counter is a derived key:** `random.spread.nth(n: i).unit(who: me)` for pellet `i`.
 - **The generator refuses** a processor that writes C and reads `Current<C>`, a module `static` in a game, and any
   parameter outside this list, each with a message naming the fix.
+
+## The engine's day-one components
+
+*Decided at components question 8 part b (2026-11-07).* Day one is the first slice. Each module designs its
+components' fields, and more arrive with their roadmap rows.
+
+| Component | Tier or module | Holds |
+|---|---|---|
+| `Transform` | world tier | `position` and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` and the like |
+| `Mesh` | render | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
+| `Material` | render | a lit material (base colour, metallic, roughness), or a glTF one |
+| `Camera` | render | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
+| `Light` | render | `Directional`, `Point` or `Spot`, with colour, intensity and range |
+| `Actions` | input | generated per game; the engine fixes `player` |
+| `Time` (world component) | frame | the step's length and number |
+| `Environment` (world component) | render | ambient light and the clear colour, later sky and fog |
+
+- **Not yet:** streaming sources, physics, audio, UI and network components arrive with their rows. Parent and child
+  (the transform hierarchy) is KYR-62; until then a glTF level is flattened at load.
+- **No `Name` component:** the loader maps placed names to handles.
+- **Transform keeps a quaternion,** which glTF, WebXR, OpenXR and Jolt all speak. A geometric-algebra rotor is the
+  same four numbers; a rotor or motor type can be tried later beside it.
 
 ## Records and their files
 
@@ -309,9 +331,9 @@ content/
 ```
 ```json
 { "place": {
-    "tower-west": { "prefab": "tower", "values": { "Transform": { "x": -20 }, "Turret": { "target": "tower-east" } } },
+    "tower-west": { "prefab": "tower", "values": { "Transform": { "position": { "x": -20 } }, "Turret": { "target": "tower-east" } } },
     "tower-east": { "prefab": "keep", "group": "boss",
-                    "values": { "Transform": { "x": 20 }, "Turret": { "target": "tower-west" } } } } }
+                    "values": { "Transform": { "position": { "x": 20 } }, "Turret": { "target": "tower-west" } } } } }
 ```
 
 | Record | Fields, with their defaults |

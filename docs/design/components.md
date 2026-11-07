@@ -28,7 +28,7 @@ singleton is now a world component.
   drives it, and a scene places it instead of a start zone, so the hello cube has eight concepts.
 - **How a world is divided (2026-11-06),** the owner's model, without a question of its own: one active scene, zones
   in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
-- **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
+- **Question 8 part b (2026-11-07), which decides question 8:** the generator reads a system's signature from the compiler, a parameter's
   meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
   into files and not committed. Systems are free functions named by their kama path (`towers::fire`), and a singleton
   is now a world component. Then the vocabulary: a **module** (engine or game) is one kama module, a **processor** is
@@ -38,9 +38,10 @@ singleton is now a world component.
   prefab variants, `main` as the default layer, a prefab naming its layer, and zone files only where something is
   authored, within a scene's bounds. The generator's naming rule is decided, a bare "layer" is a scene's layer, the
   engine's levels of code are tiers, and a content layer is in full a content database priority level. A create
-  queue creates its prefab's family.
+  queue creates its prefab's family. The day-one engine components are Transform (on std::math, with a quaternion),
+  Mesh, Material, Camera, Light and Actions, with the world components Time and Environment.
 
-The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
+Question 9 is open; it was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
 
 ## What the vision asks
@@ -125,8 +126,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
    How are large components kept off the stack (the KM-29 lesson)?
 7. **The prototype path.** *(Decided 2026-11-05, below.)* A Three.js-style prototype wants "make a cube, give it a spin". What is the shortest correct
    spelling in the component model ([ai-first-api.md](ai-first-api.md))?
-8. **Growing in phases.** *(Required components and part a decided 2026-11-06, below; part b, the spellings and
-   names, is open.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
+8. **Growing in phases.** *(Decided: required components and part a on 2026-11-06, and part b, the spellings and
+   names, on 2026-11-07, below.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
 9. **World data.** *(Added 2026-11-05 at question 2.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
@@ -1566,3 +1567,55 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
   - **Probed on 0.9.867,** in one file with the generated parts written by hand: a generic `Create<P>`; a family of
     three (`bullet`, `fastBullet`, and a mod's `plasmaBullet` appended at load, with no build); two turrets holding
     different `BulletPrefabId`s, firing through one queue. It printed *"queued 2 bullets from a family of 3 prefabs"*.
+- **2026-11-07, the owner: the day-one engine components; question 8 is decided.** "I think this all seems to make
+  sense... especially since we will be refining and adding as we build."
+  1. **Day one is the first slice:** the hello cube, slice A's first-person camera over a level, and slice B's recorded
+     replay, since nothing is frozen before 1.0.0 (part a). Audio, UI, physics, streaming and netcode stay after the
+     gate, as the roadmap has them, and their components arrive with them.
+  2. **The set:**
+
+     | Component | Tier or module | Holds |
+     |---|---|---|
+     | `Transform` | world tier | `position` and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` and the like |
+     | `Mesh` | render | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
+     | `Material` | render | a lit material (base colour, metallic, roughness), or a glTF one |
+     | `Camera` | render | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
+     | `Light` | render | `Directional`, `Point` or `Spot`, with colour, intensity and range |
+     | `Actions` | input | generated per game; the engine fixes `player` |
+     | `Time` (world component) | frame | the step's length and number |
+     | `Environment` (world component) | render | ambient light and the clear colour, later sky and fog |
+
+     The tier diagram's `MeshRef` is `Mesh`.
+  3. **Each module designs its components' fields:** rendering question 2 and KYR-9 for Mesh, Material, Camera, Light
+     and Environment; KYR-54 for Actions; question 9 for Transform's position. This question settles the set, the
+     names and the tiers. They are ordinary components, with records, merge patches and required components, like a
+     game's.
+  4. **Transform holds kama's `std::math::Vec3` and `Quat`,** float32, with `rotateY(by:)` and the like, so there is one
+     way across kama. The hello cube's `t.yaw = t.yaw + …` becomes `t.rotateY(by: s.rate * time.dt);`, the same line
+     count, and a record mirrors the code: `"Transform": { "position": { "x": -20 } }`.
+     - **Probed on 0.9.867:** `rotateY(by: 0.5)` composes (`w` = 0.9689, the cosine of 0.25). A record cannot hold a
+       `Vec3` or a `Quat` (*"`Vec3` has none"*), so KY-34 is filed, and until kama answers, the generator writes
+       Transform's record form.
+     - **The owner asked whether quaternions are still the best choice, and about rotors.** A rotor of 3D geometric
+       algebra is the same four numbers as a unit quaternion and composes the same way. What geometric algebra adds is
+       the derivation, any number of dimensions, and motors, which carry a rotation and a translation in one, as dual
+       quaternions do. glTF stores a node's rotation as a quaternion, WebXR and OpenXR give poses as quaternions, and
+       Jolt takes them *(general knowledge, not checked here)*, so Transform keeps a quaternion and converts nothing at
+       those borders. A rotor or motor type can be tried later, as a math type or a component of its own, without a
+       break. Marc ten Bosch's "Let's remove Quaternions from every 3D Engine" and Jeremy Ong's Klein library argue for
+       and implement the geometric-algebra form *(from memory, not checked)*.
+  5. **What waits,** each with its own row and none a break: `StreamingSource` (KYR-61; one zone needs none), rigid
+     bodies and colliders (KYR-17), audio sources and the listener (KYR-15), UI (KYR-16), network identity (KYR-18),
+     animation, the owner's general motion component, and parent and child.
+     - **Parent and child is the transform hierarchy,** as Unity's `Transform.parent` is (the owner asked): a child's
+       transform is relative to its parent's, and moving the parent moves its children. Here it would be a
+       relationship (part a) plus a world transform computed from the chain each step, parents before children, in a
+       sorted order. It is KYR-62.
+     - **Until then a glTF level's node tree is flattened at load** into entities with their world transforms. Slice
+       A's level is static, so nothing is lost.
+  6. **No `Name` component on day one.** Some engines give every entity a name at run time, for debugging, editor lists
+     and finding by name (Unity's `GameObject.name`, Godot's `Node.name`, Bevy's `Name`; general knowledge). Here a
+     placed entity's name lives in its zone's records, and the loader's map from placed names to handles answers "where
+     is door-12" for the agent surface (KYR-25), so no string rides on every entity, and a created bullet has none. A
+     `Name` component can arrive later without a break.
+  - **Question 8 is decided:** required components and part a on 2026-11-06, and part b on 2026-11-07.

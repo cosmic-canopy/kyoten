@@ -130,7 +130,7 @@ answer is recorded in its doc's *Decided*:
     platform. UUIDv7 was considered and fits ids made across machines instead (project-database questions 6 and 10).
   - **Records name entities by string,** resolved to handles when a zone loads and hashed only inside the engine.
   - **A lookup answers here, gone or unloaded.**
-- **[design/components.md](design/components.md), question 8 part b, in part** (2026-11-07):
+- **[design/components.md](design/components.md), question 8 part b** (2026-11-07), which decides question 8:
   - **A processor's parameters mean what their types say,** and names are free. The generator reads only the functions
     a processor record names, and asks the compiler for each parameter's mode and type (`kama query` gives both since
     0.9.863, which fixed KY-24).
@@ -166,7 +166,7 @@ answer is recorded in its doc's *Decided*:
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), the rest of question 8 part b.**
+1. **[design/components.md](design/components.md): question 8 is decided, and question 9 is next.**
    - **Done since:** REFERENCE.md, AGENTS.kyoten.md and this file use module and processor, and REFERENCE maps other
      engines' words (*Coming from another engine*). Keyed random values are `<Processor>RandomKeys`, a `RandomKey`
      per purpose, and the group inside a layer is a **layer group**.
@@ -184,15 +184,18 @@ answer is recorded in its doc's *Decided*:
    - **A create queue creates its prefab's family** (the owner: "So far I think everything you mentioned seems
      good"): the prefab and its variants with the same components, a mod's included, chosen by data through a
      generated `BulletPrefabId`. A variant with no budget of its own lives in its base's table.
-   - **Then:** the day-one engine components, which closes question 8.
+   - **The day-one engine components** (the owner: "I think this all seems to make sense... especially since we
+     will be refining and adding as we build"): Transform on std::math with a quaternion, Mesh, Material, Camera,
+     Light and Actions, with the world components Time and Environment. Parent and child (the transform hierarchy)
+     is KYR-62, and KY-34 is filed. **Question 8 is decided.**
    - **Then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized
      under components.md's *What already exists*, by question.
    - Question 1's *Decided* lists what it leaves to each later question.
-2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **33 questions remain:** components 2 (8 and 9;
-   question 9 was added as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
+2. Then the rest of the [narrowed table](#narrowed-2026-11-01). **32 questions remain:** components 1 (9, added
+   as question 2 was decided), replay-and-determinism 5, project-database 7, web-and-native 7,
    target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
    were. The owner asked for the count of questions left each time one is put to them.
 
@@ -222,8 +225,8 @@ answer is recorded in its doc's *Decided*:
   the 2026-11-07 list the same day** (re-checked on 0.9.867): KY-24 to KY-27, KY-29 and KY-30 are fixed and removed;
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
   **Still to relay:** KY-31's other half (`docs/packages.md` still shows comments in `kama.json` examples), KY-32
-  (`kama check` passes a manifest whose `entry` value is unquoted, and `kama run` calls it missing) and KY-33 (a module
-  missing an imported symbol is spelt `game.gen`).
+  (`kama check` passes a manifest whose `entry` value is unquoted, and `kama run` calls it missing), KY-33 (a module
+  missing an imported symbol is spelt `game.gen`) and KY-34 (std::math's `Vec3` and `Quat` are not serializable).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -415,7 +418,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 to KY-19, KY-21 to KY-23, KY-28 and KY-31 to KY-33 are open there; take the next id from its counter.
+  KY-17 to KY-19, KY-21 to KY-23, KY-28 and KY-31 to KY-34 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
