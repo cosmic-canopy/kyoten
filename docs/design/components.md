@@ -1,7 +1,7 @@
 # Components: how a game holds state and behaviour
 
-**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, part of question 8 was decided, question 7's hello
-cube revised, and how a world is divided decided.
+**Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, question 8's first part was decided (required
+components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -18,7 +18,9 @@ cube revised, and how a world is divided decided.
   most 20 non-blank lines and seven concepts. Defaults are records, actions are generated fields, and bindings are
   records of their own.
 - **Question 8, in part (2026-11-06):** required components. Any component may require others; one with defaults is
-  added at build time, one without must be listed, and the mapping is shown and can be queried.
+  added at build time, one without must be listed, and the mapping is shown and can be queried. Then part a: from
+  1.0.0 the promise covers what a game touches, and nothing is frozen before; the handle is 8 bytes, a slot and a
+  generation; records name entities by string; a lookup answers here, gone or unloaded.
 - **Question 7, revised (2026-11-06):** actions belong to a player, not to the world. The cube names the player that
   drives it, and a scene places it instead of a start zone, so the hello cube has eight concepts.
 - **How a world is divided (2026-11-06),** the owner's model, without a question of its own: one active scene, zones
@@ -109,8 +111,8 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
    How are large components kept off the stack (the KM-29 lesson)?
 7. **The prototype path.** *(Decided 2026-11-05, below.)* A Three.js-style prototype wants "make a cube, give it a spin". What is the shortest correct
    spelling in the component model ([ai-first-api.md](ai-first-api.md))?
-8. **Growing in phases.** *(Required components decided 2026-11-06, below; the rest is open.)* Unity's component
-   model grew in phases (KYR-3). Which parts of kyoten's model must be right
+8. **Growing in phases.** *(Required components and part a decided 2026-11-06, below; part b, the spellings and
+   names, is open.)* Unity's component model grew in phases (KYR-3). Which parts of kyoten's model must be right
    on day one, because changing them later would break every game, and which can arrive later without that?
 9. **World data.** *(Added 2026-11-05 at question 2.)* Some data belongs to space, not to an entity: a voxel world, a
    heightfield, a destruction state, a generated region. Question 2 puts it in world stores of cells, keyed by
@@ -899,3 +901,76 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
       from source control to make changes to the Actors in the world", and streaming reads one zone without the rest;
     - **how a drawn-only layer reaches rendering's screen layers** (rendering question 9).
   - **On the roadmap:** KYR-61. The first slice needs only one scene, one zone, one layer and one group (KYR-7).
+
+- **2026-11-06, the owner: question 8, part a: what is promised, and the handle.** "So far this sounds good to me."
+  Question 8 is taken in two parts: this one, and the spellings and names (part b).
+  - **Choice 1: the promise covers what a game touches, and nothing behind it.**
+    - **The research's day-one list** ([../research/component-models.md](../research/component-models.md) § 5.8) is
+      now decided in full: what a component is (question 2), where a system states its phase and the phase names
+      (question 3, frame-phases), order and determinism (question 4), the override format (question 5,
+      project-database question 11), Output reads and never writes (frame-phases), and entity identity (choice 3).
+    - **Promised:** a game's records, its system signatures, the engine components and generated names it uses,
+      handles, and the order.
+    - **Not promised:** tables, chunks, N, the generated loops, the scheduler and the layout of side stores. A game
+      never names them, so any release may change them.
+    - **Why:** Unity's surface stayed for twenty years, and its costly phase was a second model beside it. Bevy's
+      largest break was a change to its surface, removing stages in 0.10 (the research, §§ 1 and 5.8).
+  - **Choice 2: nothing is frozen before 1.0.0.** The owner: "I do want to make sure we have room to iterate before we
+    tag 1.0.0... That is basically the same thing kama has been doing. Anotherwords I do not want to be artificially
+    limited on what we do because it 'breaks' something. Kyoten has no consumers yet." From 1.0.0 the promise is kept
+    by:
+    - **records that never change meaning silently,** with kama's own tools: a field's wire name and id survive a
+      rename in code, `@deprecated` on a field means read when present and never written, and new fields arrive with
+      defaults;
+    - **a migration when a record's shape must change:** a patch from the old shape to the new, applied when the stack
+      loads, with the engine's version beside the stack's identity in every save;
+    - **the examples as the compatibility test:** the hello cube and the example games build in CI against every
+      engine change (KYR-13, KYR-14).
+    - **What can arrive later without a break:** parallel work inside a phase, nested prefabs and variants,
+      relationships, change hooks, a new storage layout, and editor tools.
+  - **Choice 3: kyoten's own handle, 8 bytes: a 32-bit slot and a 32-bit generation.**
+    - **A slot** is an entry in the world's lookup table, saying where an entity lives now (zone, layer, table, chunk,
+      row). **A generation** is a counter in the slot, bumped each time the slot is freed. A handle carries the
+      generation it was given, so a stale handle answers "gone" rather than reaching whatever reused the slot.
+    - **Its requirements:**
+      - the same bytes on every platform, in memory and written out;
+      - small, since components hold handles and network messages carry them every step;
+      - detects a stale reference, and survives moves (swap-and-pop, zone and layer changes);
+      - deterministic: the same history gives the same handles, since randomness is keyed by handle and ties break by
+        handle (question 4);
+      - an array index rather than a search, and compares as a number;
+      - valid while its zone is unloaded (choice 5).
+    - **Why not kama's `Handle`:** its index is an `isize`. *Probed on 0.9.855:* it is 16 bytes natively and 8 on
+      wasm, and a component holding one is 24 and 12. N comes from an archetype's bytes, so chunks would hold
+      different counts natively and on the web, and results folded chunk by chunk (question 4) would group
+      differently. A 32 + 32 handle was 8 bytes on both, and the component 12. kama's `Handle` stays right for kama's
+      `SlotMap`, which indexes buffers by `isize`.
+    - **Its wire form,** how it is written in a save, a replay or a network message, is fixed from 1.0.0, so a file
+      written by one version or platform reads on another. Bevy promises the opposite: its bits are "liable to change
+      from release to release", and `to_bits` is not for "serialization between runs" (0.20.1,
+      [Entity](https://docs.rs/bevy/latest/bevy/ecs/entity/struct.Entity.html)). Unity Entities' `Entity` is also an
+      index and a version
+      ([Entity](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.Entity.html)).
+    - **Considered: UUIDv7,** which the owner asked about. RFC 9562 (May 2024) makes it 16 bytes, a 48-bit Unix
+      timestamp in milliseconds and random bits, ordered by time because "Time-ordered monotonic UUIDs benefit from
+      greater database-index locality". kama ships it as `std::uuid::Uuid.v7()`, from the wall clock and the OS's
+      generator. As a handle it is twice the size and needs a map search, and it is not deterministic: two machines in
+      lockstep would give one spawn two ids. It fits ids made outside the simulation, on many machines: records
+      agents create, assets, saves, replays, matches and mods (noted at project-database questions 6 and 10).
+  - **Choice 4: two identities, and names hashed only inside the engine.**
+    - **The runtime handle** is used in code and kept in saves. **A placed entity's name** in its scene's records
+      ("door-12") is what other records refer to. The loader resolves names to handles when a zone loads, and records
+      never hold runtime handles.
+    - **Authors always write strings.** The owner: "I know some games use a hash instead of strings but you can use
+      strings with utilities that hash them." Names the build knows (prefabs, actions, layers, groups) become generated
+      fields and constants, so a typo is a compile error. The loader may key placed names by a 64-bit hash, and the
+      wire may carry it. The build checks a scene's names for collisions, and loading checks names that arrive later
+      over the stack, so a collision is refused rather than merely unlikely. Godot interns names in `StringName`
+      because "Comparing them is extremely fast compared to regular Strings" (4.7,
+      [StringName](https://docs.godotengine.org/en/stable/classes/class_stringname.html)). Once a hash is saved, its
+      function is pinned from 1.0.0.
+  - **Choice 5: a lookup answers here, gone, or unloaded.** A handle to an entity in an unloaded zone stays valid and
+    resolves again when its zone loads, so its slot stays reserved meanwhile. Which unloaded entities keep a slot in a
+    very large world, and the lookup table's own ceiling, are KYR-61's.
+  - **Left to part b:** the spellings (a lookup, a command, the two read modes, a keyed draw, a sort key, a budget, a
+    requirement, scene records), the day-one engine components, the generator's naming rule, and the names.

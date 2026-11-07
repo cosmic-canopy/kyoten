@@ -55,6 +55,9 @@ least prior art in the peers, and the one most worth getting right before code.
 6. **How do agents coordinate?** Concurrently, on separate machines (above). Roles (a design agent, an audio
    agent…), claims or locks on records, change proposals and review, conflict resolution, and an event log of who
    changed what and why (provenance).
+   - *Noted 2026-11-06 at components question 8:* ids made on many machines without coordination may be UUIDv7s
+     (RFC 9562), which kama ships as `std::uuid::Uuid.v7()`: time-ordered, so "Time-ordered monotonic UUIDs benefit
+     from greater database-index locality". They are never an entity's handle, which must be deterministic.
 7. **What do humans see and do?** A live feed of changes, approve or reject, the audit trail, and tuning edits
    that flow back into the records exactly as an agent's would.
 8. **How does the running game read it?** Directly in development, with hot reload, and from a baked, packed form
@@ -64,6 +67,8 @@ least prior art in the peers, and the one most worth getting right before code.
    set?
 10. **How does it relate to cosmic-forge?** Shared ids and provenance for assets, and forge writing into the
     project database or kyoten reading forge's outputs.
+    - *Noted 2026-11-06 at components question 8:* an asset's shared id is a candidate for UUIDv7, as question 6's
+      note says; so are saves, replays, matches and mods.
 11. **Layers, in detail.** *(Decided 2026-11-05 with components question 5, below.)* What is the priority order (the base game, DLC, patches, mods, a
     developer's local overrides), and does a higher layer override a whole record or single fields? How do consistency
     checks (question 5) judge a stack rather than one source? A replay must know which layers were loaded, since one id

@@ -120,10 +120,20 @@ answer is recorded in its doc's *Decided*:
     in every zone.
   - **Groups** nest inside a layer, as switches without memory.
   - Streaming is KYR-61.
+- **[design/components.md](design/components.md), question 8, part a** (2026-11-06):
+  - **Nothing is frozen before 1.0.0** (the owner: "Kyoten has no consumers yet"). From 1.0.0 the promise covers what
+    a game touches (records, system signatures, engine components and generated names, handles, the order), and
+    nothing behind it.
+  - **The handle** is kyoten's own, 8 bytes: a 32-bit slot and a 32-bit generation, the same on every platform. kama's
+    `Handle` is 16 bytes natively and 8 on wasm (probed on 0.9.855), which would give chunks different counts per
+    platform. UUIDv7 was considered and fits ids made across machines instead (project-database questions 6 and 10).
+  - **Records name entities by string,** resolved to handles when a zone loads and hashed only inside the engine.
+  - **A lookup answers here, gone or unloaded.**
 
 **Next, in order:**
 
-1. **[design/components.md](design/components.md), the rest of question 8, then question 9.**
+1. **[design/components.md](design/components.md), question 8 part b** (the spellings, the day-one engine
+   components, the generator's naming rule and the names), **then question 9.**
    - Its *What the vision asks* carries every game type.
    - **KYR-58 is done** ([research/game-types.md](research/game-types.md), 2026-11-04). It ran thirteen kinds of game
      on paper, and found none the decided frame model cannot express. Its fourteen conditions, G1–G14, are summarized

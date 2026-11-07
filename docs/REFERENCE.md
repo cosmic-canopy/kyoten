@@ -77,7 +77,7 @@ which are question 9.
   ├─ Side stores: Burning, Stunned       any entity may gain or lose one
   ├─ Singletons: physics world, RNG      one per world or zone, owned by a module
   └─ Assets (read-only, by handle): meshes, clips, navmeshes
- Entity = Handle ──lookup──► (table, chunk, slot), and a group id it carries
+ Entity = Handle (slot, generation) ──lookup──► (zone, layer, table, chunk, row), and a group id it carries
 ```
 
 ## How a world is divided
@@ -190,7 +190,8 @@ the large engine areas are **engine modules**; "subsystem" is retired.
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
 | **Prefab** | a named archetype with its defaults. Prefabs of one archetype share generated code, so a record alone can add one | decided (question 5, choice 3) |
 | **Entity** | one thing in the world, an instance of a prefab | decided |
-| **Handle** | an entity's id, reaching it through a lookup (handle → table, chunk, slot) | decided; its form is question 8 |
+| **Handle** | an entity's runtime id: 8 bytes, a 32-bit slot in the world's lookup table and a 32-bit generation, the same on every platform. The slot says where the entity lives now; the generation, bumped when the slot is freed, makes a stale handle answer "gone". A lookup answers here, gone or unloaded | decided (question 8, 2026-11-06) |
+| **Placed name** | a placed entity's name in its scene's records ("door-12"), which other records use to refer to it. The loader resolves it to a handle when its zone loads, and may key it by a 64-bit hash | decided (question 8, 2026-11-06) |
 | **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
 | **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06) |
 | **Chunk** | a fixed block of up to N entities of one table, one array per component: the unit of parallel work, of a snapshot and of a budget. N is chosen per archetype from a 16 KiB target, at most 128 | decided (N's rule is measured in slice B) |
@@ -248,6 +249,15 @@ Whether the simulation is also bit-identical across platforms is
 - **The stack is part of the history:** its identity is in every save, replay and match, and a source that changes
   while running applies at a step boundary as a recorded input.
 
+**What is promised** (*decided*, components question 8, 2026-11-06):
+- **Nothing is frozen before 1.0.0.** kyoten iterates freely, as kama does at 0.9.x.
+- **From 1.0.0, the promise covers what a game touches:** its records, its system signatures, the engine components
+  and generated names it uses, handles, and the order. Tables, chunks, N, the generated loops, the scheduler and the
+  layout of side stores are not promised, because a game never names them.
+- **It is kept** by records that never change meaning silently (wire names and ids, `@deprecated`, new fields with
+  defaults), a migration when a record's shape must change, the engine's version in every save, and the examples
+  built against every engine change.
+
 **How memory is bounded** (*decided*, components question 6):
 - **Every store has a ceiling from a budget record.** By default it is reserved when its zone or world is created; a
   table may instead commit chunks one at a time up to its ceiling, at the end of a phase, never moving earlier ones.
@@ -284,6 +294,8 @@ Each row is a choice kyoten made or proposes, the engines that made it before, a
 | Sets that load as one, across the whole world | Unreal's Data Layers, "loaded but not visible" or "loaded and visible", used for "the transition between the Light World and the Dark World" ([Data Layers](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---data-layers-in-unreal-engine)); client-only layers switched per machine, runtime ones by the server ([API](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Engine/UDataLayerManager/SetDataLayerInstanceRuntimeState)) | flat layers, each a memory block per zone; nested groups switch without memory (2026-11-06) |
 | Far content by distance | Unreal's HLOD layers, each with its own grid, cell size and loading range: "Using more than one grid can negatively impact performance" ([HLOD](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition---hierarchical-level-of-detail-in-unreal-engine)) | one grid, and each layer names the rings it is on in (2026-11-06) |
 | Content loaded wherever it is | Unreal's "Is Spatially Loaded", turned off ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)) | non-spatial layers, one block for the scene (2026-11-06) |
+| An entity id of an index and a generation | Bevy's `Entity`, whose bits are "liable to change from release to release", and not for "serialization between runs" (0.20.1, [Entity](https://docs.rs/bevy/latest/bevy/ecs/entity/struct.Entity.html)); Unity Entities' `Entity`, an index and a version ([Entity](https://docs.unity3d.com/Packages/com.unity.entities@1.3/api/Unity.Entities.Entity.html)) | 8 bytes on every platform, with a wire form fixed from 1.0.0, since saves keep handles exactly (question 8) |
+| Names compared as numbers | Godot's `StringName`: "Comparing them is extremely fast compared to regular Strings" (4.7, [StringName](https://docs.godotengine.org/en/stable/classes/class_stringname.html)) | names the build knows become generated fields; placed names may be keyed by a hash, checked for collisions (question 8) |
 | Large worlds: doubles only at the absolute position, floats inside | Box3D ([large worlds](https://box2d.org/documentation3d/large-worlds.html)); Unreal 5's double-precision types ([LWC](https://dev.epicgames.com/documentation/en-us/unreal-engine/large-world-coordinates-in-unreal-engine-5)) | proposed: zone-local floats with whole-number zone coordinates (question 9) |
 | An order every game is promised | Godot specifies its order; Unity, Bevy, EnTT and Unreal disclaim it, and Unity's chunk order is "deterministic per world" ([research/component-models.md](research/component-models.md) § 5.4) | promised by the engine, serial and parallel alike (question 4) |
 | Cross-platform physics as a build option | Jolt: deterministic on one platform given the same calls and binary; `CROSS_PLATFORM_DETERMINISTIC` is "approximately 8% slower" ([Jolt](https://jrouwe.github.io/JoltPhysics/index.html)) | replay question 1 |
