@@ -2,7 +2,8 @@
 
 **Status:** questions 1–7 decided on 2026-11-05. On 2026-11-06, question 8's first part was decided (required
 components, what is promised, the handle), question 7's hello cube revised, and how a world is divided decided. On
-2026-11-07, part b began: a system's parameters mean what their types say, and the step's time is a `Time`.
+2026-11-07, part b began: a system's parameters mean what their types say, the step's time is a `Time`, and the
+generator's output is split into files and not committed.
 - **Question 1:** B built on A, with a table of chunks per (zone, prefab) and side stores for components gained at run
   time.
 - **Question 2:** a component is a plain value, with all four kinds of data on day one, and world data is not a
@@ -27,7 +28,8 @@ components, what is promised, the handle), question 7's hello cube revised, and 
 - **How a world is divided (2026-11-06),** the owner's model, without a question of its own: one active scene, zones
   in a grid loaded by rings, flat layers as the unit of loading and memory, and nested groups as switches.
 - **Question 8 part b, in part (2026-11-07):** the generator reads a system's signature from the compiler, a parameter's
-  meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`.
+  meaning comes from its type alone, and `const ref Time time` replaces `float32 dt`. The generator's output is split
+  into files and not committed.
 
 The rest of question 8, and question 9, are open; question 9 was added at question 2. The model's picture and vocabulary are gathered in
 [../REFERENCE.md](../REFERENCE.md).
@@ -1033,3 +1035,50 @@ The rest of question 8, and question 9, are open; question 9 was added at questi
     container by `const ref` is not refused, though the same with a field is). KY-20 is fixed and removed.
   - **Left to part b:** the rest of the list above, the record spellings, the day-one engine components, the
     generator's naming rule and the names.
+- **2026-11-07, the owner: the generator's output is split into files and not committed.** The owner: "I could see the
+  value in not committing generated output at all. It would provide far less noise so perhaps we do start with that.
+  splitting still works well though. it allows for cached kama builds and such as well as organizing the generated
+  logic."
+  - **What:** the generator writes into a git-ignored folder of the game's package (question 1): a file per archetype
+    (its table and chunk types), one per phase (its pass), and small ones for prefabs, draws and actions, each headed as
+    generated. The repository holds the records and the system bodies. The generator runs before a build or a check,
+    and before an editor reads the game.
+  - **Why:** a diff shows the record change and nothing generated, and generated code never conflicts in a merge.
+  - **What it costs:** the game's own systems name generated types (`Create<Bullet>`, `Prefabs`, a system's draws), so
+    a fresh clone, an editor and an agent's `kama check` all need the generator to have run first. kama's manifest has
+    no step that runs a tool before a build (none among the keys `docs/packages.md` lists, read 2026-11-07), so a kyoten
+    command runs it. Whether to ask kama for such a step is open.
+  - **The build cache, probed on 0.9.857:**
+    - A debug build writes one C file per kama source file and keeps each object in `.kama-cache/`. After one file of
+      the generated module was edited, only its object was rebuilt.
+    - A `--release` build folds the program into one C file and caches nothing.
+    - kama's `docs/targets.md` adds that a changed declaration (a new type or field, which most record edits make)
+      rewrites the shared header and recompiles every file. It measures that at 0.37 s cold for 61 files.
+    - So the split mostly buys organization, and the cache helps a change that leaves declarations alone. kama's SPEC
+      still describes the old build, which is KY-27.
+  - **Considered:** committing the output, with CI regenerating and comparing. A diff then shows what a record change
+    did, and a fresh clone builds without the generator, at the cost of noise and of conflicts settled by regenerating.
+  - **Also probed:** the game's modules and the generated module import each other (a system names a generated prefab
+    type, which holds the game's components), and kama loads that cycle once.
+- **Raised by the owner the same day, and open: collisions, readability and soundness.**
+  - **What they asked:** whether objects would scope systems better than free functions ("making sure you don't have
+    'fire' functions all over which is hard to reason about and grep"), and what a singleton is and where it lives.
+    They noted that a singleton is usually a smell unless it is injected.
+  - **Probed on 0.9.857,** with a package of three modules:
+    - **Names:** two modules each export a system `fire`, and they build side by side (`game__towers__fire` and
+      `game__player__fire` in C). kama refuses a second exported `fire` in one module (*"duplicate function 'fire' —
+      kama has no overloading, so a name may be declared only once in its module"*).
+      `kama query <kama.json> <file> --search fire` lists each with its file.
+    - **Functions or methods:** the same system compiles to the same C function in all three forms: a free function, a
+      method of its component, and a static of a type with no fields. A plain method cannot be added to a type another
+      package declares (only a contract's adapter can), so a system that writes the engine's `Transform` cannot live on
+      it.
+    - **State hidden outside the world:** kama allows a module `static`, one per isolate, so each worker would hold its
+      own copy. `kama query --symbols` lists one, and `--refs` finds its uses.
+  - **Proposed:**
+    - A system's name is its kama path (`towers::fire`), never the bare name: in a record, an error, the profiler and
+      the schedule view.
+    - Systems are functions only.
+    - The generator refuses a module `static` in a game's package.
+    - A singleton is a field of the generated world or of a zone, passed only to the systems that name it, and is
+      renamed a **world component**, since "singleton" suggests global access.

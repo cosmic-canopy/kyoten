@@ -36,6 +36,9 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
   layers, [design/project-database.md](design/project-database.md) § Decided).
 - **When a game needs something the engine lacks,** the engine gains it as a pattern or a component every game can use
   (*decided*, [../AGENTS.kyoten.md](../AGENTS.kyoten.md) § Rules).
+- **The generator's output is not committed** (components question 8 part b, 2026-11-07). It is split into files by
+  archetype and by phase, in a git-ignored folder of the game's package, and the generator runs before a build or a
+  check. The repository holds the records and the system bodies.
 
 ## The engine's layers
 
