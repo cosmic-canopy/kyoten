@@ -1603,7 +1603,8 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      count, and a record mirrors the code: `"Transform": { "position": { "x": -20 } }`.
      - **Probed on 0.9.867:** `rotateY(by: 0.5)` composes (`w` = 0.9689, the cosine of 0.25). A record cannot hold a
        `Vec3` or a `Quat` (*"`Vec3` has none"*), so KY-34 is filed, and until kama answers, the generator writes
-       Transform's record form.
+       Transform's record form. *(kama answered the same day: 0.9.872 makes std::math's vectors and quaternion
+       serializable, and the probe's `Transform` reads `{"position": {"x": -20}}` from a record.)*
      - **The owner asked whether quaternions are still the best choice, and about rotors.** A rotor of 3D geometric
        algebra is the same four numbers as a unit quaternion and composes the same way. What geometric algebra adds is
        the derivation, any number of dimensions, and motors, which carry a rotation and a translation in one, as dual

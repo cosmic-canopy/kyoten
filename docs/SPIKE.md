@@ -245,10 +245,9 @@ answer is recorded in its doc's *Decided*:
   KR-333, fixed in `c39d620c` (refused on 0.9.857 and removed, 2026-11-07), and KY-21 became KR-334. **kama took
   the 2026-11-07 list the same day** (re-checked on 0.9.867): KY-24 to KY-27, KY-29 and KY-30 are fixed and removed;
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
-  **Still to relay:** KY-31's other half (`docs/packages.md` still shows comments in `kama.json` examples), KY-32
-  (`kama check` passes a manifest whose `entry` value is unquoted, and `kama run` calls it missing), KY-33 (a module
-  missing an imported symbol is spelt `game.gen`), KY-34 (std::math's `Vec3` and `Quat` are not serializable) and
-  KY-35 (std::math has no `float64` vectors; not blocking).
+  **kama took that list too, the same day** (re-checked on 0.9.872): KY-32, KY-33 and KY-34 are fixed and removed,
+  KY-31's docs half is fixed, and KY-35 is kama KR-343. **Still to relay:** KY-36 (kama's `check-target.sh` says
+  COOP/COEP break a cross-origin WebSocket; the Fetch Standard and a browser say they do not).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -440,7 +439,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 to KY-19, KY-21 to KY-23, KY-28 and KY-31 to KY-35 are open there; take the next id from its counter.
+  KY-17 to KY-19, KY-21 to KY-23, KY-28, KY-31, KY-35 and KY-36 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
