@@ -45,7 +45,15 @@ the design doc it settles before building on it.
    - **The probes behind the answers** sit in `.scratch/step5-main` (the fence's layout, and the generator's two
      passes), `.scratch/step5-content` (content natively, under node and in Edge) and `.scratch/step5-cli` (the tool's
      package). Each is quoted where its decision is recorded.
-3. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
+3. **Also in that session, a docs change** (the owner, 2026-11-08): give the **asset manager** its own roadmap row
+   (KYR-66) and design doc, split out of KYR-29. In the owner's words, it is "something that kyoten games can use to
+   deliver final asset bundles", while cosmic-forge handles most of the raw content creation. Today it is only the
+   "delivery tool" clause in KYR-29. Gather what already bears on it: the 2026-11-05 direction
+   ([SPIKE.md](SPIKE.md) § Standing direction, heavy assets never stored with the code), packs
+   (project-database question 8), KYR-10's web bundling, KYR-21's release bundles, marketplace questions 1 and 2
+   (content packs), and the proposal that a record refers to an asset by id and content hash. Write its open
+   questions, decide nothing, and bring the name to the owner, since the docs say "delivery tool".
+4. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
    change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
    first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5
    callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and
