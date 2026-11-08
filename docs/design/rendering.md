@@ -183,3 +183,32 @@
       warning), so it is a switch a game turns on by measurement, like the job pool.
   11. **Question 4: no double-buffered world,** which would copy every column each step. The `history` a component's
       record asks for already keeps the previous values interpolation needs.
+
+- **2026-11-07, the owner: how shaders are written,** proposed for the bar's "amazing shaders and visuals" and filling
+  in question 2's item 6. "All sounds good to me so far."
+  - **The evidence,** besides the references in the entry above: WESL's Rust implementation has a C library, `wesl-c`,
+    and a command-line tool, `wesl-cli`, among its crates (`webgpu-tools/wesl-rs`, read 2026-11-07), and its site says
+    *"C bindings are available in the Rust implementation"*. three.js's `WebGPURenderer` does not support
+    `ShaderMaterial`, `RawShaderMaterial` or `onBeforeCompile`, so its custom shaders are TSL. Unity's Shader Graph,
+    Unreal's Material Editor, Godot's visual shaders, Babylon.js's Node Material Editor and three.js's TSL each pair a
+    shader language with a graph of nodes for materials.
+  1. **WGSL is the shader language, with WESL for imports.** WGSL is what the browser runs, and Dawn and wgpu-native
+     take it natively, so a shader is never translated between languages. kyoten's tools translate WESL's `import`
+     and `@if` to plain WGSL at build, and again on save in development so a shader hot-reloads, through `wesl-c` or
+     `wesl-cli`; nothing extra ships. The engine's own shaders (the standard lit material, shadows, post-processing)
+     are WESL modules a game imports.
+  2. **Materials are node graphs, kept as records.** The standard lit material has slots (base colour, normal,
+     metallic, roughness, emissive, opacity, a vertex offset), and a material fills any of them with an expression of
+     nodes: textures, noise, time, mixes, a fresnel. That is TSL's model and the node editors'. In kyoten the graph is
+     data, so an agent writes it, the editor draws it, and it hot-reloads, layers and is checked like any record. The
+     graphics library compiles a graph to WGSL, and a kama builder API makes the same graph from code, as TSL does in
+     JavaScript.
+  3. **Full WGSL when nodes are not enough.** A material may replace a slot, or a whole vertex or fragment stage, with a
+     WGSL or WESL function that imports the engine's modules, as a Bevy material does. Nodes never cap what a shader
+     can do.
+  4. **Compute shaders for visuals:** GPU particles, post effects and culling, written the same way and run in Output.
+     Never the simulation, which stays on the CPU because WGSL's floats are not reproducible
+     ([replay-and-determinism.md](replay-and-determinism.md) question 1, KYR-64).
+  - **The production features grow as the examples ask,** with the-mallow-man's measured techniques as the reference:
+    shadows, instancing, a post-processing stack (tone mapping, bloom, anti-aliasing), many lights, then global
+    illumination and the rest. Their order is not decided here.

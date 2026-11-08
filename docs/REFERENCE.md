@@ -97,6 +97,12 @@ Output processors **extract** what is drawn, interpolated and relative to the ca
 buffers once a frame. GPU work reads only the extracted data, serially by default and overlapping the next steps
 when a measurement asks. Each view runs a fixed list of passes until a frame graph is needed.
 
+**Shaders** (*decided*, 2026-11-07, with rendering question 2) are WGSL, with WESL's `import` and `@if` translated to
+plain WGSL by kyoten's tools. A **material** is the standard lit model with slots (colour, normal, roughness,
+emissive…), each filled by a graph of nodes kept as a record, which the graphics library compiles to WGSL; a kama
+builder makes the same graph from code, and a slot or a whole stage may be hand-written WGSL. Compute shaders serve
+Output's visuals, never the simulation.
+
 ## The world at run time
 
 *Decided at components questions 1 and 2* ([design/components.md](design/components.md) § Decided), except world stores,
@@ -439,6 +445,8 @@ words.
 | **Platform** | a kama type implementing kyoten's `Platform` contract: the loop and its frame source, the lifecycle, capabilities, files, and the libraries' window, GPU, audio, input and network. The open ones live in kyoten and its libraries, chosen by `@compileFor`; a console's is a private package the game names for that build | decided (target-platforms questions 1 and 2, 2026-11-07) |
 | **Capability** | something a platform has (pointer lock, threads, files, haptics, XR, a store's services), fixed for a build or changing while running. Asked for in Input and Output, never in the simulation, and never a platform's name | decided (target-platforms question 3, 2026-11-07) |
 | **Feature package** | a package with a backend for an interface kyoten defines, which a game opts into: XR, store services (achievements, leaderboards, cloud saves, presence), later voice | decided (target-platforms question 4, 2026-11-07) |
+| **Material** | how a surface is shaded: the standard lit model's slots (base colour, normal, metallic, roughness, emissive, opacity, a vertex offset), each filled by a graph of nodes kept as a record and compiled to WGSL, or by hand-written WGSL. A `Material` component names one | decided (rendering, how shaders are written, 2026-11-07) |
+| **WESL** | WGSL with `import` and `@if`, translated to plain WGSL by kyoten's tools before the GPU sees it, as Bevy writes its shaders | decided (rendering, how shaders are written, 2026-11-07) |
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
 | **Data kind** | a game's own record kind for keyed data that is neither a component nor a world component (a loot table, dialogue, quests): a kama type listed in its module's records, its entries under `content/`, read through the stack by generated ids | decided (project-database question 1, 2026-11-07) |

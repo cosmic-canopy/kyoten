@@ -244,8 +244,9 @@ answer is recorded in its doc's *Decided*:
    starts from cosmic-forge's `render` (the donors re-checked that day), with the-mallow-man's techniques brought over
    as measured and forge depending on the library; three tiers named by their packages; a fixed pass list per view; the
    day-one render components' fields, a first cut; Output extracts, serially by default and pipelined when measured.
-   Questions 5–10 stay outside the spike. **Next: how shaders are written,** proposed the same day for the bar's
-   "amazing shaders", then [design/ai-first-api.md](design/ai-first-api.md) 2 and 3 and
+   **How shaders are written** (the owner: "All sounds good to me so far"): WGSL with WESL's imports, materials as node
+   graphs kept as records and compiled to WGSL, a full WGSL escape, and compute for Output's visuals only. Questions
+   5–10 stay outside the spike. **Next: [design/ai-first-api.md](design/ai-first-api.md) questions 2 and 3,** then
    [design/examples.md](design/examples.md) 1–3 from the [narrowed table](#narrowed-2026-11-01). **5 questions remain:**
    ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
    of questions left each time one is put to them.
