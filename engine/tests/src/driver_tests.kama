@@ -1,0 +1,111 @@
+// kyoten::frame's serial driver over the `World` contract (frame-phases § Decided, step 4 question 4): `step` runs
+// Input, Update and Constraints once with no clock, and `frame` runs them once per owed step, then Output once. The
+// world and the clock are both injected, so this hand-written world records what it was handed.
+
+import {
+    Tally,
+    kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale,
+    kyoten::frame::step, kyoten::frame::frame,
+};
+
+export { driverTests };
+
+comptime int64 T0 = 5000000000;
+
+// Records each phase call as its initial and its step index ("I0 U0 C0 O0 "), and the dt each phase was last handed.
+type resource Recorder implements World {
+    string log = "";
+    float32 updateDt = 0.0;
+    float32 outputDt = 0.0;
+
+    public ctor make() { }
+
+    public fn void input(const ref Time time) { this.note(phase: "I", time: time); }
+    public fn void update(const ref Time time) {
+        this.note(phase: "U", time: time);
+        this.updateDt = time.dt;
+    }
+    public fn void constraints(const ref Time time) { this.note(phase: "C", time: time); }
+    public fn void output(const ref Time time) {
+        this.note(phase: "O", time: time);
+        this.outputDt = time.dt;
+    }
+
+    fn void note(const ref string phase, const ref Time time) {
+        int64 s = time.step;
+        string was = copy this.log;
+        this.log = "${was}${phase}${s} ";
+    }
+
+    public const fn string calls() { return copy this.log; }
+    public const fn float32 lastUpdateDt() { return this.updateDt; }
+    public const fn float32 lastOutputDt() { return this.outputDt; }
+    public fn void clear() { this.log = ""; }
+}
+
+fn void expectCalls(ref Tally t, const ref string name, const ref Recorder w, const ref string want) {
+    string got = w.calls();
+    if (got == want) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "calls \"${got}\", want \"${want}\""); }
+}
+
+fn void oneStep(ref Tally t) {
+    Recorder w = Recorder.make();
+    Time time = Time.of(dt: Time::dtAt(hz: 60), step: 7);
+    step(world: w, time: time);
+    expectCalls(t: t, name: "driver: step runs Input, Update and Constraints once, in order, with no clock", w: w, want: "I7 U7 C7 ");
+}
+
+fn void firstFrame(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    frame(world: w, clock: c, now: T0);
+    expectCalls(t: t, name: "driver: the first frame owes no step and runs Output once, before any step settles", w: w, want: "O-1 ");
+}
+
+fn void threeSteps(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    frame(world: w, clock: c, now: T0);
+    w.clear();
+    Owed owed = frame(world: w, clock: c, now: T0 + 50000000);      // 50 ms: exactly 3 steps at 60 Hz
+    expectCalls(t: t, name: "driver: three owed steps run Input, Update and Constraints three times, then Output once", w: w, want: "I0 U0 C0 I1 U1 C1 I2 U2 C2 O2 ");
+    bool ok = owed.steps == 3 && owed.first == 0;
+    t.verdict(name: "driver: frame returns what the clock owed", why: ok ? "" : "steps ${owed.steps}, first ${owed.first}");
+    bool stepDt = bitcast<uint32>(w.lastUpdateDt()) == bitcast<uint32>(Time::dtAt(hz: 60));
+    t.verdict(name: "driver: each step is handed the base step's dt", why: stepDt ? "" : "the bits differ");
+    float32 shown = w.lastOutputDt();
+    bool outDt = shown > 0.0499999 && shown < 0.0500001;
+    t.verdict(name: "driver: Output is handed the frame's dt", why: outDt ? "" : "outputDt ${shown}");
+    w.clear();
+    frame(world: w, clock: c, now: T0 + 50000000 + 16666667);
+    expectCalls(t: t, name: "driver: the next frame's step follows on", w: w, want: "I3 U3 C3 O3 ");
+}
+
+fn void atCap(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    frame(world: w, clock: c, now: T0);
+    w.clear();
+    frame(world: w, clock: c, now: T0 + 1000000000);
+    expectCalls(t: t, name: "driver: a stall runs the cap's 5 steps, then Output once", w: w, want: "I0 U0 C0 I1 U1 C1 I2 U2 C2 I3 U3 C3 I4 U4 C4 O4 ");
+}
+
+fn void noneOwed(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    frame(world: w, clock: c, now: T0);
+    frame(world: w, clock: c, now: T0 + 16666667);
+    c.setScale(to: TimeScale.paused());
+    w.clear();
+    frame(world: w, clock: c, now: T0 + 2 * 16666667);
+    expectCalls(t: t, name: "driver: paused, a frame runs only Output, at the last settled step", w: w, want: "O0 ");
+}
+
+fn void driverTests(ref Tally t) {
+    oneStep(t: t);
+    firstFrame(t: t);
+    threeSteps(t: t);
+    atCap(t: t);
+    noneOwed(t: t);
+}

@@ -1,0 +1,52 @@
+// kyoten::frame's serial driver: the four phases, Input → Update → Constraints → Output, always in that order
+// (frame-phases § Decided, question 1 and step 4 question 4).
+//
+// - **The world is a contract, and the driver is generic over it,** so each phase call is direct: kama's SPEC, "a
+//   generic bounded by a contract calls each instance directly". The generated world implements it (step 5), and a
+//   test hands in a world of its own.
+// - **The world and the clock are injected** (AGENTS.kyoten.md § Rules): `frame` takes both, and owns neither.
+// - **`step` runs one simulation step with no clock,** as a replay and a test do: the clock is off the deterministic
+//   path.
+// - **`frame` runs Input, Update and Constraints once per step the clock owes, then Output once.** Output's `Time`
+//   carries the frame's real dt and the last settled step (-1 before the first step settles).
+// - **Left to their own steps:** rate gating and Constraints' iterations, inside the generated phase calls (step 5);
+//   the loop that owns the frame, `run`, on std::app's `App` (step 7); Input's hand-off (step 8); the parallel
+//   schedule, behind the `PARALLEL` flag, when a measured scene asks for it.
+// - **The render fraction** is computed by the clock and returned by `frame`. Output's blend reaches it when rendering
+//   question 4's hand-off is built (step 9); until then `output` takes only `Time`, as decided.
+
+import { Time, Clock, Owed };
+
+export { World, step, frame };
+
+// What the driver runs: one call per phase, each handed its `Time`. Output reads the simulation and never writes it;
+// the generated world holds that by handing Output's processors their components as `const ref` (step 5).
+type contract World for value, resource {
+    fn void input(const ref Time time);
+    fn void update(const ref Time time);
+    fn void constraints(const ref Time time);
+    fn void output(const ref Time time);
+}
+
+// One simulation step: Input, Update and Constraints, with the `Time` the caller hands in.
+fn void step<W: World>(ref W world, const ref Time time) {
+    world.input(time: time);
+    world.update(time: time);
+    world.constraints(time: time);
+}
+
+// One display frame: asks the clock what `now` (the frame source's timestamp, in nanoseconds) owes, runs each owed
+// step with its base `Time`, then Output once, and returns what the clock owed.
+fn Owed frame<W: World>(ref W world, ref Clock clock, int64 now) {
+    Owed owed = clock.advance(now: now);
+    float32 dt = clock.dt();
+    int64 i = 0;
+    while (i < owed.steps) {
+        Time time = Time.of(dt: dt, step: owed.first + i);
+        step(world: world, time: time);
+        i = i + 1;
+    }
+    Time shown = Time.of(dt: owed.frameDt, step: clock.settled() - 1);
+    world.output(time: shown);
+    return owed;
+}
