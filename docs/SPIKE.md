@@ -222,15 +222,20 @@ answer is recorded in its doc's *Decided*:
    everywhere, kyoten's UI profile, checked at build; no webview natively; UI shows what Output writes and sends
    recorded actions; UI documents are content, with their bindings checked; native accessibility is KYR-16's. The
    headset is two platform implementations on the seam, and players reach Quest natively first (xr.md question 1).
-4. **[design/project-database.md](design/project-database.md), in part:** questions 1–4 are decided (2026-11-07, the
-   owner: "This all sounds good to me so far"). One database with two halves, game data and the wiki, sharing ids and
-   queries; data kinds for a game's own keyed data; files in git as the reference backend; records merged by field
-   (`kyoten merge`, `kyoten fmt`), with the merged result checked; the wiki one source, generated pages and Markdown
-   pages with checked links; kama types the only schema, a JSON Schema exported by the generator, and
-   deprecate-then-migrate. **Next: its questions 5, 6 and 8** (consistency, how agents coordinate, and how the running
-   game reads), then the rest of the [narrowed table](#narrowed-2026-11-01). **15 questions remain:** project-database
-   3, target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
-   were. The owner asked for the count of questions left each time one is put to them.
+4. **[design/project-database.md](design/project-database.md) is decided,** questions 1–6 and 8 (2026-11-07), as a first
+   version that building games will revise (the owner: "We will know more during the actual game development cycle how
+   well it works and what changes we need"); 7, 9 and 10 wait for their builds. Questions 1–4: one database with two
+   halves, game data and the wiki, sharing ids and queries; data kinds for a game's own keyed data; files in git as the
+   reference backend; records merged by field (`kyoten merge`, `kyoten fmt`), with the merged result checked; the wiki
+   one source, generated pages and Markdown pages with checked links; kama types the only schema, a JSON Schema exported
+   by the generator, and deprecate-then-migrate. Questions 5, 6 and 8: checks of shape, references and rules written in
+   kama, a failed hot reload keeping the last good stack; agents meeting in git, tasks as wiki pages with advisory
+   claims, provenance in commit trailers; humans override everything, roles and approvals off by default; a pack per
+   source when shipped; captures for the wiki's screenshots. **Next:
+   [design/target-platforms.md](design/target-platforms.md),** questions 1–4, then rendering, ai-first-api and examples
+   from the [narrowed table](#narrowed-2026-11-01). **12 questions remain:** target-platforms 4, rendering 3,
+   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
+   of questions left each time one is put to them.
 
 **To raise with the owner:**
 

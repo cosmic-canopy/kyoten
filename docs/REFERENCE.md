@@ -397,6 +397,14 @@ checked like any reference. The files live in git, the reference backend. `kyote
 to a record by field and `kyoten fmt` keeps one layout. kama types are the only schema, and the generator exports a
 JSON Schema of each for editors and agents.
 
+**Checks, agents and shipping** (*decided*, project-database questions 5, 6 and 8, 2026-11-07, a first version that
+building games will revise). Every write is checked for shape and references; `kyoten check` and CI add the rules a
+module writes in kama, CI checks every merged result, and a hot reload that fails keeps the last good stack. Agents
+meet in git, each on its own branch. Tasks are wiki pages with advisory claims, and each commit's trailers carry its
+provenance. Humans override everything, and roles and approvals are off until a project turns them on. A shipped
+game reads a **pack** per source, its merge patches in JSON, through the same stack. A wiki's screenshots are
+**captures**, kept in the asset store with the recipe that retakes them.
+
 ## The vocabulary
 
 *Decided at components question 3, choice 1 (2026-11-05), and renamed at question 8 part b (2026-11-07):* a
@@ -417,6 +425,8 @@ words.
 | **Content layer** | short for a **content database priority level**: a named slot in the order of sources, engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it. Always written with "content", since a bare "layer" is a scene's | decided (project-database question 11); named in full at components question 8 part b (2026-11-07) |
 | **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, and the content patch is the content layer that holds them | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
 | **Wiki** | the project database's other half: the game's direction, design notes, decisions and tasks. Generated pages for every record and written Markdown pages under `wiki/`, sharing the records' ids. Never read by the running game, and not layered | decided (project-database questions 1 and 3, 2026-11-07) |
+| **Pack** | one source as a shipped game reads it: its merge patches, checked and joined into one JSON file, with its id, version, hash and the commit it was baked from. A source like any other, so DLC and mods still layer by field | decided (project-database question 8, 2026-11-07) |
+| **Capture** | a wiki's screenshot or clip, kept in the asset store with the recipe that took it (scene, build, stack, step, view), so the tools can tell it is stale and retake it | decided (project-database question 6, 2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama. Procedural generation is the **world generator**, always so called | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |

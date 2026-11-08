@@ -1,8 +1,9 @@
 # The project database and wiki
 
-**Status:** draft for the design spike; its build is KYR-24. Questions 1–4 and 11 are decided (11 on 2026-11-05, 1–4 on
-2026-11-07); 5, 6 and 8 are open in the spike, 7 waits for KYR-26, 9 for KYR-25 and 10 for KYR-29. On 2026-11-07 a
-content layer was named in full a **content database priority level**, and a source's field changes a **merge patch**.
+**Status:** draft for the design spike; its build is KYR-24. Questions 1–6, 8 and 11 are decided (11 on 2026-11-05, the
+rest on 2026-11-07, a first version that building games will revise); 7 waits for KYR-26, 9 for KYR-25 and 10 for
+KYR-29. On 2026-11-07 a content layer was named in full a **content database priority level**, and a source's field
+changes a **merge patch**.
 
 ## What the vision asks
 
@@ -51,19 +52,19 @@ least prior art in the peers, and the one most worth getting right before code.
 4. **Who defines the schema?** *(Decided 2026-11-07, below.)* The engine ships the core schemas (transform, mesh, sound,
    timeline…) and a game extends them, presumably typed through kama serde so a record and the component that reads it
    cannot drift. How does a game add a record type?
-5. **What does "consistent" guarantee?** Referential integrity (every id referenced exists), schema validity, and
-   cross-system invariants (a level's spawn points are on navigable ground). Which are checked when, and who is
-   told when one breaks?
-6. **How do agents coordinate?** Concurrently, on separate machines (above). Roles (a design agent, an audio
-   agent…), claims or locks on records, change proposals and review, conflict resolution, and an event log of who
-   changed what and why (provenance).
+5. **What does "consistent" guarantee?** *(Decided 2026-11-07, below.)* Referential integrity (every id referenced
+   exists), schema validity, and cross-system invariants (a level's spawn points are on navigable ground). Which are
+   checked when, and who is told when one breaks?
+6. **How do agents coordinate?** *(Decided 2026-11-07, below.)* Concurrently, on separate machines (above). Roles (a
+   design agent, an audio agent…), claims or locks on records, change proposals and review, conflict resolution, and an
+   event log of who changed what and why (provenance).
    - *Noted 2026-11-06 at components question 8:* ids made on many machines without coordination may be UUIDv7s
      (RFC 9562), which kama ships as `std::uuid::Uuid.v7()`: time-ordered, so "Time-ordered monotonic UUIDs benefit
      from greater database-index locality". They are never an entity's handle, which must be deterministic.
 7. **What do humans see and do?** A live feed of changes, approve or reject, the audit trail, and tuning edits
    that flow back into the records exactly as an agent's would.
-8. **How does the running game read it?** Directly in development, with hot reload, and from a baked, packed form
-   when it ships? Where is that boundary?
+8. **How does the running game read it?** *(Decided 2026-11-07, below.)* Directly in development, with hot reload, and
+   from a baked, packed form when it ships? Where is that boundary?
 9. **What interface do agents use?** Files plus `kama query`, a `kyoten` CLI (`kyoten db get/set/query`), an MCP
    server, an HTTP API shared with the human tools, a JSON schema export for tool use. One of these, or a layered
    set?
@@ -247,3 +248,69 @@ least prior art in the peers, and the one most worth getting right before code.
      record that uses it. kama's `@deprecated` on a field (*"read when present, never written"*, kama's `AGENTS.md`)
      keeps an old name readable for a time, and `kyoten migrate` rewrites the records in one commit, so mods made
      against an older version still load.
+- **2026-11-07, the owner: questions 5, 6 and 8, consistency, coordination and how the running game reads.** Asked
+  what it means in practice, the owner set its purpose: it is for games, *"a literal wiki of documentation,
+  screenshots, etc. to describe gameplay systems and such to coordinate across agents"*; *"Humans always have the say in
+  overridding?"*; and *"I don't want it to slow development... I am hoping it keeps things on track and allows multiple
+  agent sto run in parallel on different features, etc."* Then, on items 1–14: "I think this all sounds good so far. We
+  will know more during the actual game development cycle how well it works and what changes we need." So this is a
+  first version, revised as games are built on it, slice C (KYR-28) first. Questions 7, 9 and 10 wait for their builds.
+  - **The scope:** a game project's database and wiki, one per game. kyoten's own engine and tools are built as this
+    repository is, with design docs, decisions and a roadmap written by hand; a game's wiki is that practice as tooling.
+  1. **Question 5: three kinds of check, each naming the record and field.**
+     - **Shape,** per source: a record decodes strictly into its kama type (question 11, choice 7).
+     - **References,** over the resolved stack: every prefab, placed name, kama path, action, data-kind id and wiki
+       link exists, every archetype is one the build has, and budgets fit.
+     - **Rules** that span records, declared by a module ("a turret's target is a tower", "every spawn point stands on
+       navigable ground"): a kama function over the resolved records, listed in its module's records, returning
+       diagnostics. A rule that needs derived data (a nav mesh, physics) runs with its scene loaded headless.
+  2. **Question 5: when they run.**
+     - **On every write through kyoten's tools** (the CLI, MCP, the editor): shape and references. A failing write is
+       refused, and nothing is written.
+     - **`kyoten check`** runs all but the rules that need a loaded scene, which run in `kyoten test` beside the replay
+       tests (KYR-13).
+     - **CI checks the merged result every time,** since two valid changes can merge into an invalid one.
+     - **On hot reload,** a source that fails its checks is not applied. The running game keeps its last good stack, and
+       the tools show the error.
+  3. **Question 5: who is told, and what blocks.** The change's author, agent or human, gets the topmost source that set
+     the bad value, the field, the rule and the change that brought it. A break found only after a merge becomes a wiki
+     task for the authors of both sides, and shows in the change feed (KYR-26). Errors block a merge and a release
+     build; warnings, such as a stale override, do not.
+  4. **Question 6: git is where agents meet.** Each agent works in its own clone or worktree, on a branch, on any
+     machine, and its work lands by merging into the game's main line, as a human's does. No server is needed; a live
+     service may come later through the store interface.
+  5. **Question 6: tasks are wiki pages, and a claim is advisory.** A task has an id, a status, an owner and a scope:
+     the modules, records or pages it expects to touch. An agent claims one by setting the owner and pushing, the peers'
+     `WORKING.md` made data. A claim is never a lock, which a stopped agent would hold for ever: kyoten warns when two
+     open claims overlap, and the field merge does the rest.
+  6. **Question 6: provenance is in each commit's trailers:** the agent or human, its role, and the task or decision
+     the change serves. git's history read through them is the event log, and a record's generated page shows its
+     recent changes from it.
+  7. **Question 6: roles are write scopes, optional per project.** A role names what its agents may change (modules,
+     record kinds, `content/` paths, wiki sections), as GitHub's CODEOWNERS does *(general knowledge, not checked)*. A
+     change outside its author's scope needs a human's approval, whose form is question 7's (KYR-26).
+  8. **Question 6: one game direction.** Every agent reads the wiki's direction pages (vision, pillars, style) and its
+     decisions before it works, and a change cites the task or decision it serves. An agent that would contradict a
+     decision proposes a new one, and a human decides.
+  9. **Question 8: the boundary is the one [components.md](components.md) drew** (question 5, choice 3). What needs a
+     build (a type, an archetype, a processor) is compiled, and everything a record change can hot-reload is data, read
+     through the stack. In development the stack reads files, and a change applies at a step boundary as a recorded
+     input (question 11, choice 8), with item 2's last good stack.
+  10. **Question 8: a shipped game reads a pack per source:** that source's merge patches, checked and joined into one
+      file. A pack is a source like any other, so one stack reads files and packs, and DLC and mods still layer by
+      field at load. Records stay JSON (components question 8 part b), minified and compressed; a binary encoding comes
+      only if measured load times ask for it (KYR-24 measures).
+  11. **Question 8: a pack keeps its provenance:** its source's id, version and hash (the stack's identity, question 11,
+      choice 8) and the commit it was baked from. Per-field history stays in git, as debug symbols stay beside a
+      binary, and an error in a player's stack still names its source and field. On the web a pack is one fetch, at a
+      URL named by its hash, so a browser caches it until it changes. A release build reads packs, and mods where the
+      platform allows them, and refuses the local layer.
+  12. **Captures** (the owner's "screenshots"): a wiki's screenshots and clips live in the asset store, not in git, by
+      the owner's rule that heavy assets never sit with the code (SPIKE's standing direction, 2026-11-05). Each keeps
+      the recipe that took it: scene, build, stack, step and view. The simulation is deterministic, so the tools can
+      tell a stale capture and retake it.
+  13. **Humans override everything.** A human can override an agent's change, claim or decision, waive a failing check
+      with a recorded reason, or change the rule. An agent never overrides a human's decision; it proposes a new one.
+  14. **Light by default.** Roles and approvals are off until a project turns them on, a claim never blocks, and the
+      slow checks run in CI, not while an agent works. The field merge is what lets agents build different features in
+      parallel.
