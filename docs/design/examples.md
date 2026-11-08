@@ -107,4 +107,17 @@ KYR-29 and KYR-40.
      follow [../research/web-baseline.md](../research/web-baseline.md) § Method, so a slice repeats them.
   10. **Question 3: the reference machines:** a Steam Deck as the low-end native gauge, since the-mallow-man measured
       its quality tiers from there; a mid-range laptop's browsers (Chrome or Edge, Firefox, Safari) for the web; and the
-      owner's Quest for VR. Which of them the owner has, and the Quest's model, are still to say (SPIKE's *To raise*).
+      owner's Quest for VR. *(Named the same day, below: the owner has each, and Quest 3 is the target.)*
+- **2026-11-07, the owner: the reference machines, named.** "I have a Steam Deck, This mini PC, Mac Mini, a few
+  different mid rang laptops, Quest 3 ( and Quest 2 but probably better to target Quest 3? ). At some point it would be
+  good to look into consoles as well."
+  - **Native, the low-end gauge:** the Steam Deck, which is also the Linux leg (SteamOS).
+  - **Windows:** the development machine, an Acer RB102 mini PC with an AMD Ryzen AI 9 465 and its integrated Radeon
+    880M (read from Windows, 2026-11-07).
+  - **macOS:** the owner's Mac Mini, which also runs Safari for the web leg.
+  - **The web:** one of the owner's mid-range laptops, named with its model when A2 first measures, in Chrome or Edge
+    and Firefox, with Safari on the Mac Mini.
+  - **VR: Quest 3 is the target** (KYR-33). The Quest 2 is an older headset; whether a game also holds its rate there
+    is a later check, not the bar.
+  - **Each machine's model, CPU and GPU are written beside the first numbers measured on it,** so a ratchet always
+    names its machine. Consoles stay KYR-42, which the owner wants looked into at some point.

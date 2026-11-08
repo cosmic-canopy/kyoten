@@ -269,8 +269,9 @@ comes up, the same way: propose, compare and measure, then ask the owner.
 
 **To raise with the owner:**
 
-- **The reference machines** (examples question 3, 2026-11-07): a Steam Deck as the low-end native gauge, a mid-range
-  laptop's browsers, and the owner's Quest. Which of them the owner has, and the Quest's model, are still to say.
+- **Answered after the spike closed (2026-11-07):** the reference machines are the owner's Steam Deck, Windows
+  mini PC, Mac Mini, a mid-range laptop and Quest 3 ([design/examples.md](design/examples.md) § Decided); the
+  generator is written in kama; and the first slice is built on `main`, not a branch.
   *(Audio and networking in the first slice, raised here since 2026-11-03, was answered at examples question 2: neither
   joins the gate; audio may be built in parallel at any time, and netcode starts once slice B's replay passes.
   cosmic-forge has started audio's slice 1, sound effects, with music and ambience next
@@ -373,8 +374,9 @@ comes up, the same way: propose, compare and measure, then ask the owner.
     - `importsOnly` landed (KR-308, 0.9.842).
     - The agent guidance's exit-status clause was fixed (0.9.840).
   - **Check kama's log at the start of each session.**
-- **The work is on the branch `spike/roadmap`**, pushed to `origin` after each decision so other machines can pick it
-  up, and not merged.
+- **The spike's work was on the branch `spike/roadmap`**, pushed to `origin` after each decision so other machines
+  could pick it up. When the spike closed, the local `main` was fast-forwarded to it, and the first slice is built on
+  `main` (the owner, 2026-11-07).
 
 ### What to read before each question
 

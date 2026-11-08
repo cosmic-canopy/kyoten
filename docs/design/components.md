@@ -1766,3 +1766,8 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      cells and navigation meshes (the simulation's, deterministic, rebuilt from cells). A save stays the minimal truth.
   - **Every question in this doc is now decided:** 1–7 on 2026-11-05, 8 on 2026-11-06 and 2026-11-07, and 9 on
     2026-11-07.
+- **2026-11-07, the owner: the generator is written in kama.** Asked at the first slice's brief, where step 5 builds it
+  ([../FIRST-SLICE.md](../FIRST-SLICE.md)): "kama is the language to use yes". It is a `kyoten` executable under
+  `tools/` (architecture question 7's directories), so the engine, its tools and its games are one language, and the
+  generator runs wherever kama does. The other `kyoten` commands the walk-through named (`check`, `test`, `merge`,
+  `fmt`, `migrate`, `clean`, `new`) are the same executable.

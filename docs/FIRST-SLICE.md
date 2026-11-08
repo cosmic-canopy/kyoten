@@ -16,9 +16,9 @@ the design doc it settles before building on it.
   kyoten`), `games/vr`, and the three package repositories, `../kama-gpu`, `../kama-window` and `../kama-graphics`, each
   a seeded placeholder with nothing built.
 - **Web builds** use emsdk 6.0.13. `emcc` is on the `PATH` only in an interactive UCRT64 shell (`bash -lic`).
-- **The branches:** every spike commit is on `spike/roadmap`, 107 commits ahead of the local `main`, which is still the
-  seed, and the remote has only `spike/roadmap`. **Ask the owner first:** fast-forward `main` to `spike/roadmap` and
-  build the slice on its own branch (recommended), or keep working on `spike/roadmap`. Pushing is the owner's call.
+- **Develop on `main`** (the owner, 2026-11-07: "you don't need to branch you can develop on main"). The local `main`
+  was fast-forwarded to `spike/roadmap`, which holds the spike's history. The remote has only `spike/roadmap` so
+  far, and pushing is the owner's call.
 
 ## A1, the hello cube: what "done" means
 
@@ -84,12 +84,28 @@ here), committed with what it measured.
 
 ## Questions the owner answers when a step reaches them
 
-- **Step 5: what is the generator written in?** Not decided. *Recommended:* kama, as a `kyoten` executable under
-  `tools/`, so the engine, its tools and its games are one language, and the generator runs wherever kama does.
-- **Step 8: the action kinds' spelling.** The owner did not settle "Button" and "Axis" (components question 8 part b);
-  KYR-54 names them.
-- **Before A2: the reference machines** (examples question 3): a Steam Deck, a mid-range laptop's browsers, and which
-  Quest. Frame-time numbers need them.
+- **Answered on 2026-11-07:** the generator is written in kama, a `kyoten` executable under `tools/` (components.md
+  § Decided); and the reference machines are the owner's Steam Deck, Windows mini PC, Mac Mini, a mid-range laptop
+  and Quest 3 (examples.md § Decided), each named beside the first numbers measured on it.
+- **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
+  maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
+  rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:
+
+  | Kind | What a processor reads | Bound from, for example |
+  |---|---|---|
+  | `Digital` | on or off, with `held`, `pressed` and `released` | a key, a button, a trigger past a threshold, a UI button |
+  | `Analog` | one number | a trigger, a mouse wheel, one axis of a stick, two keys as −1 and +1 |
+  | `Vector2` | two numbers, a `Vec2` | a stick, the mouse's movement, WASD, a touch drag |
+  | `Vector3` | three numbers, a `Vec3` | a 3D mouse, a device's motion sensor |
+  | `Pose` | a position and a rotation | a tracked hand, controller or head |
+  | `Text` | typed text | a keyboard, an on-screen keyboard, a UI field |
+
+  OpenXR's action types are the same idea (`XR_ACTION_TYPE_BOOLEAN_INPUT`, `FLOAT_INPUT`, `VECTOR2F_INPUT`,
+  `POSE_INPUT`; read in `openxr.h`, 2026-11-07), as are Bevy's leafwing-input-manager (`Button`, `Axis`, `DualAxis`,
+  `TripleAxis`; read in its `lib.rs`) and, from memory, Unreal's Enhanced Input (Digital, Axis1D, Axis2D, Axis3D) and
+  Steam Input's digital and analog actions. Adapters (KYR-54) turn one kind into another: four `Digital` keys into a
+  `Vector2`, an `Analog` trigger into a `Digital` past a threshold. The owner chooses these names or Button and Axis
+  when step 8 starts; the hello cube's record says `"Button"` until then.
 - **Any conflict with kama's own designs** for `@kama/gpu` and `@kama/window` is kama's to rule: a gap goes in
   [KAMA_GAPS.md](KAMA_GAPS.md), and the design is not changed from here.
 
@@ -112,4 +128,4 @@ here), committed with what it measured.
 - **kama runs in UCRT64:** `MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc '../kama/out/UCRT64-x86_64/kama.exe …'`, or
   `-lic` for `emcc`. **git runs from Git Bash.**
 - **A decision goes in its design doc's *Decided*** with its reason, and the work it creates becomes a roadmap row.
-- **Commit each step on its branch,** with the Co-Authored-By line; push when the owner says.
+- **Commit each step on `main`,** with the Co-Authored-By line; push when the owner says.

@@ -488,7 +488,7 @@ words.
 | **Pack** | one source as a shipped game reads it: its merge patches, checked and joined into one JSON file, with its id, version, hash and the commit it was baked from. A source like any other, so DLC and mods still layer by field | decided (project-database question 8, 2026-11-07) |
 | **Capture** | a wiki's screenshot or clip, kept in the asset store with the recipe that took it (scene, build, stack, step, view), so the tools can tell it is stale and retake it | decided (project-database question 6, 2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
-| **Generator** | the kyoten tool that writes the World from records, as plain kama. Procedural generation is the **world generator**, always so called | decided |
+| **Generator** | the kyoten tool that writes the World from records, as plain kama. It is written in kama, a `kyoten` executable under `tools/` (2026-11-07). Procedural generation is the **world generator**, always so called | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | decided (2026-11-06) |
 | **Zone** | a cell of the scene's grid, a square or a cube sized in whole metres, with its origin at its centre: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
