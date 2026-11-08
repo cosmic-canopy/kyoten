@@ -231,11 +231,17 @@ answer is recorded in its doc's *Decided*:
    by the generator, and deprecate-then-migrate. Questions 5, 6 and 8: checks of shape, references and rules written in
    kama, a failed hot reload keeping the last good stack; agents meeting in git, tasks as wiki pages with advisory
    claims, provenance in commit trailers; humans override everything, roles and approvals off by default; a pack per
-   source when shipped; captures for the wiki's screenshots. **Next:
-   [design/target-platforms.md](design/target-platforms.md),** questions 1–4, then rendering, ai-first-api and examples
-   from the [narrowed table](#narrowed-2026-11-01). **12 questions remain:** target-platforms 4, rendering 3,
-   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
-   of questions left each time one is put to them.
+   source when shipped; captures for the wiki's screenshots.
+5. **[design/target-platforms.md](design/target-platforms.md), questions 1–4, are decided** (2026-11-07, the owner: "I
+   like the abstraction idea here for sure and that is the point of compilefor in kama"): a platform is a kama type
+   implementing kyoten's `Platform` contract; the open ones live in kyoten and its libraries, chosen by `@compileFor`,
+   and a console's is a private package the game's manifest names for that build, passed in by the generated `run`, so
+   the hello cube imports `run` from its generated module; calls are resolved at compile time (probed on 0.9.873);
+   capabilities, never platform names, and OS flags only in libraries and platform types; features (XR, store services)
+   as packages. Questions 5–13 stay outside the spike. **Next: [design/rendering.md](design/rendering.md),** questions
+   1, 2 and 4, then ai-first-api 2 and 3 and examples 1–3 from the [narrowed table](#narrowed-2026-11-01). **8 questions
+   remain:** rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The
+   owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
 

@@ -1,6 +1,7 @@
 # Target platforms: N platforms, extensible
 
-**Status:** draft for the design spike. One decision is recorded; the rest are questions.
+**Status:** draft for the design spike. Questions 1–4, the extension model, are decided (2026-11-07); 5–13
+stay outside the spike, with their roadmap rows.
 
 ## What the vision asks
 
@@ -54,20 +55,22 @@
 
 ### The extension model
 
-1. **What is a platform, in code?** A package that implements the engine's platform interfaces (window and events,
-   GPU, audio, input devices, files, networking, threads, the app loop), selected per build target. Is each platform
-   its own package (`kyoten-platform-web`, `-windows`, …), or are the open ones in the engine and only the closed
-   ones outside?
-2. **The interface.** Defined as kama contracts the engine calls through, with one implementation per platform chosen
-   at build time, so there is no dispatch cost (monomorphized, as kama's contract bounds are)? How does a game reach a
-   platform-specific capability (a console's achievements, Steam Input) without the engine naming that platform?
-3. **Capabilities, not platform names.** Does the engine ask "is there a pointer lock, a gamepad, threads, a file
-   system?" rather than "is this the web?", so that a new platform slots in by declaring what it has?
+1. **What is a platform, in code?** *(Decided 2026-11-07, below.)* A package that implements the engine's platform
+   interfaces (window and events, GPU, audio, input devices, files, networking, threads, the app loop), selected per
+   build target. Is each platform its own package (`kyoten-platform-web`, `-windows`, …), or are the open ones in the
+   engine and only the closed ones outside?
+2. **The interface.** *(Decided 2026-11-07, below.)* Defined as kama contracts the engine calls through, with one
+   implementation per platform chosen at build time, so there is no dispatch cost (monomorphized, as kama's contract
+   bounds are)? How does a game reach a platform-specific capability (a console's achievements, Steam Input) without the
+   engine naming that platform?
+3. **Capabilities, not platform names.** *(Decided 2026-11-07, below.)* Does the engine ask "is there a pointer lock, a
+   gamepad, threads, a file system?" rather than "is this the web?", so that a new platform slots in by declaring what
+   it has?
    - *Noted 2026-11-05 at [project-database.md](project-database.md) question 11:* a remote record source (a URI for
      dynamic data updates) is one such capability. The owner: "This is typically restricted on many consoles and such
      but possible on web, etc."
-4. **Packages for features as well as platforms.** XR (OpenXR and WebXR backends behind one interface), Steamworks,
-   console services: the same package mechanism?
+4. **Packages for features as well as platforms.** *(Decided 2026-11-07, below.)* XR (OpenXR and WebXR backends behind
+   one interface), Steamworks, console services: the same package mechanism?
 
 ### Consoles
 
@@ -111,3 +114,53 @@
 
 - **2026-11-01, the owner: iOS joins the platforms, and Android is needed for Quest.** kama has neither target, so both
   are kama gaps (KY-2, KY-3). kyoten's platform packages on them are KYR-32 and KYR-34.
+- **2026-11-07, the owner: questions 1–4, the extension model.** "All of this sounds great. I like the abstraction idea
+  here for sure and that is the point of compilefor in kama."
+  - **The probe** (kama 0.9.873, `0.9.873+g7c0a6bd0`, Windows 11, msys2 UCRT64), three packages:
+    - `eng` declares `type contract Platform for value { fn string name(); fn bool hasPointerLock(); }`, an open
+      platform `Open` implementing it, and `fn uint8 run<P: Platform>(P platform)`;
+    - `platx`, standing in for a private console package, depends on `eng` and declares `ConsoleX implements Platform`;
+    - `game` declares a select group, `"PLATFORM": { "OPEN": { "default": true }, "CONSOLE_X": {} }`, and depends on
+      `platx` only through `"compileFor": ["CONSOLE_X"]`, with one `main` per configuration in files gated
+      `file @compileFor(!CONSOLE_X)` and `file @compileFor(CONSOLE_X)`.
+    - `kama check` reported *"OK (2 configurations, 4 units analyzed)"*. `kama run` printed `running on open`, and with
+      `--select PLATFORM=CONSOLE_X` printed `running on console x, a private package`. The emitted C specializes `run`
+      as `eng__run__kama_of__platx__ConsoleX__kama_end`, which calls `platx__ConsoleX__name(...)` directly, with no
+      vtable.
+  1. **Question 1: a platform is one kama type implementing kyoten's `Platform` contract:** the loop and its frame
+     source, the lifecycle, capabilities, files and paths, and the window, GPU, audio, input devices and network that
+     the libraries provide.
+  2. **Question 1: the open platforms live in kyoten and its libraries,** each picked per build target by kama's
+     `@compileFor`: the web, Windows, Linux, macOS, Android (Quest), and iOS once kama has it (KY-3). Steam Deck is
+     Linux with its controller. There is no package per open platform, so building for any of them needs no setup.
+  3. **Question 1: a closed platform is a private package** with a type implementing the same contract, built by
+     whoever holds the SDK. Who that is is question 5's, outside the spike.
+  4. **Question 2: calls are resolved at compile time.** `run` is generic over the platform, so kama writes a copy for
+     each and calls it directly, as the probe shows.
+  5. **Question 2: the game picks a private platform, and the engine never names it.**
+     - **Its manifest** depends on the private package only for that configuration, through `compileFor` and a select
+       group, as kama's own `CONSOLE` example has it (kama `docs/SPEC.md` § Conditional compilation).
+     - **Its records** name the platform per configuration, and the generator writes the `run` the game's `main` calls,
+       passing the generated world and the build's platform to the engine.
+     - **So the hello cube's `main` stays two lines,** importing `run` from its generated module rather than from
+       kyoten. That closes a gap in the sketch: `kyoten::run()` without arguments could not reach a game's generated
+       world, since the engine never imports a game and reaches the world through the `World` contract
+       ([components.md](components.md)).
+  6. **Question 2: under a console, the GPU's interface stays WebGPU's shape.** Whether a console supplies it as a C
+     library behind `webgpu.h`, as Dawn and wgpu-native do on desktop, or as a kama type, is left to the first console
+     port.
+  7. **Question 3: capabilities, not platform names.** The engine and games ask what a platform has (pointer lock,
+     touch, gamepads, threads, files, remote record sources, haptics, XR, whether mods are allowed, a store's
+     services), never which one it is. Some are fixed for a build (no threads in the single-threaded web build) and
+     some change while running (a gamepad plugged in, pointer lock granted). Both are read the same way, in Input and
+     Output only ([web-and-native.md](web-and-native.md) question 5).
+  8. **Question 3: OS and target flags stay in the libraries and the platform types.** A check refuses
+     `@compileFor(OS_WINDOWS)` and its kind in an engine module and in a game's processors (KYR-53's), so a new platform
+     slots in by declaring its capabilities, and nothing else changes.
+  9. **Question 4: features are packages too:** an interface kyoten defines, with backends in packages a game opts
+     into. XR (OpenXR and WebXR, KYR-31); store services (achievements, leaderboards, cloud saves, presence), with a
+     backend per store (Steam's is KYR-19; the consoles', Meta's and the web platform's); later, voice. A game that uses
+     none never carries it.
+  10. **Question 4: a game says a feature once.** Achievements are records, and "unlock `firstWin`" is an Output effect
+      that each store's backend maps. A store's feature with no common interface (Steam Workshop, say) the game reaches
+      by importing that package directly, in its own Input or Output code, behind a capability.

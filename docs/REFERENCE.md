@@ -81,6 +81,14 @@ they bind are checked against the generated ones. A headset is not a third famil
 family with OpenXR, which players get first, and the Quest browser is the web family with WebXR, which renders on
 the page thread.
 
+**Platforms** (*decided*, target-platforms questions 1–4, 2026-11-07): a **platform** is a kama type implementing
+kyoten's `Platform` contract. The open ones (the web, Windows, Linux, macOS, Android, later iOS) live in kyoten and
+its libraries, picked per build target by `@compileFor`. A console's is a private package that the game's manifest
+names for that build only, and the generated `run` passes it in, so the engine never names it and every call is
+direct. Engine modules and games ask for **capabilities**, never platforms, and only in Input and Output; OS flags
+stay in the libraries and the platform types. Features (XR, store services such as achievements) are interfaces
+kyoten defines, with a backend per platform or store in **feature packages** a game opts into.
+
 ## The world at run time
 
 *Decided at components questions 1 and 2* ([design/components.md](design/components.md) § Decided), except world stores,
@@ -166,11 +174,12 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 
 *Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
 § Decided); revised on 2026-11-06 so actions belong to a player, and laid out in question 8 part b's record files
-(2026-11-07). A sketch: no engine compiles it yet, and an action's kind is KYR-54's.
+(2026-11-07), with `run` from the game's generated module (target-platforms question 2, 2026-11-07). A sketch: no
+engine compiles it yet, and an action's kind is KYR-54's.
 
 ```kama
 // src/app.kama, written by `kyoten new`
-import { kyoten::run };
+import { hello::generated::run };
 fn uint8 main() { return run(); }
 ```
 ```kama
@@ -208,7 +217,8 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
   bound to the local keyboard and first gamepad, and the scene's one zone and its layer, `main`. The app's first scene
   is the only one unless its record names another. `mesh` requires a transform and a material (question 8).
 - **The generator writes the rest:** the cube's table; an `Actions` component with one field per action, which the
-  Input phase fills each step from the player the cube names; and Update's call to `turn`.
+  Input phase fills each step from the player the cube names; Update's call to `turn`; and the `run` that `main`
+  calls, which passes the world and the build's platform to the engine.
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
   component, processor, action, player), on web and native, held by CI. This layout is 15, counting its imports and
   its export. The owner (2026-11-07): "The 20-line target is obviously arbitrary but probably a good gauge. It
@@ -418,6 +428,9 @@ words.
 | **Module** | an area of code, exactly one kama module, with its own records, processors, components and world components. Its record sets the default rate its processors inherit. An **engine module** is the engine's (input, render, audio, net, physics, UI) and never imports another; a **game module** is a game's (gameplay, AI, towers) | decided (engine modules at question 3, choice 1; module and game module at question 8 part b, 2026-11-07) |
 | **Tier** | a group of modules with an import rule: frame, world, engine modules, the agent surface, each importing only the tiers above it. A module's own levels of code are tiers too | decided; named at question 8 part b (2026-11-07), "layer" until then |
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi). Libraries are kama packages shaped after the browser's API; the engine modules' interfaces above them are kyoten's own, and a game touches only those | decided (web-and-native question 1, 2026-11-07) |
+| **Platform** | a kama type implementing kyoten's `Platform` contract: the loop and its frame source, the lifecycle, capabilities, files, and the libraries' window, GPU, audio, input and network. The open ones live in kyoten and its libraries, chosen by `@compileFor`; a console's is a private package the game names for that build | decided (target-platforms questions 1 and 2, 2026-11-07) |
+| **Capability** | something a platform has (pointer lock, threads, files, haptics, XR, a store's services), fixed for a build or changing while running. Asked for in Input and Output, never in the simulation, and never a platform's name | decided (target-platforms question 3, 2026-11-07) |
+| **Feature package** | a package with a backend for an interface kyoten defines, which a game opts into: XR, store services (achievements, leaderboards, cloud saves, presence), later voice | decided (target-platforms question 4, 2026-11-07) |
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
 | **Data kind** | a game's own record kind for keyed data that is neither a component nor a world component (a loot table, dialogue, quests): a kama type listed in its module's records, its entries under `content/`, read through the stack by generated ids | decided (project-database question 1, 2026-11-07) |
