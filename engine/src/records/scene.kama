@@ -1,0 +1,113 @@
+// kyoten::records — a scene's own record (`content/scenes/<scene>/scene.records.json`, the folder naming the scene):
+// its grid, its layers with their layer groups and budgets, and its count rules (REFERENCE.md § Records and their
+// files). The file holds the scene's record at its top, as a module's records file holds the module's and a zone file
+// the zone's.
+//
+// `bounds` and `worldGenerator` arrive with more than one zone (KYR-61); until then a scene that names them is refused
+// as naming an unknown field.
+
+import { std::collections::SortedMap, std::collections::DynamicArray, ZoneShape, LayerStart, WhenFull, LimitScope };
+
+export { SceneRecord, LayerRecord, LayerGroupRecord, BudgetRecord, LimitRecord, RingRange };
+
+// The rings a layer is loaded in, from the streaming source outward.
+@generate(of, Serializable, Deserializable)
+type value RingRange implements Equatable<This> {
+    @field public int32 from;
+    @field public int32 to;
+
+    public const fn bool equals(const ref RingRange other) { return this.from == other.from && this.to == other.to; }
+}
+
+@generate(Serializable, Deserializable)
+type resource LayerGroupRecord {
+    @field(name: "on", default) bool onField = true;
+    @field(name: "groups", default) SortedMap<string, LayerGroupRecord> groupsField = SortedMap.empty();
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn bool on() { return this.onField; }
+    public const fn const ref SortedMap<string, LayerGroupRecord> groups() { return this.groupsField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource BudgetRecord {
+    @field(name: "max") int32 maxField = 0;
+    @field(name: "grow", default) bool growField = false;
+    @field(name: "whenFull", default) WhenFull whenFullField = WhenFull::Refuse;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    // Per zone, or for the scene in a non-spatial layer.
+    public const fn int32 max() { return this.maxField; }
+    // False: reserved up front.
+    public const fn bool grow() { return this.growField; }
+    public const fn WhenFull whenFull() { return this.whenFullField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource LayerRecord {
+    @field(name: "spatial", default) bool spatialField = true;
+    @field(name: "simulated", default) bool simulatedField = true;
+    @field(name: "rings") Optional<RingRange> ringsField = Optional::None;
+    @field(name: "start", default) LayerStart startField = LayerStart::Active;
+    @field(name: "groups", default) SortedMap<string, LayerGroupRecord> groupsField = SortedMap.empty();
+    @field(name: "budgets", default) SortedMap<string, BudgetRecord> budgetsField = SortedMap.empty();
+    @field(name: "readOnly", default) bool readOnlyField = false;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn bool spatial() { return this.spatialField; }
+    // False: drawn only.
+    public const fn bool simulated() { return this.simulatedField; }
+    // None: every loaded ring.
+    public const fn Optional<RingRange> rings() { return this.ringsField; }
+    public const fn LayerStart start() { return this.startField; }
+    public const fn const ref SortedMap<string, LayerGroupRecord> groups() { return this.groupsField; }
+    // By prefab.
+    public const fn const ref SortedMap<string, BudgetRecord> budgets() { return this.budgetsField; }
+    // True: processors read it and never write it, and it is never saved.
+    public const fn bool readOnly() { return this.readOnlyField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+// A count rule: at most `max` of these prefabs per world, zone or layer, checked when a command applies.
+@generate(Serializable, Deserializable)
+type resource LimitRecord {
+    @field(name: "per") LimitScope perField = LimitScope::World;
+    @field(name: "prefabs", default) DynamicArray<string> prefabsField = DynamicArray.empty();
+    @field(name: "max") int32 maxField = 0;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn LimitScope per() { return this.perField; }
+    public const fn const ref DynamicArray<string> prefabs() { return this.prefabsField; }
+    public const fn int32 max() { return this.maxField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource SceneRecord {
+    @field(name: "inBuild", default) bool inBuildField = true;
+    @field(name: "zoneSize", default) int32 zoneSizeField = 64;
+    @field(name: "zoneShape", default) ZoneShape zoneShapeField = ZoneShape::Square;
+    @field(name: "layers", default) SortedMap<string, LayerRecord> layersField = SortedMap.empty();
+    @field(name: "limits", default) SortedMap<string, LimitRecord> limitsField = SortedMap.empty();
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn bool inBuild() { return this.inBuildField; }
+    // In whole metres, so rebasing an offset by whole zones is exact (components question 9, item 3).
+    public const fn int32 zoneSize() { return this.zoneSizeField; }
+    public const fn ZoneShape zoneShape() { return this.zoneShapeField; }
+    public const fn const ref SortedMap<string, LayerRecord> layers() { return this.layersField; }
+    public const fn const ref SortedMap<string, LimitRecord> limits() { return this.limitsField; }
+    public const fn const ref string note() { return this.noteField; }
+}

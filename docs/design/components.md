@@ -1895,3 +1895,35 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     `tools/test.sh` expects its build refused on every target but Windows, and built on Windows. Seen to fail before
     the guard (*"a 40 KB frame built"* on wasm), then on kama `0.9.881+g4267d2ec`: *"stack frame size (40032) exceeds
     limit (32768) in 'frameguard__kF_main__heavy'"*. The engine's tests and `examples/games/fps` build on wasm with it.
+- **2026-11-08, built: `kyoten::records`** (step 5.2, question 4 of 2026-11-08), on kama `0.9.881+g4267d2ec`,
+  test-first, 18 cases in `engine/tests/src/records_tests.kama`, natively (debug and release) and on wasm.
+  - **Every record kind whose shape is the engine's:** the code records (`ModuleRecord`, `ProcessorGroupRecord`,
+    `ProcessorRecord`, `ComponentRecord`, `ActionRecord`), the scene's (`SceneRecord`, `LayerRecord`,
+    `LayerGroupRecord`, `BudgetRecord`, `LimitRecord`, `RingRange`), and the app and bindings (`AppRecord`,
+    `BindingRecord`), with their enums. Fields and defaults are REFERENCE's tables, and every kind takes a `note`.
+  - **A fenced module** (`importsOnly: ["std::collections"]`) that imports no other kyoten module, so a simulation
+    module may import it.
+  - **Each kind is a `type resource`,** since it holds text, so kama keeps its fields private. Each field carries its
+    wire name (`@field(name: "phase")`) and is read through an accessor of that name (`phase()`). kama refuses a field
+    and a method of one name, so the field is `phaseField`.
+  - **A field with a default is `@field(default)`;** an `Optional` is none when absent; a field with neither is
+    required, and refused by name: ``groups.combat.phase``, ``actions.jump.kind``, ``layers.main.budgets.tower.max``.
+  - **Collections keyed by name are `SortedMap`s,** so whatever reads them (the generator above all) sees one order,
+    whatever the files' order.
+  - **A record file is read with `mergeFrom` through `JsonDeserializer.strict`,** laid over the defaults and then over
+    the lower content layers. kama merges a map keyed by text per key, as RFC 7396 does: a key the patch names merges
+    field by field, one it leaves out is kept, and `null` removes it. That is project-database question 11's merge
+    patch, with no code of kyoten's; a case holds it.
+  - **Refusals name the field's path:** ``unknown field `processors.fire.aftr` ``, ``unknown field `app.titel` ``,
+    *"`Updte` is not a `Phase` (at `processors.turn.phase`): expected `Input`, `Update`, `Constraints` or
+    `Output`"*, and a fractional `zoneSize` is *"type mismatch at `zoneSize`"*.
+  - **Where each record sits in its file,** as the decided examples have it: a module's records file and a zone file
+    hold the module's and the zone's own record at their top (`{ "rate": 30, … }`, `{ "place": … }`), so
+    `scene.records.json` holds the scene's. A content file at the root of `content/` holds keyed sections
+    (`{ "app": … }`, `{ "prefabs": … }`, `{ "bindings": … }`), and since prefabs are a game's own, its full type is
+    generated per game around `AppRecord` and `BindingRecord`.
+  - **Not here yet:** a scene's `bounds` and `worldGenerator`, which come with more than one zone (KYR-61), so a scene
+    naming them is refused as an unknown field until then; and the cross-record rules (a processor names a phase or a
+    group), which are `kyoten check`'s.
+  - **Mutations caught:** a lost `default`, a wrong default, a required field made optional, and a misspelt wire name
+    each turn a case red.

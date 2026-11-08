@@ -1,0 +1,36 @@
+// kyoten::records — the content records whose shape is the engine's: the app and the bindings. A content file at the
+// root of `content/` holds keyed sections (`{ "app": … }`, `{ "bindings": … }`, `{ "prefabs": … }`), and since a
+// game's prefabs are its own, the file's full type is generated per game around these (REFERENCE.md § Records and
+// their files).
+
+export { AppRecord, BindingRecord };
+
+@generate(Serializable, Deserializable)
+type resource AppRecord {
+    @field(name: "firstScene") Optional<string> firstSceneField = Optional::None;
+    @field(name: "title") Optional<string> titleField = Optional::None;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    // None: the only scene is the first.
+    public const fn const ref Optional<string> firstScene() { return this.firstSceneField; }
+    public const fn const ref Optional<string> title() { return this.titleField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+// One action's controls, one per device. The control names are KYR-54's.
+@generate(Serializable, Deserializable)
+type resource BindingRecord {
+    @field(name: "keyboard") Optional<string> keyboardField = Optional::None;
+    @field(name: "mouse") Optional<string> mouseField = Optional::None;
+    @field(name: "gamepad") Optional<string> gamepadField = Optional::None;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn const ref Optional<string> keyboard() { return this.keyboardField; }
+    public const fn const ref Optional<string> mouse() { return this.mouseField; }
+    public const fn const ref Optional<string> gamepad() { return this.gamepadField; }
+    public const fn const ref string note() { return this.noteField; }
+}

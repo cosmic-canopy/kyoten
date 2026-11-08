@@ -2,7 +2,7 @@
 // repository's root builds it debug and release and runs it natively, and builds it for wasm and runs it under node.
 // A failing case prints its name, and the exit status is 1 when any case failed.
 
-import { core::println, Tally, timeTests, clockTests, driverTests, worldTests };
+import { core::println, Tally, timeTests, clockTests, driverTests, worldTests, recordsTests };
 
 fn uint8 main() {
     Tally t = Tally.make();
@@ -10,6 +10,7 @@ fn uint8 main() {
     clockTests(t: t);
     driverTests(t: t);
     worldTests(t: t);
+    recordsTests(t: t);
     int32 runs = t.count();
     int32 failed = t.failed();
     println(s: "engine tests: ${runs} cases, ${failed} failed");

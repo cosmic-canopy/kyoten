@@ -1,0 +1,128 @@
+// kyoten::records — the code records: a module's records file, beside its code (`src/cube/cube.records.json`), holds
+// the module's own record, its processor groups, processors, components and actions (REFERENCE.md § Records and their
+// files). The generator reads them before it writes anything, and `kyoten check` checks them.
+//
+// Every kind is a `type resource` because it holds text, so its fields are private and read through accessors named as
+// the record's fields are. A field's absence is its default, from REFERENCE's tables; a field with no default
+// (a group's `phase`, an action's `kind`) is required, and refused by name when missing. The rules across fields and
+// records (a processor names a phase or a group, not both) are `kyoten check`'s.
+
+import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind };
+
+export { ModuleRecord, ProcessorGroupRecord, ProcessorRecord, ComponentRecord, ActionRecord };
+
+@generate(Serializable, Deserializable)
+type resource ProcessorGroupRecord {
+    @field(name: "phase") Phase phaseField = Phase::Update;
+    @field(name: "after", default) DynamicArray<string> afterField = DynamicArray.empty();
+    @field(name: "before", default) DynamicArray<string> beforeField = DynamicArray.empty();
+    @field(name: "first", default) bool firstField = false;
+    @field(name: "last", default) bool lastField = false;
+    @field(name: "iterations", default) int32 iterationsField = 1;
+    @field(name: "parallel", default) bool parallelField = false;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn Phase phase() { return this.phaseField; }
+    public const fn const ref DynamicArray<string> after() { return this.afterField; }
+    public const fn const ref DynamicArray<string> before() { return this.beforeField; }
+    public const fn bool first() { return this.firstField; }
+    public const fn bool last() { return this.lastField; }
+    // A Constraints group may run its processors more than once a step.
+    public const fn int32 iterations() { return this.iterationsField; }
+    // Serial until measurement says otherwise.
+    public const fn bool parallel() { return this.parallelField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource ProcessorRecord {
+    @field(name: "phase") Optional<Phase> phaseField = Optional::None;
+    @field(name: "group") Optional<string> groupField = Optional::None;
+    @field(name: "after", default) DynamicArray<string> afterField = DynamicArray.empty();
+    @field(name: "before", default) DynamicArray<string> beforeField = DynamicArray.empty();
+    @field(name: "first", default) bool firstField = false;
+    @field(name: "last", default) bool lastField = false;
+    @field(name: "rate") Optional<int32> rateField = Optional::None;
+    @field(name: "iterations", default) int32 iterationsField = 1;
+    @field(name: "random", default) DynamicArray<string> randomField = DynamicArray.empty();
+    @field(name: "orderBy") Optional<string> orderByField = Optional::None;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    // A processor names its phase, or a group that does.
+    public const fn Optional<Phase> phase() { return this.phaseField; }
+    public const fn const ref Optional<string> group() { return this.groupField; }
+    public const fn const ref DynamicArray<string> after() { return this.afterField; }
+    public const fn const ref DynamicArray<string> before() { return this.beforeField; }
+    public const fn bool first() { return this.firstField; }
+    public const fn bool last() { return this.lastField; }
+    // In whole hertz; none is its module's rate.
+    public const fn Optional<int32> rate() { return this.rateField; }
+    public const fn int32 iterations() { return this.iterationsField; }
+    // The purposes it draws random numbers for, each a generated key.
+    public const fn const ref DynamicArray<string> random() { return this.randomField; }
+    // A sort key such as `"towers::Initiative.value"`, ties broken by handle; none is chunk order.
+    public const fn const ref Optional<string> orderBy() { return this.orderByField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource ComponentRecord {
+    @field(name: "store", default) Store storeField = Store::Table;
+    @field(name: "blend", default) Blend blendField = Blend::Snap;
+    @field(name: "history", default) int32 historyField = 0;
+    @field(name: "saved", default) bool savedField = true;
+    @field(name: "requires", default) DynamicArray<string> requiresField = DynamicArray.empty();
+    @field(name: "combine") Optional<Combine> combineField = Optional::None;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn Store store() { return this.storeField; }
+    public const fn Blend blend() { return this.blendField; }
+    // How many past steps are kept, in steps.
+    public const fn int32 history() { return this.historyField; }
+    // False: rebuilt for display, never saved.
+    public const fn bool saved() { return this.savedField; }
+    // Components added with their defaults wherever this one is, by kama path where two share a name.
+    public const fn const ref DynamicArray<string> requires() { return this.requiresField; }
+    // Needed by a component sent with `Send<C>`.
+    public const fn Optional<Combine> combine() { return this.combineField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+@generate(Serializable, Deserializable)
+type resource ActionRecord {
+    @field(name: "kind") ActionKind kindField = ActionKind::Digital;
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn ActionKind kind() { return this.kindField; }
+    public const fn const ref string note() { return this.noteField; }
+}
+
+// A module's records file: the module's own record at the top, and its groups, processors, components and actions
+// keyed by name.
+@generate(Serializable, Deserializable)
+type resource ModuleRecord {
+    @field(name: "rate") Optional<int32> rateField = Optional::None;
+    @field(name: "groups", default) SortedMap<string, ProcessorGroupRecord> groupsField = SortedMap.empty();
+    @field(name: "processors", default) SortedMap<string, ProcessorRecord> processorsField = SortedMap.empty();
+    @field(name: "components", default) SortedMap<string, ComponentRecord> componentsField = SortedMap.empty();
+    @field(name: "actions", default) SortedMap<string, ActionRecord> actionsField = SortedMap.empty();
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    // In whole hertz; none is the engine's default for each phase.
+    public const fn Optional<int32> rate() { return this.rateField; }
+    public const fn const ref SortedMap<string, ProcessorGroupRecord> groups() { return this.groupsField; }
+    public const fn const ref SortedMap<string, ProcessorRecord> processors() { return this.processorsField; }
+    public const fn const ref SortedMap<string, ComponentRecord> components() { return this.componentsField; }
+    public const fn const ref SortedMap<string, ActionRecord> actions() { return this.actionsField; }
+    public const fn const ref string note() { return this.noteField; }
+}

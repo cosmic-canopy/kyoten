@@ -23,7 +23,8 @@ the design doc it settles before building on it.
       2026-11-08** ([design/components.md](design/components.md) § Decided, the last entry): the zone is a `ZoneCoord`,
       and KY-40 and KY-41 were filed on the way.
    2. **`kyoten::records`:** the fixed record types, read with kama's `JsonDeserializer.strict`, with refusals that
-      name the field (``unknown field `app.titel` ``).
+      name the field (``unknown field `app.titel` ``). **Built on 2026-11-08** ([design/components.md](design/components.md)
+      § Decided, the last entry).
    3. **The `kyoten` tool** (`tools/kyoten/`, package `@kyoten/cli`, built with `-o kyoten`): the generator's first
       pass, which writes what comes from records alone (`Actions`, `Prefabs`, the prefab types); the header rule for
       clearing stale generated files; and `generate`, `check`, `build`, `run` and `clean` (KY-28). Tested on fixture

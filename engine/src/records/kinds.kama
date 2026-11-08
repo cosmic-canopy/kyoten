@@ -1,0 +1,42 @@
+// kyoten::records — the enums the engine's records hold. A record writes a case by its kama name (`"Update"`), and
+// any other word is refused with the cases that are allowed (REFERENCE.md § Records and their files).
+
+export { Phase, Store, Blend, Combine, ZoneShape, LayerStart, WhenFull, LimitScope, ActionKind };
+
+// The frame's four phases (frame-phases § Decided).
+@generate(Serializable, Deserializable)
+type enum Phase { Input, Update, Constraints, Output }
+
+// Where a component's values live: in its prefab's table, or in a side store for one gained at run time
+// (components question 1).
+@generate(Serializable, Deserializable)
+type enum Store { Table, Side }
+
+// How Output blends a component between two steps (components question 3).
+@generate(Serializable, Deserializable)
+type enum Blend { Snap, Linear, Custom }
+
+// How values sent to one component in a step combine, folded in chunk order (components question 4).
+@generate(Serializable, Deserializable)
+type enum Combine { Sum, Min, Max, First }
+
+// A scene's zones: a grid on x and z with height kept in the offset, or a grid on all three axes.
+@generate(Serializable, Deserializable)
+type enum ZoneShape { Square, Cube }
+
+// How a layer starts when its scene loads.
+@generate(Serializable, Deserializable)
+type enum LayerStart { Active, Loaded, Off }
+
+// What a full budget does: refuse the spawn, or evict the oldest spawn step first, then handle (components question 6).
+@generate(Serializable, Deserializable)
+type enum WhenFull { Refuse, EvictOldest }
+
+// What a count rule counts over.
+@generate(Serializable, Deserializable)
+type enum LimitScope { World, Zone, Layer }
+
+// An action's kind names the value a processor reads, not a device (components § Decided, step 5 question 6). Step 5
+// builds `Digital`; the others come with KYR-54.
+@generate(Serializable, Deserializable)
+type enum ActionKind { Digital, Analog, Vector2, Vector3, Pose, Text }

@@ -1,0 +1,303 @@
+// kyoten::records (components § Decided, step 5 question 4): the record kinds whose shape is the engine's, read from
+// strict JSON. Each kind's fields and defaults are REFERENCE.md's tables (§ Records and their files). A record file is
+// a merge patch: it is laid over the defaults, then over the lower content layers, with `mergeFrom` (RFC 7396).
+
+import { Tally, kyoten::records::ModuleRecord, kyoten::records::ProcessorGroupRecord,
+         kyoten::records::ProcessorRecord, kyoten::records::ComponentRecord, kyoten::records::ActionRecord,
+         kyoten::records::AppRecord, kyoten::records::BindingRecord, kyoten::records::SceneRecord,
+         kyoten::records::LayerRecord, kyoten::records::LayerGroupRecord, kyoten::records::BudgetRecord,
+         kyoten::records::LimitRecord, kyoten::records::RingRange, kyoten::records::Phase, kyoten::records::Store,
+         kyoten::records::Blend, kyoten::records::Combine, kyoten::records::ZoneShape, kyoten::records::LayerStart,
+         kyoten::records::WhenFull, kyoten::records::LimitScope, kyoten::records::ActionKind,
+         std::collections::SortedMap, std::collections::DynamicArray, std::memory::Owned,
+         std::serialization::text::json::JsonDeserializer };
+
+export { recordsTests };
+
+// A content file at the root of `content/` holds keyed sections. Its full type is generated per game, since a
+// game's prefabs are; this stand-in holds the two sections whose shape is the engine's.
+@generate(Deserializable)
+type resource ContentFile {
+    @field(name: "app", default) AppRecord appField = AppRecord.make();
+    @field(name: "bindings", default) SortedMap<string, BindingRecord> bindingsField = SortedMap.empty();
+    public default ctor make() { }
+    public const fn const ref AppRecord app() { return this.appField; }
+    public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
+}
+
+// The error a merge gave, or "" when it read.
+fn string mergeModule(ref ModuleRecord m, string src) {
+    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    Result<Unit, Owned<Error>> res = m.mergeFrom(r: r);
+    return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+}
+
+fn string mergeScene(ref SceneRecord s, string src) {
+    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    Result<Unit, Owned<Error>> res = s.mergeFrom(r: r);
+    return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+}
+
+fn string mergeContent(ref ContentFile c, string src) {
+    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    Result<Unit, Owned<Error>> res = c.mergeFrom(r: r);
+    return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+}
+
+fn bool isSome(const ref Optional<string> o, const ref string want) {
+    return match (o) { case Some(value: v): v == want; case None: false; };
+}
+
+fn bool isNone(const ref Optional<string> o) {
+    return match (o) { case Some(value: v): false; case None: true; };
+}
+
+fn bool hz(Optional<int32> o, int32 want) { return match (o) { case Some(value: v): v == want; case None: false; }; }
+
+fn bool noHz(Optional<int32> o) { return match (o) { case Some(value: v): false; case None: true; }; }
+
+fn bool inPhase(Optional<Phase> o, Phase want) { return match (o) { case Some(value: v): v == want; case None: false; }; }
+
+fn bool combines(Optional<Combine> o, Combine want) { return match (o) { case Some(value: v): v == want; case None: false; }; }
+
+fn bool noCombine(Optional<Combine> o) { return match (o) { case Some(value: v): false; case None: true; }; }
+
+fn bool ringsAre(Optional<RingRange> o, int32 from, int32 to) {
+    return match (o) { case Some(value: v): v.from == from && v.to == to; case None: false; };
+}
+
+fn bool everyRing(Optional<RingRange> o) { return match (o) { case Some(value: v): false; case None: true; }; }
+
+// A refusal must name `want` (the field's path, or the bad value with its path).
+fn void refused(ref Tally t, const ref string name, const ref string why, const ref string want) {
+    if (why.isEmpty()) { t.verdict(name: name, why: "accepted"); }
+    else if (why.contains(substring: want)) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "refused, but not naming `${want}`: ${why}"); }
+}
+
+// The hello cube's code records (REFERENCE.md § The hello cube).
+fn void helloCube(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string why = mergeModule(m: m, src: "{ \"processors\": { \"turn\": { \"phase\": \"Update\" } }, \"actions\": { \"faster\": { \"kind\": \"Digital\" } } }");
+    if (why.isEmpty()) {
+        bool ok = m.processors().length() == 1 && m.actions().length() == 1
+            && inPhase(o: m.processors().getRef(key: "turn").phase(), want: Phase::Update)
+            && m.actions().getRef(key: "faster").kind() == ActionKind::Digital;
+        if (!ok) { why = "a field read wrong"; }
+    }
+    t.verdict(name: "records: the hello cube's code records read", why: why);
+}
+
+// REFERENCE.md's module record, every field it names.
+fn void moduleExample(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string why = mergeModule(m: m, src: "{ \"rate\": 30, \"groups\": { \"combat\": { \"phase\": \"Update\" } }, \"processors\": { \"fire\": { \"group\": \"combat\" }, \"fly\": { \"group\": \"combat\", \"after\": [\"fire\"], \"rate\": 60, \"random\": [\"crit\"] }, \"hurt\": { \"group\": \"combat\" } }, \"components\": { \"Health\": { \"requires\": [\"kyoten::world::Transform\"] }, \"Damage\": { \"store\": \"Side\", \"combine\": \"Sum\", \"saved\": false } } }");
+    if (why.isEmpty()) {
+        bool module = hz(o: m.rate(), want: 30) && m.groups().length() == 1
+            && m.groups().getRef(key: "combat").phase() == Phase::Update;
+        bool fly = isSome(o: m.processors().getRef(key: "fly").group(), want: "combat")
+            && m.processors().getRef(key: "fly").after().length() == 1
+            && m.processors().getRef(key: "fly").after()[0] == "fire"
+            && hz(o: m.processors().getRef(key: "fly").rate(), want: 60)
+            && m.processors().getRef(key: "fly").random()[0] == "crit";
+        bool health = m.components().getRef(key: "Health").requires()[0] == "kyoten::world::Transform";
+        bool damage = m.components().getRef(key: "Damage").store() == Store::Side
+            && combines(o: m.components().getRef(key: "Damage").combine(), want: Combine::Sum)
+            && !m.components().getRef(key: "Damage").saved();
+        if (!module) { why = "the module's rate or group read wrong"; }
+        else if (!fly) { why = "`fly` read wrong"; }
+        else if (!health || !damage) { why = "a component read wrong"; }
+    }
+    t.verdict(name: "records: REFERENCE's module record reads, field by field", why: why);
+}
+
+// What a record leaves out takes its default (REFERENCE.md's tables).
+fn void codeDefaults(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string why = mergeModule(m: m, src: "{ \"groups\": { \"g\": { \"phase\": \"Input\" } }, \"processors\": { \"p\": { \"phase\": \"Output\" } }, \"components\": { \"C\": {} } }");
+    if (why.isEmpty()) {
+        bool module = noHz(o: m.rate()) && m.note().isEmpty();
+        bool group = m.groups().getRef(key: "g").after().length() == 0 && m.groups().getRef(key: "g").before().length() == 0
+            && !m.groups().getRef(key: "g").first() && !m.groups().getRef(key: "g").last()
+            && m.groups().getRef(key: "g").iterations() == 1 && !m.groups().getRef(key: "g").parallel();
+        bool processor = isNone(o: m.processors().getRef(key: "p").group())
+            && m.processors().getRef(key: "p").after().length() == 0 && m.processors().getRef(key: "p").before().length() == 0
+            && !m.processors().getRef(key: "p").first() && !m.processors().getRef(key: "p").last()
+            && noHz(o: m.processors().getRef(key: "p").rate())
+            && m.processors().getRef(key: "p").iterations() == 1
+            && m.processors().getRef(key: "p").random().length() == 0
+            && isNone(o: m.processors().getRef(key: "p").orderBy());
+        bool component = m.components().getRef(key: "C").store() == Store::Table
+            && m.components().getRef(key: "C").blend() == Blend::Snap
+            && m.components().getRef(key: "C").history() == 0 && m.components().getRef(key: "C").saved()
+            && m.components().getRef(key: "C").requires().length() == 0
+            && noCombine(o: m.components().getRef(key: "C").combine());
+        if (!module) { why = "a module default is wrong"; }
+        else if (!group) { why = "a processor group default is wrong"; }
+        else if (!processor) { why = "a processor default is wrong"; }
+        else if (!component) { why = "a component default is wrong"; }
+    }
+    t.verdict(name: "records: a code record's absent fields take their defaults", why: why);
+}
+
+fn void actionKinds(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string why = mergeModule(m: m, src: "{ \"actions\": { \"a\": { \"kind\": \"Digital\" }, \"b\": { \"kind\": \"Analog\" }, \"c\": { \"kind\": \"Vector2\" }, \"d\": { \"kind\": \"Vector3\" }, \"e\": { \"kind\": \"Pose\" }, \"f\": { \"kind\": \"Text\", \"note\": \"typed text\" } } }");
+    if (why.isEmpty()) {
+        bool ok = m.actions().getRef(key: "a").kind() == ActionKind::Digital
+            && m.actions().getRef(key: "b").kind() == ActionKind::Analog
+            && m.actions().getRef(key: "c").kind() == ActionKind::Vector2
+            && m.actions().getRef(key: "d").kind() == ActionKind::Vector3
+            && m.actions().getRef(key: "e").kind() == ActionKind::Pose
+            && m.actions().getRef(key: "f").kind() == ActionKind::Text
+            && m.actions().getRef(key: "f").note() == "typed text";
+        if (!ok) { why = "a kind read wrong"; }
+    }
+    t.verdict(name: "records: an action's kind is one of the six decided kinds", why: why);
+}
+
+fn void codeRefusals(ref Tally t) {
+    ModuleRecord a = ModuleRecord.make();
+    string misspelt = mergeModule(m: a, src: "{ \"processors\": { \"fire\": { \"phase\": \"Update\", \"aftr\": [] } } }");
+    refused(t: t, name: "records: a misspelt field is refused with its path", why: misspelt,
+            want: "unknown field `processors.fire.aftr`");
+
+    ModuleRecord b = ModuleRecord.make();
+    string phase = mergeModule(m: b, src: "{ \"processors\": { \"turn\": { \"phase\": \"Updte\" } } }");
+    refused(t: t, name: "records: an unknown phase is refused, naming the field", why: phase,
+            want: "`Updte` is not a `Phase` (at `processors.turn.phase`)");
+
+    ModuleRecord c = ModuleRecord.make();
+    string kind = mergeModule(m: c, src: "{ \"actions\": { \"jump\": { \"kind\": \"Button\" } } }");
+    refused(t: t, name: "records: an action kind that is not decided is refused", why: kind,
+            want: "`Button` is not a `ActionKind` (at `actions.jump.kind`)");
+
+    ModuleRecord d = ModuleRecord.make();
+    string group = mergeModule(m: d, src: "{ \"groups\": { \"combat\": { \"after\": [] } } }");
+    refused(t: t, name: "records: a processor group without its phase is refused", why: group,
+            want: "`groups.combat.phase`");
+
+    ModuleRecord e = ModuleRecord.make();
+    string action = mergeModule(m: e, src: "{ \"actions\": { \"jump\": {} } }");
+    refused(t: t, name: "records: an action without its kind is refused", why: action, want: "`actions.jump.kind`");
+}
+
+// A module's records merge with another layer's by key, as every content layer does (project-database question 11):
+// a key the patch names merges field by field, one it leaves out is kept, and `null` removes it.
+fn void layering(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string low = mergeModule(m: m, src: "{ \"processors\": { \"turn\": { \"phase\": \"Update\", \"rate\": 30 }, \"fire\": { \"phase\": \"Input\" }, \"hurt\": { \"phase\": \"Update\" } } }");
+    string high = mergeModule(m: m, src: "{ \"processors\": { \"turn\": { \"rate\": 60 }, \"fire\": null } }");
+    string why = copy low;
+    if (why.isEmpty()) { why = copy high; }
+    if (why.isEmpty()) {
+        bool ok = m.processors().length() == 2 && !m.processors().contains(key: "fire")
+            && hz(o: m.processors().getRef(key: "turn").rate(), want: 60)
+            && inPhase(o: m.processors().getRef(key: "turn").phase(), want: Phase::Update)
+            && inPhase(o: m.processors().getRef(key: "hurt").phase(), want: Phase::Update);
+        if (!ok) { why = "the layers did not merge by key"; }
+    }
+    t.verdict(name: "records: a higher layer merges by key, and null removes a record", why: why);
+}
+
+fn void sceneDefaults(ref Tally t) {
+    SceneRecord s = SceneRecord.make();
+    string why = mergeScene(s: s, src: "{}");
+    if (why.isEmpty()) {
+        bool ok = s.inBuild() && s.zoneSize() == 64 && s.zoneShape() == ZoneShape::Square
+            && s.layers().length() == 0 && s.limits().length() == 0 && s.note().isEmpty();
+        if (!ok) { why = "a scene default is wrong"; }
+    }
+    t.verdict(name: "records: an empty scene record is the defaults (in the build, 64 m square zones)", why: why);
+}
+
+fn void sceneExample(ref Tally t) {
+    SceneRecord s = SceneRecord.make();
+    string why = mergeScene(s: s, src: "{ \"zoneSize\": 128, \"zoneShape\": \"Cube\", \"inBuild\": false, \"layers\": { \"main\": { \"rings\": { \"from\": 0, \"to\": 2 }, \"budgets\": { \"tower\": { \"max\": 8 } }, \"groups\": { \"boss\": { \"on\": false, \"groups\": { \"phase2\": {} } } } }, \"shots\": { \"spatial\": false, \"start\": \"Loaded\", \"budgets\": { \"bullet\": { \"max\": 256, \"grow\": true, \"whenFull\": \"EvictOldest\" } } }, \"far\": { \"simulated\": false, \"readOnly\": true, \"start\": \"Off\" } }, \"limits\": { \"enemies\": { \"per\": \"Zone\", \"prefabs\": [\"tower\", \"keep\"], \"max\": 40 } } }");
+    if (why.isEmpty()) {
+        bool scene = !s.inBuild() && s.zoneSize() == 128 && s.zoneShape() == ZoneShape::Cube && s.layers().length() == 3;
+        bool main = s.layers().getRef(key: "main").spatial() && s.layers().getRef(key: "main").simulated()
+            && s.layers().getRef(key: "main").start() == LayerStart::Active
+            && ringsAre(o: s.layers().getRef(key: "main").rings(), from: 0, to: 2)
+            && s.layers().getRef(key: "main").budgets().getRef(key: "tower").max() == 8
+            && !s.layers().getRef(key: "main").budgets().getRef(key: "tower").grow()
+            && s.layers().getRef(key: "main").budgets().getRef(key: "tower").whenFull() == WhenFull::Refuse
+            && !s.layers().getRef(key: "main").groups().getRef(key: "boss").on()
+            && s.layers().getRef(key: "main").groups().getRef(key: "boss").groups().getRef(key: "phase2").on()
+            && !s.layers().getRef(key: "main").readOnly();
+        bool shots = !s.layers().getRef(key: "shots").spatial()
+            && s.layers().getRef(key: "shots").start() == LayerStart::Loaded
+            && everyRing(o: s.layers().getRef(key: "shots").rings())
+            && s.layers().getRef(key: "shots").budgets().getRef(key: "bullet").max() == 256
+            && s.layers().getRef(key: "shots").budgets().getRef(key: "bullet").grow()
+            && s.layers().getRef(key: "shots").budgets().getRef(key: "bullet").whenFull() == WhenFull::EvictOldest;
+        bool far = !s.layers().getRef(key: "far").simulated() && s.layers().getRef(key: "far").readOnly()
+            && s.layers().getRef(key: "far").start() == LayerStart::Off;
+        bool limit = s.limits().getRef(key: "enemies").per() == LimitScope::Zone
+            && s.limits().getRef(key: "enemies").prefabs().length() == 2
+            && s.limits().getRef(key: "enemies").prefabs()[1] == "keep"
+            && s.limits().getRef(key: "enemies").max() == 40;
+        if (!scene) { why = "the scene's own fields read wrong"; }
+        else if (!main) { why = "layer `main` read wrong"; }
+        else if (!shots) { why = "layer `shots` read wrong"; }
+        else if (!far) { why = "layer `far` read wrong"; }
+        else if (!limit) { why = "limit `enemies` read wrong"; }
+    }
+    t.verdict(name: "records: a scene with layers, nested layer groups, budgets and a count rule reads", why: why);
+}
+
+fn void sceneRefusals(ref Tally t) {
+    SceneRecord a = SceneRecord.make();
+    string size = mergeScene(s: a, src: "{ \"zoneSize\": 64.5 }");
+    refused(t: t, name: "records: a zone size is a whole number of metres", why: size, want: "`zoneSize`");
+
+    SceneRecord b = SceneRecord.make();
+    string budget = mergeScene(s: b, src: "{ \"layers\": { \"main\": { \"budgets\": { \"tower\": { \"grow\": true } } } } }");
+    refused(t: t, name: "records: a budget without its max is refused", why: budget,
+            want: "`layers.main.budgets.tower.max`");
+
+    SceneRecord c = SceneRecord.make();
+    string start = mergeScene(s: c, src: "{ \"layers\": { \"main\": { \"start\": \"Paused\" } } }");
+    refused(t: t, name: "records: a layer's start is Active, Loaded or Off", why: start,
+            want: "(at `layers.main.start`)");
+}
+
+fn void content(ref Tally t) {
+    ContentFile c = ContentFile.make();
+    string why = mergeContent(c: c, src: "{ \"app\": { \"firstScene\": \"battle\", \"title\": \"Towers\" }, \"bindings\": { \"fire\": { \"keyboard\": \"Space\", \"gamepad\": \"RightTrigger\" }, \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": \"RightShoulder\" } } }");
+    if (why.isEmpty()) {
+        bool app = isSome(o: c.app().firstScene(), want: "battle") && isSome(o: c.app().title(), want: "Towers");
+        bool bindings = c.bindings().length() == 2
+            && isSome(o: c.bindings().getRef(key: "fire").keyboard(), want: "Space")
+            && isSome(o: c.bindings().getRef(key: "fire").gamepad(), want: "RightTrigger")
+            && isNone(o: c.bindings().getRef(key: "fire").mouse());
+        if (!app) { why = "the app read wrong"; }
+        else if (!bindings) { why = "the bindings read wrong"; }
+    }
+    t.verdict(name: "records: the app and the bindings read", why: why);
+
+    ContentFile d = ContentFile.make();
+    string empty = mergeContent(c: d, src: "{ \"app\": {} }");
+    if (empty.isEmpty() && !(isNone(o: d.app().firstScene()) && isNone(o: d.app().title()))) {
+        empty = "an absent first scene or title is not none";
+    }
+    t.verdict(name: "records: an app that names no first scene has none (the only scene is first)", why: empty);
+
+    ContentFile e = ContentFile.make();
+    string misspelt = mergeContent(c: e, src: "{ \"app\": { \"titel\": \"Towers\" } }");
+    refused(t: t, name: "records: a misspelt app field is refused as `app.titel`", why: misspelt,
+            want: "unknown field `app.titel`");
+}
+
+fn void recordsTests(ref Tally t) {
+    helloCube(t: t);
+    moduleExample(t: t);
+    codeDefaults(t: t);
+    actionKinds(t: t);
+    codeRefusals(t: t);
+    layering(t: t);
+    sceneDefaults(t: t);
+    sceneExample(t: t);
+    sceneRefusals(t: t);
+    content(t: t);
+}
