@@ -14,8 +14,19 @@ the design doc it settles before building on it.
   and kama's HEAD is `546dd54e` (0.9.875, KR-344). Never rebuild kama or edit `../kama`; check `--version` before
   quoting one.
 - **Everything checks clean on it:** `engine/` (one placeholder, `version()`), `games/fps` (prints `fps example, on
-  kyoten`), `games/vr`, and the three package repositories, `../kama-gpu`, `../kama-window` and `../kama-graphics`, each
-  a seeded placeholder with nothing built.
+  kyoten`), `games/vr`, and the three package repositories.
+- **Track 1, step by step (2026-11-07),** each repository's `tools/test.sh` the gate and its `AGENTS.*.md` § Where
+  things stand the detail, with the amendments to kama's designs listed there for the owner to relay:
+  - `../kama-gpu` (step 1): the bindings generated from both legs' headers and held to them; a device, buffers,
+    textures, a clear pass and a polled readback (an offscreen clear reads back exactly, native debug and release; the
+    wasm leg builds); a surface on a window with a typed acquire, which `examples/clear` presents every frame (Windows).
+    Not yet: the triangle's pipeline set, and any run on the web.
+  - `../kama-window` (step 2): a native window (Windows) and a headless one, one coalescing queue with `Dropped(n)`,
+    physical keys as HID ids (33 cases natively, 17 under node). Not yet: the web window, gamepads, vendored GLFW.
+  - `../kama-graphics` (step 3): the seeded placeholder.
+- **The wgpu-native SDK** (v29.0.1.1, as the peer games pin) is fetched into `../kama-gpu/third_party/` (git-ignored),
+  and `KAMA_WGPU_DIR` points there for a native build. A program on `@kama/gpu` sets `"webgpu": true` and, until
+  `@kama/window` is published, names `@kama/window` beside it (kama allows a path dependency only at the top level).
 - **Web builds** use emsdk 6.0.13. `emcc` is on the `PATH` only in an interactive UCRT64 shell (`bash -lic`).
 - **Develop on `main`** (the owner, 2026-11-07: "you don't need to branch you can develop on main"). The local `main`
   was fast-forwarded to `spike/roadmap`, which holds the spike's history. The remote has only `spike/roadmap` so
