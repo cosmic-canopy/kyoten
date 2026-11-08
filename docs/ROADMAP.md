@@ -26,6 +26,8 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 ## NEXT: the first slice, after which a game can start on kyoten
 
+Its kickoff brief, with the order of work and the hello cube's checks, is [FIRST-SLICE.md](FIRST-SLICE.md).
+
 | id | item | detail |
 |---|---|---|
 | KYR-6 | **The frame core**: phases, the fixed-tick clock and its sub-rates, the RNG, the world hash and the input log, starting from FFD's `engine::phase`. Waits are deadlines in simulation steps, held in each waiting subsystem's own queue (frame-phases question 9). The scheduler runs serially by default, and CI runs every test scene both serially and in parallel and requires one world hash (frame-phases question 7). From replay-and-determinism (2026-11-07): the engine's manifest declares `reproducible-float`, which reaches every game, with musl's MIT notice in the engine's notices; the input log records Input's hand-off each step into an always-on ring buffer, as `POS` frames, with saves in `KNUM`; a world hash every step, kept per store, and replay at exit in development | [frame-phases.md](design/frame-phases.md) · [replay](design/replay-and-determinism.md) |

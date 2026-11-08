@@ -18,7 +18,9 @@ and a screen layer and a content layer (a content database priority level) are a
 
 **The design spike is done** (KYR-1, 2026-11-07). [docs/SPIKE.md](docs/SPIKE.md) § What the spike decided is its
 record, and each design doc's *Decided* holds the decisions with their reasons. **Next is the first slice**
-([docs/ROADMAP.md](docs/ROADMAP.md) § NEXT). A question the spike left open is decided when its row comes up. **No
+([docs/ROADMAP.md](docs/ROADMAP.md) § NEXT), and **[docs/FIRST-SLICE.md](docs/FIRST-SLICE.md) is where to
+start:** its order of work, the questions to ask on the way, and the hello cube's checks. A question the spike left
+open is decided when its row comes up. **No
 engine code is written before the decision it depends on is recorded**, and a decision is the owner's: propose,
 compare and measure, then ask.
 
@@ -27,12 +29,13 @@ compare and measure, then ask.
 | Path | What it is |
 |---|---|
 | `kama_workspace.json` | the engine's workspace. It names no game, by rule |
-| `engine/` | the engine, package `kyoten` (`import { kyoten::… }`). Whether it splits into several packages is a spike question. |
+| `engine/` | the engine, package `kyoten` (`import { kyoten::… }`): one package with modules, and a package of its own for anything standalone or gated (architecture question 2) |
 | `games/<name>/` | **one separate repository per example game**, git-ignored here and optional: `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`, Meta Quest). Each is a standalone project that depends on `../../engine` by path. Commit a game in its own repository, never here |
 | `docs/VISION.md` | the owner's brief |
 | `docs/SPIKE.md` | the design spike: what it decided, then its brief as written |
+| `docs/FIRST-SLICE.md` | the kickoff brief for the first slice, from the hello cube to slice B |
 | `docs/REFERENCE.md` | the model in one read: the picture, the vocabulary and the prior art, each item decided or proposed. The future SPEC's core, built into kyotenengine.com's docs (KYR-39) |
-| `docs/design/` | one draft per area (rendering, audio, networking…), each ending in its open questions |
+| `docs/design/` | one doc per area (rendering, audio, networking…): its questions, and under *Decided* the answers with their reasons |
 | `docs/research/` | what the peer projects and kama already offer, with pointers |
 | `docs/ROADMAP.md` | the order of work (ids `KYR-<n>`) |
 | `docs/KAMA_GAPS.md` | what kyoten hits in kama (ids `KY-<n>`) |

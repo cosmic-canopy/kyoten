@@ -262,7 +262,8 @@ is recorded in its doc's *Decided*, and [REFERENCE.md](REFERENCE.md) holds the m
    once B's replay passes; a list of checks for each slice's "done", every number a ratchet, on named reference
    machines.
 
-**What comes next: the first slice,** [ROADMAP.md](ROADMAP.md) § NEXT, from the frame core (KYR-6) and the component
+**What comes next: the first slice,** whose kickoff brief is [FIRST-SLICE.md](FIRST-SLICE.md):
+[ROADMAP.md](ROADMAP.md) § NEXT, from the frame core (KYR-6) and the component
 model (KYR-7) to the hello cube (A1), the level (A2) and slice B. A question outside the spike is decided when its row
 comes up, the same way: propose, compare and measure, then ask the owner.
 
@@ -293,9 +294,9 @@ comes up, the same way: propose, compare and measure, then ask the owner.
   the 2026-11-07 list the same day** (re-checked on 0.9.867): KY-24 to KY-27, KY-29 and KY-30 are fixed and removed;
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
   **kama took that list too, the same day** (re-checked on 0.9.872): KY-32, KY-33 and KY-34 are fixed and removed,
-  KY-31's docs half is fixed, and KY-35 is kama KR-343. **Still to relay:** KY-36 (kama's `check-target.sh` says
-  COOP/COEP break a cross-origin WebSocket; the Fetch Standard and a browser say they do not) and KY-37 (a module
-  cannot be kept from std's modules; filed at ai-first-api question 3 with the owner's leave).
+  KY-31's docs half is fixed, and KY-35 is kama KR-343. **Still to relay:** KY-37 (a module cannot be kept from std's
+  modules; filed at ai-first-api question 3 with the owner's leave). KY-36 needed no relay: kama corrected its note
+  the same day (`7c0a6bd0`), and KY-19 was fixed in 0.9.857 (KR-328); both are re-checked on 0.9.873 and removed.
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -494,7 +495,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 to KY-19, KY-21 to KY-23, KY-28, KY-31 and KY-35 to KY-37 are open there; take the next id from its counter.
+  KY-17, KY-18, KY-21 to KY-23, KY-28, KY-31, KY-35 and KY-37 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
