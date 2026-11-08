@@ -819,6 +819,28 @@ run can both hold.
     checks exact counts, the cap, the discards, pause, scale and a backwards step.
   - **Considered:** FFD's clock as it is (`float64` seconds, an `isize` tick); a scale applied to `dt`, which would
     change the simulation with the scale.
+  - **Built on 2026-11-08** (`kyoten::frame::Clock`, engine/src/frame/clock.kama), with these details settled then:
+    - **The scale is a ratio** (the owner, 2026-11-08: "A ratio, like 1/2 or 3/10"). `TimeScale` holds a `num/den`
+      pair, and the clock carries the sub-nanosecond remainder to the next frame, so every scale is exact: at 3/10,
+      a second of real time owes exactly 18 steps at 60 Hz. 0/1 pauses.
+      - **Why:** a `float64` scale, Unity's and Bevy's shape, is exact only at 0, 1 and powers of two, which would
+        break the clock's exactness. 0.3 is not even a `float64`.
+      - **Considered:** the `float64` scale, rounded to whole nanoseconds each frame.
+    - **The input is the frame's timestamp,** not the time since the last frame. rAF, vsync and XR's predicted
+      display time each give a timestamp, and "time that runs backwards" only means anything for one. The first frame
+      sets the baseline and owes nothing. A source swapped mid-session, such as entering VR, needs the baseline reset;
+      step 7 adds that with the lifecycle.
+    - **Nothing overflows, and the discards are counted exactly.** This replaces the line above, "elapsed time is
+      clamped to the cap before it is multiplied". Clamping first would lose the exact discard count. Instead, each
+      product is split by a division first: whole seconds times the rate, plus the remainder times the rate, and
+      whole denominators times the numerator, plus the remainder. A count that does not fit an `int64` saturates.
+      A year's gap at 60 Hz counts 1,892,159,995 discarded steps, and a gap of the whole `int64` range traps nothing.
+    - **Output's frame `dt` is real time, unscaled, and capped at the cap's worth.** It is unscaled because a UI fade
+      must run while the game is paused (question 9). It is capped so that a resumed laptop does not hand a cosmetic
+      spring a day. A cosmetic effect that should follow slow motion reads the scale, as presentation state.
+    - **A step's index starts at 0.** Before the first step settles, Output's `step` is -1.
+    - **The render fraction is in [0, 1].** It is computed in `float64` and rounded to `float32`, which can round up
+      to 1. `frame` returns it until rendering question 4's hand-off gives Output's blend a parameter (step 9).
 - **2026-11-08, the owner: what step 4 builds, test-first, with the world and the clock injected (step 4, question 4
   of 4).**
   - **The owner:** "sounds good."
