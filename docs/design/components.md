@@ -1771,3 +1771,26 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
   `tools/` (architecture question 7's directories), so the engine, its tools and its games are one language, and the
   generator runs wherever kama does. The other `kyoten` commands the walk-through named (`check`, `test`, `merge`,
   `fmt`, `migrate`, `clean`, `new`) are the same executable.
+- **2026-11-07, the owner's direction for KYR-54, the input system:** "I want to make sure we also support gestures,
+  button presses, etc. ( aka input over time ). We also will need to adapt values as I said before so booleans can be
+  X to Y range floats, etc. We also need to normalize axelerometer input and things like that... I was calling it
+  "adapters" before but could be a better term." So a binding carries two kinds of step between a control and its
+  action, which KYR-54 builds:
+  - **Steps that reshape each value:** a `Digital` as a float from X to Y, a dead zone, a scale, an inversion, a
+    response curve, smoothing, and normalizing a sensor.
+  - **Steps that recognize input over time:** a tap, a double tap, a hold, a long press, a release after a hold, a
+    sequence (a fighting game's motion input), a chord, a swipe, a pinch, a shake.
+  - **A sensor is normalized in two places.** The platform reports every accelerometer and gyroscope in one convention
+    (metres per second squared, kyoten's Y-up right-handed axes, corrected for the screen's rotation), so every device
+    looks alike; a binding's steps then shape it for the game (a dead zone, a scale, smoothing).
+  - **Both run before Input's hand-off,** timed by the input events' own timestamps rather than by simulation steps,
+    so a double tap's window is the same at any rate. What they produce is the action's value, which the hand-off
+    records (replay-and-determinism question 2), so a replay never runs a gesture again and a rebind cannot move the
+    hash. An agent sends the action itself, or raw input when a test exercises the gesture.
+  - **The word "adapter" is to be replaced:** kama already has `type adapter`, a contract for a type one does not
+    declare (kama `docs/SPEC.md` § Contracts), so an agent would meet two meanings. *Suggested:* a **filter** reshapes
+    each value, and a **gesture** recognizes a pattern over time. Unreal's Enhanced Input calls these modifiers and
+    triggers, and Unity's Input System processors and interactions *(general knowledge, not checked)*; kyoten cannot
+    take either pair, since a processor is kyoten's word, a trigger is a gamepad control, and a modifier is a Shift or
+    Ctrl key in a chord. The owner chooses the words with the action kinds, when the first slice's step 8 starts
+    ([../FIRST-SLICE.md](../FIRST-SLICE.md)).

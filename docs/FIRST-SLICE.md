@@ -106,6 +106,12 @@ here), committed with what it measured.
   Steam Input's digital and analog actions. Adapters (KYR-54) turn one kind into another: four `Digital` keys into a
   `Vector2`, an `Analog` trigger into a `Digital` past a threshold. The owner chooses these names or Button and Axis
   when step 8 starts; the hello cube's record says `"Button"` until then.
+- **Step 8, also: input over time, and a better word than "adapter".** The owner's direction (2026-11-07,
+  [design/components.md](design/components.md) § Decided): gestures and presses over time (a tap, a double tap, a
+  hold, a sequence, a swipe), values adapted (a `Digital` as a float from X to Y), and sensors normalized (the
+  accelerometer). They run before Input's hand-off, timed by the events' own timestamps, and the hand-off records
+  the action they produce. kama already has `type adapter`, so *suggested:* a **filter** reshapes each value and a
+  **gesture** recognizes a pattern over time. The hello cube needs neither, so A1 does not wait on the words.
 - **Any conflict with kama's own designs** for `@kama/gpu` and `@kama/window` is kama's to rule: a gap goes in
   [KAMA_GAPS.md](KAMA_GAPS.md), and the design is not changed from here.
 
