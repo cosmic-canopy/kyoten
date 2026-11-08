@@ -8,27 +8,34 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-08, end of day)
+## Where it stands (2026-11-08, end of the day's second session)
 
 **The next session starts here:**
 
 1. **Check `../kama`'s log and `kama --version`** first. Then run `tools/test.sh` and both packages' `tools/test.sh`
-   on that binary.
-2. **Build step 5** (KYR-7, the component model and the generator). Its seven questions were answered on 2026-11-08
-   (§ Questions the owner answers), so nothing it needs is undecided. Each part is test-first: the test seen to fail,
-   then the code, `tools/test.sh` green, and a commit on `main`.
-   1. **`kyoten::world`:** `Transform` (a zone as `int32` per axis, `position`, `rotation` and `scale` on `std::math`;
-      `rotateY(by:)`, `offsetTo(other:, zoneSize:)`, `place(zone:, position:)`), the 8-byte `Handle` (slot and
-      generation), and the chunk-size rule (16 KiB, at most 128 rows). Tests in `engine/tests/`. **Built on
-      2026-11-08** ([design/components.md](design/components.md) § Decided, the last entry): the zone is a `ZoneCoord`,
-      and KY-40 and KY-41 were filed on the way.
-   2. **`kyoten::records`:** the fixed record types, read with kama's `JsonDeserializer.strict`, with refusals that
-      name the field (``unknown field `app.titel` ``). **Built on 2026-11-08** ([design/components.md](design/components.md)
-      § Decided, the last entry).
+   on that binary. kama's own session was mid-change on 2026-11-08 (uncommitted work in its emitter and driver, and a
+   new `include/kama_asset.h`), so read `git -C ../kama status` before calling a red test a regression.
+2. **The asset manager's name,** [design/asset-manager.md](design/asset-manager.md) question 1, if the owner has not
+   answered it: "asset manager" (the owner's words) or "delivery tool" (SPIKE and KYR-29), or another. The doc's
+   other eleven questions wait for KYR-66's turn; nothing in the first slice needs them.
+3. **Continue step 5** (KYR-7, the component model and the generator) at 5.3. Its seven questions were answered on
+   2026-11-08 (§ Questions the owner answers). Each part is test-first: the test seen to fail, then the code,
+   `tools/test.sh` green, mutations caught, and a commit on `main`.
+   1. **`kyoten::world`:** built on 2026-11-08 (`bea9ce5`): `Transform` (a `ZoneCoord` and a `float32` offset, on
+      `std::math`; `rotateY(by:)` about its own Y axis, renormalized; `offsetTo(other:, zoneSize:)`;
+      `place(zone:, position:)`), the 8-byte `Handle`, and `ChunkSize::rowsFor(rowBytes:)`, run at compile time from
+      `sizeof`. Details in [design/components.md](design/components.md) § Decided, 2026-11-08.
+   2. **`kyoten::records`:** built on 2026-11-08 (`d8cfd92`): every record kind whose shape is the engine's, read with
+      `mergeFrom` through `JsonDeserializer.strict`, so layers merge by key and refusals name the path
+      (``unknown field `app.titel` ``). A content file's full type is generated per game around `AppRecord` and
+      `BindingRecord`, since prefabs are a game's own.
    3. **The `kyoten` tool** (`tools/kyoten/`, package `@kyoten/cli`, built with `-o kyoten`): the generator's first
       pass, which writes what comes from records alone (`Actions`, `Prefabs`, the prefab types); the header rule for
       clearing stale generated files; and `generate`, `check`, `build`, `run` and `clean` (KY-28). Tested on fixture
-      games under `tools/kyoten/tests/`, and `tools/test.sh` gains the generator's leg.
+      games under `tools/kyoten/tests/`, and `tools/test.sh` gains the generator's leg. **Start with its own short
+      plan and probes:** `Digital` in `kyoten::input` (the type each `Actions` field holds), the generated naming rule
+      (components § Decided, 2026-11-07), and reading content files whose `prefabs` the tool cannot type yet (the first
+      pass needs prefab names and their components, not their values). `.scratch/step5-cli` has the package's probe.
    4. **Signatures, passes and the world:** the generator asks `kama query` for each processor's parameters, and
       `--def` for each type's declaration until KY-39 is answered; the second pass writes the passes, with rate gating
       at the base rate, and a world that implements `kyoten::frame::World`. A fixture game with a spinning entity and
@@ -42,23 +49,13 @@ the design doc it settles before building on it.
      `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
      `kyoten::input`; required components added with their defaults; the module `static` refusal; and the 32 KiB
      frame guard on every target but Windows (**built on 2026-11-08,** in the engine's manifest alone, which reaches
-     every game: [design/components.md](design/components.md) § Decided, the last entry).
+     every game: [design/components.md](design/components.md) § Decided, the frame guard's entry of 2026-11-08).
    - **Left to later rows:** side stores, `Previous` and `Current`, the queues, random keys, world stores, more than
      one zone or layer, the footprint report, fusing a table's processors into one pass, `PARALLEL`, and `Mesh`,
      `Material`, `Camera` and `Light` (step 9). The generated `run` is step 7's.
    - **The probes behind the answers** sit in `.scratch/step5-main` (the fence's layout, and the generator's two
      passes), `.scratch/step5-content` (content natively, under node and in Edge) and `.scratch/step5-cli` (the tool's
      package). Each is quoted where its decision is recorded.
-3. **Also in that session, a docs change** (the owner, 2026-11-08): give the **asset manager** its own roadmap row
-   (KYR-66) and design doc, split out of KYR-29. In the owner's words, it is "something that kyoten games can use to
-   deliver final asset bundles", while cosmic-forge handles most of the raw content creation. Today it is only the
-   "delivery tool" clause in KYR-29. Gather what already bears on it: the 2026-11-05 direction
-   ([SPIKE.md](SPIKE.md) § Standing direction, heavy assets never stored with the code), packs
-   (project-database question 8), KYR-10's web bundling, KYR-21's release bundles, marketplace questions 1 and 2
-   (content packs), and the proposal that a record refers to an asset by id and content hash. Write its open
-   questions, decide nothing, and bring the name to the owner, since the docs say "delivery tool". **Done on
-   2026-11-08:** the row is KYR-66 and the doc [design/asset-manager.md](design/asset-manager.md), with twelve
-   questions, the name first.
 4. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
    change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
    first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5
@@ -74,25 +71,32 @@ the design doc it settles before building on it.
     natively, debug and release, and on wasm under node; `kyoten::frame`'s `Time`, `Clock` (exact in integer
     nanoseconds, its `TimeScale` a ratio), the `World` contract, and `step` and `frame`, generic over `World`. Its
     details are in [design/frame-phases.md](design/frame-phases.md) § Decided, question 3's *Built on 2026-11-08*.
+  - **Step 5.1, `kyoten::world`** (2026-11-08, `bea9ce5`): 27 cases. Its zone type, `ZoneCoord`, and `offsetTo`'s
+    `zoneSize:` were the owner's answers that morning.
+  - **The 32 KiB frame guard** (2026-11-08, `9286a7d`): in the engine's manifest alone, gated on `!OS_WINDOWS`, since a
+    dependency's `cflags` reach every game. `tools/fixtures/frame-guard`, a game with a 40 KB frame, holds it.
+  - **Step 5.2, `kyoten::records`** (2026-11-08, `d8cfd92`): 18 cases. The engine's tests are 96 cases in all.
+  - **KYR-66, the asset manager** (2026-11-08, `dea3db1`): its row and doc, twelve questions, nothing decided.
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
-- **kama:** step 4 was built on `0.9.876+g1a969a1e` (KR-283 step 2).
-  - **The binary now reports `0.9.876+g7ce86d36`,** built at 06:06 on 2026-11-08. kama then committed `92ad3d15` (a
-    test-harness fix) and, a minute after the build, `5a83d422`, 0.9.877 (KR-283 step 3: Android Studio's JDK, and
-    `kama seed --kind app` writing an app on `std::app`). The binary probably holds that work; its version string
-    lags, as it did on 2026-11-07.
+- **kama:** step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `0.9.881+g4267d2ec`.
+  - **That binary was built at 09:59 on 2026-11-08** from kama's working tree, which held uncommitted changes to its
+    emitter and driver. kama had committed 0.9.878 to 0.9.881 that morning: `kama run` on Android over adb, every std
+    module building on bare metal or refused by name, and a board's clocks declared in kama.
+  - **Filed on the way:** KY-40 (std::math has no integer vectors; beside kama's KR-343) and KY-41 (kama does not
+    evaluate an `isize` local at compile time, so `ChunkSize` counts in `usize` until it does).
   - **The rule:** never rebuild kama or edit `../kama`, and check `--version` before quoting one.
   - **`std::app` runs an owned `App`:** `run(app: Owned<App>)`, where an `App` has `tick()` and `lifecycle(event:)`
     (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`, `FocusGained`, `FocusLost`, `LowMemory`). Every host says
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on `0.9.876+g7ce86d36` (2026-11-08):**
-  - kyoten's `tools/test.sh`: the engine and its 51 tests, `examples/games/fps` (it prints `fps example, on kyoten`
-    natively and on wasm), and `examples/games/vr`;
-  - `@kama/window`'s gate, 20 cases;
-  - `@kama/gpu`'s gate: its cases, the clear example's 60 frames, the xfail, and the wasm build.
+- **Green on `0.9.881+g4267d2ec` (2026-11-08):**
+  - kyoten's `tools/test.sh`: the engine and its 96 tests, the frame guard, `examples/games/fps` (it prints
+    `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
+  - `@kama/window`'s gate, 36 cases natively and 20 under node;
+  - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
   ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
   It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
@@ -102,7 +106,8 @@ the design doc it settles before building on it.
   ([kyoten-example-vr](https://github.com/cosmic-canopy/kyoten-example-vr)), each its own repository, git-ignored
   here, depending on `../../../engine` by path. Both were moved, committed and pushed to their `main` on 2026-11-08.
 - **Pushed on 2026-11-08:** kyoten's `main` (its remote's default branch is now `main`), both package repositories'
-  `main`, and both example games' `main`.
+  `main`, and both example games' `main`. The second session's commits (`bea9ce5` onward) are on the local `main`;
+  pushing is the owner's call.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
   package claims, and neither has run on the web. `@kama/window` also vendors GLFW first, and both fix their
   stopgaps first, since those change the API. Publish `@kama/window` first, once its web half runs and GLFW is

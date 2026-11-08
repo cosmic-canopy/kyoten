@@ -55,7 +55,8 @@ tools/test.sh                                 # the whole suite: the gate before
 ```
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
-engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node. Then each cloned
+engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, and the 32 KiB
+frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows). Then each cloned
 example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
 no `emcc` or `node`, or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell
 (`bash -lic`) so the wasm legs run.
