@@ -74,8 +74,10 @@ the design doc it settles before building on it.
 - **The example games have no remote yet.** `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`) are local
   repositories, git-ignored here, each on `main` with its seed commit. Each depends on `../../engine` by path, so it
   stays checked out inside kyoten.
-  - **The owner creates them on GitHub, empty:** `cosmic-canopy/kyoten-fps` and `cosmic-canopy/kyoten-vr`, beside
-    kyoten and the `kama-*` packages.
+  - **The owner creates them on GitHub, empty, in `cosmic-canopy`,** beside kyoten and the `kama-*` packages.
+    - **The names may be `kyoten-example-fps` and `kyoten-example-vr`,** "to be explicit" (the owner, 2026-11-08).
+    - **Use the names the repositories get,** and rename the docs that say `kyoten-fps` and `kyoten-vr` to match:
+      README.md, examples.md, AGENTS.kyoten.md and this file.
   - **Then:** add each as `origin`, push `main`, and put the real URLs in README.md § the examples, in place of
     `<kyoten-fps-url>`.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
