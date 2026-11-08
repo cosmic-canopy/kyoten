@@ -34,7 +34,7 @@ compare and measure, then ask.
 | `engine/tests/` | the engine's tests, one program depending on the engine by path |
 | `engine/THIRD-PARTY-NOTICES.md` | the notices of code compiled into every program built on kyoten (musl's, through `reproducible-float`) |
 | `tools/test.sh` | the whole suite, the gate before every commit |
-| `games/<name>/` | **one separate repository per example game**, git-ignored here and optional: `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`, Meta Quest). Each is a standalone project that depends on `../../engine` by path. Commit a game in its own repository, never here |
+| `examples/<kind>/<name>/` | **one separate repository per example**, git-ignored here and optional, kept by kind (the owner, 2026-11-08): games under `examples/games/`, and later kinds such as a simulation or a graphics sample beside it. The games so far are `examples/games/fps` ([kyoten-example-fps](https://github.com/cosmic-canopy/kyoten-example-fps)) and `examples/games/vr` ([kyoten-example-vr](https://github.com/cosmic-canopy/kyoten-example-vr), Meta Quest). Each is a standalone project that depends on `../../../engine` by path. Commit an example in its own repository, never here |
 | `docs/VISION.md` | the owner's brief |
 | `docs/SPIKE.md` | the design spike: what it decided, then its brief as written |
 | `docs/FIRST-SLICE.md` | the kickoff brief for the first slice, from the hello cube to slice B |
@@ -49,16 +49,16 @@ compare and measure, then ask.
 ```sh
 kama pkg install kama_workspace.json          # the engine
 kama check engine/kama.json
-kama pkg install games/fps/kama.json          # an example, when kyoten-fps is cloned as games/fps
-kama run games/fps/kama.json                  # prints "fps example, on kyoten"
+kama pkg install examples/games/fps/kama.json # an example, when kyoten-example-fps is cloned there
+kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
 tools/test.sh                                 # the whole suite: the gate before every commit
 ```
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
 engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node. Then each cloned
-example: `games/fps` is checked and run natively and on wasm, and `games/vr` is checked. A leg with no `emcc` or `node`,
-or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell (`bash -lic`) so the
-wasm legs run.
+example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
+no `emcc` or `node`, or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell
+(`bash -lic`) so the wasm legs run.
 
 On Windows, drive kama from msys2 UCRT64, as kama's own `docs/platforms/windows.md` describes.
 

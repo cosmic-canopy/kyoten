@@ -112,7 +112,8 @@
 - **2026-11-01, the owner: the first Quest game starts as its own project, now**, as friendly-fire-department and
   the-mallow-man did, unless it fits here in a reasonable time. The owner has not built for Quest before and wants a
   prototype to reference as soon as possible, without holding kyoten up or bending kyoten toward one game, since kyoten
-  is open-ended and general purpose. It sits beside the `kyoten-vr` example, which stays an example of the engine.
+  is open-ended and general purpose. It sits beside the `kyoten-example-vr` example, which stays an example of the
+  engine.
   - **Assessed the same day: it does not fit here in a reasonable time.** kyoten has no frame, platform seam or
     renderer yet, so a Quest game here would wait for the gate (KYR-12), then the XR package (KYR-31) and Android
     (KYR-32). Meanwhile it would be the one game kyoten's early design bends toward, which is what the owner wants to

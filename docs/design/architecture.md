@@ -23,8 +23,9 @@ components. Quotes keep their words.*
 ## What exists now
 
 - `kama_workspace.json` with one member, `engine/` (package `kyoten`, one placeholder module). The example games are
-  separate repositories, one per game, each cloned as `games/<name>` (see *Decided*): `kyoten-fps` and `kyoten-vr` so
-  far. Each depends on the engine by path; `kama run games/fps/kama.json` prints `fps example, on kyoten`.
+  separate repositories, one per game, each cloned as `examples/games/<name>` (see *Decided*): `kyoten-example-fps`
+  and `kyoten-example-vr` so far. Each depends on the engine by path; `kama run examples/games/fps/kama.json` prints
+  `fps example, on kyoten`.
 - **The peers' lessons on engine abstraction** ([../research/peer-games.md](../research/peer-games.md) § 7):
   - "An engine abstraction must pay for itself on the game." FFD: "not an ECS, not a job system, not a scheduler
     abstraction, and not a plugin architecture… until a measurement asks otherwise". TMM: "Engine work never runs ahead
@@ -105,10 +106,12 @@ The tension between their lesson and that purpose is the first thing to settle.
 
 - **2026-11-01, the owner: each example game is its own repository**, so the engine manager can offer them one at a
   time as starting points, and so they take no space for anyone who only wants the engine.
-  - **How:** inside a kyoten checkout, an example is cloned to `games/<name>`, and kyoten's `.gitignore` leaves
-    `games/` out. kyoten's `kama_workspace.json` lists only `engine` and names no game, which keeps the rule that the
-    engine never names a game. Each example is a standalone project (no workspace spans them) that depends on
-    `"kyoten": { "path": "../../engine" }`. The first two are `kyoten-fps` and `kyoten-vr` ([examples.md](examples.md)).
+  - **How:** inside a kyoten checkout, an example is cloned to `examples/games/<name>`, and kyoten's `.gitignore`
+    leaves `examples/games/` out. kyoten's `kama_workspace.json` lists only `engine` and names no game, which keeps the
+    rule that the engine never names a game. Each example is a standalone project (no workspace spans them) that
+    depends on `"kyoten": { "path": "../../../engine" }`. The first two are `kyoten-example-fps` and
+    `kyoten-example-vr` ([examples.md](examples.md)). *(Until 2026-11-08 they were `kyoten-fps` and `kyoten-vr`,
+    cloned as `games/<name>`: examples.md § Decided, 2026-11-08.)*
   - **Verified on kama 0.9.803:** the engine workspace installs alone, and each example installs, checks and runs from
     kyoten's root or from its own directory.
   - **Considered:** one repository holding every game, set aside because examples are downloaded individually. kama
@@ -348,3 +351,21 @@ The tension between their lesson and that purpose is the first thing to settle.
       arrives as a component, a tick later if need be;
     - deferring the rule to components question 1;
     - holding it by convention only, or by kama's gap alone.
+- **2026-11-08, the owner: the `kyoten` tool is the package `@kyoten/cli`, in `tools/kyoten/`** (the first slice's step
+  5, question 5 of 7). "Sounds good so far."
+  - **What:** the generator and the other `kyoten` commands (`generate`, `check`, `build`, `run`, `clean`, later
+    `test`, `merge`, `fmt`, `migrate` and `new`) are one executable, as components.md decided on 2026-11-07. Its package
+    is `@kyoten/cli`, an executable in `tools/kyoten/` that depends on the engine by path, and the workspace lists it.
+    `tools/` held only scripts until now; this is its first package.
+  - **Why `@kyoten/cli`:** it is kyoten's own, so it takes the `@kyoten` scope (2026-11-03, above), and the plain name
+    `kyoten` is the engine package's. A prefix in the name (`kyotencli`) is the workaround kama refused when it ruled
+    KR-291.
+  - **Why a package and not a module of the engine** (the owner asked): the tool is a program with its own `main`, and
+    a kama package is either a library or an executable. The engine is a library that every game links, with no entry,
+    as its tests are a program of their own (`engine/tests/`). The dependency runs one way: the tool imports the
+    engine's record types (`kyoten::records`, components.md, 2026-11-08), and the engine never imports the tool.
+  - **The program is named `kyoten`.** kama names an executable after its package, scope stripped, so a plain
+    `kama build` writes `cli`. The tool's build passes `-o kyoten`, and the engine manager installs it under that name
+    ([version-manager.md](version-manager.md)).
+  - **Probed on kama `0.9.876+g7ce86d36`** (`.scratch/step5-cli`): `@kyoten/cli`, depending on another package by
+    path, built as `out/x86_64-windows-gnu/debug/cli.exe`, and with `-o out/kyoten.exe` as `kyoten.exe`, which ran.

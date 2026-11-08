@@ -143,8 +143,10 @@ stay outside the spike, with their roadmap rows.
      - **Its records** name the platform per configuration, and the generator writes the `run` the game's `main` calls,
        passing the generated world and the build's platform to the engine.
      - **So the hello cube's `main` stays two lines,** importing `run` from its generated module rather than from
-       kyoten. That closes a gap in the sketch: `kyoten::run()` without arguments could not reach a game's generated
-       world, since the engine never imports a game and reaches the world through the `World` contract
+       kyoten. *(Since 2026-11-08, `run` is generated beside `main` in the app's root module, outside the
+       simulation's fence, and built at the first slice's step 7: ai-first-api.md § Decided, question 3.)* That
+       closes a gap in the sketch: `kyoten::run()` without arguments could not reach a game's generated world,
+       since the engine never imports a game and reaches the world through the `World` contract
        ([components.md](components.md)).
   6. **Question 2: under a console, the GPU's interface stays WebGPU's shape.** Whether a console supplies it as a C
      library behind `webgpu.h`, as Dawn and wgpu-native do on desktop, or as a kama type, is left to the first console

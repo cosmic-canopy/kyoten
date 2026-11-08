@@ -13,9 +13,11 @@ KYR-29 and KYR-40.
 
 ## What exists
 
-- **`kyoten-fps`** and **`kyoten-vr`**: two repositories, each checked out inside a kyoten checkout as `games/fps` and
-  `games/vr` (git-ignored here). Each is a standalone kama project that depends on the engine by path
-  (`../../engine`), and each prints its name and the engine version (kama 0.9.803). Nothing else is built.
+- **[`kyoten-example-fps`](https://github.com/cosmic-canopy/kyoten-example-fps)** and
+  **[`kyoten-example-vr`](https://github.com/cosmic-canopy/kyoten-example-vr)**: two repositories, each checked out
+  inside a kyoten checkout as `examples/games/fps` and `examples/games/vr` (git-ignored here). Each is a standalone
+  kama project that depends on the engine by path (`../../../engine`), and each prints its name and the engine
+  version. Nothing else is built.
 - **The peers' starting point:** both began from a playable JS prototype (FFD in 2D canvas, the-mallow-man in
   Three.js), and parity with it was the kama simulation's first exit criterion
   ([../research/peer-games.md](../research/peer-games.md) § 7).
@@ -51,31 +53,32 @@ KYR-29 and KYR-40.
 ## Decided
 
 - **2026-11-01, the owner: each example game is its own repository**, so the engine manager can offer them one at a
-  time as starting points. Inside a kyoten checkout, each is cloned to `games/<name>`, and kyoten's `.gitignore` leaves
-  `games/` out, so examples take no space for anyone who only wants the engine. Layout and verification:
-  [architecture.md](architecture.md) § Decided.
-- **2026-11-01, the owner: the first examples are an FPS (`kyoten-fps`) and a VR game for Meta Quest (`kyoten-vr`).**
+  time as starting points. Inside a kyoten checkout, each is cloned to `examples/games/<name>` (`games/<name>` until
+  2026-11-08, below), and kyoten's `.gitignore` leaves `examples/games/` out, so examples take no space for anyone
+  who only wants the engine. Layout and verification: [architecture.md](architecture.md) § Decided.
+- **2026-11-01, the owner: the first examples are an FPS and a VR game for Meta Quest,** first named `kyoten-fps` and
+  `kyoten-vr`, and `kyoten-example-fps` and `kyoten-example-vr` since 2026-11-08 (below).
 - **2026-11-01, the owner: the FPS example is expected to come first** ("may indeed be the first example"), so the
-  first slice is planned in `kyoten-fps`. On the roadmap, slice A (KYR-11) and slice B (KYR-12) are the gate after
-  which a game can start on kyoten, and slice C (KYR-28) follows with the project database. What each slice contains
-  is still question 2's to decide, in the spike.
+  first slice is planned in `kyoten-example-fps`. On the roadmap, slice A (KYR-11) and slice B (KYR-12) are the gate
+  after which a game can start on kyoten, and slice C (KYR-28) follows with the project database. What each slice
+  contains is still question 2's to decide, in the spike.
 - **2026-11-01, the owner: the examples are built to showcase** (question 5). The owner wants as many games running
   on kyoten as possible to showcase when it is ready to host games. The ports of friendly-fire-department and
   the-mallow-man join the examples once each has shipped (KYR-46 to KYR-48). Each example still stays a different
   shape (question 6), so the showcase guards against bending the engine toward one game.
 - **2026-11-07, the owner: questions 1–3, the last of the narrowed spike.** "All of this sounds good to me so far."
-  1. **Question 1: kyoten-fps v1 is a playable single-player arena:** move, look and jump; a hitscan weapon whose hits
-     resolve in Constraints; targets or simple bots (KYR-56's state machines); a HUD in HTML; and sound, on web and
-     native from the same code (KYR-65). It proves the frame (input at a high rate, a fixed simulation, interpolated
-     rendering), the records and the generator, the platform seam, and then the project database (slice C). Networked
-     play (KYR-18) is its v2.
-  2. **Question 1: kyoten-vr v1 is a room on Quest, natively:** the head and both hands tracked, controllers as actions,
-     objects grabbed and thrown, stereo rendering, and the headset's rate held on a mobile GPU (KYR-33). It proves the
-     XR package, the Android platform, and a frame driven by the headset's clock. It starts once the gate has passed
-     and kama's installable Android app (KY-2) has landed; the owner's Quest prototype (KYR-4) informs it.
+  1. **Question 1: kyoten-example-fps v1 is a playable single-player arena:** move, look and jump; a hitscan weapon
+     whose hits resolve in Constraints; targets or simple bots (KYR-56's state machines); a HUD in HTML; and sound, on
+     web and native from the same code (KYR-65). It proves the frame (input at a high rate, a fixed simulation,
+     interpolated rendering), the records and the generator, the platform seam, and then the project database (slice
+     C). Networked play (KYR-18) is its v2.
+  2. **Question 1: kyoten-example-vr v1 is a room on Quest, natively:** the head and both hands tracked, controllers
+     as actions, objects grabbed and thrown, stereo rendering, and the headset's rate held on a mobile GPU (KYR-33). It
+     proves the XR package, the Android platform, and a frame driven by the headset's clock. It starts once the gate
+     has passed and kama's installable Android app (KY-2) has landed; the owner's Quest prototype (KYR-4) informs it.
   3. **Question 1: neither bends the engine.** What they need arrives as a component or a pattern any game can use,
      by the rule in [../../AGENTS.kyoten.md](../../AGENTS.kyoten.md).
-  4. **Question 2: the gate is slices A then B, in kyoten-fps, with the hello cube as A's first milestone.**
+  4. **Question 2: the gate is slices A then B, in kyoten-example-fps, with the hello cube as A's first milestone.**
      - **A1, the hello cube** (KYR-14): a window, the GPU, records, the generator, one processor and input, on web and
        native, the smallest thing that passes through every tier.
      - **A2, the level** (KYR-11): a glTF level, flattened until KYR-62 brings the transform hierarchy; a first-person
@@ -121,3 +124,13 @@ KYR-29 and KYR-40.
     is a later check, not the bar.
   - **Each machine's model, CPU and GPU are written beside the first numbers measured on it,** so a ratchet always
     names its machine. Consoles stay KYR-42, which the owner wants looked into at some point.
+- **2026-11-08, the owner: examples sit under `examples/`, by kind, and the repositories are named
+  `kyoten-example-<name>`.** The owner created `cosmic-canopy/kyoten-example-fps` and `cosmic-canopy/kyoten-example-vr`
+  ("to be explicit"), then: "We should put them under "examples/games/". That way all example types are organized. we
+  may add different types later like simulation or just general graphics examples etc."
+  - **Where:** a game is cloned to `examples/games/<name>`. A later kind of example, such as a simulation or a graphics
+    sample, gets a folder of its own beside `games/`, and its own line in kyoten's `.gitignore`.
+  - **Each is still its own repository,** as decided on 2026-11-01, and depends on the engine by path, now
+    `../../../engine`.
+  - **Done the same day:** both games moved, each committed and pushed to its repository's `main`, and `tools/test.sh`
+    reads them from `examples/games/`. The suite passed on kama `0.9.876+g7ce86d36`.

@@ -314,3 +314,29 @@ least prior art in the peers, and the one most worth getting right before code.
   14. **Light by default.** Roles and approvals are off until a project turns them on, a claim never blocks, and the
       slow checks run in CI, not while an agent works. The field merge is what lets agents build different features in
       parallel.
+- **2026-11-08, the owner: how a running build reaches its content records in development** (the first slice's step
+  5, question 3 of 7). "Sounds good to me so far."
+  - **What was open:** question 8 decided that in development the stack reads files and a shipped game reads packs, but
+    not how the files reach a running build, natively and on the web, nor where the engine's own default records live.
+  - **The engine's default records live in `engine/content/`,** the engine's content layer, the lowest of the stack:
+    the window, the camera, the light, the material, the scene's one zone and its `main` layer, and the default budget.
+  - **The loader reads through a `RecordSource` contract,** the "source" of question 11, choice 5 (a source is
+    whatever satisfies the contract). Its first implementation is a folder, read with `std::fs` and kama's strict JSON
+    reader.
+  - **Natively, in development,** the game reads its folders at the paths the generator resolved, written into the
+    generated code, which is never committed.
+  - **On wasm, the folders reach the program's virtual filesystem through kama's `preloadFiles`,** packed into one
+    `.data` file that the page fetches once before `main`. It is an asset, so the A1 check's 150 KB of code does not
+    count it. The engine's manifest declares its own folder, and a dependency's `preloadFiles` reaches every game.
+  - **When a game ships, packs replace the folders** (question 8, item 10 above), each one a source like any other.
+  - **Probed on kama `0.9.876+g7ce86d36`** (`.scratch/step5-content`): an engine package with `content/` and
+    `"preloadFiles": ["content@/eng/content"]`, and a game with its own; `main` walks both folders in sorted order
+    and reads every `*.records.json` with `JsonDeserializer.strict`.
+    - **Natively, under node and in headless Edge 157** (served from localhost), the output was the same three lines:
+      two records read, and a misspelt key refused as ``unknown field `app.titel` ``, named by its path.
+    - **On wasm both folders arrived in one `game.data` of 140 bytes,** the engine's through its own manifest.
+    - **Under node, emscripten looks for the `.data` file in the working directory,** not beside the script, so a
+      test runs node from the build's folder. A browser resolves it beside the page.
+  - **Considered:** the generator baking the content into the build as code. It needs no file system, but a record
+    change would need a build, against question 8's boundary (what a record change can hot-reload is data), and the
+    content would count as code on the web.

@@ -69,8 +69,8 @@ Added to the brief the same day:
 Added to the brief the same day:
 
 - **Each example game is its own repository**, so the engine manager can offer them one at a time as projects to
-  start from. In a kyoten checkout they sit under `games/`, which is git-ignored, so they take no space for anyone who
-  only wants the engine.
+  start from. In a kyoten checkout they sit under `examples/games/`, which is git-ignored, so they take no space for
+  anyone who only wants the engine.
 - **The first examples: an FPS, and a VR game for Meta Quest.**
 - **An engine version manager**, so a developer can download and run several versions of the engine on one machine,
   and download individual example projects to start from.

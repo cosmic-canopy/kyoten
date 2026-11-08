@@ -8,8 +8,9 @@
 #   - `kama check` on the engine and on its tests program;
 #   - the engine's tests (engine/tests/, one program), built debug and release and run natively, then built for wasm
 #     and run under node;
-#   - each example game that is cloned under games/: `games/fps` checked, then run natively and on wasm, its output
-#     held to "fps example, on kyoten"; `games/vr` checked. A game that is not cloned is skipped, and says so.
+#   - each example game that is cloned under examples/games/: `examples/games/fps` checked, then run natively and on
+#     wasm, its output held to "fps example, on kyoten"; `examples/games/vr` checked. A game that is not cloned is
+#     skipped, and says so.
 #
 # Run it from msys2 UCRT64 on Windows (`bash -lic`, so emcc and node are on PATH for the wasm legs), or any shell
 # elsewhere. Without emcc or node the wasm legs are skipped, and say so.
@@ -34,6 +35,7 @@ wasm=0
 if command -v emcc >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then wasm=1; fi
 
 TESTS=engine/tests
+GAMES=examples/games
 OUT="$TESTS/out"
 mkdir -p "$OUT"
 
@@ -76,13 +78,13 @@ run_example() {
     local game="$1" label="$2" want="$3" out="$4" runner="$5"; shift 5
     local log="$OUT/games/$game-$label.log"
     mkdir -p "$OUT/games"
-    if "$KAMA" build "games/$game/kama.json" "$@" -o "$out" > "$log" 2>&1; then
+    if "$KAMA" build "$GAMES/$game/kama.json" "$@" -o "$out" > "$log" 2>&1; then
         local said
         if said="$($runner "$out" 2>&1)" && printf '%s\n' "$said" | grep -qF "$want"; then
-            echo "ok   games/$game, $label: $want"
+            echo "ok   $GAMES/$game, $label: $want"
         else
             printf '%s\n' "$said"
-            echo "FAIL games/$game, $label: no \"$want\""
+            echo "FAIL $GAMES/$game, $label: no \"$want\""
             failed=1
         fi
     else
@@ -94,20 +96,20 @@ native() { "$1"; }
 under_node() { node "$1"; }
 
 for game in fps vr; do
-    step "games/$game"
-    if [ ! -f "games/$game/kama.json" ]; then
-        echo "skip games/$game is not cloned (it is its own repository, kyoten-$game)"
+    step "$GAMES/$game"
+    if [ ! -f "$GAMES/$game/kama.json" ]; then
+        echo "skip $GAMES/$game is not cloned (it is its own repository, kyoten-example-$game)"
         continue
     fi
-    "$KAMA" pkg install "games/$game/kama.json" > /dev/null
-    "$KAMA" check "games/$game/kama.json" || failed=1
+    "$KAMA" pkg install "$GAMES/$game/kama.json" > /dev/null
+    "$KAMA" check "$GAMES/$game/kama.json" || failed=1
     if [ "$game" = fps ]; then
         want="fps example, on kyoten"
         run_example fps native "$want" "$OUT/games/fps/native/fps$EXE" native
         if [ "$wasm" = 1 ]; then
             run_example fps wasm "$want" "$OUT/games/fps/wasm/fps.js" under_node --target WASM
         else
-            echo "skip games/fps on wasm: no emcc or node on PATH"
+            echo "skip $GAMES/fps on wasm: no emcc or node on PATH"
         fi
     fi
 done

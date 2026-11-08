@@ -52,6 +52,11 @@ question 1): `kyoten::frame`, `kyoten::world`, one module per engine module (`ky
 surface. Each module's `importsOnly` holds the rule, so `kama check` refuses an edge that breaks it. kama has no
 re-exports, so a game names the tier in its imports: `kyoten::frame::Time`, `kyoten::world::Transform`.
 
+**The record types are one module beside the world tier,** `kyoten::records` (*decided* 2026-11-08,
+[design/components.md](design/components.md) § Decided, step 5's questions): every record kind whose shape is the
+engine's, importing nothing, read by the world tier's loader and by the `kyoten` tool alike. The records that hold a
+game's own components (a prefab, a placement's values) are generated per game.
+
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
  │ 1 frame   phases · the clock · scheduler · input record · World contract · run │
@@ -193,16 +198,17 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 
 *Decided at components question 7, with ai-first-api question 1 and rendering question 3* ([design/components.md](design/components.md)
 § Decided); revised on 2026-11-06 so actions belong to a player, and laid out in question 8 part b's record files
-(2026-11-07), with `run` from the game's generated module (target-platforms question 2, 2026-11-07). A sketch: no
-engine compiles it yet, and an action's kind is KYR-54's.
+(2026-11-07), with `run` from the game's generated code (target-platforms question 2, 2026-11-07), and with `main` in
+the app's root module and the cube in a module folder, outside and inside the simulation's fence (ai-first-api
+question 3, 2026-11-08). A sketch: no engine compiles it yet.
 
 ```kama
-// src/app.kama, written by `kyoten new`
-import { hello::generated::run };
+// src/app.kama, written by `kyoten new`; `run` is generated beside it, in src/hello.generated.kama
+import { run };
 fn uint8 main() { return run(); }
 ```
 ```kama
-// src/cube.kama
+// src/cube/cube.kama, module hello::cube, a simulation module
 import { kyoten::world::Transform, kyoten::frame::Time, hello::generated::Actions };
 export { Spin, turn };
 @generate(Serializable, Deserializable, of)
@@ -213,11 +219,11 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 }
 ```
 
-`src/cube.records.json`, the code records:
+`src/cube/cube.records.json`, the code records:
 
 ```json
 { "processors": { "turn": { "phase": "Update" } },
-  "actions":    { "faster": { "kind": "Button" } } }
+  "actions":    { "faster": { "kind": "Digital" } } }
 ```
 
 `content/cube.records.json`, and the scene's one zone, `content/scenes/hello/zone.0.0.records.json`:
@@ -231,13 +237,14 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
 ```
 
 - **The game writes** a prefab, a component (`Spin`), a processor (`turn`), an action and its bindings, and a zone
-  that places the cube. It also owns a two-line `main`, which `kyoten new` writes.
+  that places the cube. It also owns a two-line `main`, in the app's root module, which `kyoten new` writes with the
+  manifest's `modules` and their `importsOnly`.
 - **The engine supplies** the defaults as records: a window or canvas, a camera, lights, a lit material, one player
   bound to the local keyboard and first gamepad, and the scene's one zone and its layer, `main`. The app's first scene
   is the only one unless its record names another. `mesh` requires a transform and a material (question 8).
 - **The generator writes the rest:** the cube's table; an `Actions` component with one field per action, which the
   Input phase fills each step from the player the cube names; Update's call to `turn`; and the `run` that `main`
-  calls, which passes the world and the build's platform to the engine.
+  calls, which passes the world and the build's platform to the engine (built at the first slice's step 7).
 - **The target:** at most 20 non-blank lines across all files and eight concepts (app, record, scene, prefab,
   component, processor, action, player), on web and native, held by CI. This layout is 15, counting its imports and
   its export. The owner (2026-11-07): "The 20-line target is obviously arbitrary but probably a good gauge. It
@@ -310,7 +317,10 @@ components' fields, and more arrive with their roadmap rows.
 *Decided at components question 8 part b, with project-database question 2 in part (2026-11-07).* A record is the
 engine's own kama type, read from strict JSON (question 5). **A record lives with what it describes:** records that
 describe code sit beside it, and content records sit under `content/`. The generator and the loader read every
-`*.records.json` under both.
+`*.records.json` under both. The engine's own default records are its content layer, in `engine/content/`, under
+each game's (project-database § Decided, 2026-11-08). In development a running game reads the folders, through a
+`RecordSource`: natively from disk, and on the web from the one `.data` file kama's `preloadFiles` packs them into.
+A shipped game reads packs.
 
 ```
 kyoten-towers/
@@ -407,7 +417,7 @@ content/
 | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
 | Zone | `place`: placements keyed by placed name |
 | Placement | `prefab` (required); `layer` (its prefab's, else `main`); `group` (none); `values`, laid over the prefab's |
-| Action, a code record | in a module's records file, under `actions`: its `kind` (KYR-54's to name) |
+| Action, a code record | in a module's records file, under `actions`: its `kind`, `Digital`, `Analog`, `Vector2`, `Vector3`, `Pose` or `Text` (components § Decided, 2026-11-08; step 5 builds `Digital`) |
 
 - **A prefab variant starts `from` another,** and lays its values over it, as a placement does.
 - **The default layer is `main`,** where a placement that names no layer goes.
@@ -415,7 +425,8 @@ content/
   How a game uses its layers is its own choice.
 - **Zone files exist only where something is authored,** and may sit in subfolders: the file's name names the
   zone.
-- **Actions are code records and bindings are content.** Action kinds are KYR-54's.
+- **Actions are code records and bindings are content.** An action's kind names the value a processor reads, not a
+  device, so one `Digital` serves a key, a button and a UI button.
 
 **The project database** (*decided*, project-database questions 1–4, 2026-11-07) has two halves sharing one id space
 and one query surface. **Game data** is what the running game reads: the records above, and a game's own **data
@@ -463,7 +474,8 @@ that compiles in CI.
   [design/ai-first-api.md](design/ai-first-api.md) § Decided. Among them, **the simulation cannot reach the outside
   world:** a simulation module, one that holds Input, Update or Constraints processors, leaves out of its
   `importsOnly` std's `time`, `fs`, `net`, `process`, `io`, `concurrent`, `uuid` and `random`, and `core::env`.
-  Output processors and outside work sit in modules of their own. The compiler holds this in every build, and
+  Output processors and outside work sit in modules of their own, and so does a game's `main`, in the app's root
+  module (2026-11-08). The compiler holds this in every build, and
   kyoten's check holds the lists (KYR-53, decided 2026-11-08). Outside data enters only through Input's recorded
   hand-off.
 

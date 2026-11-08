@@ -13,28 +13,32 @@ A game engine written in [kama](https://kama-lang.org): **AI-driven, component-b
   updates at the rate that suits it.
 - **General purpose.** It drives games and is never written for one. As quick to prototype in as Three.js.
 
-**Status: seeded for a design spike.** Nothing is built yet beyond a workspace that compiles end to end. Start
-with [docs/VISION.md](docs/VISION.md), then [docs/SPIKE.md](docs/SPIKE.md).
+**Status: the first slice is under way.** The design spike is done, and the frame core is built and tested. Start
+with [docs/REFERENCE.md](docs/REFERENCE.md), the model in one read, then [docs/FIRST-SLICE.md](docs/FIRST-SLICE.md).
 
 ```sh
 kama pkg install kama_workspace.json          # the engine
+tools/test.sh                                 # the whole suite
 ```
 
-**Each example game is its own repository**, so you can take only the one you want, and the engine manager can offer
-each as a project to start from. They are optional: clone one into `games/<name>`, which this repository ignores, so
-an engine-only checkout never downloads them. The first two are an FPS (`kyoten-fps`) and a VR game for Meta Quest
-(`kyoten-vr`).
+**Each example is its own repository**, so you can take only the one you want, and the engine manager can offer each
+as a project to start from. They are optional, and sit under `examples/` by kind: clone a game into
+`examples/games/<name>`, which this repository ignores, so an engine-only checkout never downloads them. The first two
+are an FPS, [kyoten-example-fps](https://github.com/cosmic-canopy/kyoten-example-fps), and a VR game for Meta Quest,
+[kyoten-example-vr](https://github.com/cosmic-canopy/kyoten-example-vr).
 
 ```sh
-git clone <kyoten-fps-url> games/fps
-kama pkg install games/fps/kama.json
-kama run games/fps/kama.json                  # prints "fps example, on kyoten"
+git clone https://github.com/cosmic-canopy/kyoten-example-fps.git examples/games/fps
+kama pkg install examples/games/fps/kama.json
+kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
 ```
 
 | | |
 |---|---|
 | [docs/VISION.md](docs/VISION.md) | the brief |
-| [docs/SPIKE.md](docs/SPIKE.md) | the design spike: how to walk through it |
+| [docs/REFERENCE.md](docs/REFERENCE.md) | the model: the picture, the vocabulary and the prior art |
+| [docs/FIRST-SLICE.md](docs/FIRST-SLICE.md) | the first slice: where it stands and the order of work |
+| [docs/SPIKE.md](docs/SPIKE.md) | the design spike and what it decided |
 | [docs/design/](docs/design/) | one draft per system, with its open questions |
 | [docs/research/](docs/research/) | what the peer projects and kama already offer |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | the order of work |

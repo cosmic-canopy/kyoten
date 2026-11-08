@@ -1794,3 +1794,48 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     take either pair, since a processor is kyoten's word, a trigger is a gamepad control, and a modifier is a Shift or
     Ctrl key in a chord. The owner chooses the words with the action kinds, when the first slice's step 8 starts
     ([../FIRST-SLICE.md](../FIRST-SLICE.md)).
+- **2026-11-08, the owner: step 5's questions, before the generator is built** (the first slice, KYR-7). Seven were
+  brought, each probed on kama `0.9.876+g7ce86d36`, and the owner: "Everything sounds good so far with my notes above."
+  Question 1 (`main` outside the fence) is recorded in [ai-first-api.md](ai-first-api.md) § Decided, question 3,
+  question 3 (content in a running build) in [project-database.md](project-database.md) § Decided, and question 5 (the
+  tool's package) in [architecture.md](architecture.md) § Decided. The rest are here.
+  - **Question 2: the generated `run` is built at step 7, not step 5.** `run` hands the world and the build's platform
+    to the frame loop on `std::app`'s `App`, and the `Platform` contract and that loop are step 7's. Step 5 ends at a
+    generated world that implements `kyoten::frame::World`, and tests drive it through `step` and `frame`. The owner:
+    "Sounds like just an order and scope decision. I'm fine with your recommendation." **Considered:** a minimal
+    `Platform` with a headless platform now, which would design step 7's contract twice.
+  - **Question 4: the fixed record types live in one engine module, `kyoten::records`.**
+    - It holds every record kind whose shape is the engine's: the app, scene, layer, layer group, budget, limit,
+      bindings, and the code records (module, processor group, processor, component, action). It imports nothing.
+    - The world tier's loader imports it, and so does the tool (`@kyoten/cli`), so the generator, the loader,
+      `kyoten check` and the JSON Schema export read one set of types.
+    - The records that hold a game's own components (a prefab, a placement's `values`) are generated per game, with a
+      field per spelling (the naming rule, 2026-11-07).
+    - **Considered:** the content records in `kyoten::world` and the code records in the tool only, which gives one
+      schema two homes.
+  - **Question 6: the action kinds are the general ones,** named for the value a processor reads, not for a device:
+    `Digital` (on or off, with `held`, `pressed` and `released`), `Analog`, `Vector2`, `Vector3`, `Pose` and `Text`, as
+    suggested on 2026-11-07 ([../FIRST-SLICE.md](../FIRST-SLICE.md) § Questions the owner answers).
+    - **Why now:** step 5 generates `Actions`, a field per action, so a kind needs its kama type; this was planned for
+      step 8.
+    - **Step 5 builds `Digital` only,** in the input module, `kyoten::input`; the others come with KYR-54 at step 8.
+      The hello cube's action record says `"Digital"`.
+    - The words for the two kinds of binding step, "filter" and "gesture", still wait for step 8.
+  - **Question 7: the engine's default budget is one chunk per (zone, layer, prefab).**
+    - A game that sets no budget gets the engine's default record: N rows, the archetype's chunk size (question 6,
+      choice 4: 16 KiB, at most 128), reserved up front, and `whenFull` is `Refuse`.
+    - A zone that places more than that is refused when it loads, and the message names the scene's budget record to
+      add.
+    - The hello cube sets none.
+  - **Settled while preparing it, as how the generator runs rather than a decision:**
+    - **The generator writes in two passes.** On a fresh clone `kama query` answers nothing, since the game's
+      processors import generated types that do not exist yet. kama says so: *"hello/kama.json lists
+      `hello::generated`, but its folder src/generated does not exist — … if a tool generates it, run that first"*.
+      - The first pass writes what comes from records alone: `Actions`, `Prefabs`, the prefab types and the random
+        keys. Those are exactly the generated types a processor's signature can name.
+      - The generator then asks for the signatures, and the second pass writes the passes and the world.
+      - *Probed* (`.scratch/step5-main`): with only the first pass's `Actions` written, one
+        `--search turn --json` answered `turn`'s parameters with their names, modes and types.
+    - **A signature's types come back bare:** `Time`, not `eng::frame::Time`. `--def` at each type finds its
+      declaring file, so the generator can map the file to its module, but that repeats kama's module resolution in
+      the tool. Filed as [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-39.

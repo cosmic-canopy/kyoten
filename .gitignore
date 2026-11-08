@@ -10,6 +10,8 @@ kama.local.json
 # Throwaway prototypes and probes (the design spike measures things here).
 .scratch/
 
-# Each example game is its own repository (kyoten-fps, kyoten-vr, …), cloned here as `games/<name>` by those who
-# want it. Ignored so the engine stays small for everyone who only wants the engine. See README.md.
-games/
+# Each example is its own repository, cloned here by kind by those who want it: a game as `examples/games/<name>`
+# (kyoten-example-fps, kyoten-example-vr, …). Ignored so the engine stays small for everyone who only wants the engine.
+# A new kind of example (a simulation, a graphics sample) gets its own folder under examples/ and its own line. See
+# README.md.
+examples/games/

@@ -8,78 +8,87 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-08)
+## Where it stands (2026-11-08, end of day)
 
 **The next session starts here:**
 
 1. **Check `../kama`'s log and `kama --version`** first. Then run `tools/test.sh` and both packages' `tools/test.sh`
    on that binary.
-2. **Step 4, the frame core, is built** (2026-11-08, `54d2985` to `019b7aa`).
-   - **The suite:** `tools/test.sh` at the root (AGENTS.kyoten.md § Build) and `engine/tests/`. 51 cases pass
-     natively, debug and release, and on wasm under node.
-   - **`kyoten::frame`:** `Time`; the `Clock`; the `World` contract; and `step` and `frame`, generic over `World`,
-     whose emitted C calls each phase directly.
-     - The clock is exact in integer nanoseconds, and counts the discards at its cap exactly.
-     - Its `TimeScale` is a ratio (the owner, 2026-11-08).
-   - **The manifest:** `frame`'s `importsOnly` is empty, and `reproducible-float` is on. The notices of the musl code
-     it compiles in are in `engine/THIRD-PARTY-NOTICES.md`.
-   - **Recorded:** the details settled while building it are in [design/frame-phases.md](design/frame-phases.md)
-     § Decided, question 3's *Built on 2026-11-08*.
-   - **Each part was test-first:** its tests were seen to fail, then the code was written, and mutations of the clock
-     and the driver were caught.
-3. **Step 6's question is answered** (the owner, 2026-11-08, KYR-53).
-   - **The answer:** the simulation rule moves into `importsOnly` as a module fence, and `core::env` joins its list
-     ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5).
-   - **When the check lands:** with step 5's code records, since it reads them to learn which modules hold
-     simulation processors.
-   - **Step 5 builds to the fence:** the generated code splits into a fenced module (the world, `Actions`) and an
-     outside one (`run`), and the hello cube's root module is its simulation module.
-4. **Next in Track 2, step 5** (KYR-7, the component model and the generator). First read components.md § Decided
-   and target-platforms question 2 for anything step 5 needs that is not yet decided. Bring each such question with a
-   recommendation, then build test-first.
-5. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix
-   test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come first, since the format
-   choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`,
-   ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6),
-   gamepads (W3), and the triangle's pipeline set.
+2. **Build step 5** (KYR-7, the component model and the generator). Its seven questions were answered on 2026-11-08
+   (§ Questions the owner answers), so nothing it needs is undecided. Each part is test-first: the test seen to fail,
+   then the code, `tools/test.sh` green, and a commit on `main`.
+   1. **`kyoten::world`:** `Transform` (a zone as `int32` per axis, `position`, `rotation` and `scale` on `std::math`;
+      `rotateY(by:)`, `offsetTo(other:)`, `place(zone:, position:)`), the 8-byte `Handle` (slot and generation), and
+      the chunk-size rule (16 KiB, at most 128 rows). Tests in `engine/tests/`.
+   2. **`kyoten::records`:** the fixed record types, read with kama's `JsonDeserializer.strict`, with refusals that
+      name the field (``unknown field `app.titel` ``).
+   3. **The `kyoten` tool** (`tools/kyoten/`, package `@kyoten/cli`, built with `-o kyoten`): the generator's first
+      pass, which writes what comes from records alone (`Actions`, `Prefabs`, the prefab types); the header rule for
+      clearing stale generated files; and `generate`, `check`, `build`, `run` and `clean` (KY-28). Tested on fixture
+      games under `tools/kyoten/tests/`, and `tools/test.sh` gains the generator's leg.
+   4. **Signatures, passes and the world:** the generator asks `kama query` for each processor's parameters, and
+      `--def` for each type's declaration until KY-39 is answered; the second pass writes the passes, with rate gating
+      at the base rate, and a world that implements `kyoten::frame::World`. A fixture game with a spinning entity and
+      no render is generated, built and stepped through `step`, natively (debug and release) and on wasm, and its
+      rotation checked exactly, then mutations caught, as step 4's were.
+   5. **The loader:** a zone's placements and the prefab values become rows at start, through `RecordSource`, with the
+      engine's default records in `engine/content/` (declared in the engine's `preloadFiles` for wasm). Under node,
+      run a wasm program from its build folder, where emscripten looks for the `.data` file.
+   6. **Step 6, KYR-53's check,** reads the manifests and the code records.
+   - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
+     `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
+     `kyoten::input`; required components added with their defaults; the module `static` refusal; and the 32 KiB
+     frame guard in the engine's manifest and each example's, on every arm but Windows.
+   - **Left to later rows:** side stores, `Previous` and `Current`, the queues, random keys, world stores, more than
+     one zone or layer, the footprint report, fusing a table's processors into one pass, `PARALLEL`, and `Mesh`,
+     `Material`, `Camera` and `Light` (step 9). The generated `run` is step 7's.
+   - **The probes behind the answers** sit in `.scratch/step5-main` (the fence's layout, and the generator's two
+     passes), `.scratch/step5-content` (content natively, under node and in Edge) and `.scratch/step5-cli` (the tool's
+     package). Each is quoted where its decision is recorded.
+3. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
+   change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
+   first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5
+   callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and
+   a run in Edge (G6), gamepads (W3), and the triangle's pipeline set. A page served from localhost to headless Edge
+   prints its console to stderr (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's
+   content probe ran.
 
 **Every recommendation is the production answer,** or says plainly that it is a stopgap and what replaces it.
 
-- **kama:** step 4 was built and tested on `0.9.876+g1a969a1e` (KR-283 step 2).
-  - **Late on 2026-11-08, kama's session rebuilt the binary.** It now reports `0.9.876+g7ce86d36`. That commit is
-    only KR-283 step 3's plan, but `../kama`'s tree holds uncommitted work on the driver and the seed (KR-283 step
-    3), which the binary may contain.
-  - **kyoten's suite passes on it.**
+- **Built so far:**
+  - **Step 4, the frame core** (2026-11-08, `54d2985` to `019b7aa`): `tools/test.sh` and `engine/tests/`, 51 cases
+    natively, debug and release, and on wasm under node; `kyoten::frame`'s `Time`, `Clock` (exact in integer
+    nanoseconds, its `TimeScale` a ratio), the `World` contract, and `step` and `frame`, generic over `World`. Its
+    details are in [design/frame-phases.md](design/frame-phases.md) § Decided, question 3's *Built on 2026-11-08*.
+  - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
+    list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
+    5's code records.
+- **kama:** step 4 was built on `0.9.876+g1a969a1e` (KR-283 step 2).
+  - **The binary now reports `0.9.876+g7ce86d36`,** built at 06:06 on 2026-11-08. kama then committed `92ad3d15` (a
+    test-harness fix) and, a minute after the build, `5a83d422`, 0.9.877 (KR-283 step 3: Android Studio's JDK, and
+    `kama seed --kind app` writing an app on `std::app`). The binary probably holds that work; its version string
+    lags, as it did on 2026-11-07.
   - **The rule:** never rebuild kama or edit `../kama`, and check `--version` before quoting one.
-  - **`std::app` now runs an owned `App`.** `run(tick:, state:)` and `TickFn` are gone: `run(app: Owned<App>)`,
-    where an `App` has `tick()` and `lifecycle(event:)` (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`,
-    `FocusGained`, `FocusLost`, `LowMemory`). Every host says `Resumed`, then `SurfaceReady`, before the first tick,
-    so portable code opens its window and creates surfaces on `SurfaceReady`. kama's notes of 2026-11-08
-    (`../kama-notes-for-kyoten.md`) give each event per host, measured on Android.
-  - `../kama-gpu`'s tests now run as an `App` (2026-11-08). Step 7's platform seam is built on the same lifecycle,
-    and a GPU surface is dropped on `SurfaceLost`.
-- **Green on `0.9.876+g1a969a1e` (2026-11-08):**
-  - kyoten's `tools/test.sh`: the engine and its 51 tests, `games/fps` (it prints `fps example, on kyoten` natively
-    and on wasm), and `games/vr`;
+  - **`std::app` runs an owned `App`:** `run(app: Owned<App>)`, where an `App` has `tick()` and `lifecycle(event:)`
+    (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`, `FocusGained`, `FocusLost`, `LowMemory`). Every host says
+    `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
+    `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
+    `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
+- **Green on `0.9.876+g7ce86d36` (2026-11-08):**
+  - kyoten's `tools/test.sh`: the engine and its 51 tests, `examples/games/fps` (it prints `fps example, on kyoten`
+    natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 20 cases;
-  - `@kama/gpu`'s gate: 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
+  - `@kama/gpu`'s gate: its cases, the clear example's 60 frames, the xfail, and the wasm build.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
   ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
   It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
-- **Pushed on 2026-11-08:**
-  - kyoten's `main`, twice: once before step 4, and again through step 6's decision and KY-38;
-  - both package repositories' `main`.
-  
-  The remote's default branch is still `spike/roadmap`; making it `main` is the owner's change on GitHub.
-- **The example games have no remote yet.** `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`) are local
-  repositories, git-ignored here, each on `main` with its seed commit. Each depends on `../../engine` by path, so it
-  stays checked out inside kyoten.
-  - **The owner creates them on GitHub, empty, in `cosmic-canopy`,** beside kyoten and the `kama-*` packages.
-    - **The names may be `kyoten-example-fps` and `kyoten-example-vr`,** "to be explicit" (the owner, 2026-11-08).
-    - **Use the names the repositories get,** and rename the docs that say `kyoten-fps` and `kyoten-vr` to match:
-      README.md, examples.md, AGENTS.kyoten.md and this file.
-  - **Then:** add each as `origin`, push `main`, and put the real URLs in README.md § the examples, in place of
-    `<kyoten-fps-url>`.
+- **The examples sit under `examples/`, by kind** (the owner, 2026-11-08, [design/examples.md](design/examples.md)
+  § Decided): the games are `examples/games/fps`
+  ([kyoten-example-fps](https://github.com/cosmic-canopy/kyoten-example-fps)) and `examples/games/vr`
+  ([kyoten-example-vr](https://github.com/cosmic-canopy/kyoten-example-vr)), each its own repository, git-ignored
+  here, depending on `../../../engine` by path. Both were moved, committed and pushed to their `main` on 2026-11-08.
+- **Pushed on 2026-11-08:** kyoten's `main` (its remote's default branch is now `main`), both package repositories'
+  `main`, and both example games' `main`.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
   package claims, and neither has run on the web. `@kama/window` also vendors GLFW first, and both fix their
   stopgaps first, since those change the API. Publish `@kama/window` first, once its web half runs and GLFW is
@@ -103,14 +112,15 @@ the design doc it settles before building on it.
   and `KAMA_WGPU_DIR` points there for a native build. A program on `@kama/gpu` sets `"webgpu": true` and, until
   `@kama/window` is published, names `@kama/window` beside it (kama allows a path dependency only at the top level).
 - **Web builds** use emsdk 6.0.13. `emcc` is on the `PATH` only in an interactive UCRT64 shell (`bash -lic`).
-- **Develop on `main`** (the owner, 2026-11-07: "you don't need to branch you can develop on main"). The local `main`
-  was fast-forwarded to `spike/roadmap`, which holds the spike's history. Pushing is the owner's call each session.
+- **Develop on `main`** (the owner, 2026-11-07: "you don't need to branch you can develop on main"). Pushing is the
+  owner's call each session.
 
 ## A1, the hello cube: what "done" means
 
-The code it runs is [REFERENCE.md](REFERENCE.md) § The hello cube: a two-line `main` that imports `run` from the game's
-generated module, one component and one processor, and three record files. It lives in `kyoten-fps` (`games/fps`) as
-slice A's first milestone (examples question 2), and `kyoten new` writes it later (KYR-30).
+The code it runs is [REFERENCE.md](REFERENCE.md) § The hello cube: a two-line `main` in the app's root module that
+imports the `run` generated beside it, one component and one processor in a simulation module (`src/cube/`), and three
+record files. It lives in `kyoten-example-fps` (`examples/games/fps`) as slice A's first milestone (examples question
+2), and `kyoten new` writes it later (KYR-30).
 
 **Done when** (examples question 3), each held by CI where it can be:
 
@@ -153,7 +163,8 @@ here), committed with what it measured.
    serial; the root `tools/test.sh` and `engine/tests/` first. All decided (frame-phases § Decided, step 4 questions 1
    to 4, 2026-11-08). The world hash and the input log come with slice B. **Built on 2026-11-08** (§ Where it stands).
 5. **The component model and the generator** (KYR-7): records read strictly from JSON; the generated world, tables and
-   `Actions`; `Transform`; and the generated `run` (target-platforms question 2). Generated files are never committed.
+   `Actions`; `Transform`. Generated files are never committed. Its questions were answered on 2026-11-08 (below), and
+   the generated `run` moved to step 7.
    **KY-28 bites here:** until kama's KR-338, `kama check` fails on a fresh clone whose sources import generated code,
    so the generator runs before every kama command, behind a `kyoten` command.
 6. **The import check** (KYR-53) lands with step 5's code records. **Decided on 2026-11-08:** the simulation rule
@@ -163,13 +174,15 @@ here), committed with what it measured.
 **The join.**
 
 7. **The platform seam** (KYR-8): the `Platform` contract, the open platforms chosen by `@compileFor`, on
-   `@kama/window`. The web's single-threaded build first (web-and-native question 2).
-8. **Input** (KYR-54): actions, bindings records, player 1 on the keyboard and the first gamepad.
+   `@kama/window`, and the generated `run` a game's `main` calls (target-platforms question 2; moved from step 5 on
+   2026-11-08). The web's single-threaded build first (web-and-native question 2).
+8. **Input** (KYR-54): actions of every kind (step 5 builds `Digital`), bindings records, player 1 on the keyboard and
+   the first gamepad, and the binding steps over values and over time.
 9. **The render module** (KYR-9's kyoten half): Output extracts `Mesh`, `Material`, `Camera`, `Light` and
    `Environment` into `@kama/graphics` once a frame (rendering question 4), and the engine's default records supply the
    camera, the light and the material (rendering question 3).
-10. **The hello cube in `kyoten-fps`** (KYR-14): its files as REFERENCE has them, and the four checks measured, then
-    held in CI (KYR-13's first legs).
+10. **The hello cube in `kyoten-example-fps`** (KYR-14): its files as REFERENCE has them, and the four checks
+    measured, then held in CI (KYR-13's first legs).
 
 ## Questions the owner answers when a step reaches them
 
@@ -192,9 +205,31 @@ here), committed with what it measured.
 - **Answered on 2026-11-08, step 6's question** (KYR-53): the simulation rule moves into `importsOnly` as a module
   fence, and `core::env` joins the list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3,
   item 5).
-- **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
-  maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
-  rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:
+- **Answered on 2026-11-08, step 5's seven questions** (KYR-7; the owner: "Everything sounds good so far with my notes
+  above"). Each was probed on kama `0.9.876+g7ce86d36` and is recorded with its reason where it settles:
+  1. **`main` sits in the app's root module, outside the simulation's fence,** with the generated `run` beside it
+     (`src/<game>.generated.kama`, so `main` reads `import { run };`), and simulation code in module folders: the hello
+     cube's in `src/cube/`. `<game>::generated` is fenced ([design/ai-first-api.md](design/ai-first-api.md) § Decided,
+     question 3). The owner asked whether the generator could write `main` instead: nothing is wrong with it, but the
+     game owns `main` and calls `run` (architecture question 4), so it was considered and set aside.
+  2. **The generated `run` is built at step 7,** with the `Platform` contract; step 5 ends at a generated world that
+     tests drive through `step` and `frame` ([design/components.md](design/components.md) § Decided, 2026-11-08).
+  3. **Content reaches a running build through a `RecordSource`:** folders read from disk natively, kama's
+     `preloadFiles` on wasm (one `.data` fetch, not counted as code), the engine's defaults in `engine/content/`, and
+     packs when a game ships ([design/project-database.md](design/project-database.md) § Decided, 2026-11-08).
+  4. **The fixed record types are one module, `kyoten::records`,** read by the loader and the tool alike (components
+     § Decided).
+  5. **The tool is the package `@kyoten/cli`, in `tools/kyoten/`, built as `kyoten`.** The owner asked why a package
+     and not a module: it is a program with its own `main`, the engine is a library with none, and the tool imports
+     the engine, never the reverse ([design/architecture.md](design/architecture.md) § Decided, 2026-11-08).
+  6. **The action kinds are `Digital`, `Analog`, `Vector2`, `Vector3`, `Pose` and `Text`** (the table below), brought
+     forward from step 8 because step 5 generates `Actions`; step 5 builds `Digital` (components § Decided).
+  7. **The default budget is one chunk per (zone, layer, prefab),** reserved up front and refusing when full
+     (components § Decided).
+- **Step 8: the action kinds,** decided on 2026-11-08 as suggested (above, question 6). The owner had asked: "Button
+  and Axis are ok to start I think... but I would prefer something maybe more general? If you have any suggestions."
+  *Suggested* (2026-11-07), named for the value a processor reads rather than for a device, so one kind serves a key,
+  a stick, a touch, a hand in VR, a UI button and an agent:
 
   | Kind | What a processor reads | Bound from, for example |
   |---|---|---|
@@ -209,8 +244,7 @@ here), committed with what it measured.
   `POSE_INPUT`; read in `openxr.h`, 2026-11-07), as are Bevy's leafwing-input-manager (`Button`, `Axis`, `DualAxis`,
   `TripleAxis`; read in its `lib.rs`) and, from memory, Unreal's Enhanced Input (Digital, Axis1D, Axis2D, Axis3D) and
   Steam Input's digital and analog actions. Adapters (KYR-54) turn one kind into another: four `Digital` keys into a
-  `Vector2`, an `Analog` trigger into a `Digital` past a threshold. The owner chooses these names or Button and Axis
-  when step 8 starts; the hello cube's record says `"Button"` until then.
+  `Vector2`, an `Analog` trigger into a `Digital` past a threshold. The hello cube's record says `"Digital"`.
 - **Step 8, also: input over time, and a better word than "adapter".** The owner's direction (2026-11-07,
   [design/components.md](design/components.md) § Decided): gestures and presses over time (a tap, a double tap, a
   hold, a sequence, a swipe), values adapted (a `Digital` as a float from X to Y), and sensors normalized (the

@@ -176,7 +176,8 @@
        - **What it costs:** simulation and Output code are split by folder.
          - **A game:** the root module can be its simulation module. The hello cube's processor and its two-line
            `main` both fit there, so the cube's line count does not change. `kyoten new` writes the layout and the
-           lists (KYR-30).
+           lists (KYR-30). *(Corrected on 2026-11-08, below: `main` imports `run`, which is outside, so the root
+           module is the app's and the cube moves to a module folder.)*
          - **An engine module that works in several phases splits:** a fenced part holds its simulation processors,
            and an outside part does the work that stages for them. Net's Input processor is fenced, and its sockets
            are not. This matches frame-phases question 1: work runs at any time, and reaches the simulation only at
@@ -192,3 +193,39 @@
          - the per-file rule as first decided, held by the generator. It imposes no layout, but it holds only when the
            generator runs, not in `kama check` or the editor, and it misses helpers in other files;
          - both rules at once, which is two ways to say one thing.
+     - **2026-11-08, the owner: `main` sits in the app's root module, outside the fence, and simulation code in module
+       folders** (the first slice's step 5, question 1 of 7). "Everything sounds good so far."
+       - **Why it was asked:** the decision above put the hello cube's `main` in its root module and made that module
+         its simulation module, while `main` imports `run`, which sits outside. kyoten's check refuses a simulation
+         module that names an outside module of its own package, so the two could not both hold.
+       - **The layout:**
+         - **The root module is the app's.** It holds `main` and has no `importsOnly`, since nothing in it runs in a
+           simulation phase. The check refuses a processor in a module without one, so a processor cannot hide there.
+         - **The generated `run` is written beside `main`,** as `src/<game>.generated.kama`, by the naming rule (a
+           module's generated names go into that module), so `main` reads `import { run };`. `run` is built at step 7.
+         - **Simulation code lives in module folders,** as REFERENCE's towers layout already had it. The hello cube's
+           `cube.kama` and `cube.records.json` move to `src/cube/`, module `hello::cube`, and the cube's line count
+           stays 15.
+         - **`<game>::generated` (`src/generated/`) is fenced:** the world, the tables, the passes, `Actions` and
+           `Prefabs`, which the simulation imports.
+       - **Why it is the production answer:** the compiler holds the fence in every build and in the editor, and the
+         check holds the rest. Nothing a processor can reach imports the clock, and the app's code, which must reach
+         the outside world to run a loop, is in the one place the fence does not cover and no processor may sit.
+       - **Probed on kama `0.9.876+g7ce86d36`** (`.scratch/step5-main`): an engine with `eng::frame` (`Time`, the
+         `World` contract and `step`); a game whose root holds `main` and a hand-written `run` that reads `std::time`;
+         a fenced `cube` (`"importsOnly": ["eng::frame", "generated"]`) and a fenced `generated`
+         (`["eng::frame", "cube"]`), importing each other.
+         - `kama check` passed, and the game printed `rate after 4 steps: 2` natively and on wasm under node.
+         - In `cube`, `std::time` is refused: *"module `std::time` is not in the `importsOnly` of `hello::cube`"*.
+         - In `cube`, the app's `run` is refused: *"module `hello` is not in the `importsOnly` of `hello::cube` …
+           Add "." there if this edge is meant"*.
+         - An `importsOnly` names its own package's modules as the `modules` map spells them (`"generated"`), and
+           kama refuses the full path (`"hello::generated"`), naming the rule.
+       - **Considered:**
+         - **The generator writing `main`,** so a game has none. Nothing was wrong with it, and either holds the fence.
+           It was kept out because the game owns `main` and calls `run` (architecture question 4, 2026-11-02,
+           which considered the engine owning `main` through a generated shim), and target-platforms question 2 kept
+           that `main` at two lines. The entry point stays in the game's source, the app keeps a place for its own
+           code before the loop, and the manifest's `entry` never names a git-ignored file. kyoten still
+           controls everything behind `run`. Revisiting it changes no step 5 code, since `run` comes at step 7.
+         - `run` in a second generated module (`src/generated/app/`): a longer import, and another manifest entry.
