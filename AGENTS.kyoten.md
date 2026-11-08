@@ -75,3 +75,19 @@ reach it; set both in the shell's own profile.
   reproduced on. Never edit `../kama` from here; the gap file is how kama hears about it.
 - **Every decision is written down with its reason**: in the design doc it settles, and as a roadmap row when it
   creates work.
+- **Production grade, general solutions** (the owner, 2026-11-08). A recommendation is the production answer, or says
+  plainly that it is a stopgap and names what replaces it.
+- **Test-driven, with one full suite** (the owner, 2026-11-08: "We will need to use test driven development and use a
+  full suite of tests as well so we keep kyoten on track and regression free").
+  - A change starts with a test that fails without it. A bug is fixed only after a test reproduces it.
+  - `tools/test.sh` at the root runs the whole suite: the engine's tests, the generator's, and every example's check
+    and run, natively and on wasm. It passes before every commit, and CI (KYR-13) runs the same script.
+  - A test that fails is never deleted or loosened to pass. A ratchet is loosened only as a decision, with its reason.
+- **Dependencies are injected** (the owner, 2026-11-08: "best practices like dependency injection").
+  - Code takes what it depends on as a parameter, or as an implementation of a `type contract` it is handed. The clock
+    takes each frame's time, the frame driver takes the `World`, and `run` takes the `Platform`, so a test hands each
+    one a fake: a fixed time, a hand-written world, a headless window.
+  - No global mutable state, no service locator, no container. kama has no reflection, and the generator wires the
+    world at build time, so the wiring is plain code a reader can follow.
+  - This is the decided model's own rule: a processor never reads a clock, and is handed its components and its
+    `Time` (frame-phases question 2).

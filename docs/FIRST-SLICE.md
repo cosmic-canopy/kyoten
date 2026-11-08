@@ -12,28 +12,33 @@ the design doc it settles before building on it.
 
 **The next session starts here:**
 
-1. **Check `../kama`'s log and `kama --version`** first: kama's working tree is changing `std::app` (below).
-2. **Ask step 4's question 3 of 4,** then 4, one at a time, each with how many remain (§ Questions the owner answers,
-   below), and record each answer in [design/frame-phases.md](design/frame-phases.md) § Decided. Step 4's code starts
-   once all four are recorded (the owner, 2026-11-07). Questions 1 and 2 were decided on 2026-11-08: each tier is a
-   module, the frame tier `kyoten::frame`; and `Time` is `float32 dt` and `int64 step`, each processor getting its own
-   rate's `dt`. **Every recommendation is the production answer,** or says plainly that it is not (the owner asks).
-3. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API. Then
-   `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`), `@kama/gpu`'s
-   canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's pipeline set.
+1. **Check `../kama`'s log and `kama --version`** first.
+2. **Ask step 4's question 4 of 4** (§ Questions the owner answers, below), and record the answer in
+   [design/frame-phases.md](design/frame-phases.md) § Decided. Questions 1 to 3 were decided on 2026-11-08: each tier
+   is a module, the frame tier `kyoten::frame`; `Time` is `float32 dt` and `int64 step`, each processor getting its
+   own rate's `dt`; and the clock is exact in integer nanoseconds, with pause and a time scale. **Every
+   recommendation is the production answer,** or says plainly that it is not.
+3. **Then step 4, test-first:** the root `tools/test.sh` and `engine/tests/` before any frame-core code, each test
+   seen to fail before the code that passes it (AGENTS.kyoten.md § Rules).
+4. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix
+   test-first. Then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`,
+   with Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's
+   pipeline set.
 
-- **kama:** this machine's binary reports `0.9.876+g546dd54e`. kama's HEAD is `546dd54e` (0.9.875, KR-344), and the
-  binary was built from kama's working tree, which holds uncommitted KR-283 work. Never rebuild kama or edit
-  `../kama`; check `--version` before quoting one.
-  - **That work replaces `std::app`'s loop.** `run(tick:, state:)` and `TickFn` give way to `run(app: Owned<App>)`,
-    where an `App` has `tick()` and `lifecycle(event:)`: `Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`,
-    `FocusGained`, `FocusLost`, `LowMemory`.
-  - On this binary, `../kama-gpu`'s test program no longer compiles. It passed on 0.9.874, and stays on the
-    committed API until kama commits the change. **When it lands:** port `kama-gpu/tests`, and build step 7's
-    platform seam and the GPU surface's lifetime on the `App` lifecycle (a surface is dropped on `SurfaceLost`).
+- **kama:** this machine's binary reports `0.9.876+g546dd54e`. kama's `dev` is at `1a969a1e` (0.9.876, KR-283 step 2),
+  pushed once kama's gate passes. Never rebuild kama or edit `../kama`; check `--version` before quoting one.
+  - **`std::app` now runs an owned `App`.** `run(tick:, state:)` and `TickFn` are gone: `run(app: Owned<App>)`,
+    where an `App` has `tick()` and `lifecycle(event:)` (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`,
+    `FocusGained`, `FocusLost`, `LowMemory`). Every host says `Resumed`, then `SurfaceReady`, before the first tick,
+    so portable code opens its window and creates surfaces on `SurfaceReady`. kama's notes of 2026-11-08
+    (`../kama-notes-for-kyoten.md`) give each event per host, measured on Android.
+  - `../kama-gpu`'s tests now run as an `App` (2026-11-08). Step 7's platform seam is built on the same lifecycle,
+    and a GPU surface is dropped on `SurfaceLost`.
 - **Checks clean on 0.9.876 (2026-11-08):** `engine/` (one placeholder, `version()`), `games/fps` (prints `fps
-  example, on kyoten`), `games/vr`, and `@kama/window`'s gate. `@kama/gpu`'s gate passes everything except its test
-  program (above): the bindings, the 60-frame window and the xfail.
+  example, on kyoten`), `games/vr`, and both packages' gates.
+- **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
+  ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
+  It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
 - **Pushed on 2026-11-08:** kyoten's `main` and both package repositories' `main`. The remote's default branch is still
   `spike/roadmap`; making it `main` is the owner's change on GitHub.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
@@ -135,33 +140,31 @@ here), committed with what it measured.
 - **Step 4: the frame core's four questions,** asked one at a time from 2026-11-07, each recorded in
   [design/frame-phases.md](design/frame-phases.md) § Decided. **1, where the frame tier lives:** decided on
   2026-11-08, each tier a module and the frame tier `kyoten::frame`. **2, `Time`'s shape:** decided on 2026-11-08,
-  `float32 dt` and `int64 step`, the base clock's index, with each processor getting its own rate's `dt`.
-  *Recommended* for the two left, each the production answer, for the owner to decide:
-  3. **The clock:** kyoten's own, after FFD's `PhaseClock` (`engine/src/phase/clock.kama`, credited), which keeps a
-     `float64` seconds accumulator and an `isize` tick. Changed for production:
-     - **Exact, in integers.** It takes the frame source's time as an `int64` count of nanoseconds (rAF, vsync and
-       XR's predicted display time each supply one), and its accumulator counts nanoseconds times the base rate. A
-       step is then exactly 1/rate seconds, the clock never drifts, and a test that feeds it nanoseconds gets exact
-       step counts. FFD's tick is an `isize`, 32 bits on wasm; this one is `Time`'s `int64` step.
-     - **It owes nothing for time that runs backwards or stands still** (FFD's rule: an NTP step, a resumed laptop).
-     - **The cap stays at 5 owed steps a frame** (FFD's `maxStepsPerAdvance`): the excess is discarded and counted in
-       an `int64`, the engine's default, and an App record field when a game needs another.
-     - **Pause and a time scale:** real time is scaled before it is owed, and a scale of 0 pauses. A step's `dt`
-       never changes, so slow motion stays deterministic and a replay is unaffected. Unity's `timeScale` and Bevy's
-       virtual time (`pause`, `relative_speed`) work the same way.
-     - **It returns** the owed base steps and the render time, the last step plus a fraction, for Output's blend.
-     - **The base rate is an input:** the least common multiple the generator derives, or a pinned base (step 5).
-     - **It stays off the deterministic path:** a replay or a test drives steps directly and builds no clock, as in
-       FFD.
-  4. **Step 4's scope:**
-     - the `World` contract's four phase calls, each taking `const ref Time`;
-     - rate gating and Constraints' iterations inside the generated passes (step 5), so the frame core only orders
-       the phases;
-     - a public serial `stepFrame` for tests and a headless server, with the loop-owning `run` at step 7 (on
-       `std::app`'s `App` once kama commits it);
-     - `"reproducible-float": true` and musl's notice now;
-     - waits, the RNG world component and the `PARALLEL` flag when something needs them, and Input's hand-off an
-       empty call until step 8.
+  `float32 dt` and `int64 step`, the base clock's index, with each processor getting its own rate's `dt`. **3, the
+  clock:** decided on 2026-11-08, exact in integer nanoseconds, a cap of 5 with discards counted, and pause, slow
+  motion, fast forward and single stepping by scaling real time. *Recommended* for the one left, the production
+  answer, for the owner to decide:
+  4. **Step 4's scope, built test-first, with everything injected** (the owner's rules of 2026-11-08):
+     - **The suite comes first.** `engine/tests/` is one test program, as kama's packages have, and `tools/test.sh`
+       at the root runs the whole suite: `kama check` on the engine and on each example, the engine's tests
+       natively (debug and release) and on wasm under node, and each example's run. Each frame-core test is written,
+       and seen to fail, before the code it tests.
+     - **What step 4 builds:**
+       - the `World` contract's four phase calls, each taking `const ref Time`;
+       - the clock (question 3), which reads no clock of its own: the caller hands it each frame's nanoseconds;
+       - a serial driver with two entry points: `frame`, which asks the clock what is owed, runs Input, Update and
+         Constraints once per owed step and Output once; and `step`, which runs one step with no clock, as a replay
+         and a test do. It takes the world and the clock as parameters and is generic over `World`, so each phase
+         call is direct (SPEC: a generic bounded by a contract calls each instance directly);
+       - `"reproducible-float": true` in the engine's manifest, with musl's notice.
+     - **The tests:** the phase order; Input, Update and Constraints once per owed step and Output once a frame;
+       exact step counts from fed nanoseconds; the cap and its discard count; pause, slow motion, fast forward and a
+       single step; time running backwards; and `dt` and `step` for each rate. They run against a hand-written
+       world.
+     - **Left to their own steps:** rate gating and Constraints' iterations live in the generated passes (step 5),
+       so the frame core only orders the phases. The loop-owning `run` comes at step 7, on `std::app`'s `App`.
+       Input's hand-off is an empty call until step 8. Waits, the RNG world component and the `PARALLEL` flag come
+       when something first needs them, each with its own tests then.
 - **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
   maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
   rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:
@@ -217,4 +220,7 @@ here), committed with what it measured.
 - **kama runs in UCRT64:** `MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc '../kama/out/UCRT64-x86_64/kama.exe …'`, or
   `-lic` for `emcc`. **git runs from Git Bash.**
 - **A decision goes in its design doc's *Decided*** with its reason, and the work it creates becomes a roadmap row.
+- **Test-driven, with injected dependencies** (AGENTS.kyoten.md § Rules, the owner, 2026-11-08). The test comes
+  first and is seen to fail, a bug's fix starts with the test that reproduces it, and the full suite passes before
+  every commit. Code takes what it depends on as a parameter or a contract, so a test hands it a fake.
 - **Commit each step on `main`,** with the Co-Authored-By line; push when the owner says.

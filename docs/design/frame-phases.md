@@ -1,8 +1,8 @@
 # The frame: Input, Update, Constraints, Output
 
 **Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The first
-slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): questions 1 and 2 were
-decided on 2026-11-08, and questions 3 and 4 are open. The draft
+slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): questions 1 to 3 were
+decided on 2026-11-08, and question 4 is open. The draft
 they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
 the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
 that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
@@ -790,3 +790,32 @@ run can both hold.
     - a `float64` `dt`, which needs a cast against every `float32` vector;
     - one `Time` with the base `dt`, which leaves each processor to scale it by its own rate;
     - an elapsed-seconds field, which drifts.
+- **2026-11-08, the owner: the clock is exact, in integers, with pause and a time scale (step 4, question 3 of 4).**
+  - **The owner:** "yes I definitely want pause and slow motion capabilities and such. Your design choices sound good
+    so far."
+  - **The clock is kyoten's own,** in `kyoten::frame`, from FFD's `PhaseClock` (`engine/src/phase/clock.kama`). FFD
+    keeps a `float64` seconds accumulator and an `isize` tick, and these change for production:
+    - **Exact, in integers.** The frame source's time comes in as an `int64` count of nanoseconds (rAF, vsync and XR's
+      predicted display time each supply one). The accumulator counts nanoseconds times the base rate, so a step is
+      exactly 1/rate seconds, the clock never drifts, and a test that feeds it nanoseconds gets exact step counts.
+      Elapsed time is clamped to the cap before it is multiplied, so the product never overflows.
+    - **The step count is `Time`'s `int64` step** (question 2), not FFD's `isize`, which is 32 bits on wasm.
+    - **Time that runs backwards or stands still owes nothing,** as in FFD: an NTP step, a resumed laptop.
+    - **At most 5 owed steps a frame:** the excess is discarded and counted in an `int64`. 5 is the engine's default,
+      and an App record field when a game needs another.
+  - **Pause, slow motion and the like.** Real time is scaled before it is owed: 0 pauses, below 1 is slow motion, and
+    above 1 is fast forward, still under the cap. While paused, one step can be asked for, to step a frame at a time
+    when debugging.
+    - A step's `dt` never changes, so the simulation stays deterministic at any scale, and a replay, which drives steps
+      directly, is unaffected.
+    - Unity's `timeScale` and Bevy's virtual time (`pause`, `relative_speed`) work the same way. Fast forward and
+      single stepping are the "and such", taken as the owner's direction; either can be dropped.
+  - **It returns** the owed base steps and the render time (the last step plus a fraction, for Output's blend).
+  - **The base rate is an input:** the least common multiple the generator derives, or a pinned base (step 5).
+  - **It stays off the deterministic path,** as FFD's does: a replay or a test drives steps directly and builds no
+    clock.
+  - **It is injected and tested first** (the owner, 2026-11-08: test-driven development, and dependency injection).
+    The clock reads no clock of its own; the caller hands it each frame's time, so a test feeds it nanoseconds and
+    checks exact counts, the cap, the discards, pause, scale and a backwards step.
+  - **Considered:** FFD's clock as it is (`float64` seconds, an `isize` tick); a scale applied to `dt`, which would
+    change the simulation with the scale.
