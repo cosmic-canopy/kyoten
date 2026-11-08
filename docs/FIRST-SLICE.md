@@ -45,8 +45,12 @@ the design doc it settles before building on it.
 
 **Every recommendation is the production answer,** or says plainly that it is a stopgap and what replaces it.
 
-- **kama:** this machine's binary reports `0.9.876+g1a969a1e`, kama's `dev` (KR-283 step 2), and `../kama`'s tree is
-  clean (2026-11-08). Never rebuild kama or edit `../kama`; check `--version` before quoting one.
+- **kama:** step 4 was built and tested on `0.9.876+g1a969a1e` (KR-283 step 2).
+  - **Late on 2026-11-08, kama's session rebuilt the binary.** It now reports `0.9.876+g7ce86d36`. That commit is
+    only KR-283 step 3's plan, but `../kama`'s tree holds uncommitted work on the driver and the seed (KR-283 step
+    3), which the binary may contain.
+  - **kyoten's suite passes on it.**
+  - **The rule:** never rebuild kama or edit `../kama`, and check `--version` before quoting one.
   - **`std::app` now runs an owned `App`.** `run(tick:, state:)` and `TickFn` are gone: `run(app: Owned<App>)`,
     where an `App` has `tick()` and `lifecycle(event:)` (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`,
     `FocusGained`, `FocusLost`, `LowMemory`). Every host says `Resumed`, then `SurfaceReady`, before the first tick,
