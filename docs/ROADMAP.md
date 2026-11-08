@@ -15,7 +15,7 @@ engines, so nothing here gates either one ([design/architecture.md](design/archi
 
 | id | item | detail |
 |---|---|---|
-| KYR-1 | **Design spike, narrowed (2026-11-01)**: decide what the first slice needs, and the design of the project database and wiki. Which questions are in it, and which row each other doc waits for, is in the brief | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
+| KYR-1 | **Design spike, narrowed (2026-11-01)**: decide what the first slice needs, and the design of the project database and wiki. Which questions are in it, and which row each other doc waits for, is in the brief. **Done 2026-11-07**: every question in it is decided or waits for its row, recorded in each doc's *Decided* and summarized in SPIKE.md § What the spike decided | [SPIKE.md](SPIKE.md#narrowed-2026-11-01) |
 | KYR-2 | **What to take from the peers**: an inventory of FFD, the-mallow-man and cosmic-forge code, with each piece's game-shaped assumptions and the cost of making it generic. **Done 2026-11-01** | [research/harvest.md](research/harvest.md) · [architecture.md](design/architecture.md) |
 | KYR-3 | **Component models compared**: how Unity grew in phases from its components, and what it later added or replaced, against other engines' models. A research doc for the component decision. **Done 2026-11-01** | [research/component-models.md](research/component-models.md) · [components.md](design/components.md) |
 | KYR-4 | **The Quest probe, answered by the owner's Quest prototype** (its own project): WebXR with WebGPU in the Quest browser, and a kama program built, loaded and run on the headset (KY-2). Its findings come back as research | [xr.md](design/xr.md) |

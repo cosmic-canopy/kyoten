@@ -7,7 +7,7 @@ This file is the project-specific part, and it is the one to edit.
 **kyoten** is a game engine written in kama: AI-driven, component-based, web-first with native at parity,
 general purpose, MIT OR Apache-2.0. The owner's brief is [docs/VISION.md](docs/VISION.md).
 
-## Where things stand: the design spike
+## Where things stand: the spike is done, the first slice is next
 
 **Learn kyoten's model from [docs/REFERENCE.md](docs/REFERENCE.md)**: the picture of how a game, the engine's tiers
 and modules, the world, processors and phases fit together, the vocabulary to use, and the prior art. Use its terms:
@@ -16,10 +16,11 @@ a "module" is an area of code, one kama module: an engine module such as render 
 says neither "system" nor "subsystem". A bare "layer" is a scene's layer; the engine's levels of code are its "tiers",
 and a screen layer and a content layer (a content database priority level) are always called so.
 
-**Read [docs/SPIKE.md](docs/SPIKE.md) first.** The repository was seeded to be walked through with the owner.
-The design drafts under [docs/design/](docs/design/) list questions; they do not answer them. **No engine code is
-written before the decision it depends on is recorded**, and a decision is the owner's: propose, compare and
-measure, then ask.
+**The design spike is done** (KYR-1, 2026-11-07). [docs/SPIKE.md](docs/SPIKE.md) § What the spike decided is its
+record, and each design doc's *Decided* holds the decisions with their reasons. **Next is the first slice**
+([docs/ROADMAP.md](docs/ROADMAP.md) § NEXT). A question the spike left open is decided when its row comes up. **No
+engine code is written before the decision it depends on is recorded**, and a decision is the owner's: propose,
+compare and measure, then ask.
 
 ## Layout
 
@@ -29,7 +30,7 @@ measure, then ask.
 | `engine/` | the engine, package `kyoten` (`import { kyoten::… }`). Whether it splits into several packages is a spike question. |
 | `games/<name>/` | **one separate repository per example game**, git-ignored here and optional: `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`, Meta Quest). Each is a standalone project that depends on `../../engine` by path. Commit a game in its own repository, never here |
 | `docs/VISION.md` | the owner's brief |
-| `docs/SPIKE.md` | the kickoff brief for the design spike |
+| `docs/SPIKE.md` | the design spike: what it decided, then its brief as written |
 | `docs/REFERENCE.md` | the model in one read: the picture, the vocabulary and the prior art, each item decided or proposed. The future SPEC's core, built into kyotenengine.com's docs (KYR-39) |
 | `docs/design/` | one draft per area (rendering, audio, networking…), each ending in its open questions |
 | `docs/research/` | what the peer projects and kama already offer, with pointers |

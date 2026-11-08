@@ -1,7 +1,8 @@
 # The design spike — kickoff brief
 
-kyoten was seeded on 2026-11-01 to be designed **with** its owner, not for its owner. This brief is for the session
-that runs the walk-through.
+kyoten was seeded on 2026-11-01 to be designed **with** its owner, not for its owner. This brief was for the session
+that ran the walk-through. **The spike is done** (KYR-1, 2026-11-02 to 2026-11-07): § *What the spike decided* is
+its record, and the sections after it are the brief as it was written.
 
 ## The goal
 
@@ -10,10 +11,11 @@ Turn every draft under [design/](design/) from questions into decisions, with th
 throwaway prototype is fine wherever a measurement would settle a question. Build it under `.scratch/` (gitignored)
 or in a temporary directory, and record what it measured in the design doc it settles.
 
-## Where it stands (2026-11-07)
+## What the spike decided (2026-11-02 to 2026-11-07)
 
-**Start here.** The walk-through (KYR-1) began on 2026-11-02. Two docs are decided, and components.md has begun. Every
-answer is recorded in its doc's *Decided*:
+**Start here.** The walk-through (KYR-1) ran from 2026-11-02 to 2026-11-07. Every question in the
+[narrowed spike](#narrowed-2026-11-01) is decided, or waits for the roadmap row the table there names. Each answer
+is recorded in its doc's *Decided*, and [REFERENCE.md](REFERENCE.md) holds the model in one read:
 
 - **[design/architecture.md](design/architecture.md), its spike questions.**
   - **Questions 1–4.** Generic up front; one `kyoten` package with modules, plus a package for anything standalone or
@@ -252,17 +254,26 @@ answer is recorded in its doc's *Decided*:
    every game's agent guide and compiled in CI, with two spellings only as two views of one thing and the table as a
    ratchet; each mistake stopped by a named mechanism; the simulation kept from the outside world by kyoten's import
    check, per file, and KY-37 filed (the owner: "if so feel free to file the gap"). Questions 4–7 stay outside the
-   spike. **Next: [design/examples.md](design/examples.md), questions 1–3,** the last of the [narrowed
-   table](#narrowed-2026-11-01). **3 questions remain:** examples 3. The owner asked for the count of questions left
-   each time one is put to them.
+   spike.
+8. **[design/examples.md](design/examples.md), questions 1–3, are decided** (2026-11-07, the owner: "All of this sounds
+   good to me so far"), the last of the narrowed spike: kyoten-fps v1 a playable single-player arena (KYR-65) and
+   kyoten-vr v1 a room on Quest, natively (KYR-33); the gate is slice A, the hello cube (A1, KYR-14) then the level (A2,
+   KYR-11), then slice B (KYR-12), with C and VR's own slice after it; audio built in parallel at any time and netcode
+   once B's replay passes; a list of checks for each slice's "done", every number a ratchet, on named reference
+   machines.
+
+**What comes next: the first slice,** [ROADMAP.md](ROADMAP.md) § NEXT, from the frame core (KYR-6) and the component
+model (KYR-7) to the hello cube (A1), the level (A2) and slice B. A question outside the spike is decided when its row
+comes up, the same way: propose, compare and measure, then ask the owner.
 
 **To raise with the owner:**
 
-- **Audio and networking in the first slice?** The owner expects much of the initial work to be engine modules:
-  audio, graphics, networking, input (2026-11-03). Input and graphics are in the first slice (KYR-8, KYR-9), while
-  audio (KYR-15) and netcode (KYR-18) sit after the gate. Ask whether either moves up. cosmic-forge has meanwhile
-  started audio's slice 1, sound effects, with music and ambience next
-  ([research/cosmic-forge.md](research/cosmic-forge.md), the note at the top).
+- **The reference machines** (examples question 3, 2026-11-07): a Steam Deck as the low-end native gauge, a mid-range
+  laptop's browsers, and the owner's Quest. Which of them the owner has, and the Quest's model, are still to say.
+  *(Audio and networking in the first slice, raised here since 2026-11-03, was answered at examples question 2: neither
+  joins the gate; audio may be built in parallel at any time, and netcode starts once slice B's replay passes.
+  cosmic-forge has started audio's slice 1, sound effects, with music and ambience next
+  ([research/cosmic-forge.md](research/cosmic-forge.md), the note at the top).)*
 - **The gaps for kama, for the owner to relay** ([KAMA_GAPS.md](KAMA_GAPS.md)). These were pushed on 2026-11-04 so
   another kama machine can act on them:
   - KY-12, the job pool: its priority, running borrowing work, and no heap allocation per call;
@@ -495,6 +506,12 @@ KYR-1 is the walk-through itself.
   after it. *(Narrowed 2026-11-01:
   this asked for the project database in the first slice, and the roadmap now puts it in slice C, KYR-28.)*
 - A decision on how the engine is split into packages, reflected in `kama_workspace.json`.
+
+*Checked 2026-11-07, when the spike closed:* every question in the narrowed spike is decided or waits for its row (§
+Narrowed). The ROADMAP's rows after the spike's are the first slice (§ NEXT: the hello cube, the level, slice B), with
+slice C and VR after the gate. The package split is architecture question 2's: one `kyoten` package with modules, and a
+package of its own for anything standalone or gated. `kama_workspace.json` lists the engine alone, naming no game by
+rule, and `@kama/gpu`, `@kama/window` and `@kama/graphics` live in repositories of their own.
 
 ## Practicalities
 
