@@ -62,8 +62,18 @@ the design doc it settles before building on it.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
   ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
   It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
-- **Pushed on 2026-11-08:** kyoten's `main` and both package repositories' `main`. The remote's default branch is still
-  `spike/roadmap`; making it `main` is the owner's change on GitHub.
+- **Pushed on 2026-11-08:**
+  - kyoten's `main`, twice: once before step 4, and again through step 6's decision and KY-38;
+  - both package repositories' `main`.
+  
+  The remote's default branch is still `spike/roadmap`; making it `main` is the owner's change on GitHub.
+- **The example games have no remote yet.** `games/fps` (`kyoten-fps`) and `games/vr` (`kyoten-vr`) are local
+  repositories, git-ignored here, each on `main` with its seed commit. Each depends on `../../engine` by path, so it
+  stays checked out inside kyoten.
+  - **The owner creates them on GitHub, empty:** `cosmic-canopy/kyoten-fps` and `cosmic-canopy/kyoten-vr`, beside
+    kyoten and the `kama-*` packages.
+  - **Then:** add each as `origin`, push `main`, and put the real URLs in README.md § the examples, in place of
+    `<kyoten-fps-url>`.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
   package claims, and neither has run on the web. `@kama/window` also vendors GLFW first, and both fix their
   stopgaps first, since those change the API. Publish `@kama/window` first, once its web half runs and GLFW is
@@ -217,7 +227,10 @@ here), committed with what it measured.
   `--closure=1` as an `ldflags` entry gated `ARCH_WASM32`, and record both numbers.
 - **Fixed on 2026-11-07 and removed:** KY-37 (kama KR-344, `546dd54e`): a module's `importsOnly` now lists std's,
   `core`'s and other packages' modules too, and the command line and the environment moved to `core::env`. Step 6
-  asks what that changes for the simulation rule.
+  made the simulation rule a module fence on it (2026-11-08).
+- **KY-38** (filed 2026-11-08, worked around): kama's `docs/targets.md` names only musl's licence as the notice
+  `reproducible-float` brings, while the code it compiles in also carries Sun's and Arm's notices.
+  `engine/THIRD-PARTY-NOTICES.md` carries all of them.
 - **KY-2:** kama's `1e5099bb` (KR-283 step 1) builds an installable Android APK. It is not in this machine's binary,
   so re-check KY-2 on a build that has it. VR follows the gate.
 - **Fixed on 2026-11-07 and removed:** KY-19, so `reproducible-float` now gives `std::math` the same bits natively and
