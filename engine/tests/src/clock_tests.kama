@@ -1,0 +1,231 @@
+// kyoten::frame::Clock (frame-phases § Decided, step 4 question 3): exact in integer nanoseconds, at most `maxSteps`
+// owed a frame with the discards counted, and pause, slow motion, fast forward and single stepping by scaling real
+// time with a ratio. Every case feeds it timestamps and checks exact counts: the clock reads no clock of its own.
+
+import { Tally, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale, kyoten::frame::Time };
+
+export { clockTests };
+
+comptime int64 NS = 1000000000;         // a second, in nanoseconds
+comptime int64 T0 = 5000000000;         // an arbitrary first timestamp: the frame source's epoch is not zero
+
+// Uneven frame lengths, none over 10 ms, so no frame reaches the cap even at 300 Hz or at twice real time.
+fn int64 chunkAt(int64 i) {
+    int64 k = i % 6;
+    if (k == 0) { return 7000001; }
+    if (k == 1) { return 3333333; }
+    if (k == 2) { return 9999999; }
+    if (k == 3) { return 1; }
+    if (k == 4) { return 5123457; }
+    return 8888889;
+}
+
+// What feeding a stretch of real time owed, summed over its frames.
+type value Fed {
+    public int64 steps = 0;
+    public int64 frames = 0;
+    public bool continuous = true;      // each frame's first step follows the last frame's
+    public int64 end = 0;               // the last timestamp fed
+    public ctor make() { }
+}
+
+// Feeds `total` nanoseconds after `start` in uneven frames, the last one trimmed so the total is exact.
+fn Fed feed(ref Clock c, int64 start, int64 total) {
+    Fed fed = Fed.make();
+    int64 now = start;
+    int64 left = total;
+    int64 next = c.settled();
+    while (left > 0) {
+        int64 chunk = chunkAt(i: fed.frames);
+        if (chunk > left) { chunk = left; }
+        now = now + chunk;
+        left = left - chunk;
+        Owed owed = c.advance(now: now);
+        if (owed.first != next) { fed.continuous = false; }
+        next = owed.first + owed.steps;
+        fed.steps = fed.steps + owed.steps;
+        fed.frames = fed.frames + 1;
+    }
+    fed.end = now;
+    return fed;
+}
+
+fn void expectCount(ref Tally t, const ref string name, int64 got, int64 want) {
+    if (got == want) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "got ${got}, want ${want}"); }
+}
+
+fn bool near(float32 got, float32 want, float32 tolerance) {
+    float32 d = got - want;
+    if (d < 0.0) { d = 0.0 - d; }
+    return d <= tolerance;
+}
+
+fn void firstFrame(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    Owed owed = c.advance(now: T0);
+    bool ok = owed.steps == 0 && owed.first == 0 && owed.frameDt == 0.0 && c.settled() == 0;
+    t.verdict(name: "clock: the first frame sets the baseline and owes nothing", why: ok ? "" : "it owed something");
+}
+
+fn void oneSecond(ref Tally t, int32 hz) {
+    Clock c = Clock.make(hz: hz, maxSteps: 5);
+    c.advance(now: T0);
+    Fed fed = feed(c: c, start: T0, total: NS);
+    int64 want = cast<int64>(hz);
+    expectCount(t: t, name: "clock: one second in uneven frames owes exactly ${hz} steps at ${hz} Hz", got: fed.steps, want: want);
+    bool ok = fed.continuous && c.discarded() == 0 && c.settled() == want;
+    t.verdict(name: "clock: at ${hz} Hz, each frame's steps follow the last's, with nothing discarded", why: ok ? "" : "a gap, or a discard");
+}
+
+fn void oneStepPerFrame(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    int64 now = T0;
+    c.advance(now: now);
+    int64 frame = 0;
+    int64 wrong = 0;
+    while (frame < 600) {
+        now = now + 16666667;           // a 60 Hz display, rounded up to whole nanoseconds
+        Owed owed = c.advance(now: now);
+        if (owed.steps != 1) { wrong = wrong + 1; }
+        frame = frame + 1;
+    }
+    expectCount(t: t, name: "clock: a 60 Hz display over a 60 Hz base owes one step every frame, for 600 frames", got: wrong, want: 0);
+}
+
+fn void cap(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    // A second and half a step: 60.5 steps' worth.
+    int64 stall = NS + 8333333;
+    Owed owed = c.advance(now: T0 + stall);
+    expectCount(t: t, name: "clock: a one-second stall owes the cap, 5", got: owed.steps, want: 5);
+    expectCount(t: t, name: "clock: and counts the other 55 as discarded", got: c.discarded(), want: 55);
+    // Had the stall's half step been kept, another half step would owe one.
+    Owed half = c.advance(now: T0 + stall + 8333334);
+    expectCount(t: t, name: "clock: the stall's remainder is discarded too, so half a step later nothing is owed", got: half.steps, want: 0);
+    Owed after = c.advance(now: T0 + stall + 16666667);
+    expectCount(t: t, name: "clock: and a whole step later, one is", got: after.steps, want: 1);
+}
+
+fn void yearGap(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    int64 year = 31536000 * NS;
+    Owed owed = c.advance(now: T0 + year);
+    expectCount(t: t, name: "clock: a year's gap owes the cap", got: owed.steps, want: 5);
+    expectCount(t: t, name: "clock: and counts a year of steps less 5 as discarded, exactly", got: c.discarded(), want: 1892159995);
+}
+
+fn void widestGap(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: 0);
+    c.advance(now: 9223372036854775807);
+    // 9223372036 s and 854775807 ns, at 60 Hz: 553402322160 + 51 steps, less the 5 owed.
+    expectCount(t: t, name: "clock: a gap of int64's whole range counts its discards exactly, without overflow", got: c.discarded(), want: 553402322206);
+    Clock d = Clock.make(hz: 60, maxSteps: 5);
+    d.advance(now: 0 - 9223372036854775807);
+    Owed owed = d.advance(now: 9223372036854775807);
+    bool ok = owed.steps == 5 && d.discarded() == 553402322206;
+    t.verdict(name: "clock: a gap wider than int64 saturates rather than trapping", why: ok ? "" : "the count is wrong");
+}
+
+fn void pause(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    c.setScale(to: TimeScale.paused());
+    Fed fed = feed(c: c, start: T0, total: NS);
+    expectCount(t: t, name: "clock: paused, a second owes nothing", got: fed.steps, want: 0);
+    Owed owed = c.advance(now: fed.end + 16666667);
+    bool ok = near(got: owed.frameDt, want: 0.016666667, tolerance: 0.00000001);
+    t.verdict(name: "clock: paused, the frame's dt is still real time", why: ok ? "" : "frameDt ${owed.frameDt}");
+    c.setScale(to: TimeScale.normal());
+    Fed resumed = feed(c: c, start: fed.end + 16666667, total: NS);
+    expectCount(t: t, name: "clock: resumed, a second owes 60 again", got: resumed.steps, want: 60);
+}
+
+fn void scaled(ref Tally t, int32 num, int32 den, int64 want) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    c.setScale(to: TimeScale.of(num: num, den: den));
+    Fed fed = feed(c: c, start: T0, total: NS);
+    expectCount(t: t, name: "clock: at ${num}/${den} speed, a second owes exactly ${want} steps", got: fed.steps, want: want);
+}
+
+fn void singleStep(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    bool refused = !c.stepOnce();
+    t.verdict(name: "clock: a single step is refused while running", why: refused ? "" : "it was accepted");
+    Owed running = c.advance(now: T0 + 16666667);
+    expectCount(t: t, name: "clock: and a running frame owes as it would have", got: running.steps, want: 1);
+    c.setScale(to: TimeScale.paused());
+    bool taken = c.stepOnce();
+    t.verdict(name: "clock: a single step is taken while paused", why: taken ? "" : "it was refused");
+    Owed one = c.advance(now: T0 + 2 * 16666667);
+    bool ok = one.steps == 1 && one.first == 1;
+    t.verdict(name: "clock: paused, the next frame owes exactly the one step asked for", why: ok ? "" : "steps ${one.steps}, first ${one.first}");
+    Owed none = c.advance(now: T0 + 3 * 16666667);
+    expectCount(t: t, name: "clock: and the frame after owes nothing", got: none.steps, want: 0);
+}
+
+fn void backwards(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    Owed back = c.advance(now: T0 - NS);
+    bool ok = back.steps == 0 && back.frameDt == 0.0;
+    t.verdict(name: "clock: a timestamp that runs backwards owes nothing", why: ok ? "" : "it owed ${back.steps}");
+    Owed same = c.advance(now: T0 - NS);
+    expectCount(t: t, name: "clock: a timestamp that stands still owes nothing", got: same.steps, want: 0);
+    Owed next = c.advance(now: T0 - NS + 16666667);
+    expectCount(t: t, name: "clock: and time is owed again from the new baseline", got: next.steps, want: 1);
+}
+
+fn void fraction(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    Owed half = c.advance(now: T0 + 8333333);
+    bool ok = half.steps == 0 && near(got: half.fraction, want: 0.5, tolerance: 0.000001);
+    t.verdict(name: "clock: half a step in, the render fraction is a half", why: ok ? "" : "fraction ${half.fraction}");
+    Owed whole = c.advance(now: T0 + 16666667);
+    bool past = whole.steps == 1 && whole.fraction >= 0.0 && whole.fraction < 0.000001;
+    t.verdict(name: "clock: a step later, one is owed and the fraction starts again", why: past ? "" : "steps ${whole.steps}, fraction ${whole.fraction}");
+}
+
+fn void frameDt(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    c.setScale(to: TimeScale.of(num: 1, den: 2));
+    Owed slow = c.advance(now: T0 + 16666667);
+    bool ok = near(got: slow.frameDt, want: 0.016666667, tolerance: 0.00000001);
+    t.verdict(name: "clock: the frame's dt is real time, unscaled", why: ok ? "" : "frameDt ${slow.frameDt}");
+    Owed stall = c.advance(now: T0 + 16666667 + NS);
+    bool capped = near(got: stall.frameDt, want: 0.083333333, tolerance: 0.00000001);
+    t.verdict(name: "clock: and capped at the cap's worth of real time, 5 steps", why: capped ? "" : "frameDt ${stall.frameDt}");
+}
+
+fn void baseDt(ref Tally t) {
+    Clock c = Clock.make(hz: 120, maxSteps: 5);
+    bool ok = bitcast<uint32>(c.dt()) == bitcast<uint32>(Time::dtAt(hz: 120));
+    t.verdict(name: "clock: its step's dt is Time::dtAt of its rate", why: ok ? "" : "the bits differ");
+}
+
+fn void clockTests(ref Tally t) {
+    firstFrame(t: t);
+    oneSecond(t: t, hz: 60);
+    oneSecond(t: t, hz: 50);
+    oneSecond(t: t, hz: 300);
+    oneStepPerFrame(t: t);
+    cap(t: t);
+    yearGap(t: t);
+    widestGap(t: t);
+    pause(t: t);
+    scaled(t: t, num: 1, den: 2, want: 30);
+    scaled(t: t, num: 3, den: 10, want: 18);
+    scaled(t: t, num: 2, den: 1, want: 120);
+    singleStep(t: t);
+    backwards(t: t);
+    fraction(t: t);
+    frameDt(t: t);
+    baseDt(t: t);
+}

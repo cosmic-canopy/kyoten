@@ -1,0 +1,198 @@
+// kyoten::frame's clock: how many base steps a frame owes (frame-phases § Decided, step 4 question 3). It starts from
+// FFD's `PhaseClock` (engine/src/phase/clock.kama), and is changed for production.
+//
+// - **It reads no clock of its own.** The caller hands it each frame's timestamp, in int64 nanoseconds, from the
+//   frame source: rAF, vsync, or XR's predicted display time. So a test feeds it nanoseconds and checks exact counts.
+// - **It is exact, in integers.** The accumulator counts nanoseconds times the base rate, and a step is owed at 10^9,
+//   so a step is exactly 1/rate seconds and the clock never drifts. Every multiplication is split by a division first,
+//   so none overflows; a count that does not fit an int64 saturates.
+// - **It is off the deterministic path.** It decides how many steps are owed, never what a step does. A replay or a
+//   test drives steps directly (`step` in driver.kama) and builds no clock.
+// - **Time that runs backwards or stands still owes nothing:** an NTP step, a resumed laptop. The timestamp becomes
+//   the new baseline.
+// - **At most `maxSteps` owed a frame** (the engine's default is 5). Past that, the rest is discarded, and the
+//   discarded steps are counted, exactly. Running slow for a moment beats falling further behind every frame.
+// - **Pause, slow motion and fast forward scale real time before it is owed,** by a ratio (`TimeScale`): 0/1 pauses,
+//   1/2 is half speed, 2/1 is double. A step's dt never changes, so the simulation is the same at any scale. While
+//   paused, one step can be asked for (`stepOnce`), to step a frame at a time.
+// - **It returns** the owed steps, the render time's fraction, and the frame's real dt for Output (`Owed`).
+
+import { Time };
+
+export { Clock, Owed, TimeScale };
+
+comptime int64 NS = 1000000000;                    // a second, in nanoseconds
+comptime int64 SATURATED = 9223372036854775807;    // int64's maximum: a count past it stays here
+
+// a × b, for a and b at least 0, saturating.
+fn int64 mulSat(int64 a, int64 b) {
+    if (a != 0 && b > SATURATED / a) { return SATURATED; }
+    return a * b;
+}
+
+// a + b, for a and b at least 0, saturating.
+fn int64 addSat(int64 a, int64 b) {
+    if (a > SATURATED - b) { return SATURATED; }
+    return a + b;
+}
+
+// The nanoseconds from `from` to `to`: 0 when time ran backwards or stood still, and saturating when the gap is wider
+// than an int64.
+fn int64 between(int64 from, int64 to) {
+    if (to <= from) { return 0; }
+    if (from < 0 && to > SATURATED + from) { return SATURATED; }
+    return to - from;
+}
+
+// How fast the simulation's time runs against real time, as a ratio, so it stays exact: 1/2 is exactly half speed and
+// 3/10 is exactly three tenths. 0/1 pauses.
+type value TimeScale {
+    int32 num;
+    int32 den;
+
+    public ctor of(int32 num, int32 den) {
+        assert(cond: num >= 0, msg: "a time scale is not negative");
+        assert(cond: den >= 1, msg: "a time scale's denominator is at least 1");
+        this.num = num;
+        this.den = den;
+    }
+
+    public ctor normal() {
+        this.num = 1;
+        this.den = 1;
+    }
+
+    public ctor paused() {
+        this.num = 0;
+        this.den = 1;
+    }
+
+    public const fn int32 numerator() { return this.num; }
+    public const fn int32 denominator() { return this.den; }
+    public const fn bool isPaused() { return this.num == 0; }
+}
+
+// What one frame owes.
+type value Owed {
+    // Base steps to run this frame, from 0 to the clock's `maxSteps`.
+    public int64 steps;
+    // The base index of the first of them; they run as `first`, `first + 1`, …
+    public int64 first;
+    // The render time: how far time has run past the last settled step, toward the next, in [0, 1] (computed in
+    // float64 and rounded to float32, which can round up to 1). Output blends at it.
+    public float32 fraction;
+    // The frame's real time in seconds, unscaled, so a UI fade runs while the game is paused, and capped at
+    // `maxSteps` steps' worth, so a resumed laptop does not hand a cosmetic spring a day. 0 on the first frame.
+    public float32 frameDt;
+
+    public ctor of(int64 steps, int64 first, float32 fraction, float32 frameDt) {
+        this.steps = steps;
+        this.first = first;
+        this.fraction = fraction;
+        this.frameDt = frameDt;
+    }
+}
+
+// A resource, so it cannot be copied by accident: two copies would each owe the same time.
+type resource Clock {
+    int64 rate;                         // the base rate, in Hz
+    int64 maxSteps;
+    float32 stepDt;                     // the base step's dt, computed once
+    int64 capNs;                        // `maxSteps` steps of real time, which caps the frame's dt
+    bool started = false;
+    int64 last = 0;                     // the last frame's timestamp
+    int64 acc = 0;                      // owed time, in nanoseconds × rate, below NS
+    TimeScale ratio = TimeScale.normal();
+    int64 rem = 0;                      // the scaled time's remainder, in 1/den nanoseconds, below den
+    int64 count = 0;                    // steps settled: the next step's base index
+    int64 discards = 0;
+    bool stepPending = false;
+
+    // `hz` is the base rate: the least common multiple the generator derives from every processor's rate, or a
+    // pinned base. `maxSteps` is the most steps a frame may owe, 5 by default (an App record field when a game needs
+    // another).
+    public ctor make(int32 hz, int32 maxSteps) {
+        assert(cond: hz > 0, msg: "a base rate is at least 1 Hz");
+        assert(cond: maxSteps >= 1, msg: "a frame may owe at least 1 step");
+        this.rate = cast<int64>(hz);
+        this.maxSteps = cast<int64>(maxSteps);
+        this.stepDt = Time::dtAt(hz: hz);
+        this.capNs = this.maxSteps * NS / this.rate;
+    }
+
+    // The base step's dt.
+    public const fn float32 dt() { return this.stepDt; }
+
+    // The steps settled so far, which is the next step's base index.
+    public const fn int64 settled() { return this.count; }
+
+    // The steps discarded at the cap, since the clock was made.
+    public const fn int64 discarded() { return this.discards; }
+
+    public const fn TimeScale scale() { return this.ratio; }
+
+    // Takes effect from the next frame. A sub-nanosecond remainder is dropped when the denominator changes.
+    public fn void setScale(TimeScale to) {
+        if (to.denominator() != this.ratio.denominator()) { this.rem = 0; }
+        if (!to.isPaused()) { this.stepPending = false; }
+        this.ratio = to;
+    }
+
+    // While paused, asks for one step on the next frame; false, and nothing asked, while running.
+    public fn bool stepOnce() {
+        if (!this.ratio.isPaused()) { return false; }
+        this.stepPending = true;
+        return true;
+    }
+
+    // Folds in one frame's timestamp, in nanoseconds from the frame source, and says what the frame owes. The first
+    // frame sets the baseline and owes nothing.
+    public fn Owed advance(int64 now) {
+        int64 elapsed = 0;
+        if (this.started) { elapsed = between(from: this.last, to: now); }
+        this.started = true;
+        this.last = now;
+
+        int64 first = this.count;
+        int64 owed = 0;
+        if (this.ratio.isPaused()) {
+            if (this.stepPending) {
+                owed = 1;
+                this.stepPending = false;
+            }
+        } else if (elapsed > 0) {
+            int64 scaled = this.scaleElapsed(elapsed: elapsed);
+            owed = this.owe(scaled: scaled);
+        }
+        this.count = this.count + owed;
+
+        int64 shown = elapsed < this.capNs ? elapsed : this.capNs;
+        float32 frameDt = cast<float32>(cast<float64>(shown) / 1000000000.0);
+        float32 fraction = cast<float32>(cast<float64>(this.acc) / 1000000000.0);
+        return Owed.of(steps: owed, first: first, fraction: fraction, frameDt: frameDt);
+    }
+
+    // Real nanoseconds to scaled ones, exactly: elapsed × num / den, with the remainder carried to the next frame.
+    fn int64 scaleElapsed(int64 elapsed) {
+        int64 num = cast<int64>(this.ratio.numerator());
+        int64 den = cast<int64>(this.ratio.denominator());
+        int64 whole = elapsed / den;
+        int64 carried = (elapsed % den) * num + this.rem;    // below den × num + den, which fits
+        this.rem = carried % den;
+        return addSat(a: mulSat(a: whole, b: num), b: carried / den);
+    }
+
+    // Scaled nanoseconds to owed steps, capped, with the excess counted and the remainder kept below a step.
+    fn int64 owe(int64 scaled) {
+        int64 within = this.acc + (scaled % NS) * this.rate;   // below NS × (rate + 1), which fits
+        int64 total = addSat(a: mulSat(a: scaled / NS, b: this.rate), b: within / NS);
+        if (total <= this.maxSteps) {
+            this.acc = within % NS;
+            return total;
+        }
+        this.discards = addSat(a: this.discards, b: total - this.maxSteps);
+        this.acc = 0;
+        this.rem = 0;
+        return this.maxSteps;
+    }
+}
