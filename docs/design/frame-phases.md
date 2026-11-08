@@ -1,8 +1,8 @@
 # The frame: Input, Update, Constraints, Output
 
 **Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The first
-slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): the first was decided on
-2026-11-08, and questions 2 to 4 are open. The draft
+slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): questions 1 and 2 were
+decided on 2026-11-08, and questions 3 and 4 are open. The draft
 they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
 the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
 that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
@@ -764,3 +764,29 @@ run can both hold.
     names `Time` but there is no such top-level declaration in this module"*. The hello cube's import line grows, and
     its line count does not.
   - **Considered:** the root `kyoten` module, which keeps `kyoten::Time` but leaves the tier rule to review.
+- **2026-11-08, the owner: `Time` is `float32 dt` and `int64 step`, and each processor gets its own rate's `dt`
+  (step 4, question 2 of 4).**
+  - **The owner:** "I think I'm good with your Time recommendations. I assume that is production answer?" It is, for
+    the reasons below.
+  - **The shape:** `kyoten::frame::Time` has two fields, `float32 dt` and `int64 step`.
+    - **`dt` is `float32`** because the math it scales is: `std::math`'s `Vec2`, `Vec3` and `Quat` hold `float32`
+      fields (kama `lib/std/math/vec.kama`, 0.9.876), and so do a component's rates (`Spin.rate`). kama has no
+      implicit conversion, so a `float64` `dt` would need a cast in every processor. `float32` is what Unity's
+      `deltaTime` and Bevy's `delta_secs()` use. Each rate's `dt` is computed once, and with `reproducible-float` it is
+      the same bits on every platform.
+    - **`step` is `int64`** because `isize` is 32 bits on wasm. An `int32` count at a 1,000 Hz base wraps in 24.8
+      days, which a server can outlive, while an `int64` count never does in practice. FFD's tick is an `isize`.
+    - **`step` is the base clock's index,** the one numbering that waits (question 9) and random-number keys use. A
+      processor at a slower rate sees the base index of the step it runs on, and can derive its own count from it.
+  - **A processor's `dt` is its own rate's:** a 30 Hz processor over a 60 Hz base sees 1/30. Question 2 decided that a
+    processor is handed its step, so the generator passes one `Time` per distinct rate. That leaves nothing for a
+    processor to multiply, and nothing to get wrong.
+  - **Output's `Time`** carries the frame's `dt` and the last settled `step`. The time Output blends at stays inside
+    the engine, since Output never computes an alpha (question 4). A cosmetic clock, such as a shader's time, is
+    presentation state, which Output keeps as it keeps any other.
+  - **No elapsed seconds as a float.** A `float32` elapsed time loses millisecond precision after about 2.3 hours. A
+    processor that needs time since an event counts steps, which are exact.
+  - **Considered:**
+    - a `float64` `dt`, which needs a cast against every `float32` vector;
+    - one `Time` with the base `dt`, which leaves each processor to scale it by its own rate;
+    - an elapsed-seconds field, which drifts.

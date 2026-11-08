@@ -13,13 +13,14 @@ the design doc it settles before building on it.
 **The next session starts here:**
 
 1. **Check `../kama`'s log and `kama --version`** first: kama's working tree is changing `std::app` (below).
-2. **Ask step 4's question 2 of 4,** then 3 and 4, one at a time, each with how many remain (§ Questions the owner
-   answers, below), and record each answer in [design/frame-phases.md](design/frame-phases.md) § Decided. Step 4's
-   code starts once all four are recorded (the owner, 2026-11-07). Question 1 was decided on 2026-11-08: each tier is
-   a module, and the frame tier is `kyoten::frame`.
-3. **Meanwhile, Track 1:** `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's
-   `ffd_platform.h`), then `@kama/gpu`'s canvas surface and a run in Edge (G6), then gamepads (W3), then the
-   triangle's pipeline set.
+2. **Ask step 4's question 3 of 4,** then 4, one at a time, each with how many remain (§ Questions the owner answers,
+   below), and record each answer in [design/frame-phases.md](design/frame-phases.md) § Decided. Step 4's code starts
+   once all four are recorded (the owner, 2026-11-07). Questions 1 and 2 were decided on 2026-11-08: each tier is a
+   module, the frame tier `kyoten::frame`; and `Time` is `float32 dt` and `int64 step`, each processor getting its own
+   rate's `dt`. **Every recommendation is the production answer,** or says plainly that it is not (the owner asks).
+3. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API. Then
+   `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`), `@kama/gpu`'s
+   canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's pipeline set.
 
 - **kama:** this machine's binary reports `0.9.876+g546dd54e`. kama's HEAD is `546dd54e` (0.9.875, KR-344), and the
   binary was built from kama's working tree, which holds uncommitted KR-283 work. Never rebuild kama or edit
@@ -36,15 +37,15 @@ the design doc it settles before building on it.
 - **Pushed on 2026-11-08:** kyoten's `main` and both package repositories' `main`. The remote's default branch is still
   `spike/roadmap`; making it `main` is the owner's change on GitHub.
 - **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
-  package claims, and neither has run on the web. `@kama/window` also vendors GLFW first. And kama has not ruled the
-  amendments below, some of which change the API. Publish `@kama/window` first, once its web half runs and GLFW is
+  package claims, and neither has run on the web. `@kama/window` also vendors GLFW first, and both fix their
+  stopgaps first, since those change the API. Publish `@kama/window` first, once its web half runs and GLFW is
   vendored; that also ends every consumer naming it beside `@kama/gpu`. Then `@kama/gpu`, once a canvas clears in a
   browser.
-- **The amendments to kama's designs** are listed in each repository's `AGENTS.*.md` § Amendments to relay: 9 for
-  `@kama/gpu`, 5 for `@kama/window`. They are not gaps. kama's rule (ROADMAP_DETAIL § 8, 2026-11-02) is that a change
-  the build needs comes back as an amendment of the design's section, and that a compiler or std gap is filed as a
-  row. The designs are kama's, so kama rules on them; the owner relays them. None has been ruled yet. Neither
-  repository has a gap (`KGPU-`, `KWIN-`).
+- **The packages are standalone, held to production grade, and kyoten drives them** (the owner, 2026-11-08; § Questions
+  the owner answers, below). kama's § 8 designs are where each started. Where a package departs from its design, its
+  `AGENTS.*.md` § Where this departs from kama's design says how and why: kept as the production answer, or a stopgap
+  with the production answer to build. The owner relays the departures to kama. These are not gaps: a compiler or std
+  gap goes in the package's own gap file, and neither has one (`KGPU-`, `KWIN-`).
 - **Track 1, step by step (2026-11-07),** each repository's `tools/test.sh` the gate and its `AGENTS.*.md` § Where
   things stand the detail:
   - `../kama-gpu` (step 1): the bindings generated from both legs' headers and held to them; a device, buffers,
@@ -88,12 +89,13 @@ here), committed with what it measured.
 **Track 1, the libraries.** Each is a general kama package in its own repository, named for no engine. Commit there on
 `main`.
 
-1. **`@kama/gpu`** (KYR-52, `../kama-gpu`). The design is kama's: `../kama/docs/ROADMAP_DETAIL.md` § 8
-   (`s8-gpu-wrapper`, KR-25). Start from cosmic-forge's `render/src/gpu` device and `wgpugen`
-   ([research/harvest.md](research/harvest.md) §§ 4–5). **Done:** a cleared surface in a window and in a canvas, RAII
+1. **`@kama/gpu`** (KYR-52, `../kama-gpu`). It starts from kama's design, `../kama/docs/ROADMAP_DETAIL.md` § 8
+   (`s8-gpu-wrapper`, KR-25), and is held to production grade. Start from cosmic-forge's `render/src/gpu` device
+   and `wgpugen` ([research/harvest.md](research/harvest.md) §§ 4–5). **Done:** a cleared surface in a window and in a canvas, RAII
    handles with no hand-written release, and an offscreen readback. No raw destroy in the safe API, and check
    `webgpu.h`'s lifetime rules for a resource released while the GPU still uses it (ai-first-api question 3).
-2. **`@kama/window`** (KYR-51, `../kama-window`). The design is kama's: § 8 (`s8-input`, KR-26). Start from FFD's web
+2. **`@kama/window`** (KYR-51, `../kama-window`). It starts from kama's design, § 8 (`s8-input`, KR-26), and is held to
+   production grade. Start from FFD's web
    platform header and the-mallow-man's native one (harvest § 3). **A1 needs** one window or canvas, physical keys, a
    gamepad, and a headless window for tests.
 3. **`@kama/graphics`** (KYR-9, `../kama-graphics`). Start from cosmic-forge's `render` (rendering question 1), with
@@ -132,20 +134,25 @@ here), committed with what it measured.
   and Quest 3 (examples.md § Decided), each named beside the first numbers measured on it.
 - **Step 4: the frame core's four questions,** asked one at a time from 2026-11-07, each recorded in
   [design/frame-phases.md](design/frame-phases.md) § Decided. **1, where the frame tier lives:** decided on
-  2026-11-08, each tier a module and the frame tier `kyoten::frame`. *Recommended* for the three left, for the owner
-  to decide:
-  2. **`Time`'s shape:** `float32 dt` and `int64 step`.
-     - `float32` because a component's rate is (`Spin.rate`) and kama has no implicit conversion; `int64` because
-       `isize` is 32 bits on wasm.
-     - `step` is the base clock's index, the one numbering that waits and random keys use.
-     - A processor's `dt` is its own rate's (a 30 Hz processor sees 1/30), so the generator passes one `Time` per
-       distinct rate. Output's `dt` is the frame's, and the render time it blends at stays inside the engine.
-  3. **The clock:** port FFD's `PhaseClock` accumulator (`engine/src/phase/clock.kama`), credited.
-     - It takes the frame source's time as an `int64` count of nanoseconds, which rAF, vsync and XR's predicted
-       display time can each supply, and returns the owed base steps and the render time.
-     - The cap stays at 5 owed steps a frame (FFD's `maxStepsPerAdvance`), the excess discarded and counted: the
-       engine's default, an App record field when a game needs another.
-     - The base rate is an input: the least common multiple the generator derives, or a pinned base (step 5).
+  2026-11-08, each tier a module and the frame tier `kyoten::frame`. **2, `Time`'s shape:** decided on 2026-11-08,
+  `float32 dt` and `int64 step`, the base clock's index, with each processor getting its own rate's `dt`.
+  *Recommended* for the two left, each the production answer, for the owner to decide:
+  3. **The clock:** kyoten's own, after FFD's `PhaseClock` (`engine/src/phase/clock.kama`, credited), which keeps a
+     `float64` seconds accumulator and an `isize` tick. Changed for production:
+     - **Exact, in integers.** It takes the frame source's time as an `int64` count of nanoseconds (rAF, vsync and
+       XR's predicted display time each supply one), and its accumulator counts nanoseconds times the base rate. A
+       step is then exactly 1/rate seconds, the clock never drifts, and a test that feeds it nanoseconds gets exact
+       step counts. FFD's tick is an `isize`, 32 bits on wasm; this one is `Time`'s `int64` step.
+     - **It owes nothing for time that runs backwards or stands still** (FFD's rule: an NTP step, a resumed laptop).
+     - **The cap stays at 5 owed steps a frame** (FFD's `maxStepsPerAdvance`): the excess is discarded and counted in
+       an `int64`, the engine's default, and an App record field when a game needs another.
+     - **Pause and a time scale:** real time is scaled before it is owed, and a scale of 0 pauses. A step's `dt`
+       never changes, so slow motion stays deterministic and a replay is unaffected. Unity's `timeScale` and Bevy's
+       virtual time (`pause`, `relative_speed`) work the same way.
+     - **It returns** the owed base steps and the render time, the last step plus a fraction, for Output's blend.
+     - **The base rate is an input:** the least common multiple the generator derives, or a pinned base (step 5).
+     - **It stays off the deterministic path:** a replay or a test drives steps directly and builds no clock, as in
+       FFD.
   4. **Step 4's scope:**
      - the `World` contract's four phase calls, each taking `const ref Time`;
      - rate gating and Constraints' iterations inside the generated passes (step 5), so the frame core only orders
@@ -180,8 +187,14 @@ here), committed with what it measured.
   accelerometer). They run before Input's hand-off, timed by the events' own timestamps, and the hand-off records
   the action they produce. kama already has `type adapter`, so *suggested:* a **filter** reshapes each value and a
   **gesture** recognizes a pattern over time. The hello cube needs neither, so A1 does not wait on the words.
-- **Any conflict with kama's own designs** for `@kama/gpu` and `@kama/window` is kama's to rule: a gap goes in
-  [KAMA_GAPS.md](KAMA_GAPS.md), and the design is not changed from here.
+- **`@kama/gpu` and `@kama/window` are standalone packages held to production grade, and kyoten drives them.** The
+  owner, 2026-11-08: "kama gpu and window are two official kama packages but they are stand alone like any package.
+  The bar is production grade general solutions. In this case kyoten is the first consumer so you are able to help
+  drive what production grade general solution means. I will relay to kama as well just in case."
+  - kama's § 8 design is where each starts. A departure the production bar needs is made in the package, with its
+    reason, in its `AGENTS.*.md`, and the owner relays it to kama.
+  - Each stays general: it names no engine, and serves a tool or an editor as well as a game.
+  - A compiler or std gap still goes in the package's own gap file, with its repro.
 
 ## kama gaps that touch the first slice
 
