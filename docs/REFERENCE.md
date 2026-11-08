@@ -429,6 +429,37 @@ provenance. Humans override everything, and roles and approvals are off until a 
 game reads a **pack** per source, its merge patches in JSON, through the same stack. A wiki's screenshots are
 **captures**, kept in the asset store with the recipe that retakes them.
 
+## One way to do each thing
+
+*Decided at ai-first-api questions 2 and 3 (2026-11-07).* kama's rule, held by the engine: one spelling per task, so an
+agent never chooses between three. This table ships in every game's agent guide (KYR-30), and every row has an example
+that compiles in CI.
+
+| Task | The one way |
+|---|---|
+| Put something in the world when a zone loads | a placement in the zone's record |
+| Define a kind of thing | a prefab record; a variant starts `from` another |
+| Create one while the game runs | `Create<P>` |
+| Change another entity | send it a component, `Send<C>` |
+| Read another entity | a lookup, in one of the two read modes |
+| Read input | the `Actions` component, with bindings in records |
+| Read time | the `Time` world component |
+| Use randomness | a random key the processor's record lists |
+| Draw something | `Mesh` and `Material` on the entity |
+| Give it a custom look | a material graph, or WGSL where nodes are not enough |
+| Add UI | an HTML document, bound to values and actions |
+| Tune a number | a record field, never a constant in code |
+| Meet a platform difference | a capability, never a platform's name |
+
+- **Two spellings only when they are two views of one thing:** a record and the kama builder that makes the same record
+  (a material), or a record and its generated name. Never two APIs for one job. The docs teach the record first.
+- **The table is a ratchet:** a second way to do a row is a decision, made with its reason.
+- **A mistake is stopped by a mechanism, not by review.** Each has one, listed in
+  [design/ai-first-api.md](design/ai-first-api.md) § Decided. Among them, **the simulation cannot reach the outside
+  world:** a file that defines an Input, Update or Constraints processor imports none of std's `time`, `fs`, `net`,
+  `process`, `io`, `concurrent`, `uuid` or `random`, which kyoten's import check refuses (KYR-53). Outside data enters
+  only through Input's recorded hand-off.
+
 ## The vocabulary
 
 *Decided at components question 3, choice 1 (2026-11-05), and renamed at question 8 part b (2026-11-07):* a

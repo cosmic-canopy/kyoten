@@ -1,7 +1,7 @@
 # Easy for AI from day one, as quick as Three.js
 
-**Status:** draft for the design spike. Three decisions are recorded, the latest revising question 1's target; the
-rest are questions.
+**Status:** draft for the design spike. Questions 1–3 are decided (1 on 2026-11-05, its target revised on
+2026-11-06 and 2026-11-07; 2 and 3 on 2026-11-07); 4–7 stay outside the spike, with their roadmap rows.
 
 ## What the vision asks
 
@@ -33,11 +33,11 @@ rest are questions.
 1. **What is the "hello cube"?** *(Decided 2026-11-05 with components question 7, below.)* The smallest program that opens a window (or a canvas), draws a lit, spinning mesh
    and reads input, on web and native. How many lines, and which concepts must a newcomer, human or agent, meet
    first? Three.js's answer is about 20 lines; kyoten's target should be written down.
-2. **One way to do each thing.** kama's own rule. How does the engine's API keep one obvious spelling per task,
-   so an agent does not have to choose between three?
-3. **Correct by construction.** Which mistakes can the API make impossible (wrong phase, a data race, a resource
-   freed while the GPU uses it), rather than catching them in review? kama's ownership and lock windows are tools
-   here.
+2. **One way to do each thing.** *(Decided 2026-11-07, below.)* kama's own rule. How does the engine's API keep one
+   obvious spelling per task, so an agent does not have to choose between three?
+3. **Correct by construction.** *(Decided 2026-11-07, below.)* Which mistakes can the API make impossible (wrong phase,
+   a data race, a resource freed while the GPU uses it), rather than catching them in review? kama's ownership and lock
+   windows are tools here.
 4. **Discoverable by an agent.** The API surface as data: `kama query` over the engine, generated reference docs,
    a schema for project-database records ([project-database.md](project-database.md)), examples that compile in CI.
 5. **The iteration loop.** Edit, see the change: hot reload of tuning and assets, and of code (kama's hot-reload
@@ -89,3 +89,62 @@ rest are questions.
   - **How CI holds it (KYR-14):** CI still fails when the count grows, and the number may be raised, with the reason
     in the commit that raises it. The owner: "yes your recommendation. It points to a decision that needs to be
     made."
+- **2026-11-07, the owner: questions 2 and 3.** "Everything else sounds good so far", and on item 5: "Is the
+  importsOnly kama gap a general systems language concept? if so feel free to file the gap." It is (item 5), so it is
+  filed as KY-37.
+  1. **Question 2: a table of one way per task is part of the engine's API.** It is kept in
+     [../REFERENCE.md](../REFERENCE.md) § One way to do each thing, ships in every game's agent guide (KYR-30), and
+     every row has an example that compiles in CI (KYR-13), so it cannot drift from the engine. Nearly every row was
+     decided earlier:
+
+     | Task | The one way |
+     |---|---|
+     | Put something in the world when a zone loads | a placement in the zone's record |
+     | Define a kind of thing | a prefab record; a variant starts `from` another |
+     | Create one while the game runs | `Create<P>` |
+     | Change another entity | send it a component, `Send<C>` |
+     | Read another entity | a lookup, in one of the two read modes |
+     | Read input | the `Actions` component, with bindings in records |
+     | Read time | the `Time` world component |
+     | Use randomness | a random key the processor's record lists |
+     | Draw something | `Mesh` and `Material` on the entity |
+     | Give it a custom look | a material graph, or WGSL where nodes are not enough |
+     | Add UI | an HTML document, bound to values and actions |
+     | Tune a number | a record field, never a constant in code |
+     | Meet a platform difference | a capability, never a platform's name |
+
+  2. **Question 2: two spellings only when they are two views of one thing,** such as a record and the kama builder
+     that makes the same record (a material), or a record and its generated name. Never two APIs for one job, such as
+     a `spawn()` beside `Create<P>`. The docs teach the record first.
+  3. **Question 2: the table is a ratchet.** A second way to do a row is a decision recorded with its reason, as the
+     hello cube's line count and the web's size are.
+  4. **Question 3: each mistake has a mechanism that stops it before review sees it.** Most were decided earlier:
+
+     | Mistake | What stops it | When |
+     |---|---|---|
+     | Output writing the simulation | Output's access is `const ref`, and its own state is `"output": true` | compile |
+     | A data race between parallel processors | access stated in signatures; a parallel group is a `scope` | compile |
+     | A typo in an action, prefab, placed name, binding, UI binding or wiki link | generated names, and checked references | compile or check |
+     | A stale entity handle | the handle's generation: a lookup answers "gone", never another entity | run |
+     | Floats that differ across machines | `reproducible-float`, which the engine declares | build |
+     | A field no type declares | strict decoding of every record | check |
+     | A budget overrun | budgets, with a defined `whenFull` | run |
+     | Mixed number types, or an overflow | kama: no implicit conversion, and overflow traps | compile, debug |
+     | A GPU resource freed while the GPU uses it | `@kama/gpu`'s RAII handles, with no raw destroy *(to verify against `webgpu.h`'s lifetime rules, KYR-52)* | compile |
+     | The simulation reading the outside world | the simulation-files import check (item 5) | check |
+     | A silent divergence | the replay tripwires and the per-step hash | debug runs, CI |
+
+  5. **Question 3: the simulation cannot reach the outside world.** kyoten's import check (KYR-53) refuses std's `time`,
+     `fs`, `net`, `process`, `io`, `concurrent`, `uuid` and `random` in any file that defines an Input, Update or
+     Constraints processor; a file of Output processors may use them. It is per file because a module mixes phases,
+     and kama's visibility is per file too. Outside data enters only through Input's recorded hand-off, and `random`
+     is refused because random keys are the one way.
+     - **Why kyoten's own check:** *probed on kama 0.9.873* (`0.9.873+g7c0a6bd0`), a module declared
+       `{ "visibility": "internal", "importsOnly": [] }` imported `std::time::unixNow` and called it, and `kama check`
+       reported *"kama.json OK (4 units analyzed)"*. `importsOnly` restricts a module's imports from its own package
+       only (kama `docs/packages.md`: *"Another package is `dependencies`' business and is never listed"*).
+     - **Filed as KY-37,** since a compiler that holds the rule holds it in every build. Keeping code from parts of
+       the standard library is a general systems-language concept *(general knowledge, not checked against each)*:
+       Rust's `#![no_std]`, Java's `requires` in `module-info`, and linters such as Go's depguard and .NET's
+       BannedApiAnalyzers. Its uses are determinism (simulations, replays, workflow engines), code with no operating
+       system (kama's `EMBEDDED` target and `--no-heap`), and sandboxing or layering.

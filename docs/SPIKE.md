@@ -246,10 +246,15 @@ answer is recorded in its doc's *Decided*:
    day-one render components' fields, a first cut; Output extracts, serially by default and pipelined when measured.
    **How shaders are written** (the owner: "All sounds good to me so far"): WGSL with WESL's imports, materials as node
    graphs kept as records and compiled to WGSL, a full WGSL escape, and compute for Output's visuals only. Questions
-   5–10 stay outside the spike. **Next: [design/ai-first-api.md](design/ai-first-api.md) questions 2 and 3,** then
-   [design/examples.md](design/examples.md) 1–3 from the [narrowed table](#narrowed-2026-11-01). **5 questions remain:**
-   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
-   of questions left each time one is put to them.
+   5–10 stay outside the spike.
+7. **[design/ai-first-api.md](design/ai-first-api.md), questions 2 and 3, are decided** (2026-11-07, the owner:
+   "Everything else sounds good so far"): a table of one way per task, kept in [REFERENCE.md](REFERENCE.md), shipped in
+   every game's agent guide and compiled in CI, with two spellings only as two views of one thing and the table as a
+   ratchet; each mistake stopped by a named mechanism; the simulation kept from the outside world by kyoten's import
+   check, per file, and KY-37 filed (the owner: "if so feel free to file the gap"). Questions 4–7 stay outside the
+   spike. **Next: [design/examples.md](design/examples.md), questions 1–3,** the last of the [narrowed
+   table](#narrowed-2026-11-01). **3 questions remain:** examples 3. The owner asked for the count of questions left
+   each time one is put to them.
 
 **To raise with the owner:**
 
@@ -278,7 +283,8 @@ answer is recorded in its doc's *Decided*:
   KY-22, KY-23 and KY-28 are kama KR-336, KR-337 and KR-338; KY-31 is narrowed, its reader half kama KR-339.
   **kama took that list too, the same day** (re-checked on 0.9.872): KY-32, KY-33 and KY-34 are fixed and removed,
   KY-31's docs half is fixed, and KY-35 is kama KR-343. **Still to relay:** KY-36 (kama's `check-target.sh` says
-  COOP/COEP break a cross-origin WebSocket; the Fetch Standard and a browser say they do not).
+  COOP/COEP break a cross-origin WebSocket; the Fetch Standard and a browser say they do not) and KY-37 (a module
+  cannot be kept from std's modules; filed at ai-first-api question 3 with the owner's leave).
 - **The three package repositories are seeded** (2026-11-03), beside kyoten: `../kama-gpu` (KYR-52), `../kama-window`
   (KYR-51) and `../kama-graphics` (KYR-9). Each was made with `kama seed` on 0.9.831 and laid out like `kama-sodium`,
   with `AGENTS.<name>.md`, `KAMA_GAPS.md`, `CHANGELOG.md` and registry metadata. Each passes `kama check` and `kama
@@ -477,7 +483,7 @@ KYR-1 is the walk-through itself.
 - **Evidence over assertion.** A claim about kama is checked against the compiler, and a claim about a peer
   against its code. [research/](research/) has pointers; follow them before relying on them.
 - **kama gaps go in [KAMA_GAPS.md](KAMA_GAPS.md)**, with a repro and the version. KY-2, KY-3, KY-5, KY-6, KY-12 to KY-15,
-  KY-17 to KY-19, KY-21 to KY-23, KY-28, KY-31, KY-35 and KY-36 are open there; take the next id from its counter.
+  KY-17 to KY-19, KY-21 to KY-23, KY-28, KY-31 and KY-35 to KY-37 are open there; take the next id from its counter.
 
 ## What the spike should leave behind
 
