@@ -1,0 +1,33 @@
+// kyoten::frame::Time (frame-phases § Decided, step 4 question 2): a `float32 dt` and an `int64 step`, each rate's dt
+// computed once as 1/rate in float32, with the same bits natively and on wasm.
+
+import { Tally, kyoten::frame::Time };
+
+export { timeTests };
+
+// A rate's dt, held to its exact float32 bits (computed independently: the correctly rounded float32 of 1/hz).
+fn void dtBits(ref Tally t, int32 hz, uint32 want) {
+    float32 dt = Time::dtAt(hz: hz);
+    uint32 got = bitcast<uint32>(dt);
+    string name = "Time: the dt at ${hz} Hz is 1/${hz} in float32, bit for bit";
+    if (got == want) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "bits ${got}, want ${want}"); }
+}
+
+fn void fields(ref Tally t) {
+    float32 dt = Time::dtAt(hz: 60);
+    int64 big = 5000000000;
+    Time time = Time.of(dt: dt, step: big);
+    bool ok = bitcast<uint32>(time.dt) == bitcast<uint32>(dt) && time.step == big;
+    t.verdict(name: "Time: of(dt:, step:) holds both, and step is 64 bits", why: ok ? "" : "the fields differ");
+}
+
+fn void timeTests(ref Tally t) {
+    dtBits(t: t, hz: 60, want: 0x3c888889);
+    dtBits(t: t, hz: 50, want: 0x3ca3d70a);
+    dtBits(t: t, hz: 120, want: 0x3c088889);
+    dtBits(t: t, hz: 300, want: 0x3b5a740e);
+    dtBits(t: t, hz: 30, want: 0x3d088889);
+    dtBits(t: t, hz: 1000, want: 0x3a83126f);
+    fields(t: t);
+}

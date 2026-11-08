@@ -1,0 +1,30 @@
+// kyoten::frame::Time — the step's length and number, handed to every processor (frame-phases § Decided, step 4
+// question 2). A processor never reads a clock: it is handed its `Time`.
+//
+// - `dt` is a float32, because the math it scales is: std::math's vectors and quaternion hold float32.
+// - `step` is the BASE clock's index, an int64 because `isize` is 32 bits on wasm. Waits and random keys use the same
+//   numbering, and a processor at a slower rate sees the base index of the step it runs on.
+// - Each processor gets its own rate's dt, computed once by `dtAt`, so there is nothing for it to multiply.
+// - There is no elapsed-seconds float: a float32 elapsed time loses millisecond precision after about 2.3 hours, so a
+//   processor that needs the time since an event counts steps, which are exact.
+//
+// Output's `Time` carries the frame's dt and the last settled step (see `frame` in driver.kama).
+
+export { Time };
+
+type value Time {
+    public float32 dt;
+    public int64 step;
+
+    public ctor of(float32 dt, int64 step) {
+        this.dt = dt;
+        this.step = step;
+    }
+
+    // The length of one step at `hz` steps a second, in seconds: the one way every rate's dt is computed, a float32
+    // division, so it is correctly rounded and the same bits on every target. A rate is at least 1 Hz.
+    public static fn float32 dtAt(int32 hz) {
+        assert(cond: hz > 0, msg: "a rate is at least 1 Hz");
+        return 1.0 / cast<float32>(hz);
+    }
+}
