@@ -315,6 +315,17 @@ The tension between their lesson and that purpose is the first thing to settle.
         import, which never name another engine module.
       - **The tool narrows to a check of those lists** against the layer table (ROADMAP KYR-53): that every engine
         module has an `importsOnly`, and that none names another engine module. It no longer reads the source.
+      - **2026-11-08, the owner: the simulation rule is a module fence too** ([ai-first-api.md](ai-first-api.md)
+        § Decided, question 3, item 5).
+        - **What the lists hold:** a module holding Input, Update or Constraints processors leaves out std's `time`,
+          `fs`, `net`, `process`, `io`, `concurrent`, `uuid` and `random`, and `core::env`. Of its own package's
+          modules, it names only other simulation modules.
+        - **So an engine module that works in several phases splits in two:** a fenced part for its simulation
+          processors, and an outside part for the work that stages for them.
+        - **The check gains three things:** it reads the code records, to learn which modules hold simulation
+          processors; it holds those modules' lists; and it covers games, not only `engine/`.
+        - **It still reads source for one thing:** target-platforms question 3's refusal of an OS flag
+          (`@compileFor(OS_WINDOWS)`) in an engine module or a game's processors (ROADMAP KYR-53).
   - *Renamed 2026-11-07 ([components.md](components.md) question 8 part b): these layers are the engine's **tiers**,
     since a bare "layer" now means a scene's layer. This entry keeps its words.*
   - **The layer names: decided 2026-11-05 at [components.md](components.md) question 3, choice 6.** The four layers

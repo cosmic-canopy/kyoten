@@ -461,9 +461,11 @@ that compiles in CI.
 - **The table is a ratchet:** a second way to do a row is a decision, made with its reason.
 - **A mistake is stopped by a mechanism, not by review.** Each has one, listed in
   [design/ai-first-api.md](design/ai-first-api.md) § Decided. Among them, **the simulation cannot reach the outside
-  world:** a file that defines an Input, Update or Constraints processor imports none of std's `time`, `fs`, `net`,
-  `process`, `io`, `concurrent`, `uuid` or `random`, which kyoten's import check refuses (KYR-53). Outside data enters
-  only through Input's recorded hand-off.
+  world:** a simulation module, one that holds Input, Update or Constraints processors, leaves out of its
+  `importsOnly` std's `time`, `fs`, `net`, `process`, `io`, `concurrent`, `uuid` and `random`, and `core::env`.
+  Output processors and outside work sit in modules of their own. The compiler holds this in every build, and
+  kyoten's check holds the lists (KYR-53, decided 2026-11-08). Outside data enters only through Input's recorded
+  hand-off.
 
 ## The vocabulary
 

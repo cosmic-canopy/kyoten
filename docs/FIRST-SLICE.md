@@ -27,10 +27,17 @@ the design doc it settles before building on it.
      § Decided, question 3's *Built on 2026-11-08*.
    - **Each part was test-first:** its tests were seen to fail, then the code was written, and mutations of the clock
      and the driver were caught.
-3. **Step 4 gave the engine its second module, so step 6's question is next** (KYR-53): whether the simulation-files
-   rule (ai-first-api question 3) moves from a per-file check into the modules' `importsOnly`, now that KY-37 is
-   fixed. Bring the options and a recommendation, the production answer, before building the check.
-4. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix
+3. **Step 6's question is answered** (the owner, 2026-11-08, KYR-53).
+   - **The answer:** the simulation rule moves into `importsOnly` as a module fence, and `core::env` joins its list
+     ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5).
+   - **When the check lands:** with step 5's code records, since it reads them to learn which modules hold
+     simulation processors.
+   - **Step 5 builds to the fence:** the generated code splits into a fenced module (the world, `Actions`) and an
+     outside one (`run`), and the hello cube's root module is its simulation module.
+4. **Next in Track 2, step 5** (KYR-7, the component model and the generator). First read components.md § Decided
+   and target-platforms question 2 for anything step 5 needs that is not yet decided. Bring each such question with a
+   recommendation, then build test-first.
+5. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix
    test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come first, since the format
    choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`,
    ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6),
@@ -133,10 +140,9 @@ here), committed with what it measured.
    `Actions`; `Transform`; and the generated `run` (target-platforms question 2). Generated files are never committed.
    **KY-28 bites here:** until kama's KR-338, `kama check` fails on a fresh clone whose sources import generated code,
    so the generator runs before every kama command, behind a `kyoten` command.
-6. **The import check** (KYR-53) lands when the engine has a second module, with the simulation-files rule (ai-first-api
-   question 3). KY-37 was fixed on 2026-11-07 (kama KR-344): `importsOnly` now reaches std, `core` and other
-   packages, so whether that rule moves from kyoten's per-file check into the modules' manifests is asked when this
-   step starts.
+6. **The import check** (KYR-53) lands with step 5's code records. **Decided on 2026-11-08:** the simulation rule
+   (ai-first-api question 3) is a module fence in `importsOnly`, with `core::env` added. The check reads the manifests
+   and the code records, covers games too, and reads source only for the OS-flag refusal.
 
 **The join.**
 
@@ -167,8 +173,9 @@ here), committed with what it measured.
      wait for their own steps.
 - **Answered on 2026-11-08, while step 4 was built: the time scale is a ratio** (`TimeScale`, `num/den`), so the
   clock stays exact at every scale. A `float64` was considered (frame-phases § Decided, question 3).
-- **Step 6: the simulation-files rule and `importsOnly`** (KYR-53), asked when step 4 has given the engine its second
-  module.
+- **Answered on 2026-11-08, step 6's question** (KYR-53): the simulation rule moves into `importsOnly` as a module
+  fence, and `core::env` joins the list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3,
+  item 5).
 - **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
   maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
   rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:

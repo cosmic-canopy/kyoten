@@ -131,7 +131,7 @@
      | A budget overrun | budgets, with a defined `whenFull` | run |
      | Mixed number types, or an overflow | kama: no implicit conversion, and overflow traps | compile, debug |
      | A GPU resource freed while the GPU uses it | `@kama/gpu`'s RAII handles, with no raw destroy *(to verify against `webgpu.h`'s lifetime rules, KYR-52)* | compile |
-     | The simulation reading the outside world | the simulation-files import check (item 5) | check |
+     | The simulation reading the outside world | the simulation modules' `importsOnly` (item 5, moved there 2026-11-08), and kyoten's check of those lists | compile, check |
      | A silent divergence | the replay tripwires and the per-step hash | debug runs, CI |
 
   5. **Question 3: the simulation cannot reach the outside world.** kyoten's import check (KYR-53) refuses std's `time`,
@@ -152,3 +152,43 @@
        `core`'s and other packages' included, and the probe above is now refused, naming the entry to add. The rule
        here is per file, and `importsOnly` is per module, so whether the rule moves into the modules' manifests is
        not decided here; it is asked when KYR-53 (the first slice's step 6) starts.
+     - **2026-11-08, the owner: the rule moves into `importsOnly`, a module fence, and `core::env` joins the list**
+       (KYR-53, step 6's question). The owner chose "Module fence" and "Yes, refuse core::env".
+       - **The rule now:**
+         - A **simulation module** holds Input, Update or Constraints processors and the code they call.
+         - Its `importsOnly` names none of std's `time`, `fs`, `net`, `process`, `io`, `concurrent`, `uuid` or
+           `random`, nor `core::env`.
+         - Of its own package's modules, it names only other simulation modules.
+         - Output processors, and outside work such as sockets and files, sit in modules of their own.
+         - The compiler holds the rule in every build and in the editor, for engine modules and games alike.
+       - **Why: it closes the hole the per-file rule leaves.** Probed on kama 0.9.876 (`+g1a969a1e`, `.scratch/kyr53`):
+         - **The helper.** A helper in another file of a simulation module imported `std::time`. The module refused
+           it: *"module `std::time` is not in the `importsOnly` of `game`"*. A per-file rule passes that file, because
+           it defines no processor, so a processor calling the helper would read the clock unseen.
+         - **Output.** An Output module beside it (`game::present`) read the clock freely.
+         - **No way around.** The simulation module could not import `present` to reach the clock through it:
+           *"module `game::present` is not in the `importsOnly` of `game`"*.
+         - **Games too.** A game's module can list another package's tier (`eng::frame`).
+       - **Why `core::env`:** KR-344 moved the environment and the command line there, and they are outside data like
+         the clock. `core` and `core::env` fence separately. Probed: with `core` listed, `println` is allowed and
+         `core::env::envOr` is refused. A setting reaches the simulation as a record, or through Input's recorded
+         hand-off.
+       - **What it costs:** simulation and Output code are split by folder.
+         - **A game:** the root module can be its simulation module. The hello cube's processor and its two-line
+           `main` both fit there, so the cube's line count does not change. `kyoten new` writes the layout and the
+           lists (KYR-30).
+         - **An engine module that works in several phases splits:** a fenced part holds its simulation processors,
+           and an outside part does the work that stages for them. Net's Input processor is fenced, and its sockets
+           are not. This matches frame-phases question 1: work runs at any time, and reaches the simulation only at
+           its phase's hand-off.
+         - **The generated code splits too:** what the simulation imports (the world, `Actions`) goes in a fenced
+           module, and `run` goes outside (step 5).
+       - **kyoten's check (KYR-53) reads manifests and code records, not source:**
+         - every module holding an Input, Update or Constraints processor has an `importsOnly`;
+         - that list names none of the refused modules;
+         - of its own package's modules, it names only other simulation modules, so the fence holds through every
+           module it can reach.
+       - **Considered:**
+         - the per-file rule as first decided, held by the generator. It imposes no layout, but it holds only when the
+           generator runs, not in `kama check` or the editor, and it misses helpers in other files;
+         - both rules at once, which is two ways to say one thing.
