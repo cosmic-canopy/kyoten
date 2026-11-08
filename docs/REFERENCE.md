@@ -73,6 +73,14 @@ the gamepad, the DOM UI, the AudioContext), kama's `main` runs the steps and ren
 job pool takes further workers, and shared-memory rings join them. Such a game is hosted with COOP `same-origin` and
 COEP `require-corp`, and ships its single-threaded build as the fallback.
 
+**UI and the headset** (*decided*, web-and-native questions 3 and 8, 2026-11-07): a game's UI is one set of HTML and
+CSS documents within kyoten's **UI profile**, the part `@kama/ui` renders natively, checked at build. The DOM renders
+it on the web, and no webview is used natively. UI shows what Output writes and sends actions, which enter at Input's
+hand-off and are recorded like a key's, so UI never touches the simulation. UI documents are content, and the names
+they bind are checked against the generated ones. A headset is not a third family: Quest natively is the Android
+family with OpenXR, which players get first, and the Quest browser is the web family with WebXR, which renders on
+the page thread.
+
 ## The world at run time
 
 *Decided at components questions 1 and 2* ([design/components.md](design/components.md) § Decided), except world stores,
@@ -438,6 +446,7 @@ words.
 | **Command** | a queued change, applied at the end of its phase: structural through `Create<P>`, `Destroy`, `Gain<C>` and `Lose<C>`, or a value sent to another entity through `Send<C>` | decided (question 3, choice 4; the queues at question 8 part b, 2026-11-07) |
 | **Action** | a semantic input a game declares (`faster`, a button or an axis). The generator writes one field per action into an `Actions` component, which an entity carries to name the player that drives it; the Input phase fills it each step | decided (question 7, choice 4, revised 2026-11-06) |
 | **Binding** | a record mapping an action to a device's input, a default per device, rebound by the developer and the player. It passes through adapters | decided (question 7, choice 4); adapters are the owner's direction for KYR-54 |
+| **UI profile** | the HTML and CSS a game's UI documents may use: what `@kama/ui` renders natively, checked at build. It grows as the native renderer does, and a document marked web-only is exempt | decided (web-and-native question 3, 2026-11-07) |
 | **Player** | a numbered slot that drives entities through their `Actions`. A local device, a network slot, a bot or an agent is bound to it, and a budget caps how many there are | that actions belong to a player is decided (question 7, revised 2026-11-06); the rest is the owner's direction for KYR-54 |
 | **Player binding** | what attaches a source to a player: keyboard 1, gamepad 2, a network slot, a bot or an agent | the owner's direction (2026-11-06), decided at KYR-54 |
 | **Adapter** | a step in a binding that filters a control's value or converts it to the action's kind: a dead zone, a scale, a stick or trigger as a button, a button as an axis, two buttons as −1 to 1, a filtered accelerometer. Editor controls may use the same idea (human-tools question 4) | the owner's direction (2026-11-06), decided at KYR-54 |

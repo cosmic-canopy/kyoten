@@ -211,17 +211,21 @@ answer is recorded in its doc's *Decided*:
    for now, the owner: "the cost is probably not enough to warrant it right now"), the simulation on the CPU with
    GPU compute a later direction (KYR-64), one recorded log of Input's hand-off, `KNUM` saves and `POS` logs,
    the tripwires, and Output read-only by structure.
-3. **[design/web-and-native.md](design/web-and-native.md), in part** (2026-11-07): questions 1, 4, 5 and 6 are
-   decided. Libraries below, shaped after the browser and built as kama packages, and kyoten's own interfaces
-   above; a size ratchet with a 150 KB gauge for the hello cube; native's gains behind the same interfaces, and no
-   capability in the simulation; the renderer designed around call count. **Question 2, the web thread topology**
-   (the owner: "All sounds good to me so far"): two builds with the same game code; threaded, the page is the
-   browser's edge and `main` steps and renders on a worker; COOP `same-origin` and COEP `require-corp`, with the
+3. **[design/web-and-native.md](design/web-and-native.md) is decided,** questions 1–6 and 8 (2026-11-07), and 7 waits
+   for KYR-13. Questions 1, 4, 5 and 6: libraries below, shaped after the browser and built as kama packages, and
+   kyoten's own interfaces above; a size ratchet with a 150 KB gauge for the hello cube; native's gains behind the same
+   interfaces, and no capability in the simulation; the renderer designed around call count. **Question 2, the web
+   thread topology** (the owner: "All sounds good to me so far"): two builds with the same game code; threaded, the page
+   is the browser's edge and `main` steps and renders on a worker; COOP `same-origin` and COEP `require-corp`, with the
    single-threaded build as the fallback; `whenHidden`. Probed in headless Edge 157, with a research agent's sources;
-   KY-36 filed. **Next: questions 3 (UI) and 8 (the headset),** then the rest of the
-   [narrowed table](#narrowed-2026-11-01). **21 questions remain:** web-and-native 2, project-database 7,
-   target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
-   were. The owner asked for the count of questions left each time one is put to them.
+   KY-36 filed. **Questions 3 and 8, UI and the headset** (the owner: "All of this sounds good to me"): one UI format
+   everywhere, kyoten's UI profile, checked at build; no webview natively; UI shows what Output writes and sends
+   recorded actions; UI documents are content, with their bindings checked; native accessibility is KYR-16's. The
+   headset is two platform implementations on the seam, and players reach Quest natively first (xr.md question 1).
+   **Next: [design/project-database.md](design/project-database.md),** then the rest of the [narrowed
+   table](#narrowed-2026-11-01). **19 questions remain:** project-database 7, target-platforms 4, rendering 3,
+   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
+   of questions left each time one is put to them.
 
 **To raise with the owner:**
 
@@ -281,7 +285,8 @@ answer is recorded in its doc's *Decided*:
     CSS3 ) is the best UI platform out there today IMHO and it saves a TON on native web." So a game's UI is HTML and
     CSS, the browser's own on the web, and natively a counterpart kyoten builds, with RmlUi at most a stopgap.
     web-and-native question 3 keeps what is left: whether a game's UI is the same HTML on both, and how much of HTML and
-    CSS the native counterpart covers, in what order.
+    CSS the native counterpart covers, in what order. *Answered 2026-11-07 at web-and-native question 3:* the same
+    HTML on both, within kyoten's UI profile, the HTML and CSS the native renderer supports, which grows with it.
 - **Given 2026-11-05: heavy assets are never stored with the code.** The owner: "We don't have to solve the full
   pipeline now... I just want to make sure we don't store all of the heavy stuff with the code." Three things are kept
   and moved apart, as studios do:

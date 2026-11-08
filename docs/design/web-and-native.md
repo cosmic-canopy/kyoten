@@ -1,7 +1,6 @@
 # Web first, native at parity
 
-**Status:** questions 1, 2, 4, 5 and 6 decided on 2026-11-07; 3 and 8 are open in the spike, and 7 waits for
-KYR-13.
+**Status:** questions 1–6 and 8 decided on 2026-11-07; 7 waits for KYR-13.
 
 ## What the vision asks
 
@@ -63,8 +62,8 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
      question picks the topology a *threaded* web build gets, and whether kyoten's hosting serves the COOP/COEP headers
      it needs. Whether those headers break a cross-origin WebSocket is disputed (frame-phases question 8), and question
      7's browser leg should settle it.
-3. **UI in HTML/CSS.** The game's UI is the browser's DOM on the web. Natively: RmlUi through `@kama/ui`, as the peers
-   do, or a webview? Is a game's UI the same HTML on both?
+3. **UI in HTML/CSS.** *(Decided 2026-11-07, below.)* The game's UI is the browser's DOM on the web. Natively: RmlUi
+   through `@kama/ui`, as the peers do, or a webview? Is a game's UI the same HTML on both?
 4. **"Light on the web": what is the budget?** *(Decided 2026-11-07, below.)* The wasm and JS size of the examples ([examples.md](examples.md))
    on their first slice, and a number to hold it to.
 5. **What does native gain beyond parity?** *(Decided 2026-11-07, below.)* Threads without COOP/COEP, files, raw UDP. How does a game ask for a
@@ -73,9 +72,9 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
    thousands of calls per frame ([rendering.md](rendering.md)).
 7. **CI for the web.** kama's wasm leg runs under node, not a browser. kyoten needs a browser leg (headless Chrome)
    to test COOP/COEP, workers and WebGPU for real.
-8. **A third family: the headset.** Meta Quest is either a browser (WebXR) or an Android device (OpenXR). kama's
-   Android target shipped in 0.9.830, and its installable app (KR-283) is next ([xr.md](xr.md)). Does the seam's
-   design leave room for it from the start?
+8. **A third family: the headset.** *(Decided 2026-11-07, below.)* Meta Quest is either a browser (WebXR) or an Android
+   device (OpenXR). kama's Android target shipped in 0.9.830, and its installable app (KR-283) is next ([xr.md](xr.md)).
+   Does the seam's design leave room for it from the start?
 
 ## Decided
 
@@ -166,3 +165,42 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
      build steps on the worker's timer; the single-threaded build steps as the throttled page timer allows and catches
      up through frame-phases' owed steps to a cap on return, past which networking resyncs (KYR-18). So a networked web
      game that must keep pace while hidden runs threaded.
+- **2026-11-07, the owner: questions 3 and 8, UI and the headset.** "All of this sounds good to me." This closes the
+  questions open in the spike; 7 waits for KYR-13.
+  - **What was known.** `@kama/ui` is on the registry: the DOM on the web, and RmlUi natively through `@kama/rmlui`.
+    the-mallow-man and cosmic-forge use it. Its known gaps are no native `<video>` or `<audio>` element (cosmic-forge's
+    CF-9) and no native GPU canvas element (CF-22). For the headset, [xr.md](xr.md) records that WebXR exists only on
+    the page thread, and that WebGPU in WebXR is experimental and behind a flag in the Quest browser.
+  1. **One UI format everywhere, kyoten's UI profile:** the HTML and CSS that `@kama/ui` renders natively. The DOM
+     renders it on the web, and `@kama/ui` natively. **The build checks every UI document against the profile,** so
+     nothing that works only on the web slips in. A document marked web-only (a store page, say) is let through. **The
+     profile grows as the native renderer does, never ahead of it:** RmlUi now, kyoten's own renderer later (KYR-16,
+     the owner's direction of 2026-11-05). So a game's UI is the same HTML on both, which is what this question asked.
+  2. **Natively `@kama/ui`, no webview for games.** A webview ships a browser engine with each game (CEF, WebView2,
+     WKWebView), adds a process, draws the UI off-screen and copies it into the game's GPU surface, is missing on
+     consoles, and sits outside the budgets. It may still serve tools such as the editor.
+  3. **UI is presentation plus input, and never touches the simulation.**
+     - **Values flow out:** Output processors read the snapshot and write the values a document binds. In the threaded
+       web build they travel over the UI ring (question 2).
+     - **Events flow in as actions:** a click is an `Actions` field like a key's, entering at Input's hand-off and
+       recorded. So a menu click replays, and an agent or a bot presses the same buttons a player does. Typed text is an
+       action's payload.
+     - **UI-only state** (the open tab, hover, a scroll position) is Output's own `"output": true` state, never saved or
+       hashed. Anything that matters to the game, such as pausing, is an action.
+  4. **UI documents are content.** They hot-reload, and DLC and mods layer them, so a mod can reskin the menus. **Every
+     name a document binds is checked at build** against the generated names, the values it reads and the actions it
+     sends, so `data-action="fastr"` is a build error as an action's typo already is. The binding syntax is for
+     `@kama/ui` and KYR-16 to settle.
+  5. **Accessibility:** the DOM gives screen readers on the web. RmlUi has nothing equivalent natively, as far as is
+     known *(not checked)*, so native accessibility is KYR-16's to build, not an afterthought.
+  6. **The headset is two platform implementations on the existing seam, not a third family.** Quest natively is the
+     Android family with OpenXR, and the Quest browser is the web family with WebXR, with XR as its own package
+     (KYR-31). What it needs is already decided: the frame source can be the headset's predicted display time
+     (frame-phases question 10), a view's target can be an eye (components, 2026-11-06), controllers and hands are
+     devices bound to actions (components question 7), and a pose enters at Input's hand-off, recorded like any outside
+     clock (G12).
+  7. **A WebXR build renders on the page thread,** where WebXR lives, so the single-threaded web build serves it first.
+     A later threaded WebXR build would keep the simulation on workers and move only Output's rendering to the page.
+     **Players reach Quest natively first,** through OpenXR on Android, once kama's installable app (KY-2) lands. The
+     Quest browser serves development until WebGPU in WebXR ships without its flag, and the owner's Quest prototype
+     (KYR-4) may revisit this with what it finds on the headset. This answers [xr.md](xr.md) question 1.

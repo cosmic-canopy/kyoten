@@ -1,6 +1,6 @@
 # XR: VR on Meta Quest
 
-**Status:** draft for the design spike. Four decisions are recorded; the rest are questions.
+**Status:** draft for the design spike. Five decisions are recorded; the rest are questions.
 
 ## What the vision asks
 
@@ -68,9 +68,10 @@
 
 ## The questions
 
-1. **Which route ships first for the Quest example?** Both are decided (see *Decided*): WebXR in the Quest browser
-   fits web first and needs no store, since a game is a URL (`play.` on the platform, [website.md](website.md));
-   OpenXR natively gives full performance and store distribution (Meta Horizon Store). Which comes first?
+1. **Which route ships first for the Quest example?** *(Decided 2026-11-07 at web-and-native question 8, below.)* Both
+   are decided (see *Decided*): WebXR in the Quest browser fits web first and needs no store, since a game is a URL
+   (`play.` on the platform, [website.md](website.md)); OpenXR natively gives full performance and store distribution
+   (Meta Horizon Store). Which comes first?
 2. **XR as a package** (the owner's proposal): one XR interface (session, frame timing, views, poses, input sources)
    with an OpenXR backend and a WebXR backend, shipped as its own package, so a flat-screen game never carries it.
    It is the same shape as the platform packages in [target-platforms.md](target-platforms.md). What is in the
@@ -139,3 +140,12 @@
     stand alone, as Rust's `openxr` crate does, so kyoten may publish one later.
   - **What follows:** question 2's package is kyoten's to build (KYR-31). What kama owes XR is the Android target
     (KR-280, KR-283); a gap kyoten meets past that goes to [../KAMA_GAPS.md](../KAMA_GAPS.md).
+- **2026-11-07, the owner, at [web-and-native.md](web-and-native.md) question 8: players reach Quest natively
+  first.** "All of this sounds good to me." This answers question 1.
+  - **Natively first:** OpenXR on the Android family, once kama's installable app (KY-2) lands, for full performance
+    and the store.
+  - **The Quest browser serves development** until WebGPU in WebXR ships without its flag. A WebXR build renders on the
+    page thread, where WebXR lives, so the single-threaded web build serves it first.
+  - **The headset is not a third family:** two platform implementations on the seam, with XR as its own package
+    (question 2's, KYR-31). The owner's Quest prototype (KYR-4) may revisit the order with what it finds on the
+    headset.
