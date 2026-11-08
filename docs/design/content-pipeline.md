@@ -44,6 +44,8 @@ From [../research/cosmic-forge.md](../research/cosmic-forge.md):
    assets, a shared viewer, or both?
 5. **Shared code.** Does kyoten's renderer start from forge's `render` package, as forge intends, or does forge
    later take kyoten's? Which repository owns it?
+   - *Answered 2026-11-07 at [rendering.md](rendering.md) question 1:* `@kama/graphics`, in its own repository,
+     starts from forge's `render`, and forge then depends on it in place of its own copy: shared, not forked.
 6. **Who drives forge?** kyoten's agents through the project database (request a character; forge's flow runs; the
    record updates), a human in forge's own page, or both? How is a forge job visible in kyoten's tools?
 7. **Audio.** forge has no audio tools yet. Does the DAW ([audio.md](audio.md)) belong to kyoten, to forge, or

@@ -1,7 +1,7 @@
 # Rendering: WebGPU first
 
-**Status:** draft for the design spike. Two decisions are recorded, the latest closing question 3; the rest are
-questions.
+**Status:** draft for the design spike. Questions 1–4 are decided (3 on 2026-11-05, 1, 2 and 4 on 2026-11-07);
+5–10 stay outside the spike, with their roadmap rows.
 
 ## What the vision asks
 
@@ -49,11 +49,11 @@ questions.
 
 ## The questions
 
-1. **Where does it start?** From forge's `render` package, from the-mallow-man's `gfx`, from the WebGPU example, or
-   fresh on `@kama/gpu`? Which repository owns the result?
-2. **The layers.** Raw WebGPU (safe handles), a render graph or frame graph, and a scene layer (meshes, materials,
-   lights, cameras) that a prototype uses in a few lines. Which layers does the engine provide, and which does a
-   game write?
+1. **Where does it start?** *(Decided 2026-11-07, below.)* From forge's `render` package, from the-mallow-man's `gfx`,
+   from the WebGPU example, or fresh on `@kama/gpu`? Which repository owns the result?
+2. **The layers.** *(Decided 2026-11-07, below.)* Raw WebGPU (safe handles), a render graph or frame graph, and a scene
+   layer (meshes, materials, lights, cameras) that a prototype uses in a few lines. Which layers does the engine
+   provide, and which does a game write?
    - *Noted 2026-11-07 ([components.md](components.md) question 8 part b):* a bare "layer" now means a scene's
      layer, and levels of code are tiers, so these are the render module's tiers, and the "scene layer" here needs
      another word.
@@ -61,9 +61,9 @@ questions.
      `Material`, `Camera`, `Light` and the world component `Environment`. Their fields are this question's.
 3. **The Three.js bar.** *(Decided 2026-11-05 with components question 7, below.)* What does "a lit, spinning mesh in N lines" look like in kyoten, and what defaults make it
    short (a default camera, light and material)?
-4. **Rendering in the frame.** The Output phase reads the simulation's state, at the display's rate, and interpolates
-   between simulation steps ([frame-phases.md](frame-phases.md)). How does it read state without stalling the next
-   Update: double-buffered state, a snapshot, or extraction into render-only data?
+4. **Rendering in the frame.** *(Decided 2026-11-07, below.)* The Output phase reads the simulation's state, at the
+   display's rate, and interpolates between simulation steps ([frame-phases.md](frame-phases.md)). How does it read
+   state without stalling the next Update: double-buffered state, a snapshot, or extraction into render-only data?
    - *Noted 2026-11-07 ([components.md](components.md) question 9):* a position is a zone and a `float32` offset,
      so Output draws relative to the camera's zone and the GPU sees small floats.
 5. **Command recording in parallel.** WebGPU encoders can be recorded on several threads natively; on the web, only
@@ -112,3 +112,74 @@ questions.
     that lists only a mesh is drawn.
   - **Left to question 2:** which scene-layer types carry these defaults. The sketch and the reasons are in
     [components.md](components.md) § Decided, question 7.
+
+- **2026-11-07, the owner: questions 1, 2 and 4.** "All of this sounds good to me so far." And the bar they set with
+  it: *"Three.js has become THE primary prototype for AI development due to th ease of use and ability to run on browser
+  seamlessly... we want kama graphics to be the same ease of use but cross platform. It also must be production grade
+  for kyoten to compete with Unreal, Unity, GoDot, etc."* and *"We need kyoten to be competitive in graphics so it must
+  be able to do amazing shaders and visuals. We will build as we go."*
+  - **The bar is two at once:** Three.js's ease of use (a lit mesh in a few lines, in any browser) on every platform,
+    and production-grade visuals and shaders that compete with Unreal, Unity and Godot. Three.js, and the other engines
+    below, are the references for the library's API.
+  - **The donors, re-checked the same day at the owner's request:** friendly-fire-department and the-mallow-man have no
+    commits since the harvest. cosmic-forge has 58, none in `render`: they are its asset pipeline, with LODs by a budget
+    the game sets, baked normal maps, glass as an alpha map, and metallic-roughness maps. Its `render` already reads
+    glTF's core material (base colour, metallic-roughness, normal, occlusion and emissive textures; alpha opaque, mask
+    and blend) with Khronos PBR Neutral tone mapping, and has no shadows, no instancing and no native leg.
+  - **The references, read the same day by a research agent and checked here at their source:**
+    - **three.js r187** (2026-10-30): `WebGPURenderer` *"can automatically fall back to using a WebGL 2 backend"*, and
+      *"The renderer itself is still in an experimental state although its maturity level has been greatly improved
+      in the last years"*. Its shaders are TSL, node expressions in JavaScript that are *"transpiled to WGSL or GLSL
+      depending on the available backend"*; post-processing is `RenderPipeline` (renamed from `PostProcessing` in
+      r183), which *"replaces the previous instance of `EffectComposer`"*. Its manual's lit spinning cube is 35
+      non-blank lines, on `WebGLRenderer`.
+    - **Render graphs are split:** Bevy removed its render graph in 0.19 (*"The RenderGraph API has been removed.
+      Render passes are now systems that run in Core3d or Core2d schedules"*); Babylon.js 9.0 made its Frame Graph a
+      v1 feature; Unity 6.4 removed URP's compatibility mode for custom passes in favour of its render graph.
+    - **Shaders:** WGSL has no imports (*"A WGSL program is composed of a single WGSL module"*). Bevy 0.20 writes its
+      shaders in WESL, which adds `import` and `@if` and is translated to plain WGSL (*"WESL support is always enabled.
+      GLSL support has also been removed"*), and naga_oil, its predecessor, is archived.
+    - **glTF's lights** (KHR_lights_punctual, ratified): point and spot *"use luminous intensity in candela (lm/sr)
+      while `directional` lights use illuminance in lux"*.
+  1. **Question 1: `@kama/graphics` starts from cosmic-forge's `render`:** the only donor shaped as a library, with no
+     module statics, glTF's core material with skins and clips, and an offscreen readback a headless check can measure.
+     It lacks a native leg, shadows, instancing, more than one light and post-processing.
+  2. **Question 1: the-mallow-man's techniques come over one at a time,** each when a measurement or an example asks
+     for it (shadows first; instancing as draws near 10⁴), with its costs per technique on a Steam Deck as the bar.
+     Its game-shaped frame uniform and its 63 statics stay behind. friendly-fire-department's batcher and MSDF text
+     become the 2D screen layer later (KYR-49).
+  3. **Question 1: one renderer, two consumers.** cosmic-forge depends on `@kama/graphics` in place of its own copy,
+     which answers [content-pipeline.md](content-pipeline.md) question 5: shared, not forked. `@kama/gpu` (KYR-52) is
+     built first, and the library on it.
+  4. **Question 2: three tiers, named by their packages,** so the old "scene layer" needs no new word: **`@kama/gpu`**,
+     safe WebGPU handles; **`@kama/graphics`**, meshes, materials, lights, cameras, render targets and passes, naming
+     no engine concept; and **kyoten's render module**, the Output processors that read render components and drive
+     the library, with views, screen layers and quality per machine.
+  5. **Question 2: no general render graph at first.** Each view runs a fixed list of passes (shadows, opaque,
+     transparent, post-processing, then the screen layers composed), with render targets first-class, since 2D as a
+     layer needs them. A frame graph comes when the number of passes asks for one; the references above go both ways.
+  6. **Question 2: what a game writes:** records for everything the defaults cover; custom shaders as WGSL assets a
+     `Material` names (KYR-10); and anything else in its own Output processor on `@kama/graphics`, the escape hatch
+     of [web-and-native.md](web-and-native.md) question 1.
+  7. **Question 2: the day-one render components' fields, a first cut KYR-9 refines:**
+
+     | Component | Fields (default) |
+     |---|---|
+     | `Mesh` | `shape`, `Box`, `Sphere`, `Plane` or `Cylinder`, or `asset`, a mesh from a glTF file; `castShadows` (true) |
+     | `Material` | `color` (white), `metallic` (0), `roughness` (0.5), `emissive` (black), `texture` (none), `transparent` (false), `shader`, a WGSL asset (none: the standard lit material) |
+     | `Camera` | `projection`, `Perspective` or `Orthographic`; `fov`, vertical, in degrees (60); `near` (0.1 m), `far` (1000 m); `target`, the view it draws into (the screen) |
+     | `Light` | `kind`, `Directional`, `Point` or `Spot`; `color` (white); `intensity`, in glTF's units, lux for a directional light and candela for a point or spot; `range`; `cone` (a spot's); `castShadows` |
+     | `Environment`, a world component | `ambient`, a colour and an intensity; `background`, a colour or a sky image; `fog` (none) |
+
+  8. **Question 4: Output extracts, and the GPU work reads only what was extracted.** The render module's Output
+     processors read the settled world and write what is drawn into the library's buffers: one per-object buffer,
+     written once a frame ([web-and-native.md](web-and-native.md) question 6). Interpolation, each component's `blend`
+     at the frame's time, happens in this pass, and so does the camera-relative position (a zone and an offset), which
+     keeps the GPU's floats small.
+  9. **Question 4: serial by default:** the due steps, then extraction, then recording, on one thread. Only what is
+     drawn is copied, nothing adds latency, and it is the single-threaded web build's only shape.
+  10. **Question 4: pipelined when measured.** With threads on, recording and submitting frame N may overlap the next
+      steps, since it reads only extracted data. It costs up to a frame of latency (friendly-fire-department's
+      warning), so it is a switch a game turns on by measurement, like the job pool.
+  11. **Question 4: no double-buffered world,** which would copy every column each step. The `history` a component's
+      record asks for already keeps the previous values interpolation needs.

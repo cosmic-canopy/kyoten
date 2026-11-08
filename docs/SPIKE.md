@@ -238,10 +238,17 @@ answer is recorded in its doc's *Decided*:
    and a console's is a private package the game's manifest names for that build, passed in by the generated `run`, so
    the hello cube imports `run` from its generated module; calls are resolved at compile time (probed on 0.9.873);
    capabilities, never platform names, and OS flags only in libraries and platform types; features (XR, store services)
-   as packages. Questions 5–13 stay outside the spike. **Next: [design/rendering.md](design/rendering.md),** questions
-   1, 2 and 4, then ai-first-api 2 and 3 and examples 1–3 from the [narrowed table](#narrowed-2026-11-01). **8 questions
-   remain:** rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The
-   owner asked for the count of questions left each time one is put to them.
+   as packages. Questions 5–13 stay outside the spike.
+6. **[design/rendering.md](design/rendering.md), questions 1, 2 and 4, are decided** (2026-11-07, the owner: "All of
+   this sounds good to me so far"), under the bar the owner set the same day (*Standing direction*): `@kama/graphics`
+   starts from cosmic-forge's `render` (the donors re-checked that day), with the-mallow-man's techniques brought over
+   as measured and forge depending on the library; three tiers named by their packages; a fixed pass list per view; the
+   day-one render components' fields, a first cut; Output extracts, serially by default and pipelined when measured.
+   Questions 5–10 stay outside the spike. **Next: how shaders are written,** proposed the same day for the bar's
+   "amazing shaders", then [design/ai-first-api.md](design/ai-first-api.md) 2 and 3 and
+   [design/examples.md](design/examples.md) 1–3 from the [narrowed table](#narrowed-2026-11-01). **5 questions remain:**
+   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
+   of questions left each time one is put to them.
 
 **To raise with the owner:**
 
@@ -303,6 +310,12 @@ answer is recorded in its doc's *Decided*:
     web-and-native question 3 keeps what is left: whether a game's UI is the same HTML on both, and how much of HTML and
     CSS the native counterpart covers, in what order. *Answered 2026-11-07 at web-and-native question 3:* the same
     HTML on both, within kyoten's UI profile, the HTML and CSS the native renderer supports, which grows with it.
+- **Given 2026-11-07: graphics as easy as Three.js, and production grade.** The owner, at rendering question 1:
+  "Three.js has become THE primary prototype for AI development due to th ease of use and ability to run on browser
+  seamlessly... we want kama graphics to be the same ease of use but cross platform. It also must be production grade
+  for kyoten to compete with Unreal, Unity, GoDot, etc." And: "We need kyoten to be competitive in graphics so it must
+  be able to do amazing shaders and visuals. We will build as we go." So `@kama/graphics` takes Three.js, and the other
+  engines' libraries, as the reference for its API, and its features grow toward theirs as the examples ask.
 - **Given 2026-11-05: heavy assets are never stored with the code.** The owner: "We don't have to solve the full
   pipeline now... I just want to make sure we don't store all of the heavy stuff with the code." Three things are kept
   and moved apart, as studios do:

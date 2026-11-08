@@ -89,6 +89,14 @@ direct. Engine modules and games ask for **capabilities**, never platforms, and 
 stay in the libraries and the platform types. Features (XR, store services such as achievements) are interfaces
 kyoten defines, with a backend per platform or store in **feature packages** a game opts into.
 
+**Rendering** (*decided*, rendering questions 1, 2 and 4, 2026-11-07). The bar is Three.js's ease of use on every
+platform, with production-grade visuals and shaders that compete with Unreal, Unity and Godot. Three tiers:
+`@kama/gpu`, safe WebGPU handles; `@kama/graphics`, a library of meshes, materials, lights, cameras and render
+targets that names no engine concept, starting from cosmic-forge's `render`; and kyoten's render module, whose
+Output processors **extract** what is drawn, interpolated and relative to the camera's zone, into the library's
+buffers once a frame. GPU work reads only the extracted data, serially by default and overlapping the next steps
+when a measurement asks. Each view runs a fixed list of passes until a frame graph is needed.
+
 ## The world at run time
 
 *Decided at components questions 1 and 2* ([design/components.md](design/components.md) § Decided), except world stores,
