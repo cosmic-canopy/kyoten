@@ -297,7 +297,7 @@ components' fields, and more arrive with their roadmap rows.
 
 | Component | Tier or module | Holds |
 |---|---|---|
-| `Transform` | world tier | `zone` (an `int32` per axis), `position` (the `float32` offset from the zone's centre) and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)`, `offsetTo(other:)`, `place(zone:, position:)` |
+| `Transform` | world tier | `zone` (a `ZoneCoord`, an `int32` per axis), `position` (the `float32` offset from the zone's centre) and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` (about its own Y axis), `offsetTo(other:, zoneSize:)`, `place(zone:, position:)` |
 | `Mesh` | render | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
 | `Material` | render | a lit material (base colour, metallic, roughness), or a glTF one |
 | `Camera` | render | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
@@ -510,7 +510,7 @@ words.
 | **Generator** | the kyoten tool that writes the World from records, as plain kama. It is written in kama, a `kyoten` executable under `tools/` (2026-11-07). Procedural generation is the **world generator**, always so called | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
 | **Scene** | what a designer opens and the build lists. One is active at a time, and the app's record names the first. It divides spatially into zones and logically into layers | decided (2026-11-06) |
-| **Zone** | a cell of the scene's grid, a square or a cube sized in whole metres, with its origin at its centre: the unit of loading, budgets and coordinates | decided (G7; a grid since 2026-11-06) |
+| **Zone** | a cell of the scene's grid, a square or a cube sized in whole metres, with its origin at its centre: the unit of loading, budgets and coordinates. A position names its zone with a `ZoneCoord`, an `int32` per axis | decided (G7; a grid since 2026-11-06; `ZoneCoord` 2026-11-08) |
 | **Ring** | a distance in zones: ring 0 is a source's own zone, ring k the zones k steps away. A depth of k loads (2k+1)² zones in 2D, (2k+1)³ in 3D | decided (2026-11-06) |
 | **Streaming source** | a component on a simulated entity that loads the zones around it for the simulation, the same on every machine. Each player's character has one by default | decided (2026-11-06) |
 | **View** | a camera drawing into a target (the screen, part of it, a texture, an eye). It loads what is drawn around it and may differ per machine | decided (2026-11-06) |

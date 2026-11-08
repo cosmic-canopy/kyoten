@@ -18,8 +18,10 @@ the design doc it settles before building on it.
    (§ Questions the owner answers), so nothing it needs is undecided. Each part is test-first: the test seen to fail,
    then the code, `tools/test.sh` green, and a commit on `main`.
    1. **`kyoten::world`:** `Transform` (a zone as `int32` per axis, `position`, `rotation` and `scale` on `std::math`;
-      `rotateY(by:)`, `offsetTo(other:)`, `place(zone:, position:)`), the 8-byte `Handle` (slot and generation), and
-      the chunk-size rule (16 KiB, at most 128 rows). Tests in `engine/tests/`.
+      `rotateY(by:)`, `offsetTo(other:, zoneSize:)`, `place(zone:, position:)`), the 8-byte `Handle` (slot and
+      generation), and the chunk-size rule (16 KiB, at most 128 rows). Tests in `engine/tests/`. **Built on
+      2026-11-08** ([design/components.md](design/components.md) § Decided, the last entry): the zone is a `ZoneCoord`,
+      and KY-40 and KY-41 were filed on the way.
    2. **`kyoten::records`:** the fixed record types, read with kama's `JsonDeserializer.strict`, with refusals that
       name the field (``unknown field `app.titel` ``).
    3. **The `kyoten` tool** (`tools/kyoten/`, package `@kyoten/cli`, built with `-o kyoten`): the generator's first

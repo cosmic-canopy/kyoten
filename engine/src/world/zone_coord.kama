@@ -1,0 +1,22 @@
+// kyoten::world::ZoneCoord — which zone a position is in: a whole-number coordinate per axis (components § Decided,
+// question 9, item 7: an `int32` per axis, ±137 million km at 64 m zones). Zone (0,0,0) is centred on the origin.
+//
+// Its own type, not a general integer vector: a zone coordinate means one thing, as Minecraft's `ChunkPos` does.
+// std::math has float32 vectors only (KY-40); if kama adds integer ones, this type may hold one inside, and its API and
+// its record form (`{ "x": 1 }`, the axes that differ) stay as they are.
+
+export { ZoneCoord };
+
+@generate(of, Serializable, Deserializable)
+type value ZoneCoord implements Equatable<This> {
+    @field public int32 x = 0;
+    @field public int32 y = 0;
+    @field public int32 z = 0;
+
+    // The zone centred on the world's origin.
+    public default ctor origin() { return ZoneCoord.of(x: 0, y: 0, z: 0); }
+
+    public const fn bool equals(const ref ZoneCoord other) {
+        return this.x == other.x && this.y == other.y && this.z == other.z;
+    }
+}

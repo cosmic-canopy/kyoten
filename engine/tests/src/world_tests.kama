@@ -1,0 +1,249 @@
+// kyoten::world (components § Decided): `Transform` (question 9: a zone and a float32 offset, on std::math, Y up and
+// right-handed), the 8-byte `Handle` (question 8, part a, choice 3) and the chunk-size rule (question 6, choice 4).
+
+import { Tally, kyoten::world::Transform, kyoten::world::ZoneCoord, kyoten::world::Handle, kyoten::world::ChunkSize,
+         std::math::Vec3, std::math::Quat, std::serialization::text::json::JsonDeserializer, std::memory::Owned };
+
+export { worldTests };
+
+// A row of the hello cube's table: a Transform and the handle column. The generator writes the same expression.
+comptime usize transformRows = ChunkSize::rowsFor(rowBytes: sizeof(Transform) + sizeof(Handle));
+
+// The rule sizes an array at compile time, which is the shape a generated chunk's columns take.
+type value TransformColumn {
+    InlineArray<int32>#(transformRows) cells = [0; transformRows];
+    public ctor make() { }
+}
+
+fn bool near(float32 a, float32 b, float32 tol) {
+    float32 d = a - b;
+    if (d < 0.0) { d = 0.0 - d; }
+    return d <= tol;
+}
+
+fn bool nearVec(const ref Vec3 a, const ref Vec3 b, float32 tol) {
+    return near(a: a.x, b: b.x, tol: tol) && near(a: a.y, b: b.y, tol: tol) && near(a: a.z, b: b.z, tol: tol);
+}
+
+fn bool sameBits(float32 a, float32 b) { return bitcast<uint32>(a) == bitcast<uint32>(b); }
+
+fn void defaults(ref Tally t) {
+    Transform tr = Transform.identity();
+    bool ok = tr.zone.equals(other: ZoneCoord.origin()) && tr.position.equals(other: Vec3.zero())
+        && tr.rotation.x == 0.0 && tr.rotation.y == 0.0 && tr.rotation.z == 0.0 && tr.rotation.w == 1.0
+        && tr.scale.equals(other: Vec3.one());
+    t.verdict(name: "Transform: identity() is the origin zone, no offset, no rotation, scale 1",
+              why: ok ? "" : "a field is not its default");
+}
+
+// The same bytes on every target: the native and wasm legs run this same case (handle requirement 1, and N comes
+// from these sizes, so chunks hold the same count everywhere).
+fn void sizes(ref Tally t) {
+    usize st = sizeof(Transform);
+    usize sh = sizeof(Handle);
+    usize sz = sizeof(ZoneCoord);
+    bool ok = st == 52 && sh == 8 && sz == 12;
+    t.verdict(name: "world: Transform is 52 bytes, Handle 8 and ZoneCoord 12, on every target",
+              why: ok ? "" : "Transform ${st}, Handle ${sh}, ZoneCoord ${sz}");
+}
+
+// rotateY's bits from identity: the half angle's sine and cosine, held to the bit on every target. The expected bits
+// were computed independently, as the correctly rounded float32 of sin 0.25 and cos 0.25 (Python's double-precision
+// sin and cos, rounded to float32). Their float32 length is exactly 1, so normalizing leaves them unchanged.
+fn void rotateYBits(ref Tally t) {
+    Transform tr = Transform.identity();
+    tr.rotateY(by: 0.5);
+    uint32 y = bitcast<uint32>(tr.rotation.y);
+    uint32 w = bitcast<uint32>(tr.rotation.w);
+    bool ok = tr.rotation.x == 0.0 && tr.rotation.z == 0.0 && y == 0x3e7d5777 && w == 0x3f780aa5;
+    t.verdict(name: "Transform: rotateY(by: 0.5) from identity is (0, sin 0.25, 0, cos 0.25), bit for bit",
+              why: ok ? "" : "y bits ${y}, w bits ${w}");
+}
+
+// Right-handed and Y up: a quarter turn about +Y takes +X to -Z.
+fn void rotateYDirection(ref Tally t) {
+    Transform tr = Transform.identity();
+    tr.rotateY(by: 1.5707963);
+    Vec3 v = tr.rotation.rotate(v: Vec3.unitX());
+    bool ok = nearVec(a: v, b: Vec3.of(x: 0.0, y: 0.0, z: -1.0), tol: 0.000001);
+    float32 x = v.x; float32 y = v.y; float32 z = v.z;
+    t.verdict(name: "Transform: a quarter turn of rotateY takes +X to -Z", why: ok ? "" : "got ${x}, ${y}, ${z}");
+}
+
+// rotateY turns about the transform's own Y axis, as Three.js's `Object3D.rotateY` does: pitched up a quarter turn
+// first, its local Y is the world's +Z, and a quarter turn about it takes +X to +Y. About the world's Y it would be -Z.
+fn void rotateYLocal(ref Tally t) {
+    Transform tr = Transform.identity();
+    tr.rotation = Quat.fromAxisAngle(axis: Vec3.unitX(), rad: 1.5707963);
+    tr.rotateY(by: 1.5707963);
+    Vec3 v = tr.rotation.rotate(v: Vec3.unitX());
+    bool ok = nearVec(a: v, b: Vec3.of(x: 0.0, y: 1.0, z: 0.0), tol: 0.000001);
+    float32 x = v.x; float32 y = v.y; float32 z = v.z;
+    t.verdict(name: "Transform: rotateY turns about the local Y axis", why: ok ? "" : "got ${x}, ${y}, ${z}");
+}
+
+// A spinning entity turns every step for as long as the game runs, so rotateY renormalizes: a float32 quaternion
+// multiplied step after step drifts from unit length, and a drifting one scales what it rotates.
+fn void rotateYStaysUnit(ref Tally t) {
+    Transform tr = Transform.identity();
+    int32 i = 0;
+    while (i < 100000) {
+        tr.rotateY(by: 0.0137);
+        i = i + 1;
+    }
+    float32 len = tr.rotation.length();
+    bool ok = near(a: len, b: 1.0, tol: 0.0000003);
+    t.verdict(name: "Transform: rotateY stays unit length over 100,000 turns", why: ok ? "" : "length ${len}");
+}
+
+fn void recordForm(ref Tally t) {
+    Transform tr = Transform.identity();
+    JsonDeserializer r = JsonDeserializer.strict(src: "{\"position\": {\"x\": -20}, \"zone\": {\"x\": 1}}");
+    Result<Unit, Owned<Error>> m = tr.mergeFrom(r: r);
+    string why = match (m) {
+        case Ok(value: u): "";
+        case Err(error: e): e.message();
+    };
+    if (why.isEmpty()) {
+        bool ok = tr.position.equals(other: Vec3.of(x: -20.0, y: 0.0, z: 0.0))
+            && tr.zone.equals(other: ZoneCoord.of(x: 1, y: 0, z: 0))
+            && tr.rotation.w == 1.0 && tr.scale.equals(other: Vec3.one());
+        if (!ok) { why = "a field the record leaves out lost its default"; }
+    }
+    t.verdict(name: "Transform: a record holds only what differs, laid over the defaults", why: why);
+}
+
+fn void recordMisspelt(ref Tally t) {
+    Transform tr = Transform.identity();
+    JsonDeserializer r = JsonDeserializer.strict(src: "{\"positon\": {\"x\": -20}}");
+    Result<Unit, Owned<Error>> m = tr.mergeFrom(r: r);
+    string why = match (m) {
+        case Ok(value: u): "accepted";
+        case Err(error: e): e.message().contains(substring: "unknown field `positon`") ? "" : e.message();
+    };
+    t.verdict(name: "Transform: a misspelt field is refused, naming it", why: why);
+}
+
+fn void offsetSameZone(ref Tally t) {
+    Transform a = Transform.identity();
+    Transform b = Transform.identity();
+    a.position = Vec3.of(x: 1.0, y: 2.0, z: 3.0);
+    b.position = Vec3.of(x: 4.0, y: 6.0, z: 8.0);
+    Vec3 d = a.offsetTo(other: b, zoneSize: 64);
+    bool ok = d.equals(other: Vec3.of(x: 3.0, y: 4.0, z: 5.0));
+    float32 x = d.x; float32 y = d.y; float32 z = d.z;
+    t.verdict(name: "Transform: offsetTo within a zone is the offsets' difference", why: ok ? "" : "got ${x}, ${y}, ${z}");
+}
+
+// Two things 2 m apart across a zone border: zone (0,0,0) at x = 31 and zone (1,0,-1) at x = -31, z = 10.
+fn void offsetNeighbour(ref Tally t) {
+    Transform a = Transform.identity();
+    Transform b = Transform.identity();
+    a.place(zone: ZoneCoord.of(x: 0, y: 0, z: 0), position: Vec3.of(x: 31.0, y: 0.0, z: 0.0));
+    b.place(zone: ZoneCoord.of(x: 1, y: 0, z: -1), position: Vec3.of(x: -31.0, y: 0.0, z: 10.0));
+    Vec3 d = a.offsetTo(other: b, zoneSize: 64);
+    bool ok = d.equals(other: Vec3.of(x: 2.0, y: 0.0, z: -54.0));
+    float32 x = d.x; float32 y = d.y; float32 z = d.z;
+    t.verdict(name: "Transform: offsetTo across a zone border adds the zones' difference times the size",
+              why: ok ? "" : "got ${x}, ${y}, ${z}");
+}
+
+// The zone difference is taken in int64: from int32's lowest zone to its highest at 64 m is (2^32 - 1) * 64 m, which
+// overflows an int32 and rounds to 2^38 in float32.
+fn void offsetExtremes(ref Tally t) {
+    Transform a = Transform.identity();
+    Transform b = Transform.identity();
+    a.zone = ZoneCoord.of(x: -2147483648, y: 0, z: 2147483647);
+    b.zone = ZoneCoord.of(x: 2147483647, y: 0, z: -2147483648);
+    Vec3 d = a.offsetTo(other: b, zoneSize: 64);
+    bool ok = sameBits(a: d.x, b: 274877906944.0) && sameBits(a: d.z, b: -274877906944.0) && d.y == 0.0;
+    float32 x = d.x; float32 z = d.z;
+    t.verdict(name: "Transform: offsetTo between int32's farthest zones does not overflow",
+              why: ok ? "" : "got x ${x}, z ${z}");
+}
+
+fn void place(ref Tally t) {
+    Transform tr = Transform.identity();
+    tr.rotateY(by: 0.5);
+    Quat before = tr.rotation;
+    tr.place(zone: ZoneCoord.of(x: 2, y: 0, z: -3), position: Vec3.of(x: 1.0, y: 2.0, z: 3.0));
+    bool ok = tr.zone.equals(other: ZoneCoord.of(x: 2, y: 0, z: -3))
+        && tr.position.equals(other: Vec3.of(x: 1.0, y: 2.0, z: 3.0))
+        && sameBits(a: tr.rotation.y, b: before.y) && sameBits(a: tr.rotation.w, b: before.w);
+    t.verdict(name: "Transform: place(zone:, position:) writes both parts and nothing else",
+              why: ok ? "" : "a part is wrong");
+}
+
+fn void zoneCoord(ref Tally t) {
+    ZoneCoord a = ZoneCoord.of(x: 1, y: 2, z: 3);
+    bool ok = a.equals(other: ZoneCoord.of(x: 1, y: 2, z: 3)) && !a.equals(other: ZoneCoord.of(x: 1, y: 2, z: 4))
+        && ZoneCoord.origin().equals(other: ZoneCoord.of(x: 0, y: 0, z: 0));
+    t.verdict(name: "ZoneCoord: equal by its three coordinates, and origin() is (0,0,0)", why: ok ? "" : "unequal");
+
+    ZoneCoord z = ZoneCoord.origin();
+    JsonDeserializer r = JsonDeserializer.strict(src: "{\"z\": -7}");
+    Result<Unit, Owned<Error>> m = z.mergeFrom(r: r);
+    string why = match (m) {
+        case Ok(value: u): z.equals(other: ZoneCoord.of(x: 0, y: 0, z: -7)) ? "" : "wrong coordinates";
+        case Err(error: e): e.message();
+    };
+    t.verdict(name: "ZoneCoord: a record names only the axes that differ", why: why);
+}
+
+fn void handle(ref Tally t) {
+    Handle h = Handle.of(slot: 3, generation: 7);
+    bool fields = h.slot() == 3 && h.generation() == 7;
+    t.verdict(name: "Handle: of(slot:, generation:) holds both", why: fields ? "" : "a field differs");
+
+    bool eq = h.equals(other: Handle.of(slot: 3, generation: 7)) && !h.equals(other: Handle.of(slot: 3, generation: 6))
+        && !h.equals(other: Handle.of(slot: 4, generation: 7));
+    t.verdict(name: "Handle: a stale generation is not the live handle", why: eq ? "" : "equality is wrong");
+
+    bool order = Handle.of(slot: 2, generation: 9).compareTo(other: h) == Ordering::Less
+        && Handle.of(slot: 3, generation: 6).compareTo(other: h) == Ordering::Less
+        && Handle.of(slot: 3, generation: 8).compareTo(other: h) == Ordering::Greater
+        && Handle.of(slot: 3, generation: 7).compareTo(other: h) == Ordering::Equal
+        && Handle.of(slot: 4294967295, generation: 0).compareTo(other: h) == Ordering::Greater;
+    t.verdict(name: "Handle: ordered by slot, then generation", why: order ? "" : "the order is wrong");
+}
+
+fn void rows(ref Tally t, usize rowBytes, usize want) {
+    usize got = ChunkSize::rowsFor(rowBytes: rowBytes);
+    t.verdict(name: "ChunkSize: a row of ${rowBytes} bytes gives ${want} rows a chunk",
+              why: got == want ? "" : "got ${got}");
+}
+
+fn void chunkSize(ref Tally t) {
+    bool targets = ChunkSize::targetBytes == 16384 && ChunkSize::maxRows == 128;
+    t.verdict(name: "ChunkSize: the target is 16 KiB with at most 128 rows", why: targets ? "" : "a target differs");
+    rows(t: t, rowBytes: 1, want: 128);
+    rows(t: t, rowBytes: 8, want: 128);
+    rows(t: t, rowBytes: 128, want: 128);
+    rows(t: t, rowBytes: 129, want: 127);
+    rows(t: t, rowBytes: 200, want: 81);
+    rows(t: t, rowBytes: 8192, want: 2);
+    rows(t: t, rowBytes: 16384, want: 1);
+    rows(t: t, rowBytes: 20000, want: 1);
+    usize n = transformRows;
+    usize column = sizeof(TransformColumn);
+    t.verdict(name: "ChunkSize: the rule sizes a column at compile time (Transform and handle: 128 rows)",
+              why: n == 128 && column == 512 ? "" : "rows ${n}, column ${column} bytes");
+}
+
+fn void worldTests(ref Tally t) {
+    defaults(t: t);
+    sizes(t: t);
+    rotateYBits(t: t);
+    rotateYDirection(t: t);
+    rotateYLocal(t: t);
+    rotateYStaysUnit(t: t);
+    recordForm(t: t);
+    recordMisspelt(t: t);
+    offsetSameZone(t: t);
+    offsetNeighbour(t: t);
+    offsetExtremes(t: t);
+    place(t: t);
+    zoneCoord(t: t);
+    handle(t: t);
+    chunkSize(t: t);
+}

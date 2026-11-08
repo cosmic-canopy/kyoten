@@ -1,0 +1,53 @@
+// kyoten::world::Transform — where an entity is, which way it faces and how large it is (components § Decided,
+// question 8 part b's day-one set, and question 9's coordinates).
+//
+// - A position is a zone and a float32 offset from the zone's centre, so every processor does ordinary float32 maths
+//   and precision is the same everywhere in a world of any size (question 9, item 1).
+// - Y up, right-handed, metres, as glTF has it (item 4).
+// - On kama's std::math, `Vec3` and `Quat`, so there is one way across kama (question 8, part b, item 4). A record
+//   holds only what differs: `"Transform": { "position": { "x": -20 } }`, laid over `identity()` with `mergeFrom`.
+
+import { std::math::Vec3, std::math::Quat, ZoneCoord };
+
+export { Transform };
+
+@generate(Serializable, Deserializable)
+type value Transform {
+    @field public ZoneCoord zone = ZoneCoord.origin();
+    @field public Vec3 position = Vec3.zero();
+    @field public Quat rotation = Quat.identity();
+    @field public Vec3 scale = Vec3.one();
+
+    // The origin zone, no offset, no rotation, scale 1.
+    public default ctor identity() { }
+
+    // Turn about the transform's own Y axis by `by` radians, as Three.js's `Object3D.rotateY` does. The result is
+    // renormalized: an entity may turn every step for as long as the game runs, and a float32 quaternion multiplied
+    // step after step drifts from unit length, which would scale whatever it rotates.
+    public fn void rotateY(float32 by) {
+        Quat turn = Quat.fromAxisAngle(axis: Vec3.unitY(), rad: by);
+        Quat turned = this.rotation * turn;
+        this.rotation = turned.normalized();
+    }
+
+    // The vector from this transform to `other`, in metres: the zones' difference times `zoneSize` (the scene's
+    // `zoneSize`, whole metres) plus the offsets' difference (question 9, item 5). The zone part is taken in int64, so
+    // no two zones overflow it, and converted to float32 once: near things are exact, and far ones lose only what does
+    // not matter at that distance.
+    public const fn Vec3 offsetTo(const ref Transform other, int32 zoneSize) {
+        assert(cond: zoneSize > 0, msg: "a zone is at least 1 m");
+        int64 size = cast<int64>(zoneSize);
+        int64 dx = (cast<int64>(other.zone.x) - cast<int64>(this.zone.x)) * size;
+        int64 dy = (cast<int64>(other.zone.y) - cast<int64>(this.zone.y)) * size;
+        int64 dz = (cast<int64>(other.zone.z) - cast<int64>(this.zone.z)) * size;
+        Vec3 zones = Vec3.of(x: cast<float32>(dx), y: cast<float32>(dy), z: cast<float32>(dz));
+        Vec3 offsets = other.position - this.position;
+        return zones + offsets;
+    }
+
+    // Put the transform at `position` in `zone`: a teleport writes both parts (question 9, item 5).
+    public fn void place(ZoneCoord zone, Vec3 position) {
+        this.zone = zone;
+        this.position = position;
+    }
+}

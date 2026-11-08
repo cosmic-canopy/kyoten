@@ -1839,3 +1839,48 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     - **A signature's types come back bare:** `Time`, not `eng::frame::Time`. `--def` at each type finds its
       declaring file, so the generator can map the file to its module, but that repeats kama's module resolution in
       the tool. Filed as [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-39.
+- **2026-11-08, the owner: two spellings step 5.1 needed, asked while `kyoten::world` was planned** (the first slice,
+  KYR-7).
+  - **The zone coordinate is its own type, `ZoneCoord`** (`int32 x, y, z`, in `kyoten::world`). std::math has
+    `float32` vectors only, so a zone needed a type. The owner: "ZoneCoord recommendation seems fine for now", and
+    asked whether integer vectors are a kama gap. They are, so it is [../KAMA_GAPS.md](../KAMA_GAPS.md) KY-40, beside
+    KR-343's `float64` vectors.
+    - **Why its own type:** a zone coordinate means one thing, as Minecraft's `ChunkPos` does, and the name leaves
+      `Zone` free for a loaded zone.
+    - **If kama adds integer vectors,** `ZoneCoord` may hold one inside, and its API and record form (`{ "x": 1 }`) stay
+      as they are, so it is the production answer, not a stopgap. kama's std cannot import kyoten, which depends on it;
+      kama can take the shape from ours.
+    - **Considered:** `Zone`, which a loaded zone's state could not then take; and a stopgap `IVec3` in kyoten until
+      kama has one, which loses the coordinate's own name.
+  - **`offsetTo` takes the zone size:** `t.offsetTo(other: o, zoneSize: 64)`, an `int32` in metres. A Transform does
+    not hold its scene's `zoneSize`, so it is handed in, as every dependency is. How a processor gets the scene's size
+    is decided when a game first needs `offsetTo` across zones; the hello cube does not. The owner chose it as
+    recommended. **Considered:** a world component holding the scene's grid, decided now; and one zone size per game,
+    which keeps `offsetTo(other:)` but drops per-scene sizes.
+  - **Built on 2026-11-08** (kama `0.9.881+g4267d2ec`), test-first, 27 cases in `engine/tests/src/world_tests.kama`,
+    natively (debug and release) and on wasm under node:
+    - **`kyoten::world` is a fenced simulation module** (ai-first-api question 3): its `importsOnly` is
+      `["std::math"]`, and an import of `std::time` is refused, *"module `std::time` is not in the `importsOnly` of
+      `kyoten::world`"*. `@generate`'s serialization needs no import of its own.
+    - **`Transform`** is 52 bytes and **`Handle`** 8 on both targets, held by a case, since N comes from those sizes.
+      `Optional<Handle>` is 12.
+    - **`rotateY(by:)` turns about the transform's own Y axis,** as Three.js's `Object3D.rotateY` does, and
+      **renormalizes**. Without it, 100,000 turns left the quaternion's length at 0.9977, which would scale whatever it
+      rotates. From identity, `rotateY(by: 0.5)` gives the correctly rounded `float32` sine and cosine of 0.25, bit for
+      bit on both targets.
+    - **`offsetTo` takes the zones' difference in `int64`,** so int32's farthest zones do not overflow it; it rounds to
+      `float32` once (kama's `cast` from `int64` to `float32` rounds to nearest and does not trap). Taken in `int32`,
+      the case traps: *"arithmetic overflow -- int32 - overflowed"*.
+    - **A record is laid over `identity()` with `mergeFrom`,** so `{"position": {"x": -20}}` keeps every other field.
+      A whole `deserialize` would want every field of each `Vec3` (*"missing field `position.y`"*), which is why
+      records merge. A misspelt key is refused by the strict reader: *"unknown field `positon`"*.
+    - **`Handle`** has no null (absence is `Optional<Handle>`), orders by slot then generation, and has no wire form
+      until slice B's saves.
+    - **`ChunkSize::rowsFor(rowBytes:)`** gives `16384 / rowBytes`, at least 1 and at most 128. It is a value type's
+      `static fn`, which kama runs both at run time and at compile time, so the generator writes
+      `comptime usize N = ChunkSize::rowsFor(rowBytes: sizeof(…) + sizeof(Handle));` and the compiler sizes each
+      column for the target. A `comptime fn` would not do: kama refuses one at run time, so a test could not call it.
+      *Stopgap:* it counts in `usize`, since kama does not evaluate an `isize` local at compile time (KY-41); it
+      returns an `isize` once kama does.
+    - **Mutations caught:** the world-axis product order, no renormalization, the zone difference in `int32`, and no
+      128 cap each turn a case red.

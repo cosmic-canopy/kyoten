@@ -1,0 +1,26 @@
+// kyoten::world::ChunkSize — how many rows a chunk holds (components § Decided, question 6, choice 4).
+//
+// A chunk is the block of entities one worker takes at once. Its row count N comes from a byte target: 16 KiB with at
+// most 128 rows, as Unity's chunks are. A row counts every column the chunk holds, the handle column included, so an
+// archetype of small components gets 128 rows and a large one fewer, and a row above 16 KiB gets one. An archetype's
+// record may override N; the generator applies that. Slice B measures the rule (KYR-12).
+//
+// The generator writes `comptime usize N = ChunkSize::rowsFor(rowBytes: sizeof(…) + … + sizeof(Handle));`, so N is
+// computed by the compiler for the target being built. Rows count as a `usize` here, the type of `sizeof`, because
+// kama does not evaluate an `isize` local at compile time (KY-41). Once it does, `rowsFor` returns an `isize`, kama's
+// count type.
+
+export { ChunkSize };
+
+type value ChunkSize {
+    public comptime usize targetBytes = 16384;
+    public comptime usize maxRows = 128;
+
+    // A row of 0 bytes is a bug, and the division traps on it, at run time and at compile time alike.
+    public static fn usize rowsFor(usize rowBytes) {
+        usize n = ChunkSize::targetBytes / rowBytes;
+        if (n > ChunkSize::maxRows) { return ChunkSize::maxRows; }
+        if (n < 1) { return 1; }
+        return n;
+    }
+}

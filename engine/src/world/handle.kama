@@ -1,0 +1,41 @@
+// kyoten::world::Handle — an entity's runtime identity: 8 bytes, a 32-bit slot and a 32-bit generation, the same on
+// every platform (components § Decided, question 8 part a, choice 3).
+//
+// - The slot is an entry in the world's lookup table, which says where the entity lives now (zone, layer, table,
+//   chunk, row), so a handle survives the entity moving.
+// - The generation is a counter in the slot, bumped when the slot is freed. A handle keeps the generation it was given,
+//   so a stale one answers "gone" rather than reaching whatever reused the slot.
+// - It is not kama's `Handle`, whose index is an `isize`: 16 bytes natively and 8 on wasm, so chunks would hold
+//   different counts on the two.
+// - There is no null handle: absence is `Optional<Handle>`.
+// - Its order is slot, then generation, so "ties break by handle" (question 4) is one fixed order.
+// - It has no wire form yet. Records never hold handles (choice 4), and the form a save, a replay and the network
+//   write is fixed from 1.0.0 with slice B's saves.
+
+export { Handle };
+
+type value Handle implements Equatable<This>, Comparable<This> {
+    uint32 slotIndex;
+    uint32 generationCount;
+
+    // The world's lookup hands handles out; a test makes its own.
+    public ctor of(uint32 slot, uint32 generation) {
+        this.slotIndex = slot;
+        this.generationCount = generation;
+    }
+
+    public const fn uint32 slot() { return this.slotIndex; }
+    public const fn uint32 generation() { return this.generationCount; }
+
+    public const fn bool equals(const ref Handle other) {
+        return this.slotIndex == other.slotIndex && this.generationCount == other.generationCount;
+    }
+
+    public const fn Ordering compareTo(const ref Handle other) {
+        if (this.slotIndex < other.slotIndex) { return Ordering::Less; }
+        if (this.slotIndex > other.slotIndex) { return Ordering::Greater; }
+        if (this.generationCount < other.generationCount) { return Ordering::Less; }
+        if (this.generationCount > other.generationCount) { return Ordering::Greater; }
+        return Ordering::Equal;
+    }
+}
