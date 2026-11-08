@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# tools/test.sh — kyoten's whole suite, and the gate before every commit (AGENTS.kyoten.md § Rules). CI (KYR-13) runs
+# this same script.
+#
+#   tools/test.sh
+#
+# It runs:
+#   - `kama check` on the engine and on its tests program;
+#   - the engine's tests (engine/tests/, one program), built debug and release and run natively, then built for wasm
+#     and run under node;
+#   - each example game that is cloned under games/: `games/fps` checked, then run natively and on wasm, its output
+#     held to "fps example, on kyoten"; `games/vr` checked. A game that is not cloned is skipped, and says so.
+#
+# Run it from msys2 UCRT64 on Windows (`bash -lic`, so emcc and node are on PATH for the wasm legs), or any shell
+# elsewhere. Without emcc or node the wasm legs are skipped, and say so.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) PLAT="${MSYSTEM:-$(uname -s)}-$(uname -m)"; EXE=.exe ;;
+    *) PLAT="$(uname -s)-$(uname -m)"; EXE= ;;
+esac
+if [ -n "${KAMA:-}" ]; then :
+elif command -v kama >/dev/null 2>&1; then KAMA=kama
+elif [ -x "$ROOT/../kama/out/$PLAT/kama$EXE" ]; then KAMA="$ROOT/../kama/out/$PLAT/kama$EXE"
+else echo "test: no kama (set KAMA)" >&2; exit 1
+fi
+
+failed=0
+step() { echo; echo "== $*"; }
+wasm=0
+if command -v emcc >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then wasm=1; fi
+
+TESTS=engine/tests
+OUT="$TESTS/out"
+mkdir -p "$OUT"
+
+echo "test: $("$KAMA" --version)"
+
+step "kama check"
+"$KAMA" pkg install kama_workspace.json > /dev/null
+"$KAMA" check engine/kama.json || failed=1
+"$KAMA" pkg install "$TESTS/kama.json" > /dev/null
+"$KAMA" check "$TESTS/kama.json" || failed=1
+
+for mode in debug release; do
+    step "engine tests, native, $mode"
+    flag=""
+    [ "$mode" = release ] && flag="--release"
+    exe="$OUT/native-$mode/kyotentests$EXE"
+    if "$KAMA" build "$TESTS/kama.json" $flag -o "$exe" > "$OUT/build-$mode.log" 2>&1; then
+        "$exe" || failed=1
+    else
+        tail -20 "$OUT/build-$mode.log"
+        failed=1
+    fi
+done
+
+step "engine tests, wasm, under node"
+if [ "$wasm" = 1 ]; then
+    if "$KAMA" build "$TESTS/kama.json" --target WASM -o "$OUT/wasm/kyotentests.js" > "$OUT/build-wasm.log" 2>&1; then
+        node "$OUT/wasm/kyotentests.js" || failed=1
+    else
+        tail -20 "$OUT/build-wasm.log"
+        failed=1
+    fi
+else
+    echo "skip no emcc or node on PATH (run from an interactive UCRT64 shell, bash -lic)"
+fi
+
+# An example's run: build it with the given flags, run it with the given runner, and hold its output to the line it
+# must print.
+run_example() {
+    local game="$1" label="$2" want="$3" out="$4" runner="$5"; shift 5
+    local log="$OUT/games/$game-$label.log"
+    mkdir -p "$OUT/games"
+    if "$KAMA" build "games/$game/kama.json" "$@" -o "$out" > "$log" 2>&1; then
+        local said
+        if said="$($runner "$out" 2>&1)" && printf '%s\n' "$said" | grep -qF "$want"; then
+            echo "ok   games/$game, $label: $want"
+        else
+            printf '%s\n' "$said"
+            echo "FAIL games/$game, $label: no \"$want\""
+            failed=1
+        fi
+    else
+        tail -20 "$log"
+        failed=1
+    fi
+}
+native() { "$1"; }
+under_node() { node "$1"; }
+
+for game in fps vr; do
+    step "games/$game"
+    if [ ! -f "games/$game/kama.json" ]; then
+        echo "skip games/$game is not cloned (it is its own repository, kyoten-$game)"
+        continue
+    fi
+    "$KAMA" pkg install "games/$game/kama.json" > /dev/null
+    "$KAMA" check "games/$game/kama.json" || failed=1
+    if [ "$game" = fps ]; then
+        want="fps example, on kyoten"
+        run_example fps native "$want" "$OUT/games/fps/native/fps$EXE" native
+        if [ "$wasm" = 1 ]; then
+            run_example fps wasm "$want" "$OUT/games/fps/wasm/fps.js" under_node --target WASM
+        else
+            echo "skip games/fps on wasm: no emcc or node on PATH"
+        fi
+    fi
+done
+
+echo
+if [ "$failed" = 0 ]; then echo "test: all passed"; else echo "test: FAILED" >&2; fi
+exit "$failed"

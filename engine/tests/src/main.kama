@@ -1,0 +1,14 @@
+// kyoten's engine tests, one program (kama's AGENTS.package.md: `tests/` is one program). tools/test.sh at the
+// repository's root builds it debug and release and runs it natively, and builds it for wasm and runs it under node.
+// A failing case prints its name, and the exit status is 1 when any case failed.
+
+import { core::println, Tally };
+
+fn uint8 main() {
+    Tally t = Tally.make();
+    int32 runs = t.count();
+    int32 failed = t.failed();
+    println(s: "engine tests: ${runs} cases, ${failed} failed");
+    if (failed > 0) { return 1; }
+    return 0;
+}

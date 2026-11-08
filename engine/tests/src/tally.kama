@@ -1,0 +1,26 @@
+// The tests' tally: each case reports a verdict by name, and the program's exit status says whether any failed.
+
+import { core::println };
+
+export { Tally };
+
+type resource Tally {
+    int32 runs = 0;
+    int32 failures = 0;
+
+    public ctor make() { }
+
+    // An empty `why` passes; anything else is the failure's message.
+    public fn void verdict(const ref string name, const ref string why) {
+        this.runs = this.runs + 1;
+        if (why.isEmpty()) {
+            println(s: "ok   ${name}");
+        } else {
+            this.failures = this.failures + 1;
+            println(s: "FAIL ${name}: ${why}");
+        }
+    }
+
+    public const fn int32 failed() { return this.failures; }
+    public const fn int32 count() { return this.runs; }
+}

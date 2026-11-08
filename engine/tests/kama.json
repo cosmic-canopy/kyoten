@@ -1,0 +1,15 @@
+{
+  "name": "kyotentests",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.876",
+  "description": "kyoten's engine tests, one program: each case prints ok or FAIL with its name, and the exit status is 1 when any failed",
+  "entry": "src/main.kama",
+  "modules": {
+    ".": { "visibility": "internal" }
+  },
+  "dependencies": {
+    "kyoten": { "path": ".." }
+  }
+}
