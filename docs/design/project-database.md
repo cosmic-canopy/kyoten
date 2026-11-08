@@ -1,9 +1,8 @@
 # The project database and wiki
 
-**Status:** draft for the design spike; its build is KYR-24. Five decisions are recorded, the latest closing question
-11 (layers) on 2026-11-05; the rest are questions. Question 2 was answered in part on 2026-11-07: records kept in
-git are strict JSON, beside the code they describe or under `content/`. On 2026-11-07 a content layer was named in
-full a **content database priority level**, and a source's field changes a **merge patch**.
+**Status:** draft for the design spike; its build is KYR-24. Questions 1–4 and 11 are decided (11 on 2026-11-05, 1–4 on
+2026-11-07); 5, 6 and 8 are open in the spike, 7 waits for KYR-26, 9 for KYR-25 and 10 for KYR-29. On 2026-11-07 a
+content layer was named in full a **content database priority level**, and a source's field changes a **merge patch**.
 
 ## What the vision asks
 
@@ -36,21 +35,22 @@ least prior art in the peers, and the one most worth getting right before code.
 
 ## The questions
 
-1. **What is a record?** Candidates: an entity or prefab definition, a component's tuning, an asset reference, a
-   level, a timeline, a design note, a decision, a task. Is all of that one database, or several with shared ids?
-2. **Where does it live?** Plain text in the game's repo (JSON or markdown, with git as history, diff and review),
-   an embedded database (SQLite) exported to text for review, or a service. What does each mean for merging two
-   agents' work, and for a human reading a diff?
+1. **What is a record?** *(Decided 2026-11-07, below.)* Candidates: an entity or prefab definition, a component's
+   tuning, an asset reference, a level, a timeline, a design note, a decision, a task. Is all of that one database, or
+   several with shared ids?
+2. **Where does it live?** *(Decided 2026-11-07, below.)* Plain text in the game's repo (JSON or markdown, with git as
+   history, diff and review), an embedded database (SQLite) exported to text for review, or a service. What does each
+   mean for merging two agents' work, and for a human reading a diff?
    - *Noted 2026-11-06:* a scene is what a designer opens ([components.md](components.md) § Decided, scenes, zones
      and layers), but it may be stored as a folder of records per zone. Unreal stores one file per actor, so "you do
      not need to check out the Level file from source control to make changes to the Actors in the world"
      ([World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine)),
      and streaming reads one zone without the rest.
-3. **Database and wiki: one source or two?** Is the wiki generated from the records (one truth, always current),
-   or written prose that links to records by id?
-4. **Who defines the schema?** The engine ships the core schemas (transform, mesh, sound, timeline…) and a game
-   extends them, presumably typed through kama serde so a record and the component that reads it cannot drift.
-   How does a game add a record type?
+3. **Database and wiki: one source or two?** *(Decided 2026-11-07, below.)* Is the wiki generated from the records (one
+   truth, always current), or written prose that links to records by id?
+4. **Who defines the schema?** *(Decided 2026-11-07, below.)* The engine ships the core schemas (transform, mesh, sound,
+   timeline…) and a game extends them, presumably typed through kama serde so a record and the component that reads it
+   cannot drift. How does a game add a record type?
 5. **What does "consistent" guarantee?** Referential integrity (every id referenced exists), schema validity, and
    cross-system invariants (a level's spawn points are on navigable ground). Which are checked when, and who is
    told when one breaks?
@@ -197,3 +197,53 @@ least prior art in the peers, and the one most worth getting right before code.
   - **What a source says about a record is a merge patch** (RFC 7396's "JSON Merge Patch"), so a bare "patch" is a
     game's patch.
   - The entries above keep the words they were written in.
+- **2026-11-07, the owner: questions 1–4, what a record is, the backend, the wiki and the schema.** "This all sounds
+  good to me so far." With this, question 2 is decided in full. Questions 5, 6 and 8 are next.
+  - **The evidence for question 2,** probed here with git 2.55 on Windows, in a scratch repository. One branch changed a
+    prefab's `Turret.cooldown` and another its `Health.hp`, on neighbouring lines of one records file, and git's line
+    merge reported *"CONFLICT (content)"*. A field-wise three-way JSON merge, set as git's merge driver for that file,
+    merged the same branches cleanly, and reported a conflict when both changed `cooldown` to different values. git's
+    gitattributes documentation: *"The definition of a merge driver is done in the `.git/config` file, not in the
+    `gitattributes` file"*, so a driver is set up in each clone.
+  1. **Question 1: one database with two halves, sharing one id space and one query surface.**
+     - **Game data** is what the running game reads (question 11, choice 6): component values in prefabs and
+       placements, scenes, zones, layers, budgets, bindings, the app, modules' code records, and UI documents. It is
+       layered by the stack, typed by kama and checked.
+     - **Project knowledge is the wiki:** the game's direction (its vision, pillars and style), design notes, decisions
+       and tasks. The running game never reads it, it is not layered, and git versions it.
+     - **One query or MCP call answers across both,** such as "which open tasks touch the tower prefab".
+  2. **Question 1: a game's own data kinds.** Data that is neither a component nor a world component (a loot table,
+     dialogue, quests) is a kama type the game lists in its module's records as a **data kind**. Its entries live under
+     `content/`, keyed by id, and layer like any record. Processors read them read-only through the stack, by generated
+     ids, so a mistyped id is a build error as a prefab's is. Prior art: Unreal's Data Tables and Unity's
+     ScriptableObjects *(general knowledge, not checked)*. The spelling is KYR-24's.
+  3. **Question 2: files in git are the reference backend, and the only one built first.** The store interface keeps
+     room for `@kama/postgres` or a platform service, built when a project asks for one.
+  4. **Question 2: two agents' changes to one record merge by field, not by line.**
+     - **`kyoten merge`,** git's merge driver for `*.records.json`, merges three ways by key. Different fields never
+       conflict, and one field changed two ways is a conflict named by its path. kyoten's setup registers it in each
+       clone.
+     - **`kyoten fmt`** writes records in one fixed key order and indentation, so a diff shows only what changed.
+     - **The merged result is checked** (question 5), since two valid changes can merge into an invalid one: one agent
+       deletes a prefab that another places.
+     - **A hosting site's merge button runs no custom driver** *(from memory, not checked)*, so a conflict there is
+       merged locally.
+  5. **Question 3: one source, with two kinds of page.**
+     - **Generated pages,** one per record, always current and never edited by hand: its resolved value and which
+       source set each field, what refers to it, the code that reads it, and its recent changes.
+     - **Written pages** (direction, notes, decisions, tasks) are Markdown under `wiki/`, each with an id and a few
+       typed fields (kind, status, owner) that tools and agents query. A link from prose to a record is checked like
+       any reference, so renaming a prefab breaks a link at check, not silently.
+     - **Readable without kyoten:** plain Markdown in git reads on any host, and the human tools (KYR-26) serve it live
+       beside the generated pages.
+  6. **Question 4: kama types are the only schema.** The engine's record kinds are its kama types, and a game's
+     components, world components and data kinds are its own. A record decodes strictly into its type (components
+     question 5), so with no second schema language a record cannot drift from the code that reads it. A game adds a
+     record kind by declaring a type (item 2).
+  7. **Question 4: the generator exports a JSON Schema for every record kind,** so an editor completes and checks
+     `*.records.json` as it is typed, and an agent's tool call gets the exact shape. kama has none (its std and docs
+     searched, 2026-11-07), so kyoten's generator writes it from the types it already reads.
+  8. **Question 4: a type changes by deprecating, then migrating.** A renamed or removed field is a check error in every
+     record that uses it. kama's `@deprecated` on a field (*"read when present, never written"*, kama's `AGENTS.md`)
+     keeps an old name readable for a time, and `kyoten migrate` rewrites the records in one commit, so mods made
+     against an older version still load.

@@ -388,6 +388,15 @@ content/
   zone.
 - **Actions are code records and bindings are content.** Action kinds are KYR-54's.
 
+**The project database** (*decided*, project-database questions 1–4, 2026-11-07) has two halves sharing one id space
+and one query surface. **Game data** is what the running game reads: the records above, and a game's own **data
+kinds**, keyed entries of a kama type it declares (a loot table, dialogue), read through the stack by generated ids.
+**The wiki** is the game's direction, design notes, decisions and tasks, never read by the running game and never
+layered. Its pages are generated for every record and written in Markdown under `wiki/`, with links to records
+checked like any reference. The files live in git, the reference backend. `kyoten merge` merges two agents' changes
+to a record by field and `kyoten fmt` keeps one layout. kama types are the only schema, and the generator exports a
+JSON Schema of each for editors and agents.
+
 ## The vocabulary
 
 *Decided at components question 3, choice 1 (2026-11-05), and renamed at question 8 part b (2026-11-07):* a
@@ -403,9 +412,11 @@ words.
 | **Library / backend** | what an engine module sits on (`@kama/graphics`, `@kama/window`). A backend is a borrowed library behind the module's interface, replaced later (Jolt, RmlUi). Libraries are kama packages shaped after the browser's API; the engine modules' interfaces above them are kyoten's own, and a game touches only those | decided (web-and-native question 1, 2026-11-07) |
 | **Game** | a separate package and repository: its records, its processors, and the world generated from them | decided |
 | **Record** | a project-database entry declaring a component, prefab, module, processor, budget or zone. Its format is the kama type it describes, through serde | decided (question 5, choice 2) |
+| **Data kind** | a game's own record kind for keyed data that is neither a component nor a world component (a loot table, dialogue, quests): a kama type listed in its module's records, its entries under `content/`, read through the stack by generated ids | decided (project-database question 1, 2026-11-07) |
 | **Source** | anything that satisfies the record-source contract: files in git, a baked pack, a database, a URI where the platform allows | decided (project-database question 11); the name is proposed |
 | **Content layer** | short for a **content database priority level**: a named slot in the order of sources, engine, game, DLC, content patch, mod, local by default. Each holds any number of sources, each with its own priority within it. Always written with "content", since a bare "layer" is a scene's | decided (project-database question 11); named in full at components question 8 part b (2026-11-07) |
 | **Merge patch** | what a source says about a record: only the fields it changes, merged by RFC 7396 ("JSON Merge Patch"). A bare "patch" is a game's patch, and the content patch is the content layer that holds them | decided (project-database question 11); named at components question 8 part b (2026-11-07) |
+| **Wiki** | the project database's other half: the game's direction, design notes, decisions and tasks. Generated pages for every record and written Markdown pages under `wiki/`, sharing the records' ids. Never read by the running game, and not layered | decided (project-database questions 1 and 3, 2026-11-07) |
 | **Stack** | every source in its resolved order. Its identity is in every save, replay and match | decided (project-database question 11) |
 | **Generator** | the kyoten tool that writes the World from records, as plain kama. Procedural generation is the **world generator**, always so called | decided |
 | **World** | the whole simulation state, generated per game: a value that can be copied, saved and restored | decided |
@@ -477,6 +488,7 @@ knowledge, not checked against each engine's docs.*
 | a **block** (Minecraft) | a cell of world data (question 9) |
 | a **level** or **map** (Unreal, most games) | a scene |
 | a **scene** (Godot: a reusable node tree) | a prefab |
+| a **Data Table** (Unreal), a **ScriptableObject** (Unity) | a data kind's entries |
 
 **How a processor reads other entities** (*decided*, question 3, choice 3). It declares one of two modes, and the scheduler
 never changes it, so serial and parallel runs see the same values:

@@ -222,10 +222,15 @@ answer is recorded in its doc's *Decided*:
    everywhere, kyoten's UI profile, checked at build; no webview natively; UI shows what Output writes and sends
    recorded actions; UI documents are content, with their bindings checked; native accessibility is KYR-16's. The
    headset is two platform implementations on the seam, and players reach Quest natively first (xr.md question 1).
-   **Next: [design/project-database.md](design/project-database.md),** then the rest of the [narrowed
-   table](#narrowed-2026-11-01). **19 questions remain:** project-database 7, target-platforms 4, rendering 3,
-   ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three were. The owner asked for the count
-   of questions left each time one is put to them.
+4. **[design/project-database.md](design/project-database.md), in part:** questions 1–4 are decided (2026-11-07, the
+   owner: "This all sounds good to me so far"). One database with two halves, game data and the wiki, sharing ids and
+   queries; data kinds for a game's own keyed data; files in git as the reference backend; records merged by field
+   (`kyoten merge`, `kyoten fmt`), with the merged result checked; the wiki one source, generated pages and Markdown
+   pages with checked links; kama types the only schema, a JSON Schema exported by the generator, and
+   deprecate-then-migrate. **Next: its questions 5, 6 and 8** (consistency, how agents coordinate, and how the running
+   game reads), then the rest of the [narrowed table](#narrowed-2026-11-01). **15 questions remain:** project-database
+   3, target-platforms 4, rendering 3, ai-first-api 2, examples 3. Some may be taken together, as the hello cube's three
+   were. The owner asked for the count of questions left each time one is put to them.
 
 **To raise with the owner:**
 
