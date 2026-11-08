@@ -10,8 +10,9 @@ the design doc it settles before building on it.
 
 ## Where it stands (2026-11-07)
 
-- **kama:** this machine's binary is `0.9.873+g7c0a6bd0`, and kama's HEAD is `1e5099bb`. Never rebuild kama or edit
-  `../kama`; check `--version` before quoting one.
+- **kama:** this machine's binary reports `0.9.874+g1e5099bb` (built from kama's working tree, KR-344 already in it),
+  and kama's HEAD is `546dd54e` (0.9.875, KR-344). Never rebuild kama or edit `../kama`; check `--version` before
+  quoting one.
 - **Everything checks clean on it:** `engine/` (one placeholder, `version()`), `games/fps` (prints `fps example, on
   kyoten`), `games/vr`, and the three package repositories, `../kama-gpu`, `../kama-window` and `../kama-graphics`, each
   a seeded placeholder with nothing built.
@@ -69,7 +70,9 @@ here), committed with what it measured.
    **KY-28 bites here:** until kama's KR-338, `kama check` fails on a fresh clone whose sources import generated code,
    so the generator runs before every kama command, behind a `kyoten` command.
 6. **The import check** (KYR-53) lands when the engine has a second module, with the simulation-files rule (ai-first-api
-   question 3), since `importsOnly` does not reach std (KY-37).
+   question 3). KY-37 was fixed on 2026-11-07 (kama KR-344): `importsOnly` now reaches std, `core` and other
+   packages, so whether that rule moves from kyoten's per-file check into the modules' manifests is asked when this
+   step starts.
 
 **The join.**
 
@@ -120,7 +123,9 @@ here), committed with what it measured.
 - **KY-28** (kama KR-338, "scheduled, design first"): generated code on a fresh clone. Step 5's wrapper covers it.
 - **KY-6:** kama's wasm release does not run Closure. Until it does, measure the 150 KB with web-baseline's variant,
   `--closure=1` as an `ldflags` entry gated `ARCH_WASM32`, and record both numbers.
-- **KY-37:** a module cannot be kept from std's modules, so kyoten's import check holds the simulation rule (step 6).
+- **Fixed on 2026-11-07 and removed:** KY-37 (kama KR-344, `546dd54e`): a module's `importsOnly` now lists std's,
+  `core`'s and other packages' modules too, and the command line and the environment moved to `core::env`. Step 6
+  asks what that changes for the simulation rule.
 - **KY-2:** kama's `1e5099bb` (KR-283 step 1) builds an installable Android APK. It is not in this machine's binary,
   so re-check KY-2 on a build that has it. VR follows the gate.
 - **Fixed on 2026-11-07 and removed:** KY-19, so `reproducible-float` now gives `std::math` the same bits natively and

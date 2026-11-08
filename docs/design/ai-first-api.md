@@ -148,3 +148,7 @@
        Rust's `#![no_std]`, Java's `requires` in `module-info`, and linters such as Go's depguard and .NET's
        BannedApiAnalyzers. Its uses are determinism (simulations, replays, workflow engines), code with no operating
        system (kama's `EMBEDDED` target and `--no-heap`), and sandboxing or layering.
+     - **KY-37 was fixed on 2026-11-07** (kama KR-344, `546dd54e`, 0.9.875): `importsOnly` holds every import, std's,
+       `core`'s and other packages' included, and the probe above is now refused, naming the entry to add. The rule
+       here is per file, and `importsOnly` is per module, so whether the rule moves into the modules' manifests is
+       not decided here; it is asked when KYR-53 (the first slice's step 6) starts.
