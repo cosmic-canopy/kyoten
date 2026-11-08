@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-66**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-67**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -75,7 +75,8 @@ Its kickoff brief, with the order of work and the hello cube's checks, is [FIRST
 | KYR-26 | **The human tool surface, first version**: a local web editor with the database's change feed, entities, timings per phase, and tuning that writes records. From project-database questions 5 and 6 (2026-11-07): a break found after a merge shows in the feed as a task; a human waives a failing check with a recorded reason; approvals where a project turns roles on | [human-tools.md](design/human-tools.md) |
 | KYR-27 | **Replay as a tool**: scrub, step, and compare two runs | [replay-and-determinism.md](design/replay-and-determinism.md) |
 | KYR-28 | **Slice C in kyoten-example-fps**: an agent builds and tunes a level through records while a human watches and adjusts. The owner (2026-11-07, project-database questions 5, 6 and 8): "We will know more during the actual game development cycle how well it works and what changes we need", so the database's first version is revised here, with several agents building features in parallel. From examples question 3 (2026-11-07): done when an agent's record change is visible in the running game within a second, with no rebuild (a starting gauge), and a human's tuning lands in the same records | [examples.md](design/examples.md) |
-| KYR-29 | **The content pipeline**: the kyoten adapter for cosmic-forge, shared ids and provenance, and a live preview. Heavy assets stay out of code repositories (the owner, 2026-11-05): source assets in a team's own store, built runtime assets hosted and fetched by a delivery tool that matches each asset build to the code that reads it ([SPIKE.md](SPIKE.md) § Standing direction) | [content-pipeline.md](design/content-pipeline.md) |
+| KYR-29 | **The content pipeline**: the kyoten adapter for cosmic-forge, shared ids and provenance, and a live preview. Heavy assets stay out of code repositories (the owner, 2026-11-05): source assets in a team's own store, built runtime assets hosted and delivered by the asset manager, KYR-66 ([SPIKE.md](SPIKE.md) § Standing direction) | [content-pipeline.md](design/content-pipeline.md) |
+| KYR-66 | **The asset manager** (a working name, its doc's question 1): what kyoten games use to deliver final asset bundles, while cosmic-forge makes most of the raw content (the owner, 2026-11-08). Split out of KYR-29: built runtime assets hosted apart from the code, and the asset build that matches each version of the code delivered to developer machines and players ([SPIKE.md](SPIKE.md) § Standing direction, 2026-11-05). Questions only, nothing decided | [asset-manager.md](design/asset-manager.md) |
 | KYR-30 | **Templates**: `kyoten new`, a game born wired to the frame and the project database. It writes the game's `main` and, as its first content, the hello cube's records and system (components question 7). From target-platforms question 2 (2026-11-07): the `main` imports `run` from the game's generated module. From ai-first-api question 2 (2026-11-07): the game's agent guide carries the table of one way per task | [ai-first-api.md](design/ai-first-api.md) |
 
 ## XR AND MOBILE

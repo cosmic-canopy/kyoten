@@ -55,7 +55,9 @@ the design doc it settles before building on it.
    ([SPIKE.md](SPIKE.md) § Standing direction, heavy assets never stored with the code), packs
    (project-database question 8), KYR-10's web bundling, KYR-21's release bundles, marketplace questions 1 and 2
    (content packs), and the proposal that a record refers to an asset by id and content hash. Write its open
-   questions, decide nothing, and bring the name to the owner, since the docs say "delivery tool".
+   questions, decide nothing, and bring the name to the owner, since the docs say "delivery tool". **Done on
+   2026-11-08:** the row is KYR-66 and the doc [design/asset-manager.md](design/asset-manager.md), with twelve
+   questions, the name first.
 4. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
    change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
    first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5

@@ -2,6 +2,9 @@
 
 **Status:** draft for the design spike. These are questions, not decisions.
 
+Delivering the built runtime assets to developer machines and players is its own row since 2026-11-08: KYR-66,
+[asset-manager.md](asset-manager.md).
+
 ## What the vision asks
 
 - **cosmic-forge stays the general-purpose content-creation component.** kyoten uses it and does not duplicate it.
