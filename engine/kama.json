@@ -5,6 +5,10 @@
   "kind": "library",
   "kama": ">=0.9.876",
   "reproducible-float": true,
+  "cflags": [
+    { "flag": "-Wframe-larger-than=32768", "compileFor": ["!OS_WINDOWS"] },
+    { "flag": "-Werror=frame-larger-than", "compileFor": ["!OS_WINDOWS"] }
+  ],
   "modules": {
     ".": { "visibility": "public" },
     "frame": { "visibility": "public", "importsOnly": [] },

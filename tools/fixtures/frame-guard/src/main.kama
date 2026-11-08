@@ -1,0 +1,28 @@
+// A function whose frame is 40,000 bytes, over the engine's 32 KiB guard (components § Decided, question 6, choice
+// 5). tools/test.sh builds it and expects the build to be refused with `frame-larger-than`, on every target but
+// Windows. The array is filled from the argument and summed, so no optimizer can drop it.
+
+import { core::println, kyoten::version };
+
+fn int64 heavy(int32 seed) {
+    InlineArray<int32>#(10000) big = [0; 10000];
+    isize i = 0;
+    while (i < 10000) {
+        big[i] = seed + cast<int32>(i % 7);
+        i = i + 1;
+    }
+    int64 sum = 0;
+    i = 0;
+    while (i < 10000) {
+        sum = sum + cast<int64>(big[i]);
+        i = i + 1;
+    }
+    return sum;
+}
+
+fn uint8 main() {
+    int64 s = heavy(seed: 3);
+    string v = version();
+    println(s: "frame guard fixture on kyoten ${v}: ${s}");
+    return 0;
+}

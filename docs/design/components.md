@@ -1884,3 +1884,14 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
       returns an `isize` once kama does.
     - **Mutations caught:** the world-axis product order, no renormalization, the zone difference in `int32`, and no
       128 cap each turn a case red.
+- **2026-11-08, built: the 32 KiB frame guard (question 6, choice 5) sits in the engine's manifest alone.** The first
+  slice's brief put it in the engine's manifest and each example's. One is enough: a dependency's `cflags` apply to
+  every consumer's build (kama `docs/targets.md` § What a dependency contributes), so every game on kyoten is guarded
+  without saying so, and no game's copy can drift or be forgotten.
+  - **Gated on the fact, not the target's name:** each flag is `{ "flag": …, "compileFor": ["!OS_WINDOWS"] }`.
+    A `select.TARGET` arm matches only how a build was spelled, so a plain build on a Mac or a bare triple would
+    miss it; kama's docs say to gate on the fact.
+  - **Held by the suite:** `tools/fixtures/frame-guard` is a game with a 40 KB frame and no flag of its own.
+    `tools/test.sh` expects its build refused on every target but Windows, and built on Windows. Seen to fail before
+    the guard (*"a 40 KB frame built"* on wasm), then on kama `0.9.881+g4267d2ec`: *"stack frame size (40032) exceeds
+    limit (32768) in 'frameguard__kF_main__heavy'"*. The engine's tests and `examples/games/fps` build on wasm with it.

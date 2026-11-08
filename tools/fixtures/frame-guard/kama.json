@@ -1,0 +1,14 @@
+{
+  "name": "frameguard",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "description": "A game with a 40 KB frame and no flag of its own: the engine's 32 KiB frame guard must refuse its build on every target but Windows",
+  "entry": "src/main.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../engine" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" }
+  }
+}

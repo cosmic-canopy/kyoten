@@ -40,7 +40,8 @@ the design doc it settles before building on it.
    - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
      `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
      `kyoten::input`; required components added with their defaults; the module `static` refusal; and the 32 KiB
-     frame guard in the engine's manifest and each example's, on every arm but Windows.
+     frame guard on every target but Windows (**built on 2026-11-08,** in the engine's manifest alone, which reaches
+     every game: [design/components.md](design/components.md) § Decided, the last entry).
    - **Left to later rows:** side stores, `Previous` and `Current`, the queues, random keys, world stores, more than
      one zone or layer, the footprint report, fusing a table's processors into one pass, `PARALLEL`, and `Mesh`,
      `Material`, `Camera` and `Light` (step 9). The generated `run` is step 7's.
