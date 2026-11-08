@@ -47,6 +47,11 @@ rule in [../AGENTS.kyoten.md](../AGENTS.kyoten.md): the engine drives games and 
 § Decided, question 2), and named tiers at components question 8 part b (2026-11-07). Each tier imports only the
 tiers above it.
 
+**Each tier is a kama module** (*decided* 2026-11-08, [design/frame-phases.md](design/frame-phases.md) § Decided, step 4
+question 1): `kyoten::frame`, `kyoten::world`, one module per engine module (`kyoten::render`…), and later the agent
+surface. Each module's `importsOnly` holds the rule, so `kama check` refuses an edge that breaks it. kama has no
+re-exports, so a game names the tier in its imports: `kyoten::frame::Time`, `kyoten::world::Transform`.
+
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
  │ 1 frame   phases · the clock · scheduler · input record · World contract · run │
@@ -198,7 +203,7 @@ fn uint8 main() { return run(); }
 ```
 ```kama
 // src/cube.kama
-import { kyoten::Transform, kyoten::Time, hello::generated::Actions };
+import { kyoten::world::Transform, kyoten::frame::Time, hello::generated::Actions };
 export { Spin, turn };
 @generate(Serializable, Deserializable, of)
 type value Spin { @field(default) public float32 rate = 1; }
@@ -335,7 +340,7 @@ kyoten-towers/
 ```
 
 - **A file's module is its folder,** as a kama file's is. A bare name is the module's own, and a full kama path
-  (`kyoten::Transform`) reaches another.
+  (`kyoten::world::Transform`) reaches another.
 - **Records hold only what differs from the defaults,** enum values are kama's case names (`"Update"`), rates are
   whole hertz, and a `note` string replaces comments, which kama's JSON refuses.
 - **A module may split its records across files;** they merge by key, and a key twice in one content layer is refused.
@@ -346,7 +351,7 @@ kyoten-towers/
   "processors": { "fire": { "group": "combat" },
                   "fly":  { "group": "combat", "after": ["fire"], "rate": 60, "random": ["crit"] },
                   "hurt": { "group": "combat" } },
-  "components": { "Health": { "requires": ["kyoten::Transform"] },
+  "components": { "Health": { "requires": ["kyoten::world::Transform"] },
                   "Damage": { "store": "Side", "combine": "Sum", "saved": false } } }
 ```
 

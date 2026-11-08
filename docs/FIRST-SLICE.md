@@ -8,15 +8,45 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-07)
+## Where it stands (2026-11-08)
 
-- **kama:** this machine's binary reports `0.9.874+g1e5099bb` (built from kama's working tree, KR-344 already in it),
-  and kama's HEAD is `546dd54e` (0.9.875, KR-344). Never rebuild kama or edit `../kama`; check `--version` before
-  quoting one.
-- **Everything checks clean on it:** `engine/` (one placeholder, `version()`), `games/fps` (prints `fps example, on
-  kyoten`), `games/vr`, and the three package repositories.
+**The next session starts here:**
+
+1. **Check `../kama`'s log and `kama --version`** first: kama's working tree is changing `std::app` (below).
+2. **Ask step 4's question 2 of 4,** then 3 and 4, one at a time, each with how many remain (§ Questions the owner
+   answers, below), and record each answer in [design/frame-phases.md](design/frame-phases.md) § Decided. Step 4's
+   code starts once all four are recorded (the owner, 2026-11-07). Question 1 was decided on 2026-11-08: each tier is
+   a module, and the frame tier is `kyoten::frame`.
+3. **Meanwhile, Track 1:** `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's
+   `ffd_platform.h`), then `@kama/gpu`'s canvas surface and a run in Edge (G6), then gamepads (W3), then the
+   triangle's pipeline set.
+
+- **kama:** this machine's binary reports `0.9.876+g546dd54e`. kama's HEAD is `546dd54e` (0.9.875, KR-344), and the
+  binary was built from kama's working tree, which holds uncommitted KR-283 work. Never rebuild kama or edit
+  `../kama`; check `--version` before quoting one.
+  - **That work replaces `std::app`'s loop.** `run(tick:, state:)` and `TickFn` give way to `run(app: Owned<App>)`,
+    where an `App` has `tick()` and `lifecycle(event:)`: `Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`,
+    `FocusGained`, `FocusLost`, `LowMemory`.
+  - On this binary, `../kama-gpu`'s test program no longer compiles. It passed on 0.9.874, and stays on the
+    committed API until kama commits the change. **When it lands:** port `kama-gpu/tests`, and build step 7's
+    platform seam and the GPU surface's lifetime on the `App` lifecycle (a surface is dropped on `SurfaceLost`).
+- **Checks clean on 0.9.876 (2026-11-08):** `engine/` (one placeholder, `version()`), `games/fps` (prints `fps
+  example, on kyoten`), `games/vr`, and `@kama/window`'s gate. `@kama/gpu`'s gate passes everything except its test
+  program (above): the bindings, the 60-frame window and the xfail.
+- **Pushed on 2026-11-08:** kyoten's `main` and both package repositories' `main`. The remote's default branch is still
+  `spike/roadmap`; making it `main` is the owner's change on GitHub.
+- **Neither package is published yet.** kama's floor for a first publish is the `tests/` gate green on every target the
+  package claims, and neither has run on the web. `@kama/window` also vendors GLFW first. And kama has not ruled the
+  amendments below, some of which change the API. Publish `@kama/window` first, once its web half runs and GLFW is
+  vendored; that also ends every consumer naming it beside `@kama/gpu`. Then `@kama/gpu`, once a canvas clears in a
+  browser.
+- **The amendments to kama's designs** are listed in each repository's `AGENTS.*.md` § Amendments to relay: 9 for
+  `@kama/gpu`, 5 for `@kama/window`. They are not gaps. kama's rule (ROADMAP_DETAIL § 8, 2026-11-02) is that a change
+  the build needs comes back as an amendment of the design's section, and that a compiler or std gap is filed as a
+  row. The designs are kama's, so kama rules on them; the owner relays them. None has been ruled yet. Neither
+  repository has a gap (`KGPU-`, `KWIN-`).
 - **Track 1, step by step (2026-11-07),** each repository's `tools/test.sh` the gate and its `AGENTS.*.md` § Where
-  things stand the detail, with the amendments to kama's designs listed there for the owner to relay:
+  things stand the detail:
   - `../kama-gpu` (step 1): the bindings generated from both legs' headers and held to them; a device, buffers,
     textures, a clear pass and a polled readback (an offscreen clear reads back exactly, native debug and release; the
     wasm leg builds); a surface on a window with a typed acquire, which `examples/clear` presents every frame (Windows).
@@ -29,8 +59,7 @@ the design doc it settles before building on it.
   `@kama/window` is published, names `@kama/window` beside it (kama allows a path dependency only at the top level).
 - **Web builds** use emsdk 6.0.13. `emcc` is on the `PATH` only in an interactive UCRT64 shell (`bash -lic`).
 - **Develop on `main`** (the owner, 2026-11-07: "you don't need to branch you can develop on main"). The local `main`
-  was fast-forwarded to `spike/roadmap`, which holds the spike's history. The remote has only `spike/roadmap` so
-  far, and pushing is the owner's call.
+  was fast-forwarded to `spike/roadmap`, which holds the spike's history. Pushing is the owner's call each session.
 
 ## A1, the hello cube: what "done" means
 
@@ -101,6 +130,31 @@ here), committed with what it measured.
 - **Answered on 2026-11-07:** the generator is written in kama, a `kyoten` executable under `tools/` (components.md
   § Decided); and the reference machines are the owner's Steam Deck, Windows mini PC, Mac Mini, a mid-range laptop
   and Quest 3 (examples.md § Decided), each named beside the first numbers measured on it.
+- **Step 4: the frame core's four questions,** asked one at a time from 2026-11-07, each recorded in
+  [design/frame-phases.md](design/frame-phases.md) § Decided. **1, where the frame tier lives:** decided on
+  2026-11-08, each tier a module and the frame tier `kyoten::frame`. *Recommended* for the three left, for the owner
+  to decide:
+  2. **`Time`'s shape:** `float32 dt` and `int64 step`.
+     - `float32` because a component's rate is (`Spin.rate`) and kama has no implicit conversion; `int64` because
+       `isize` is 32 bits on wasm.
+     - `step` is the base clock's index, the one numbering that waits and random keys use.
+     - A processor's `dt` is its own rate's (a 30 Hz processor sees 1/30), so the generator passes one `Time` per
+       distinct rate. Output's `dt` is the frame's, and the render time it blends at stays inside the engine.
+  3. **The clock:** port FFD's `PhaseClock` accumulator (`engine/src/phase/clock.kama`), credited.
+     - It takes the frame source's time as an `int64` count of nanoseconds, which rAF, vsync and XR's predicted
+       display time can each supply, and returns the owed base steps and the render time.
+     - The cap stays at 5 owed steps a frame (FFD's `maxStepsPerAdvance`), the excess discarded and counted: the
+       engine's default, an App record field when a game needs another.
+     - The base rate is an input: the least common multiple the generator derives, or a pinned base (step 5).
+  4. **Step 4's scope:**
+     - the `World` contract's four phase calls, each taking `const ref Time`;
+     - rate gating and Constraints' iterations inside the generated passes (step 5), so the frame core only orders
+       the phases;
+     - a public serial `stepFrame` for tests and a headless server, with the loop-owning `run` at step 7 (on
+       `std::app`'s `App` once kama commits it);
+     - `"reproducible-float": true` and musl's notice now;
+     - waits, the RNG world component and the `PARALLEL` flag when something needs them, and Input's hand-off an
+       empty call until step 8.
 - **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
   maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
   rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:

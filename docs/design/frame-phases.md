@@ -1,6 +1,8 @@
 # The frame: Input, Update, Constraints, Output
 
-**Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The draft
+**Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The first
+slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): the first was decided on
+2026-11-08, and questions 2 to 4 are open. The draft
 they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
 the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
 that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
@@ -737,3 +739,28 @@ run can both hold.
     - running the simulation on the headset's clock, which ties the simulation to the display. Quest's rate can be
       changed between 72 and 120 Hz, and PC and VR players in one simulation need one base;
     - a separate frame model for XR, which contradicts the owner's "just another platform variation".
+- **2026-11-08, the owner: the frame tier is the module `kyoten::frame`, and each tier is a module (step 4, question 1
+  of 4).**
+  - **The owner:** "Is kyoten::frame the production answer? if so let's do that."
+  - **What it means:** each tier in [../REFERENCE.md](../REFERENCE.md) § The engine's tiers is a kama module of the
+    `kyoten` package: one folder under `engine/src/` and one entry in `engine/kama.json`'s `modules`.
+    - `kyoten::frame` holds `Time`, the clock, the `World` contract and the driver.
+    - `kyoten::world` holds the engine's components (`Transform`) and the store types.
+    - Each engine module is its own (`kyoten::render`, `kyoten::input`…), and the agent surface comes later.
+    - The root module keeps `version()`, which both example games import.
+  - **Why it is the production answer:** the module rule already needs it. Architecture question 2 (2026-11-04) holds
+    the rule in the compiler through `importsOnly`, which lists modules, so only a tier that is a module can be fenced.
+    The same entry already names `kyoten::frame` ([architecture.md](architecture.md) § Decided). With the frame in the
+    root module, nothing could tell tier 1 from tier 2, and the rule would rest on review alone.
+  - **Verified on kama 0.9.876 (`+g546dd54e`)** with a scratch package of the same shape:
+    - a game imports `eng::frame::Time` and `eng::world::Transform` through a path dependency, and runs;
+    - `world`'s `"importsOnly": ["frame"]` refuses an import of `render`: *"module `eng::render` is not in the
+      `importsOnly` of `eng::world`"*;
+    - the list names its own package's modules bare (`"frame"`); `"eng::frame"` is refused as not a module of the
+      project;
+    - since KR-344 an empty list refuses std and `core` as well, so `frame`'s list names every std module it uses.
+  - **What it costs:** kama has no re-exports, so a game writes the tier in each path (`kyoten::frame::Time`,
+    `kyoten::world::Transform`). A root file that imports `Time` and lists it in `export` is refused: *"export list
+    names `Time` but there is no such top-level declaration in this module"*. The hello cube's import line grows, and
+    its line count does not.
+  - **Considered:** the root `kyoten` module, which keeps `kyoten::Time` but leaves the tier rule to review.

@@ -7,7 +7,7 @@ This file is the project-specific part, and it is the one to edit.
 **kyoten** is a game engine written in kama: AI-driven, component-based, web-first with native at parity,
 general purpose, MIT OR Apache-2.0. The owner's brief is [docs/VISION.md](docs/VISION.md).
 
-## Where things stand: the spike is done, the first slice is next
+## Where things stand: the spike is done, the first slice is under way
 
 **Learn kyoten's model from [docs/REFERENCE.md](docs/REFERENCE.md)**: the picture of how a game, the engine's tiers
 and modules, the world, processors and phases fit together, the vocabulary to use, and the prior art. Use its terms:
@@ -17,10 +17,11 @@ says neither "system" nor "subsystem". A bare "layer" is a scene's layer; the en
 and a screen layer and a content layer (a content database priority level) are always called so.
 
 **The design spike is done** (KYR-1, 2026-11-07). [docs/SPIKE.md](docs/SPIKE.md) § What the spike decided is its
-record, and each design doc's *Decided* holds the decisions with their reasons. **Next is the first slice**
+record, and each design doc's *Decided* holds the decisions with their reasons. **The first slice is under way**
 ([docs/ROADMAP.md](docs/ROADMAP.md) § NEXT), and **[docs/FIRST-SLICE.md](docs/FIRST-SLICE.md) is where to
-start:** its order of work, the questions to ask on the way, and the hello cube's checks. A question the spike left
-open is decided when its row comes up. **No
+start:** § Where it stands says what is built and what the next session does first, then its order of work, the
+questions to ask on the way, and the hello cube's checks. A question the spike left open is decided when its row
+comes up. **No
 engine code is written before the decision it depends on is recorded**, and a decision is the owner's: propose,
 compare and measure, then ask.
 
