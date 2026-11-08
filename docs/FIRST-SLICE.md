@@ -12,18 +12,31 @@ the design doc it settles before building on it.
 
 **The next session starts here:**
 
-1. **Check `../kama`'s log and `kama --version`** first.
-2. **Ask step 4's question 4 of 4** (§ Questions the owner answers, below), and record the answer in
-   [design/frame-phases.md](design/frame-phases.md) § Decided. Questions 1 to 3 were decided on 2026-11-08: each tier
-   is a module, the frame tier `kyoten::frame`; `Time` is `float32 dt` and `int64 step`, each processor getting its
-   own rate's `dt`; and the clock is exact in integer nanoseconds, with pause and a time scale. **Every
-   recommendation is the production answer,** or says plainly that it is not.
-3. **Then step 4, test-first:** the root `tools/test.sh` and `engine/tests/` before any frame-core code, each test
-   seen to fail before the code that passes it (AGENTS.kyoten.md § Rules).
+1. **Check `../kama`'s log and `kama --version`** first, and re-run both packages' `tools/test.sh` on that binary.
+2. **Build step 4, the frame core. Every question it needed is decided** (2026-11-08, step 4 questions 1 to 4 in
+   [design/frame-phases.md](design/frame-phases.md) § Decided): each tier is a module and the frame tier is
+   `kyoten::frame`; `Time` is `float32 dt` and `int64 step`, each processor getting its own rate's `dt`; the clock is
+   exact in integer nanoseconds, capped at 5 steps, with pause, slow motion, fast forward and single stepping; and
+   step 4 builds the suite first, then the `World` contract, the clock and the serial driver, with the world and the
+   clock injected. In this order, test-first (AGENTS.kyoten.md § Rules):
+   1. `tools/test.sh` at the root and an empty `engine/tests/` program, the suite green with nothing in it: `kama
+      check` on the engine and on `games/fps` and `games/vr` when they are cloned, the engine's tests natively (debug
+      and release) and on wasm under node, and `games/fps`'s run. Model it on `../kama-gpu/tools/test.sh`.
+   2. `engine/kama.json` gains the `frame` module with an `importsOnly` (it imports nothing of kyoten's, and lists
+      each std module it uses), and `"reproducible-float": true`. musl's MIT notice, the first comment of kama's
+      `include/kama_libm.h` (kama `docs/targets.md`), goes in the engine's notices file.
+   3. `Time`, then the clock, then the `World` contract and the driver: for each, the tests the decision lists, seen
+      to fail, then the code. The hand-written test world records the phase calls it receives.
+3. **Step 4 gives the engine its second module, so step 6's question comes next** (KYR-53): whether the
+   simulation-files rule (ai-first-api question 3) moves from a per-file check into the modules' `importsOnly`, now
+   that KY-37 is fixed. Bring the options and a recommendation, the production answer, before building the check.
 4. **Meanwhile, Track 1:** first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix
-   test-first. Then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`,
-   with Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's
-   pipeline set.
+   test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come first, since the format
+   choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`,
+   ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6),
+   gamepads (W3), and the triangle's pipeline set.
+
+**Every recommendation is the production answer,** or says plainly that it is a stopgap and what replaces it.
 
 - **kama:** this machine's binary reports `0.9.876+g546dd54e`. kama's `dev` is at `1a969a1e` (0.9.876, KR-283 step 2),
   pushed once kama's gate passes. Never rebuild kama or edit `../kama`; check `--version` before quoting one.
@@ -111,7 +124,8 @@ here), committed with what it measured.
 **Track 2, the engine's core** (`engine/`, the `kyoten` package).
 
 4. **The frame core** (KYR-6): Input, Update, Constraints and Output; the fixed-step clock; the `Time` world component;
-   serial. The world hash and the input log come with slice B.
+   serial; the root `tools/test.sh` and `engine/tests/` first. All decided (frame-phases § Decided, step 4 questions 1
+   to 4, 2026-11-08). The world hash and the input log come with slice B.
 5. **The component model and the generator** (KYR-7): records read strictly from JSON; the generated world, tables and
    `Actions`; `Transform`; and the generated `run` (target-platforms question 2). Generated files are never committed.
    **KY-28 bites here:** until kama's KR-338, `kama check` fails on a fresh clone whose sources import generated code,
@@ -137,34 +151,19 @@ here), committed with what it measured.
 - **Answered on 2026-11-07:** the generator is written in kama, a `kyoten` executable under `tools/` (components.md
   § Decided); and the reference machines are the owner's Steam Deck, Windows mini PC, Mac Mini, a mid-range laptop
   and Quest 3 (examples.md § Decided), each named beside the first numbers measured on it.
-- **Step 4: the frame core's four questions,** asked one at a time from 2026-11-07, each recorded in
-  [design/frame-phases.md](design/frame-phases.md) § Decided. **1, where the frame tier lives:** decided on
-  2026-11-08, each tier a module and the frame tier `kyoten::frame`. **2, `Time`'s shape:** decided on 2026-11-08,
-  `float32 dt` and `int64 step`, the base clock's index, with each processor getting its own rate's `dt`. **3, the
-  clock:** decided on 2026-11-08, exact in integer nanoseconds, a cap of 5 with discards counted, and pause, slow
-  motion, fast forward and single stepping by scaling real time. *Recommended* for the one left, the production
-  answer, for the owner to decide:
-  4. **Step 4's scope, built test-first, with everything injected** (the owner's rules of 2026-11-08):
-     - **The suite comes first.** `engine/tests/` is one test program, as kama's packages have, and `tools/test.sh`
-       at the root runs the whole suite: `kama check` on the engine and on each example, the engine's tests
-       natively (debug and release) and on wasm under node, and each example's run. Each frame-core test is written,
-       and seen to fail, before the code it tests.
-     - **What step 4 builds:**
-       - the `World` contract's four phase calls, each taking `const ref Time`;
-       - the clock (question 3), which reads no clock of its own: the caller hands it each frame's nanoseconds;
-       - a serial driver with two entry points: `frame`, which asks the clock what is owed, runs Input, Update and
-         Constraints once per owed step and Output once; and `step`, which runs one step with no clock, as a replay
-         and a test do. It takes the world and the clock as parameters and is generic over `World`, so each phase
-         call is direct (SPEC: a generic bounded by a contract calls each instance directly);
-       - `"reproducible-float": true` in the engine's manifest, with musl's notice.
-     - **The tests:** the phase order; Input, Update and Constraints once per owed step and Output once a frame;
-       exact step counts from fed nanoseconds; the cap and its discard count; pause, slow motion, fast forward and a
-       single step; time running backwards; and `dt` and `step` for each rate. They run against a hand-written
-       world.
-     - **Left to their own steps:** rate gating and Constraints' iterations live in the generated passes (step 5),
-       so the frame core only orders the phases. The loop-owning `run` comes at step 7, on `std::app`'s `App`.
-       Input's hand-off is an empty call until step 8. Waits, the RNG world component and the `PARALLEL` flag come
-       when something first needs them, each with its own tests then.
+- **Answered on 2026-11-08, step 4's four questions** ([design/frame-phases.md](design/frame-phases.md) § Decided):
+  1. **Where the frame tier lives:** each tier is a module, and the frame tier is `kyoten::frame`; a game imports
+     `kyoten::frame::Time` and `kyoten::world::Transform`, since kama has no re-exports.
+  2. **`Time`:** `float32 dt` and `int64 step`, the base clock's index; each processor gets its own rate's `dt`, and
+     there is no elapsed-seconds float.
+  3. **The clock:** exact in integer nanoseconds, at most 5 owed steps a frame with the discards counted, and pause,
+     slow motion, fast forward and single stepping by scaling real time, so a step's `dt` never changes.
+  4. **What step 4 builds:** the suite first (`tools/test.sh`, `engine/tests/`); then the `World` contract, the clock
+     and a serial driver (`frame` and `step`) generic over `World`, with the world and the clock injected; and
+     `reproducible-float` with musl's notice. Rate gating, `run`, Input's hand-off, waits, the RNG and `PARALLEL`
+     wait for their own steps.
+- **Step 6: the simulation-files rule and `importsOnly`** (KYR-53), asked when step 4 has given the engine its second
+  module.
 - **Step 8: the action kinds.** The owner: "Button and Axis are ok to start I think... but I would prefer something
   maybe more general? If you have any suggestions." *Suggested* (2026-11-07), named for the value a processor reads
   rather than for a device, so one kind serves a key, a stick, a touch, a hand in VR, a UI button and an agent:

@@ -1,8 +1,8 @@
 # The frame: Input, Update, Constraints, Output
 
 **Status:** decided in the walk-through (KYR-1). All ten questions were decided on 2026-11-04 (see *Decided*). The first
-slice's step 4 (KYR-6) asks four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)): questions 1 to 3 were
-decided on 2026-11-08, and question 4 is open. The draft
+slice's step 4 (KYR-6) asked four more as it is built ([../FIRST-SLICE.md](../FIRST-SLICE.md)), all decided on
+2026-11-08. The draft
 they were brought from is kept, superseded, in *A draft for the walk-through* (2026-11-04). *Reworded 2026-11-05 to
 the vocabulary of [components.md](components.md) question 3: a "system" is a function over components with the record
 that schedules it (this doc first said "subsystem"), and render, audio or net is an "engine module". Quotes keep the
@@ -819,3 +819,29 @@ run can both hold.
     checks exact counts, the cap, the discards, pause, scale and a backwards step.
   - **Considered:** FFD's clock as it is (`float64` seconds, an `isize` tick); a scale applied to `dt`, which would
     change the simulation with the scale.
+- **2026-11-08, the owner: what step 4 builds, test-first, with the world and the clock injected (step 4, question 4
+  of 4).**
+  - **The owner:** "sounds good."
+  - **The suite comes first** (the owner's rule of 2026-11-08, test-driven development). `engine/tests/` is one test
+    program, as kama's packages have, and `tools/test.sh` at the root runs the whole suite: `kama check` on the engine
+    and on each example, the engine's tests natively (debug and release) and on wasm under node, and each example's
+    run. Each frame-core test is written, and seen to fail, before the code it tests.
+  - **What step 4 builds,** in `kyoten::frame` (question 1):
+    - the `World` contract's four phase calls, `input`, `update`, `constraints` and `output`, each taking
+      `const ref Time`;
+    - the clock (question 3), which reads no clock of its own: the caller hands it each frame's nanoseconds;
+    - a serial driver with two entry points. `frame` asks the clock what is owed, runs Input, Update and Constraints
+      once per owed step, then Output once. `step` runs one step with no clock, as a replay and a test do. Both take
+      the world and the clock as parameters (the owner's rule of 2026-11-08, dependency injection), and the driver is
+      generic over `World`, so each phase call is direct: kama's SPEC, "a generic bounded by a contract calls each
+      instance directly";
+    - `"reproducible-float": true` in the engine's manifest, with musl's notice.
+  - **The tests,** against a hand-written world: the phase order; Input, Update and Constraints once per owed step and
+    Output once a frame; exact step counts from fed nanoseconds; the cap and its discard count; pause, slow motion,
+    fast forward and a single step; time running backwards; and `dt` and `step` for each rate.
+  - **Left to their own steps, each with its tests then:** rate gating and Constraints' iterations in the generated
+    passes (step 5), so the frame core only orders the phases; the loop-owning `run` at step 7, on `std::app`'s `App`;
+    Input's hand-off, an empty call until step 8; waits, the RNG world component and the `PARALLEL` flag, when
+    something first needs them.
+  - **Considered:** the frame core with `run` in it now, which needs the platform seam (step 7); and a driver that
+    calls the world through a contract value, a dynamic call per phase where a generic is direct.
