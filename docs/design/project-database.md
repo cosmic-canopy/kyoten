@@ -343,3 +343,35 @@ least prior art in the peers, and the one most worth getting right before code.
   - **Built on, 2026-11-09** (components § Decided, the loader's four questions): the loader is a new engine module,
     `kyoten::content`, outside the simulation's fence, with `RecordSource` shaped for a pack fetched on the web to fit
     behind it; and a game whose manifest does not preload its `content/` is refused, naming the line to add.
+- **2026-11-09, the owner: `std::asset` considered, and `preloadFiles` kept for development** (the loader's question 3,
+  asked again after a probe). kama 0.9.882 added `std::asset`, which no kyoten doc had considered: the files a program
+  ships, read by name on every host. Its manifest key is `"assets": "<dir>"`, and on Android it reads from the APK
+  through the NDK's asset manager. The owner asked whether it was a good general feature and what each choice gave
+  up. The answer: it is the right tool for shipped, read-only files, and not for development. Asked with
+  `preloadFiles` recommended, and answered as recommended.
+  - **Probed on kyoten's pin, `0.9.899+gf32373ea`** (`.scratch/step55-asset`), natively and under node:
+    - **A dependency naming `"assets"` is refused at build:** *"only the project being built ships assets; copy the
+      files the package needs into the project's own `assets`"*. The engine's `engine/content/` can never arrive
+      that way, while a dependency's `preloadFiles` reaches every game (2026-11-08, above).
+    - **`kama run` sees an edited file and a newly added one,** since it builds each run and names the project's
+      folder in `KAMA_ASSET_DIR`.
+    - **A `kama build` binary copies the folder beside itself as `assets/`** and runs from any directory, but sees no
+      edit or new file until it is rebuilt.
+    - **A name in the wrong case is refused on every host,** as Android's asset manager refuses it.
+    - **`std::asset` has no listing,** though `std::fs` lists the shipped folder natively and `/assets` on the web.
+      On Android an asset is not a file, so only a list written at build would serve there.
+    - **On the web, `/assets` is preloaded,** in a `.data` the size of the files (131 bytes for three). As with
+      `preloadFiles`, node looks for it in the working directory.
+    - **With `assets` and `preloadFiles` both naming `content/`,** a build packs it twice (262 bytes).
+  - **Kept:** the folder source over the source tree, the development source. The generator writes its absolute path
+    natively and `/<game>/content` on the web, and a game with `content/` whose manifest does not preload it is
+    refused. The engine's content arrives the same way. A native development build reads its source tree, so it
+    cannot be moved; that is the development source's nature, not the shipped game's.
+  - **`std::asset` is the shipped source:** when a game ships, KYR-66's packs go in the game's `assets` and are read
+    through an asset-backed `RecordSource`. That is also the Quest's route, since the folder source cannot read an
+    APK. It is probed again when KYR-66 or the Quest leg comes.
+  - **Considered:** `"assets": "content"` as the manifest rule, with the folder source reading the shipped folder
+    (`KAMA_ASSET_DIR` under `kama run`, `assets/` beside the binary, `/assets` on the web). Native builds could then
+    be moved, and the game's content would already be in an APK. But the engine's content would still need
+    `preloadFiles` and an absolute path, two mechanisms for one stack, and a built binary would see no edit without a
+    rebuild.

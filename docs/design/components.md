@@ -2259,6 +2259,9 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      `"preloadFiles": ["content@/<game>/content"]`, as a manifest that lists no `generated` module is. **Why:**
      `kama.json` is the game's own file, and on wasm its content reaches the program only through that line
      (project-database § Decided, 2026-11-08). **Considered:** the tool writing the line into the game's manifest.
+     **Asked again the same day, after a probe of kama's `std::asset`, and kept** (project-database § Decided,
+     2026-11-09): a dependency cannot ship assets, so the engine's content could not come that way, and `std::asset`
+     becomes the shipped and Quest source behind `RecordSource`.
   4. **The tool checks the first scene's zone files at build time too:** a placement naming no prefab, a `values` key
      naming no component of its prefab's family, and a placement's `group` or a layer other than `main` (not built
      yet) are refused, so a typo is a build error. The loader refuses the same, in the same words, when it arrives
