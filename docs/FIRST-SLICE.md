@@ -18,9 +18,13 @@ the design doc it settles before building on it.
    green on the new one.
    - **kama took kyoten's open gaps on 2026-11-09** (`21bac390`): KR-357 (KY-41, KY-42), KR-358 (KY-46), KR-359
      (KY-43) and KR-360 (KY-39, KY-44), claimed by its session on this machine, and KR-361 (KY-45) on its roadmap.
-     None was committed by the third session's start (`../kama` still at `64c7e2d2`). When they are committed, bump
-     the pin to them, run each gap's repro on the new binary, remove what is fixed (`docs/KAMA_GAPS.md`), and take
-     what each frees, test-first:
+     None was committed by the third session's start (`../kama` still at `64c7e2d2`). By its end kama had rebased
+     its `dev`, so `21bac390` is now `e9ce33af` and `64c7e2d2` is `be4ee00a` (the pin's `2159ce21` is untouched), and
+     had committed 0.9.892 (a sub-`int` operation beside an unsuffixed literal takes the operand's type, so
+     `(a + 100) / 2ui8` wraps) and **KR-357 at `1ff7c096` (0.9.893)**; KR-358 and KR-360 were in its working tree,
+     uncommitted. **Start the next session by bumping the pin** to kama's newest commit, never its working tree. Run
+     each gap's repro on the new binary, remove what is fixed (`docs/KAMA_GAPS.md`), and take what each frees,
+     test-first:
      - **KR-360:** read each parameter's full path from the query and delete `tools/kyoten/src/imports.kama`, the
        owner's stopgap (components § Decided, 2026-11-09, step 5.4's question 1); read the `default ctor` mark and
        delete `ctorIsDefault` in `tools/kyoten/src/index.kama`, step 5.5's stopgap (question 4), raising
@@ -30,7 +34,8 @@ the design doc it settles before building on it.
      - **KR-357:** `ChunkSize::rowsFor` counts in `isize`, kama's count type.
      - **KR-359:** a records file with a key written twice is refused; add a case to the tool's refusal fixtures.
      - **KR-361,** when it lands: one query answers for the dependencies, and the tool's per-dependency cache goes.
-   - **KY-47** (filed at step 5.4, a bounded list's `isize` length) is new to kama; the owner relays it.
+   - **KY-47** (filed at step 5.4, a bounded list's `isize` length) and **KY-48** (filed at step 5.5: no reader over
+     a parsed `JsonValue`, so the loader re-reads each subtree) are new to kama; the owner relays them.
 2. **Continue step 5** (KYR-7, the component model and the generator) at the loader, step 5.5's last part. Its seven
    questions were answered on 2026-11-08, 5.3's four, 5.4's two and 5.5's four on 2026-11-09 (§ Questions the owner
    answers). Each part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught,
@@ -66,16 +71,24 @@ the design doc it settles before building on it.
       until KR-360 (KY-44); and each field a requirement added says so in `prefabs.kama`. A module `static` in the
       game's package is refused by its file and line. Details in [design/components.md](design/components.md)
       § Decided, the built entry of 2026-11-09 for step 5.5.
-   6. **The loader, next.** **Start by** probing and bringing its questions to the owner, with recommendations, before
-      any code: `RecordSource`'s contract and its two implementations (a folder natively, kama's `preloadFiles` on
-      wasm); the generated loader's name and place, and what calls it before step 7's `run`; how a zone's placements
-      and a placement's `values` reach `create_<family>` through `Prefabs`, each component's record laid over its
-      `default ctor`, or read whole when it has none (`TypeEntry.electsDefault()` already knows which); and what
-      `engine/content/` holds now. A zone's placements and the prefab values become rows at start, into the world's
-      `create_<family>`, with the engine's default records in `engine/content/` (declared in the engine's
-      `preloadFiles` for wasm). Under node, run a wasm program from its build folder, where emscripten looks for the
-      `.data` file. Step 5.5's question 1 gets its own test here: a listed required component keeps the prefab's
-      values.
+   6. **The loader, next: build it.** Its four questions were answered on 2026-11-09 (components § Decided, the
+      loader's four questions; probe in `.scratch/step55-loader`), so the next session starts with its tests.
+      - **`kyoten::content`,** a new engine module outside the simulation's fence: the `RecordSource` contract, shaped
+        so a pack fetched on the web fits behind it later (the loader is handed sources already open); the folder
+        source; and the layer stack. `engine/content/` waits for its first record (step 7's window).
+      - **The generated part,** in the root module's `src/<game>.generated.kama`, where step 7's `run` will call it:
+        each content file's prefabs read as `JsonValue` trees, each component's subtree laid over its `default ctor`
+        with `mergeFrom` through the strict reader, in layer order (engine content, game content, base prefab,
+        variant, a placement's `values`), and read whole when the type elects no default (`TypeEntry.electsDefault()`
+        knows which). A refusal names the file, the prefab and the component. The re-serialize of each subtree is one
+        function, KY-48's stopgap.
+      - **The first scene's zone placements become rows** through `create_<family>`, after `Prefabs` is filled.
+      - **The tool, at build time:** a game with `content/` whose manifest has no
+        `"preloadFiles": ["content@/<game>/content"]` is refused, naming the line; and the first scene's zone files
+        are checked: a placement naming no prefab, a `values` key naming no component of its family, and a `group` or
+        a layer other than `main` (not built yet) are refused. The loader refuses the same when it arrives later.
+      - Under node, run a wasm program from its build folder, where emscripten looks for the `.data` file. Step 5.5's
+        question 1 gets its own test here: a listed required component keeps the prefab's values.
    7. **Step 6, KYR-53's check,** reads the manifests and the code records.
    - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
      `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
@@ -142,6 +155,8 @@ the design doc it settles before building on it.
     not bumped.
   - **Filed at step 5.4:** KY-47 (an `InlineDynamicArray`'s `isize` length makes a component holding a bounded list a
     different size natively and on wasm, so its chunk's row count can differ).
+  - **Filed at step 5.5:** KY-48 (no `Deserializer` over a parsed `JsonValue`, so a record held as a tree is laid
+    over a value by writing its subtree back to text and reading it again).
   - **`../kama` at the session's end** (2026-11-09) was at `64c7e2d2`: 0.9.888 (a wasm program that spawns compiles its
     `csources` with `-pthread`), 0.9.889 (`parallel_for` on kama's job pool, KR-3 step 2), the roadmap rows above and
     KY-38's fix. kyoten uses neither feature yet, and the fixes it waits for are not committed, so the pin stays at
@@ -328,6 +343,14 @@ here), committed with what it measured.
   2. **A variant that drops a component its others still require is refused,** naming what requires it.
   3. **A requirement names only the component,** never values; a prefab that wants other values lists it.
   4. **The tool reads a ctor's source line for `default ctor` until kama's KR-360 marks it** (KY-44's stopgap).
+- **Answered on 2026-11-09, the loader's four questions** (components § Decided). The owner asked whether the first
+  two were the production answer before choosing them:
+  1. **The loader is `kyoten::content`,** a new engine module outside the simulation's fence, with the game-shaped part
+     generated into the root module beside `run`.
+  2. **A record is laid over a component as a subtree, with `mergeFrom`, in layer order;** re-serializing each subtree
+     is KY-48's stopgap, one function.
+  3. **A game whose manifest does not preload its `content/` is refused,** naming the line.
+  4. **The tool checks the first scene's zone files at build time too,** and the loader refuses the same later.
 - **Answered on 2026-11-08, KYR-66's name:** the asset manager is the **content delivery tool**, for now. The owner:
   "Content Delivery Tool is probably fine for now?" ([design/content-delivery-tool.md](design/content-delivery-tool.md)
   § Decided).

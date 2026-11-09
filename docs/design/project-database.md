@@ -340,3 +340,6 @@ least prior art in the peers, and the one most worth getting right before code.
   - **Considered:** the generator baking the content into the build as code. It needs no file system, but a record
     change would need a build, against question 8's boundary (what a record change can hot-reload is data), and the
     content would count as code on the web.
+  - **Built on, 2026-11-09** (components § Decided, the loader's four questions): the loader is a new engine module,
+    `kyoten::content`, outside the simulation's fence, with `RecordSource` shaped for a pack fetched on the web to fit
+    behind it; and a game whose manifest does not preload its `content/` is refused, naming the line to add.

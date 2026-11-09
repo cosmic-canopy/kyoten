@@ -54,8 +54,13 @@ re-exports, so a game names the tier in its imports: `kyoten::frame::Time`, `kyo
 
 **The record types are one module beside the world tier,** `kyoten::records` (*decided* 2026-11-08,
 [design/components.md](design/components.md) § Decided, step 5's questions): every record kind whose shape is the
-engine's, importing nothing, read by the world tier's loader and by the `kyoten` tool alike. The records that hold a
-game's own components (a prefab, a placement's values) are generated per game.
+engine's, importing nothing, read by the loader and by the `kyoten` tool alike. The records that hold a game's own
+components (a prefab, a placement's values) are generated per game.
+
+**The loader is its own module, `kyoten::content`,** outside the simulation's fence (*decided* 2026-11-09,
+[design/components.md](design/components.md) § Decided, the loader's four questions): the `RecordSource` contract,
+the folder source and the layer stack, which read files, as no simulation module may. The game-shaped part, prefab
+values and a zone's placements, is generated into the game's root module beside `run`, which calls it.
 
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
@@ -320,8 +325,10 @@ engine's own kama type, read from strict JSON (question 5). **A record lives wit
 describe code sit beside it, and content records sit under `content/`. The generator and the loader read every
 `*.records.json` under both. The engine's own default records are its content layer, in `engine/content/`, under
 each game's (project-database § Decided, 2026-11-08). In development a running game reads the folders, through a
-`RecordSource`: natively from disk, and on the web from the one `.data` file kama's `preloadFiles` packs them into.
-A shipped game reads packs.
+`RecordSource`: natively from disk, and on the web from the one `.data` file kama's `preloadFiles` packs them into,
+which a game's manifest declares (`"preloadFiles": ["content@/<game>/content"]`; the build refuses a game without
+it). A shipped game reads packs. Each record is laid over its component's `default ctor` in layer order: the
+engine's content, the game's, a base prefab, its variant, a placement's `values` (components § Decided, 2026-11-09).
 
 ```
 kyoten-towers/

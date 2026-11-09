@@ -2216,3 +2216,50 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
   - **Left to later rows:** requirements in a dependency's or the engine's component records (step 9, with render's
     `Mesh`); question 1's own test, a listed required component keeping the prefab's values, which needs the loader
     that reads values; and the query that answers where a component came from (KYR-25).
+- **2026-11-09, the owner: the loader's four questions** (step 5.5's last part, KYR-7), before it was built. Each was
+  probed on kama `0.9.886+g2159ce21` (`.scratch/step55-loader`) and asked with a recommendation. The owner asked
+  whether the first two were the production answer before choosing them; the reasons below are what was said.
+  1. **The loader is a new engine module, `kyoten::content`, outside the simulation's fence, with a generated part in
+     the game's root module.**
+     - `kyoten::content` holds the `RecordSource` contract, the folder source and the layer stack, and imports what
+       reading needs (`std::fs`, `std::serialization`, `std::collections`, `kyoten::records`). The game-shaped part,
+       which reads prefab values into `Prefabs` and a zone's placements into `create_<family>`, is generated into the
+       root module's `src/<game>.generated.kama`, where step 7's `run` will call it. Tests call it directly until then.
+     - **Why:** `kyoten::world` and a game's `generated` module are fenced from `std::fs` by the simulation rule
+       (ai-first-api § Decided, question 3, item 5), since reading files is not deterministic and the simulation is
+       only handed data; Bevy's asset server sits apart from its ECS for the same reason. The content stack is a part
+       of the engine of its own: folders now, then packs, mods, DLC, provenance and hot reload (project-database
+       § Decided), and the content delivery tool (KYR-66). The generated part exists because prefab and placement
+       values are each game's own types (step 5's question 4, 2026-11-08).
+     - **The folder source is the development one.** A shipped game reads packs, and on the web a pack is fetched,
+       which is asynchronous, so `RecordSource` is shaped for a pack to fit behind it: the loader is handed sources
+       already open and runs once they are ready.
+     - `engine/content/` starts when its first record does (step 7's window); the stack takes the engine's source
+       first once it exists. REFERENCE's "the world tier's loader" now names `kyoten::content`.
+     - **Considered:** building the loader with the platform seam at step 7, which leaves step 5 ending without one;
+       and widening `kyoten::world`'s fence, which breaks the simulation rule.
+  2. **A record is laid over a component as a subtree, with `mergeFrom`, in layer order.** Each content file's prefabs
+     are read as `JsonValue` trees, as the tool already reads them; each component's subtree is laid over the
+     component's `default ctor` through the strict reader, in order: the engine's content, the game's, a base prefab,
+     its variant, a placement's `values`. A component without a default is read whole. A refusal names the file, the
+     prefab and the component: "prefab `typo`, `Spin`: unknown field `rat`".
+     - *Probed,* natively and under node (its content arriving through `preloadFiles` in a 263-byte `.data`):
+       `"position": {"x": -20}` over `Transform.identity()` gave x -20 with scale and rotation kept; a variant's rate
+       4 over its base's 2 kept the base's limit; `Seat`, with no default, read whole, and `{}` was refused
+       (``missing field `player` ``); a typo was named (``unknown field `rat` ``), relative to its subtree, so the
+       loader prefixes where it is.
+     - **The stopgap is one function:** each subtree is serialized back to text and parsed again, because kama has no
+       reader over a parsed `JsonValue` (KY-48, filed the same day). It costs a second parse at load, never in a step;
+       KYR-24 measures load times. The owner: "option 1 is the ideal and production grade but will need to be
+       unblocked to be optimal by the kama gap".
+     - **Considered:** a generated record type per family, read straight from the text. A prefab's family must be
+       known before its value is read, and a mod's variant arrives without a build, so the file is read as a tree
+       first anyway.
+  3. **A game whose `content/` its manifest does not preload is refused, naming the line:**
+     `"preloadFiles": ["content@/<game>/content"]`, as a manifest that lists no `generated` module is. **Why:**
+     `kama.json` is the game's own file, and on wasm its content reaches the program only through that line
+     (project-database § Decided, 2026-11-08). **Considered:** the tool writing the line into the game's manifest.
+  4. **The tool checks the first scene's zone files at build time too:** a placement naming no prefab, a `values` key
+     naming no component of its prefab's family, and a placement's `group` or a layer other than `main` (not built
+     yet) are refused, so a typo is a build error. The loader refuses the same, in the same words, when it arrives
+     later, as a mod's would. **Considered:** checking scenes only when they load, at run time.
