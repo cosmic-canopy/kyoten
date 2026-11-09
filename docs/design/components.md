@@ -2169,3 +2169,50 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     type holds no static storage), so each `static` entry is a module `static`. The tool refuses each one in the
     game's package, its root module included, naming its file and line and pointing to a world component (the
     decision of 2026-11-07). A dependency is not checked.
+- **2026-11-09, built: required components and the module `static` refusal** (step 5.5's first part, with the four
+  questions above), on kama `0.9.886+g2159ce21`, test-first (`dc785f3`).
+  - **The module `static` refusal:** the game's `--search ""` answer, which the tool already ran, keeps each
+    `"static"` entry with its file and line, and `kyoten generate` refuses each one, at `src/bad/counter.kama:2`:
+    "module `static` `hits` sits outside the world, where a save, a rollback or a replay does not restore it, and
+    each isolate holds its own copy: hold it in a world component, a component record with `"store": "World"`". No
+    query was added.
+  - **Required components** (`tools/kyoten/src/prefabs.kama`):
+    - Each component record's `requires` resolves as a prefab's key does, and is refused when it names no type, a
+      bare name two types share, anything but a `type value`, or a world component; a world component that requires
+      anything is refused, since no entity holds it.
+    - A prefab's listed components (its base's, with its own added and its `null`s dropped) are closed over the
+      requirements, breadth first, each added once, so a circle ends. Families compare the closed sets.
+    - Refused, naming the prefab and what requires it: a `null` that drops a component a remaining one requires, and a
+      component a requirement adds whose type elects no `default ctor`, with the fix (list it, with its values).
+    - In `prefabs.kama`, each field a requirement added says ``// Required by `<path>`.``, the visible mapping. The
+      tables and passes take a family's components as before, so a processor runs on a family that has them only by
+      requirement.
+  - **The `default ctor`, read from its line** (`ctorIsDefault` in `tools/kyoten/src/index.kama`, KY-44's stopgap):
+    the same answer's `"ctor"` entries give each ctor's file, line and column, and the two words ahead of its name
+    must be `default ctor`. Each type's flag is cached with a dependency's answer, which now carries a `format`
+    (`cacheFormat()`, 1): an answer of another format is asked again, so a cache written before is never read as if
+    it knew which ctor is the default.
+  - **Tested** by `tools/kyoten/tests/`:
+    - `requires`, a new fixture: `Wheel` requires `Axle`, which requires the engine's `Transform`; `Hub` requires
+      `Axle` and `mill` lists it with values; the variant `oiled` lists only what `cart` already requires and stays in
+      its family; `Driver` requires `Actions`, which has no `default ctor`, and `carter` lists it; `Left` and `Right`
+      require each other. `main` names every field of every family's prefab, and `grow`, reading the `Transform` a
+      cart has only by requirement, is seen to run on it.
+    - `components`: the seven refusals above. `processors`: the module `static`. `spin`: a cached answer of another
+      format is asked again.
+    - The case "required components wait for their part of step 5" went with the refusal it held, since the feature
+      is built.
+  - **Mutations caught,** each turning a case red: the closure not transitive, families compared by their listed
+    components, a requirement overwriting a listed component, the dropped-but-required refusal off, the no-default
+    refusal off, a requirement naming a world component taken, every ctor read as the default, none read as it, the
+    cache's format ignored, and the `static` refusal off.
+    - The format's case first passed with the check removed: the case before it leaves glow's cached hash stale, so
+      glow was asked again whatever its format said. It now caches glow afresh, and sees it cached, before it changes
+      the format.
+  - **Not measured:** kama's own session was building on this machine (`make`, `clang++`) when the timings were taken,
+    and `kama check` on `spin`, whose code had not changed, took 0.89 to 0.92 s against step 5.4's 0.67 s. `kyoten
+    generate` took 0.92 to 1.03 s on `spin` and 1.06 to 1.15 s on `requires` under that load. The tool asks kama
+    nothing new; the `default ctor` is read from files the query already named, one read a file.
+  - **Left to later rows:** requirements in a dependency's or the engine's component records (step 9, with render's
+    `Mesh`); question 1's own test, a listed required component keeping the prefab's values, which needs the loader
+    that reads values; and the query that answers where a component came from (KYR-25).

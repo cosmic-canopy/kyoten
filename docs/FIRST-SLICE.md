@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, end of the day's second session)
+## Where it stands (2026-11-09, end of the day's third session)
 
 **The next session starts here:**
 
@@ -18,21 +18,23 @@ the design doc it settles before building on it.
    green on the new one.
    - **kama took kyoten's open gaps on 2026-11-09** (`21bac390`): KR-357 (KY-41, KY-42), KR-358 (KY-46), KR-359
      (KY-43) and KR-360 (KY-39, KY-44), claimed by its session on this machine, and KR-361 (KY-45) on its roadmap.
-     When they are committed, bump the pin to them, run each gap's repro on the new binary, remove what is fixed
-     (`docs/KAMA_GAPS.md`), and take what each frees, test-first:
+     None was committed by the third session's start (`../kama` still at `64c7e2d2`). When they are committed, bump
+     the pin to them, run each gap's repro on the new binary, remove what is fixed (`docs/KAMA_GAPS.md`), and take
+     what each frees, test-first:
      - **KR-360:** read each parameter's full path from the query and delete `tools/kyoten/src/imports.kama`, the
-       owner's stopgap (components § Decided, 2026-11-09, step 5.4's question 1); and refuse a component that is not
-       exported, or that elects no `default ctor` and is missing from a prefab, by name, before kama's error in
-       generated code.
+       owner's stopgap (components § Decided, 2026-11-09, step 5.4's question 1); read the `default ctor` mark and
+       delete `ctorIsDefault` in `tools/kyoten/src/index.kama`, step 5.5's stopgap (question 4), raising
+       `cacheFormat()` if what is cached changes; and refuse a component that is not exported, by name, before kama's
+       error in generated code.
      - **KR-358:** `spin`'s `main` compares `CubePrefabId.fastCube() != CubePrefabId.default()` directly.
      - **KR-357:** `ChunkSize::rowsFor` counts in `isize`, kama's count type.
      - **KR-359:** a records file with a key written twice is refused; add a case to the tool's refusal fixtures.
      - **KR-361,** when it lands: one query answers for the dependencies, and the tool's per-dependency cache goes.
    - **KY-47** (filed at step 5.4, a bounded list's `isize` length) is new to kama; the owner relays it.
-2. **Continue step 5** (KYR-7, the component model and the generator) at 5.5. Its seven
-   questions were answered on 2026-11-08, 5.3's four and 5.4's two on 2026-11-09 (§ Questions the owner answers). Each
-   part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught, and a commit on
-   `main`.
+2. **Continue step 5** (KYR-7, the component model and the generator) at the loader, step 5.5's last part. Its seven
+   questions were answered on 2026-11-08, 5.3's four, 5.4's two and 5.5's four on 2026-11-09 (§ Questions the owner
+   answers). Each part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught,
+   and a commit on `main`.
    1. **`kyoten::world`:** built on 2026-11-08 (`bea9ce5`): `Transform` (a `ZoneCoord` and a `float32` offset, on
       `std::math`; `rotateY(by:)` about its own Y axis, renormalized; `offsetTo(other:, zoneSize:)`;
       `place(zone:, position:)`), the 8-byte `Handle`, and `ChunkSize::rowsFor(rowBytes:)`, run at compile time from
@@ -57,19 +59,24 @@ the design doc it settles before building on it.
       `spin` is stepped 60 times and each cube's rotation is the same bits as by hand, natively and under node; the
       `schedule` fixture runs 60, 30 and 50 Hz on a 300 Hz base through `frame`. Details in
       [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09 for step 5.4.
-   5. **The loader, next, starting with step 5's last two in-scope items:**
-      - **Required components:** a component's record `requires` others, which join every prefab that has it, filled
-        with their defaults; until then the tool refuses `requires` as not built yet. **Start with** whether a
-        required component a prefab already lists keeps the prefab's values (it should: a requirement adds, never
-        overwrites).
-      - **The module `static` refusal:** a module `static` in a game's package is refused, pointing to a world
-        component. **Start with** which kind `kama query --search ""` gives a module `static`, since the tool already
-        reads that answer.
-      - **The loader itself:** a zone's placements and the prefab values become rows at start, through
-        `RecordSource`, into the world's `create_<family>`, with the engine's default records in `engine/content/`
-        (declared in the engine's `preloadFiles` for wasm). Under node, run a wasm program from its build folder,
-        where emscripten looks for the `.data` file.
-   6. **Step 6, KYR-53's check,** reads the manifests and the code records.
+   5. **Required components and the module `static` refusal:** built on 2026-11-09 (`dc785f3`), with step 5.5's
+      four questions answered that session. A component record's `requires` joins every prefab that has it, through a
+      chain, without overwriting what a prefab lists; a variant may not drop what its other components require; a
+      required component without a `default ctor` must be listed, which the tool learns by reading the ctor's line
+      until KR-360 (KY-44); and each field a requirement added says so in `prefabs.kama`. A module `static` in the
+      game's package is refused by its file and line. Details in [design/components.md](design/components.md)
+      § Decided, the built entry of 2026-11-09 for step 5.5.
+   6. **The loader, next.** **Start by** probing and bringing its questions to the owner, with recommendations, before
+      any code: `RecordSource`'s contract and its two implementations (a folder natively, kama's `preloadFiles` on
+      wasm); the generated loader's name and place, and what calls it before step 7's `run`; how a zone's placements
+      and a placement's `values` reach `create_<family>` through `Prefabs`, each component's record laid over its
+      `default ctor`, or read whole when it has none (`TypeEntry.electsDefault()` already knows which); and what
+      `engine/content/` holds now. A zone's placements and the prefab values become rows at start, into the world's
+      `create_<family>`, with the engine's default records in `engine/content/` (declared in the engine's
+      `preloadFiles` for wasm). Under node, run a wasm program from its build folder, where emscripten looks for the
+      `.data` file. Step 5.5's question 1 gets its own test here: a listed required component keeps the prefab's
+      values.
+   7. **Step 6, KYR-53's check,** reads the manifests and the code records.
    - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
      `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
      `kyoten::input`; required components added with their defaults; the module `static` refusal; and the 32 KiB
@@ -110,6 +117,9 @@ the design doc it settles before building on it.
     `Lookup` in the engine, 15 cases, so the engine's tests are 114; and the tool's tables, passes and world, so its
     tests are 101 cases with the wasm legs, on the `spin`, `schedule` and `processors` fixtures. Its two questions
     were answered the same day (components § Decided, 2026-11-09).
+  - **Step 5.5's first part, required components and the module `static` refusal** (2026-11-09, `dc785f3`): the
+    tool alone, on a new `requires` fixture and refusals in `components` and `processors`, so its tests are 117 cases
+    with the wasm legs. Its four questions were answered the same session (components § Decided, 2026-11-09).
   - **KYR-66, the content delivery tool** (2026-11-08, `dea3db1`): its row and doc, twelve questions. Its name was
     question 1, answered the same day; the other eleven wait for KYR-66's turn, and nothing in the first slice needs
     them.
@@ -135,7 +145,7 @@ the design doc it settles before building on it.
   - **`../kama` at the session's end** (2026-11-09) was at `64c7e2d2`: 0.9.888 (a wasm program that spawns compiles its
     `csources` with `-pthread`), 0.9.889 (`parallel_for` on kama's job pool, KR-3 step 2), the roadmap rows above and
     KY-38's fix. kyoten uses neither feature yet, and the fixes it waits for are not committed, so the pin stays at
-    0.9.886 until they are.
+    0.9.886 until they are. It was still there, with a clean tree, at the third session's start.
   - **The rule:** kyoten builds with its own pin, `.kama-pin/`, made from a clean clone at `.kama-version`'s commit
     (the owner, 2026-11-08), because `../kama`'s binary is rebuilt as kama develops on this machine. Never rebuild
     or edit `../kama`, and check `--version` before quoting one.
@@ -144,9 +154,9 @@ the design doc it settles before building on it.
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08, and again twice on 2026-11-09),** as before on
+- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08, and again three times on 2026-11-09),** as before on
   `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
-  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 101 cases,
+  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 117 cases,
     `examples/games/fps` (it prints `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
   - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
