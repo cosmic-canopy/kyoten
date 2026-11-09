@@ -1,0 +1,8 @@
+{ "prefabs": {
+    "tower":  { "Health": {} },
+    "keep":   { "components::towers::Health": {}, "Turret": {} },
+    "gun":    { "Turet": {} },
+    "crate":  { "Ammo": {} },
+    "hero":   { "components::towers::Health": {}, "components::player::Health": {} },
+    "twice":  { "Turret": {}, "components::towers::Turret": {} },
+    "lost":   { "nowhere::Thing": {} } } }

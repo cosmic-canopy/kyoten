@@ -1,0 +1,101 @@
+// What every case is handed: the programs under test and where the fixtures are, and the helpers that run a program
+// and touch a fixture's files. Paths join with `/`, which every host takes.
+
+import { std::process::Command, std::process::Output, std::process::ExitStatus, std::io::IoError,
+         std::collections::DynamicArray, std::encoding::utf8::decodeLossy, std::fs::exists, std::fs::readText,
+         std::fs::writeText, std::fs::remove, std::fs::removeDirAll, std::fs::createDirAll, std::path::parent };
+
+export { Setup, Ran, has, read, write, erase, eraseDir };
+
+// One program's run: its exit status (-1 when it could not start) and what it printed, stdout then stderr.
+type resource Ran {
+    int64 status = -1;
+    string text = "";
+
+    public ctor make(int64 status, string text) { this.status = status; this.text = give text; }
+
+    public const fn int64 code() { return this.status; }
+    public const fn const ref string said() { return this.text; }
+    public const fn bool says(const ref string what) { return this.text.contains(substring: what); }
+}
+
+type resource Setup {
+    string kyotenPath = "";
+    string kamaPath = "";
+    string fixturesDir = "";
+    bool web = false;
+
+    public ctor make(string kyoten, string kama, string fixtures, bool wasm) {
+        this.kyotenPath = give kyoten;
+        this.kamaPath = give kama;
+        this.fixturesDir = give fixtures;
+        this.web = wasm;
+    }
+
+    public const fn const ref string kama() { return this.kamaPath; }
+    public const fn bool wasm() { return this.web; }
+
+    // A path inside the fixtures folder: `fixture(at: "spin/kama.json")`.
+    public const fn string fixture(const ref string at) { return this.fixturesDir + "/" + at; }
+
+    // `kyoten <command> <fixture>/kama.json --kama <kama> <more…>`.
+    public fn Ran kyoten(const ref string command, const ref string game, const ref DynamicArray<string> more) {
+        DynamicArray<string> argv = DynamicArray.empty();
+        argv.add(item: copy command);
+        argv.add(item: this.fixture(at: game + "/kama.json"));
+        argv.add(item: "--kama");
+        argv.add(item: copy this.kamaPath);
+        foreach (const ref string m in more.iterConst()) { argv.add(item: copy m); }
+        return run(program: this.kyotenPath, argv: argv);
+    }
+
+    // kama itself, for `pkg install`.
+    public fn Ran kamaRun(const ref DynamicArray<string> argv) { return run(program: this.kamaPath, argv: argv); }
+
+    // The tool with exactly these arguments, for a case that names its own `--kama`.
+    public fn Ran kyotenWith(const ref DynamicArray<string> argv) { return run(program: this.kyotenPath, argv: argv); }
+
+    // Any other program: `node`, for a web build.
+    public fn Ran runProgram(const ref string program, const ref DynamicArray<string> argv) {
+        return run(program: program, argv: argv);
+    }
+}
+
+unsafe fn Ran run(const ref string program, const ref DynamicArray<string> argv) {
+    Command c = Command.make(program: copy program);
+    foreach (const ref string a in argv.iterConst()) { c.arg(a: copy a); }
+    Result<Output, IoError> r = c.run();
+    match (r) {
+        case Ok(value: o): {
+            string printed = decodeLossy(bytes: o.stdout().view());
+            string err = decodeLossy(bytes: o.stderr().view());
+            int64 code = match (o.status()) { case Exited(code: x): cast<int64>(x); case _: -1; };
+            return Ran.make(status: code, text: printed + err);
+        }
+        case Err(error: e): { return Ran.make(status: -1, text: "could not start ${program}"); }
+    };
+}
+
+unsafe fn bool has(const ref string path) { return exists(path: path); }
+
+unsafe fn string read(const ref string path) {
+    Result<string, IoError> r = readText(path: path);
+    return match (give r) { case Ok(value: t): give t; case Err(error: e): ""; };
+}
+
+// Write a file, making its folder first.
+unsafe fn void write(const ref string path, const ref string text) {
+    match (parent(path: path)) {
+        case Some(value: dir): { Result<Unit, IoError> made = createDirAll(path: dir); }
+        case None: { }
+    };
+    Result<isize, IoError> r = writeText(path: path, text: text);
+}
+
+unsafe fn void erase(const ref string path) {
+    if (exists(path: path)) { Result<Unit, IoError> r = remove(path: path); }
+}
+
+unsafe fn void eraseDir(const ref string path) {
+    if (exists(path: path)) { Result<Unit, IoError> r = removeDirAll(path: path); }
+}

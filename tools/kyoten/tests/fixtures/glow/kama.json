@@ -1,0 +1,11 @@
+{
+  "name": "glow",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "library",
+  "kama": ">=0.9.886",
+  "description": "a fixture: a package of components that is not the engine, so the generator's dependency cache has two",
+  "modules": {
+    ".": { "visibility": "public", "importsOnly": [] }
+  }
+}

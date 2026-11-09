@@ -1,0 +1,2 @@
+{ "processors": { "turn": { "phase": "Update" } },
+  "actions":    { "faster": { "kind": "Digital" } } }

@@ -10,6 +10,8 @@
 #     and run under node;
 #   - the 32 KiB frame guard: tools/fixtures/frame-guard, a game with a 40 KB frame, refused on every target but
 #     Windows (natively off Windows, and on wasm), and built natively on Windows, where the guard is off;
+#   - the kyoten tool (tools/kyoten/, built as `kyoten`) and its tests, one program that runs it on the fixture games
+#     in tools/kyoten/tests/fixtures/, natively, with the spin fixture's web build run under node;
 #   - each example game that is cloned under examples/games/: `examples/games/fps` checked, then run natively and on
 #     wasm, its output held to "fps example, on kyoten"; `examples/games/vr` checked. A game that is not cloned is
 #     skipped, and says so.
@@ -101,6 +103,27 @@ if [ "$wasm" = 1 ]; then
     guard_build wasm refused --target WASM -o "$OUT/frame-guard/wasm/frameguard.js"
 else
     echo "skip the frame guard on wasm: no emcc or node on PATH"
+fi
+
+# The kyoten tool (components § Decided, step 5.3): built as `kyoten`, then its tests, one program that runs the tool
+# on the fixture games in tools/kyoten/tests/fixtures/, with the tool, the compiler and the fixtures handed to it. The
+# spin fixture's web build runs under node when emcc and node are there.
+TOOL=tools/kyoten
+step "the kyoten tool"
+"$KAMA" pkg install "$TOOL/kama.json" > /dev/null
+"$KAMA" check "$TOOL/kama.json" || failed=1
+"$KAMA" pkg install "$TOOL/tests/kama.json" > /dev/null
+"$KAMA" check "$TOOL/tests/kama.json" || failed=1
+tool_exe="$TOOL/out/kyoten$EXE"
+tool_tests="$TOOL/tests/out/kyotenclitests$EXE"
+if "$KAMA" build "$TOOL/kama.json" -o "$tool_exe" > "$OUT/build-tool.log" 2>&1 &&
+        "$KAMA" build "$TOOL/tests/kama.json" -o "$tool_tests" > "$OUT/build-tool-tests.log" 2>&1; then
+    web=""
+    if [ "$wasm" = 1 ]; then web="--wasm"; else echo "skip the spin fixture on wasm: no emcc or node on PATH"; fi
+    "$tool_tests" "$tool_exe" "$KAMA" "$TOOL/tests/fixtures" $web || failed=1
+else
+    tail -20 "$OUT/build-tool.log" "$OUT/build-tool-tests.log"
+    failed=1
 fi
 
 # An example's run: build it with the given flags, run it with the given runner, and hold its output to the line it

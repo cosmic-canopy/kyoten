@@ -1,0 +1,90 @@
+// The naming rule for names that become generated fields, methods and types (components § Decided, 2026-11-07, rule
+// 2): a lowerCamel ASCII identifier, not a word kama or C reserves, and not a member the generated type already has.
+// The build refuses any other and names the fix, so a record's typo never becomes a parse error in generated code.
+
+export { isIdentifier, suggestIdentifier, isReserved, typeCase, fieldCase, nameProblem };
+
+fn bool isLower(uint8 b) { return b >= 97ui8 && b <= 122ui8; }
+fn bool isUpper(uint8 b) { return b >= 65ui8 && b <= 90ui8; }
+fn bool isDigit(uint8 b) { return b >= 48ui8 && b <= 57ui8; }
+
+// A lower-case ASCII letter, then letters and digits.
+fn bool isIdentifier(const ref string s) {
+    if (s.isEmpty()) { return false; }
+    if (!isLower(b: s[0])) { return false; }
+    isize i = 1;
+    while (i < s.length()) {
+        uint8 b = s[i];
+        if (!isLower(b: b) && !isUpper(b: b) && !isDigit(b: b)) { return false; }
+        i = i + 1;
+    }
+    return true;
+}
+
+// The identifier a name meant: `fast-bullet`, `fast_bullet` and `Fast Bullet` all give `fastBullet`. Only ASCII letters
+// and digits are kept, so every cut falls on a character boundary. "" when nothing is left to suggest.
+fn string suggestIdentifier(const ref string s) {
+    string made = "";
+    bool upNext = false;
+    isize i = 0;
+    while (i < s.length()) {
+        uint8 b = s[i];
+        if (isLower(b: b) || isUpper(b: b) || isDigit(b: b)) {
+            string c = s.substring(start: i, end: i + 1);
+            if (made.isEmpty()) { made = c.toLower(); }
+            else if (upNext) { made = made + c.toUpper(); }
+            else { made = made + c; }
+            upNext = false;
+        } else {
+            upNext = true;
+        }
+        i = i + 1;
+    }
+    if (!isIdentifier(s: made)) { return ""; }
+    return made;
+}
+
+// kama's keywords (its SPEC.md § kama's keywords, all 90, the contextual six included, since a generated name may
+// stand where they are keywords), and C's, since kama reserves those too (its AGENTS.md). Read at kama 0.9.886.
+fn bool isReserved(const ref string s) {
+    string words = " abstract addr alignof as asm assert base bitcast bool borrow break case cast cchar char clong"
+        + " comptime const continue copy copyElements ctor culong debugAssert default do drop else enum export expose"
+        + " extends extern false file final float32 float64 fn fnptr for foreach friend give hardware if immutable"
+        + " implements import in int16 int32 int64 int8 isize match new null operator out override panic"
+        + " parallel_for parallel_spawn private protected public ref return scope sizeof slot spawn static"
+        + " string this true truncate try type uint16 uint32 uint64 uint8 unsafe usize virtual void when while"
+        + " auto double extern float goto inline int long register restrict short signed struct switch typedef"
+        + " union unsigned volatile alignas constexpr nullptr static_assert thread_local typeof typeof_unqual ";
+    return words.contains(substring: " " + s + " ");
+}
+
+// The generated type for a name: `cube` gives `Cube`, so `CubePrefab`.
+fn string typeCase(const ref string s) {
+    if (s.isEmpty()) { return ""; }
+    string first = s.substring(start: 0, end: 1);
+    string rest = s.substring(start: 1, end: s.length());
+    return first.toUpper() + rest;
+}
+
+// The field a type takes in a generated type: `Transform` gives `transform`.
+fn string fieldCase(const ref string s) {
+    if (s.isEmpty()) { return ""; }
+    string first = s.substring(start: 0, end: 1);
+    string rest = s.substring(start: 1, end: s.length());
+    return first.toLower() + rest;
+}
+
+// Why `name` cannot become a generated member, or "" when it can. `taken` lists the members the generated type already
+// has, space-separated with a space at each end (" player "), and `owner` names that type for the message.
+fn string nameProblem(const ref string name, const ref string taken, const ref string owner) {
+    if (!isIdentifier(s: name)) {
+        string fix = suggestIdentifier(s: name);
+        if (fix.isEmpty()) { return "`${name}` is not a lowerCamel identifier"; }
+        return "`${name}` is not a lowerCamel identifier: write `${fix}`";
+    }
+    if (isReserved(s: name)) { return "`${name}` is a reserved word in kama or C: choose another"; }
+    if (taken.contains(substring: " " + name + " ")) {
+        return "`${name}` is a member ${owner} has itself: choose another";
+    }
+    return "";
+}

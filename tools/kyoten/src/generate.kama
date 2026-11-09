@@ -1,0 +1,68 @@
+// `kyoten generate`, which `check`, `build` and `run` begin with, and `kyoten clean` (components § Decided, step 5's
+// two passes of 2026-11-08 and step 5.3's questions of 2026-11-09).
+//
+// 1. From the records alone: the manifest lists `generated`; every name a record makes into kama is an identifier,
+//    and unique; every variant's base is a prefab; every generated name there now carries the header.
+// 2. The first pass writes `Actions` whole and the prefab types' names, so the game's imports resolve.
+// 3. kama is asked which types the game and its dependencies declare, and each prefab's components resolve.
+// 4. The prefab types are written whole, and what this run did not write is deleted.
+//
+// A refusal at any step leaves every file as it was.
+
+import { core::println, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir, std::fs::removeDirAll,
+         Kama, Manifest, Refusals, Records, Index, Family, Kept, readRecords, buildIndex, resolveFamilies,
+         actionsKama, prefabsStub, prefabsKama, generatedFiles, checkHeaders, writeIfChanged, removeFile };
+
+export { generate, clean };
+
+unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
+    Refusals no = Refusals.make();
+    if (!game.lists(folder: "generated")) {
+        no.add(where: "kama.json", what: "its `modules` list no \"generated\", the folder kyoten writes the game's generated kama to: add \"generated\": { \"visibility\": \"internal\", \"importsOnly\": [ … ] }, listing the modules its prefabs' components come from");
+        no.print();
+        return false;
+    }
+    Records records = readRecords(game: game, no: no);
+    DynamicArray<string> before = generatedFiles(game: game);
+    checkHeaders(game: game, files: before, no: no);
+    if (no.any()) { no.print(); return false; }
+
+    string actionsFile = "src/generated/actions.kama";
+    string prefabsFile = "src/generated/prefabs.kama";
+    string actionsPath = game.root() + "/" + actionsFile;
+    string prefabsPath = game.root() + "/" + prefabsFile;
+    Kept keptActions = Kept.of(path: copy actionsPath);
+    Kept keptPrefabs = Kept.of(path: copy prefabsPath);
+    writeIfChanged(path: actionsPath, text: actionsKama(r: records));
+    writeIfChanged(path: prefabsPath, text: prefabsStub(r: records));
+
+    Index idx = buildIndex(kama: kama, game: game, no: no);
+    DynamicArray<Family> families = DynamicArray.empty();
+    if (!no.any()) { families = resolveFamilies(r: records, idx: idx, no: no); }
+    if (no.any()) {
+        keptPrefabs.restore();
+        keptActions.restore();
+        no.print();
+        return false;
+    }
+    writeIfChanged(path: prefabsPath, text: prefabsKama(game: game.name(), families: families));
+    foreach (const ref string f in before.iterConst()) {
+        if (f != actionsFile && f != prefabsFile) { removeFile(path: game.root() + "/" + f); }
+    }
+    println(s: "kyoten: generated ${actionsFile} and ${prefabsFile}");
+    return true;
+}
+
+// Remove every generated file, and the tool's cache, refusing first if any generated name lacks the header.
+unsafe fn bool clean(const ref Manifest game) {
+    Refusals no = Refusals.make();
+    DynamicArray<string> files = generatedFiles(game: game);
+    checkHeaders(game: game, files: files, no: no);
+    if (no.any()) { no.print(); return false; }
+    foreach (const ref string f in files.iterConst()) { removeFile(path: game.root() + "/" + f); }
+    Result<Unit, IoError> dir = removeDir(path: game.sourceDir() + "/generated");
+    Result<Unit, IoError> cache = removeDirAll(path: game.root() + "/out/kyoten");
+    isize n = files.length();
+    println(s: "kyoten: removed ${n} generated files");
+    return true;
+}

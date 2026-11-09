@@ -1,0 +1,2 @@
+export { B };
+type value B { public int32 n = 0; public default ctor make() { } }

@@ -1,0 +1,246 @@
+// What the first pass reads from records alone: each module's actions (its `*.records.json` beside its code), and the
+// prefabs, bindings and app in the content files at the root of `content/` and below it, outside `content/scenes/`,
+// whose files hold a scene's own record and its zones (REFERENCE.md § Records and their files).
+//
+// A prefab's components are the game's own types, so a content file's prefabs are read as JSON here, by their keys
+// alone; their values are the loader's to read (step 5.5). Every file is read strictly, so a misspelt key is named.
+
+import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::records::ActionKind,
+         kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::DynamicArray,
+         std::collections::SortedMap, std::io::IoError, std::memory::Owned, std::fs::readText,
+         std::serialization::text::json::JsonDeserializer, std::serialization::text::json::JsonValue,
+         Manifest, Refusals, filesUnder, dirOf, nameProblem };
+
+export { Records, PrefabDecl, readRecords };
+
+// Members the generated `Actions` has itself, which no action may take.
+fn string actionMembers() { return " player forPlayer serialize deserialize mergeFrom "; }
+// Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
+fn string prefabMembers() { return " make of index equals hash compareTo format copy serialize deserialize mergeFrom "; }
+
+// A content file, as the tool reads it: the engine's sections typed, and prefabs kept as JSON.
+@generate(Deserializable)
+type resource ContentFile {
+    @field(name: "app") Optional<AppRecord> appField = Optional::None;
+    @field(name: "bindings", default) SortedMap<string, BindingRecord> bindingsField = SortedMap.empty();
+    @field(name: "prefabs", default) SortedMap<string, JsonValue> prefabsField = SortedMap.empty();
+
+    public default ctor make() { }
+
+    public const fn bool hasApp() { return match (this.appField) { case Some(value: a): true; case None: false; }; }
+    public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
+    public const fn const ref SortedMap<string, JsonValue> prefabs() { return this.prefabsField; }
+}
+
+// One prefab as its record writes it: where it is, what it starts from, and its components' keys as written, those
+// with values and those set to `null`, which a variant drops.
+type resource PrefabDecl {
+    string file = "";
+    string origin = "";
+    DynamicArray<string> keys = DynamicArray.empty();
+    DynamicArray<string> nulls = DynamicArray.empty();
+
+    public ctor make(string file, string origin, DynamicArray<string> keys, DynamicArray<string> nulls) {
+        this.file = give file;
+        this.origin = give origin;
+        this.keys = give keys;
+        this.nulls = give nulls;
+    }
+
+    public const fn const ref string where() { return this.file; }
+    // The prefab it starts from, or "" for none.
+    public const fn const ref string from() { return this.origin; }
+    public const fn const ref DynamicArray<string> added() { return this.keys; }
+    public const fn const ref DynamicArray<string> dropped() { return this.nulls; }
+}
+
+type resource Records {
+    SortedMap<string, string> actionModules = SortedMap.empty();
+    SortedMap<string, string> actionFiles = SortedMap.empty();
+    SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
+    SortedMap<string, string> bindingFiles = SortedMap.empty();
+    string appFile = "";
+
+    friend readRecords[addAction, addContent, crossCheck];
+
+    public ctor make() { }
+
+    // Each action's declaring module, by name.
+    public const fn const ref SortedMap<string, string> actions() { return this.actionModules; }
+    public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
+    public const fn DynamicArray<string> prefabNames() { return this.prefabDecls.keys(); }
+
+    unsafe fn void addAction(const ref string name, const ref string module, const ref string file, ref Refusals no) {
+        if (this.actionModules.contains(key: name)) {
+            string otherModule = copy this.actionModules.getRef(key: name);
+            string otherFile = copy this.actionFiles.getRef(key: name);
+            no.add(where: file, what: "action `${name}` is declared by ${otherModule} (${otherFile}) and by ${module} (${file}): one name means one thing across the game, since `Actions` has one field per action");
+            return;
+        }
+        string problem = nameProblem(name: name, taken: actionMembers(), owner: "`Actions`");
+        if (!problem.isEmpty()) { no.add(where: file, what: "action " + problem); }
+        this.actionModules.put(key: copy name, value: copy module);
+        this.actionFiles.put(key: copy name, value: copy file);
+    }
+
+    unsafe fn void addContent(const ref ContentFile c, const ref string file, ref Refusals no) {
+        if (c.hasApp()) {
+            if (!this.appFile.isEmpty()) {
+                no.add(where: file, what: "the `app` record is in ${this.appFile} too: one content layer holds one");
+            }
+            this.appFile = copy file;
+        }
+        DynamicArray<string> bound = c.bindings().keys();
+        foreach (const ref string b in bound.iterConst()) {
+            if (this.bindingFiles.contains(key: b)) {
+                string other = copy this.bindingFiles.getRef(key: b);
+                no.add(where: file, what: "the bindings of `${b}` are in ${other} too: one content layer holds a key once");
+            } else {
+                this.bindingFiles.put(key: copy b, value: copy file);
+            }
+        }
+        DynamicArray<string> names = c.prefabs().keys();
+        foreach (const ref string p in names.iterConst()) {
+            if (this.prefabDecls.contains(key: p)) {
+                string other = copy this.prefabDecls.getRef(key: p).where();
+                no.add(where: file, what: "prefab `${p}` is in ${other} too: one content layer holds a key once");
+                continue;
+            }
+            string problem = nameProblem(name: p, taken: prefabMembers(), owner: "a prefab's generated id or `Prefabs`");
+            if (!problem.isEmpty()) { no.add(where: file, what: "prefab " + problem); }
+            this.prefabDecls.put(key: copy p, value: declare(name: p, value: c.prefabs().getRef(key: p), file: file, no: no));
+        }
+    }
+
+    // Each binding names an action, and each variant a prefab, with no circle of variants.
+    unsafe fn void crossCheck(ref Refusals no) {
+        DynamicArray<string> bound = this.bindingFiles.keys();
+        foreach (const ref string b in bound.iterConst()) {
+            if (!this.actionModules.contains(key: b)) {
+                string file = copy this.bindingFiles.getRef(key: b);
+                no.add(where: file, what: "the bindings of `${b}` name no action: an action is declared in a module's records file");
+            }
+        }
+        DynamicArray<string> names = this.prefabDecls.keys();
+        foreach (const ref string p in names.iterConst()) {
+            string origin = copy this.prefabDecls.getRef(key: p).from();
+            if (!origin.isEmpty() && !this.prefabDecls.contains(key: origin)) {
+                string file = copy this.prefabDecls.getRef(key: p).where();
+                no.add(where: file, what: "prefab `${p}` starts from `${origin}`, which is no prefab");
+            }
+        }
+        foreach (const ref string p in names.iterConst()) { this.circleFrom(start: p, no: no); }
+    }
+
+    // A circle of variants is named once, from the first of its prefabs by name.
+    unsafe fn void circleFrom(const ref string start, ref Refusals no) {
+        DynamicArray<string> path = DynamicArray.empty();
+        string at = copy start;
+        while (!at.isEmpty() && this.prefabDecls.contains(key: at)) {
+            if (path.contains(item: at)) {
+                if (at != start) { return; }
+                SortedMap<string, bool> members = SortedMap.empty();
+                foreach (const ref string s in path.iterConst()) { members.put(key: copy s, value: true); }
+                Optional<string> first = members.first();
+                bool fromFirst = match (first) { case Some(value: f): f == start; case None: false; };
+                if (!fromFirst) { return; }
+                string shown = "";
+                foreach (const ref string s in path.iterConst()) { shown = shown + s + " -> "; }
+                shown = shown + at;
+                string file = copy this.prefabDecls.getRef(key: start).where();
+                no.add(where: file, what: "variants start from each other, so none has a base: ${shown}");
+                return;
+            }
+            path.add(item: copy at);
+            at = copy this.prefabDecls.getRef(key: at).from();
+        }
+    }
+}
+
+// A prefab's record, read by its keys: `from`, `layer` and `note` are the prefab's own fields, and every other key
+// names a component, whose value is an object, or `null` to drop it from a variant.
+unsafe fn PrefabDecl declare(const ref string name, const ref JsonValue value, const ref string file, ref Refusals no) {
+    string origin = "";
+    DynamicArray<string> keys = DynamicArray.empty();
+    DynamicArray<string> nulls = DynamicArray.empty();
+    match (value) {
+        case Object(members: m): {
+            foreach (string k in m) {
+                if (k == "layer" || k == "note") { continue; }
+                match (m.getRef(key: k)) {
+                    case String(value: s): {
+                        if (k == "from") { origin = copy s; }
+                        else { no.add(where: file, what: "prefab `${name}`: the value of `${k}` is no object of a component's fields"); }
+                    }
+                    case Object(members: fields): {
+                        if (k == "from") { no.add(where: file, what: "prefab `${name}`: `from` names a prefab, as a string"); }
+                        else { keys.add(item: copy k); }
+                    }
+                    case Null: { nulls.add(item: copy k); }
+                    case _: { no.add(where: file, what: "prefab `${name}`: the value of `${k}` is no object of a component's fields"); }
+                };
+            }
+        }
+        case _: { no.add(where: file, what: "prefab `${name}` is no object: a prefab holds its components by name"); }
+    };
+    return PrefabDecl.make(file: copy file, origin: give origin, keys: give keys, nulls: give nulls);
+}
+
+// Read every module's records and every content file of the game, refusing what the records alone show is wrong.
+unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
+    Records r = Records.make();
+    string src = game.sourceDir();
+    DynamicArray<string> sources = filesUnder(dir: src);
+    foreach (const ref string rel in sources.iterConst()) {
+        if (!rel.endsWith(suffix: ".records.json")) { continue; }
+        string file = "src/" + rel;
+        string module = game.moduleOf(folder: dirOf(path: rel));
+        ModuleRecord m = ModuleRecord.make();
+        string why = mergeFile(path: game.root() + "/" + file, into: m);
+        if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
+        DynamicArray<string> actions = m.actions().keys();
+        foreach (const ref string a in actions.iterConst()) {
+            ActionKind kind = m.actions().getRef(key: a).kind();
+            match (kind) {
+                case Digital: { r.addAction(name: a, module: module, file: file, no: no); }
+                case _: { no.add(where: file, what: "action `${a}`: only `Digital` actions are built so far; the other kinds come with KYR-54 (step 8)"); }
+            };
+        }
+    }
+    string content = game.root() + "/content";
+    DynamicArray<string> contents = filesUnder(dir: content);
+    foreach (const ref string rel in contents.iterConst()) {
+        if (!rel.endsWith(suffix: ".records.json") || rel.startsWith(prefix: "scenes/")) { continue; }
+        string file = "content/" + rel;
+        ContentFile c = ContentFile.make();
+        string why = mergeContent(path: game.root() + "/" + file, into: c);
+        if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
+        r.addContent(c: c, file: file, no: no);
+    }
+    r.crossCheck(no: no);
+    return r;
+}
+
+unsafe fn string mergeFile(const ref string path, ref ModuleRecord into) {
+    Result<string, IoError> text = readText(path: path);
+    match (give text) {
+        case Ok(value: t): {
+            JsonDeserializer reader = JsonDeserializer.strict(src: give t);
+            Result<Unit, Owned<Error>> res = into.mergeFrom(r: reader);
+            return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+        }
+        case Err(error: e): { return "cannot be read"; }
+    };
+}
+
+unsafe fn string mergeContent(const ref string path, ref ContentFile into) {
+    Result<string, IoError> text = readText(path: path);
+    match (give text) {
+        case Ok(value: t): {
+            JsonDeserializer reader = JsonDeserializer.strict(src: give t);
+            Result<Unit, Owned<Error>> res = into.mergeFrom(r: reader);
+            return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+        }
+        case Err(error: e): { return "cannot be read"; }
+    };
+}

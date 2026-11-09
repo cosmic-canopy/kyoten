@@ -1,0 +1,75 @@
+// The kama compiler a run uses, and the two ways the tool runs it: captured, for `kama query`, and with the tool's own
+// streams, for `check`, `build` and `run`, whose output is the user's.
+
+import { core::eprintln, core::env::envOr, std::process::Command, std::process::Output, std::process::Process,
+         std::process::ExitStatus, std::io::IoError, std::collections::DynamicArray, std::encoding::utf8::decodeLossy,
+         std::fs::exists };
+
+export { Kama, findKama };
+
+type resource Kama {
+    string path = "";
+
+    public ctor make(string path) { this.path = give path; }
+
+    public const fn const ref string program() { return this.path; }
+
+    // Run kama and keep what it prints: its stdout when it exits 0, else none, with `why`: what it printed, or why it
+    // did not start.
+    public unsafe fn Optional<string> capture(const ref DynamicArray<string> argv, ref string why) {
+        Command c = Command.make(program: copy this.path);
+        foreach (const ref string a in argv.iterConst()) { c.arg(a: copy a); }
+        Result<Output, IoError> ran = c.run();
+        match (ran) {
+            case Ok(value: o): {
+                string printed = decodeLossy(bytes: o.stdout().view());
+                if (o.status().success()) { return Optional::Some(value: give printed); }
+                string err = decodeLossy(bytes: o.stderr().view());
+                why = printed + err;
+                return Optional::None;
+            }
+            case Err(error: e): { why = this.notStarted(); return Optional::None; }
+        };
+    }
+
+    // Run kama with the tool's own streams, and give its exit status (1 when it did not start).
+    public unsafe fn int64 pass(const ref DynamicArray<string> argv) {
+        Command c = Command.make(program: copy this.path);
+        foreach (const ref string a in argv.iterConst()) { c.arg(a: copy a); }
+        Result<Process, IoError> started = c.start();
+        match (give started) {
+            case Ok(value: p): {
+                Result<ExitStatus, IoError> waited = p.wait();
+                match (waited) {
+                    case Ok(value: st): { return match (st) { case Exited(code: x): cast<int64>(x); case _: 1; }; }
+                    case Err(error: e): { return 1; }
+                };
+            }
+            case Err(error: e): {
+                string why = this.notStarted();
+                eprintln(s: "kyoten: ${why}");
+                return 1;
+            }
+        };
+    }
+
+    const fn string notStarted() {
+        if (this.path == "kama") { return "could not run `kama`: put kama on PATH, or name it with --kama or $KAMA"; }
+        return "could not run kama at `${this.path}`";
+    }
+}
+
+// The compiler named by --kama, else by $KAMA, else `kama` on PATH, where kama's toolchain shim applies the project's
+// pin (components § Decided, 2026-11-09, question 4). A named one that is missing is said so, not looked for elsewhere.
+unsafe fn Optional<Kama> findKama(const ref string flag, ref string why) {
+    if (!flag.isEmpty()) {
+        if (!exists(path: flag)) { why = "no kama at `${flag}`, which --kama names"; return Optional::None; }
+        return Optional::Some(value: Kama.make(path: copy flag));
+    }
+    string fromEnv = envOr(name: "KAMA", dflt: "");
+    if (!fromEnv.isEmpty()) {
+        if (!exists(path: fromEnv)) { why = "no kama at `${fromEnv}`, which $KAMA names"; return Optional::None; }
+        return Optional::Some(value: Kama.make(path: give fromEnv));
+    }
+    return Optional::Some(value: Kama.make(path: "kama"));
+}

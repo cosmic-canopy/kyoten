@@ -1,0 +1,12 @@
+{
+  "name": "kyotenclitests",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "the kyoten tool's tests, one program: it runs the built tool on the fixture games beside it, each case printing ok or FAIL with its name, and exits 1 when any failed",
+  "entry": "src/main.kama",
+  "modules": {
+    ".": { "visibility": "internal" }
+  }
+}

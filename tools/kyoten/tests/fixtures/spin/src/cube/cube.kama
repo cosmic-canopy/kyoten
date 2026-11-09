@@ -1,0 +1,10 @@
+import { kyoten::world::Transform, kyoten::frame::Time, spin::generated::Actions };
+export { Spin, Size, turn };
+@generate(Serializable, Deserializable)
+type value Spin { @field public float32 rate = 1; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Size { @field public float32 by = 1; public default ctor make() { } }
+fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Time time) {
+    if (input.faster.held) { s.rate = s.rate + time.dt; }
+    t.rotateY(by: s.rate * time.dt);
+}

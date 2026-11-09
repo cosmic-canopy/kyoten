@@ -1,0 +1,195 @@
+// Prefabs resolved to their components and grouped into families (components § Decided: the naming rule's rule 4, a
+// create queue's family, both of 2026-11-07, and step 5.3's question 1 of 2026-11-09).
+//
+// - A prefab's key names a component by its bare name, while exactly one type the game and its dependencies declare
+//   has it, or by its full path, which always works.
+// - A prefab's components are its base's, if it is a variant, with its own added and its `null`s dropped.
+// - A family is a base prefab and every variant with the same components, directly or through a chain, and it has
+//   one generated type. A variant that adds or drops a component has its own.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, Records, PrefabDecl, Index, Refusals,
+         fieldCase, isReserved };
+
+export { Component, Family, resolveFamilies };
+
+// A component as a prefab type holds it: its full path, its bare name, and its field.
+type resource Component {
+    string fullPath = "";
+    string bareName = "";
+    string fieldName = "";
+
+    public ctor make(string path, string name, string field) {
+        this.fullPath = give path;
+        this.bareName = give name;
+        this.fieldName = give field;
+    }
+
+    public const fn const ref string path() { return this.fullPath; }
+    public const fn const ref string name() { return this.bareName; }
+    public const fn const ref string field() { return this.fieldName; }
+}
+
+// A family: its base prefab, its members (the base first, then the rest by name), and its components by field.
+type resource Family {
+    string origin = "";
+    DynamicArray<string> memberNames = DynamicArray.empty();
+    DynamicArray<Component> parts = DynamicArray.empty();
+
+    public ctor make(string origin, DynamicArray<string> members, DynamicArray<Component> parts) {
+        this.origin = give origin;
+        this.memberNames = give members;
+        this.parts = give parts;
+    }
+
+    public const fn const ref string root() { return this.origin; }
+    public const fn const ref DynamicArray<string> members() { return this.memberNames; }
+    public const fn const ref DynamicArray<Component> components() { return this.parts; }
+}
+
+// The full path a prefab's key names, or "" when it names none, which is refused.
+unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref string prefab, const ref string file,
+                            ref Refusals no) {
+    if (key.contains(substring: "::")) {
+        string kind = idx.kindAt(path: key);
+        if (kind.isEmpty()) {
+            no.add(where: file, what: "prefab `${prefab}` names `${key}`, which is no type the game or its dependencies declare");
+            return "";
+        }
+        if (kind != "value") {
+            no.add(where: file, what: "prefab `${prefab}` names `${key}`, a ${kind}, and a component is a `type value`");
+            return "";
+        }
+        return copy key;
+    }
+    DynamicArray<string> paths = idx.named(name: key);
+    DynamicArray<string> values = DynamicArray.empty();
+    string otherKind = "";
+    foreach (const ref string p in paths.iterConst()) {
+        string kind = idx.kindAt(path: p);
+        if (kind == "value") { values.add(item: copy p); } else { otherKind = copy kind; }
+    }
+    if (values.length() == 1) { return copy values[0]; }
+    if (values.length() > 1) {
+        string all = "";
+        foreach (const ref string v in values.iterConst()) {
+            if (!all.isEmpty()) { all = all + " and "; }
+            all = all + "`" + v + "`";
+        }
+        no.add(where: file, what: "prefab `${prefab}` names `${key}`, which is ${all}: write the full path of the one it means");
+        return "";
+    }
+    if (!otherKind.isEmpty()) {
+        no.add(where: file, what: "prefab `${prefab}` names `${key}`, a ${otherKind}, and a component is a `type value`");
+        return "";
+    }
+    no.add(where: file, what: "prefab `${prefab}` names `${key}`, which is no type the game or its dependencies declare: a component is an exported `type value`");
+    return "";
+}
+
+// Each prefab's own keys resolved, refusing one component written twice; `dropped` gets its `null`s the same way.
+unsafe fn void resolveOwn(const ref Records r, const ref Index idx, ref SortedMap<string, DynamicArray<string>> added,
+                          ref SortedMap<string, DynamicArray<string>> dropped, ref Refusals no) {
+    DynamicArray<string> names = r.prefabNames();
+    foreach (const ref string p in names.iterConst()) {
+        string file = copy r.prefabs().getRef(key: p).where();
+        SortedMap<string, string> spelled = SortedMap.empty();
+        DynamicArray<string> keys = copy r.prefabs().getRef(key: p).added();
+        foreach (const ref string k in keys.iterConst()) {
+            string path = resolveKey(idx: idx, key: k, prefab: p, file: file, no: no);
+            if (path.isEmpty()) { continue; }
+            if (spelled.contains(key: path)) {
+                string first = copy spelled.getRef(key: path);
+                no.add(where: file, what: "prefab `${p}` writes `${path}` twice, as `${first}` and `${k}`");
+                continue;
+            }
+            spelled.put(key: copy path, value: copy k);
+        }
+        added.put(key: copy p, value: spelled.keys());
+        SortedMap<string, bool> gone = SortedMap.empty();
+        DynamicArray<string> nulls = copy r.prefabs().getRef(key: p).dropped();
+        foreach (const ref string k in nulls.iterConst()) {
+            string path = resolveKey(idx: idx, key: k, prefab: p, file: file, no: no);
+            if (!path.isEmpty()) { gone.put(key: copy path, value: true); }
+        }
+        dropped.put(key: copy p, value: gone.keys());
+    }
+}
+
+// A prefab's components, by full path, sorted: its base's, with its own added and its `null`s dropped.
+unsafe fn DynamicArray<string> setOf(const ref string p, const ref Records r,
+                                     const ref SortedMap<string, DynamicArray<string>> added,
+                                     const ref SortedMap<string, DynamicArray<string>> dropped,
+                                     ref SortedMap<string, DynamicArray<string>> memo) {
+    if (memo.contains(key: p)) { return copy memo.getRef(key: p); }
+    SortedMap<string, bool> s = SortedMap.empty();
+    string origin = copy r.prefabs().getRef(key: p).from();
+    if (!origin.isEmpty()) {
+        DynamicArray<string> inherited = setOf(p: origin, r: r, added: added, dropped: dropped, memo: memo);
+        foreach (const ref string c in inherited.iterConst()) { s.put(key: copy c, value: true); }
+    }
+    foreach (const ref string c in added.getRef(key: p).iterConst()) { s.put(key: copy c, value: true); }
+    foreach (const ref string c in dropped.getRef(key: p).iterConst()) { Optional<bool> was = s.remove(key: c); }
+    DynamicArray<string> made = s.keys();
+    memo.put(key: copy p, value: copy made);
+    return made;
+}
+
+// The base of a prefab's family: itself, unless it is a variant with its base's components.
+unsafe fn string familyOf(const ref string p, const ref Records r, const ref SortedMap<string, DynamicArray<string>> sets) {
+    string origin = copy r.prefabs().getRef(key: p).from();
+    if (origin.isEmpty()) { return copy p; }
+    if (sets.getRef(key: p).equals(other: sets.getRef(key: origin))) { return familyOf(p: origin, r: r, sets: sets); }
+    return copy p;
+}
+
+// The families the content's prefabs make, refusing what does not resolve. A key that does not resolve is left out and
+// the rest go on, so one run names every problem; a refused run's families are not used.
+unsafe fn DynamicArray<Family> resolveFamilies(const ref Records r, const ref Index idx, ref Refusals no) {
+    SortedMap<string, DynamicArray<string>> added = SortedMap.empty();
+    SortedMap<string, DynamicArray<string>> dropped = SortedMap.empty();
+    resolveOwn(r: r, idx: idx, added: added, dropped: dropped, no: no);
+    DynamicArray<Family> families = DynamicArray.empty();
+    SortedMap<string, DynamicArray<string>> sets = SortedMap.empty();
+    DynamicArray<string> names = r.prefabNames();
+    foreach (const ref string p in names.iterConst()) {
+        DynamicArray<string> s = setOf(p: p, r: r, added: added, dropped: dropped, memo: sets);
+    }
+    SortedMap<string, DynamicArray<string>> membersOf = SortedMap.empty();
+    foreach (const ref string p in names.iterConst()) {
+        string root = familyOf(p: p, r: r, sets: sets);
+        if (!membersOf.contains(key: root)) {
+            DynamicArray<string> first = DynamicArray.empty();
+            first.add(item: copy root);
+            membersOf.put(key: copy root, value: give first);
+        }
+        if (p != root) { membersOf.getRefMut(key: root).add(item: copy p); }
+    }
+    DynamicArray<string> roots = membersOf.keys();
+    foreach (const ref string root in roots.iterConst()) {
+        string file = copy r.prefabs().getRef(key: root).where();
+        SortedMap<string, string> byField = SortedMap.empty();
+        SortedMap<string, string> nameOf = SortedMap.empty();
+        foreach (const ref string path in sets.getRef(key: root).iterConst()) {
+            string name = idx.nameAt(path: path);
+            string field = fieldCase(s: name);
+            if (byField.contains(key: field)) {
+                string other = copy byField.getRef(key: field);
+                no.add(where: file, what: "prefab `${root}` has two components named `${name}` (`${other}` and `${path}`), and how a prefab type spells two such fields is not decided yet: give one another name");
+                continue;
+            }
+            if (isReserved(s: field) || field == "of") {
+                no.add(where: file, what: "prefab `${root}`: component `${path}` would be the field `${field}`, a reserved word in kama or C: rename the type");
+                continue;
+            }
+            byField.put(key: copy field, value: copy path);
+            nameOf.put(key: copy field, value: give name);
+        }
+        DynamicArray<Component> parts = DynamicArray.empty();
+        DynamicArray<string> fields = byField.keys();
+        foreach (const ref string f in fields.iterConst()) {
+            parts.add(item: Component.make(path: copy byField.getRef(key: f), name: copy nameOf.getRef(key: f), field: copy f));
+        }
+        families.add(item: Family.make(origin: copy root, members: copy membersOf.getRef(key: root), parts: give parts));
+    }
+    return families;
+}

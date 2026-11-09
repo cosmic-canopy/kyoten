@@ -1,0 +1,146 @@
+// The kama the first pass writes, into the game's `src/generated/` (components § Decided: the naming rule of
+// 2026-11-07, and step 5.3's questions of 2026-11-09):
+//
+// - `actions.kama`: `Actions`, the engine's `player` and one `Digital` field per action the game's modules declare.
+// - `prefabs.kama`: each family's `<Base>Prefab`, a field per component, and `<Base>PrefabId`, a constructor per member
+//   with the base as its default; then `Prefabs`, with one `<base>(id:)` per family. The loader fills `Prefabs` from
+//   the content records (step 5.5).
+//
+// Before kama is asked which types the game declares, `prefabs.kama` holds only the names the records imply, a
+// `<Name>Prefab` and a `<Name>PrefabId` for every prefab, so that the game's imports resolve (KY-28).
+//
+// Names a game writes are promised: `Actions` and its fields, the prefab types, their fields and ids, and
+// `prefabs.<base>(id:)`. The rest (the lists inside `Prefabs`, an id's index, the import aliases) is the generator's own
+// and may change in any release (rule 5).
+
+import { std::collections::DynamicArray, std::collections::SortedMap, Records, Family, Component, typeCase, headerLine };
+
+export { actionsKama, prefabsStub, prefabsKama };
+
+fn string actionsKama(const ref Records r) {
+    string t = headerLine() + "\n";
+    t = t + "// The game's actions, a `Digital` each, in the field its name gives (components § Decided). The Input phase\n";
+    t = t + "// fills them from the player the entity names (step 8).\n\n";
+    DynamicArray<string> names = r.actions().keys();
+    if (names.length() > 0) { t = t + "import { kyoten::input::Digital };\n\n"; }
+    t = t + "export { Actions };\n\n";
+    t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
+    t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
+    t = t + "    @field public int32 player;\n";
+    foreach (const ref string a in names.iterConst()) {
+        string module = copy r.actions().getRef(key: a);
+        t = t + "    // Declared by " + module + ".\n";
+        t = t + "    @skip public Digital " + a + " = Digital.default();\n";
+    }
+    t = t + "\n    public ctor forPlayer(int32 player) { this.player = player; }\n}\n";
+    return t;
+}
+
+fn string prefabsStub(const ref Records r) {
+    string t = headerLine() + "\n";
+    t = t + "// The first pass's names, which the records alone imply, so kama can answer before the prefab types are written\n";
+    t = t + "// whole.\n\n";
+    DynamicArray<string> names = r.prefabNames();
+    string exported = "";
+    foreach (const ref string p in names.iterConst()) {
+        string ty = typeCase(s: p);
+        exported = exported + ty + "Prefab, " + ty + "PrefabId, ";
+    }
+    t = t + "export { " + exported + "Prefabs };\n\n";
+    foreach (const ref string p in names.iterConst()) {
+        string ty = typeCase(s: p);
+        t = t + "type value " + ty + "Prefab { public default ctor make() { } }\n";
+        t = t + "type value " + ty + "PrefabId { public default ctor make() { } }\n";
+    }
+    t = t + "type resource Prefabs { public ctor make() { } }\n";
+    return t;
+}
+
+// The name a component's type is written by in prefabs.kama: its bare name, or, where two components share it, an
+// alias made from its full path.
+fn string aliasOf(const ref string path, const ref string name, const ref SortedMap<string, int32> uses) {
+    if (uses.getRef(key: name) > 1) { return path.replace(old: "::", with: "_"); }
+    return copy name;
+}
+
+fn string prefabsKama(const ref string game, const ref DynamicArray<Family> families) {
+    string actionsPath = game + "::generated::Actions";
+    // Every component, once, and how many share each bare name.
+    SortedMap<string, string> named = SortedMap.empty();
+    foreach (const ref Family f in families.iterConst()) {
+        foreach (const ref Component c in f.components().iterConst()) {
+            if (!named.contains(key: c.path())) { named.put(key: copy c.path(), value: copy c.name()); }
+        }
+    }
+    SortedMap<string, int32> uses = SortedMap.empty();
+    DynamicArray<string> paths = named.keys();
+    foreach (const ref string p in paths.iterConst()) {
+        string n = copy named.getRef(key: p);
+        int32 seen = uses.contains(key: n) ? uses.getRef(key: n) : 0;
+        uses.put(key: give n, value: seen + 1);
+    }
+    string imports = "";
+    foreach (const ref string p in paths.iterConst()) {
+        string n = copy named.getRef(key: p);
+        string entry = "";
+        if (p == actionsPath) { entry = "Actions"; }
+        else {
+            string alias = aliasOf(path: p, name: n, uses: uses);
+            entry = alias == n ? copy p : p + " as " + alias;
+        }
+        imports = imports + entry + ", ";
+    }
+    if (families.length() > 0) { imports = imports + "std::collections::DynamicArray, "; }
+
+    string t = headerLine() + "\n";
+    t = t + "// Each prefab family's type and id, and `Prefabs`, which holds the prefabs' values for a processor to start a new\n";
+    t = t + "// entity from (components § Decided). The loader fills `Prefabs` from the content records (step 5.5).\n\n";
+    if (!imports.isEmpty()) { t = t + "import { " + imports.substring(start: 0, end: imports.length() - 2) + " };\n\n"; }
+    string exported = "";
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = typeCase(s: f.root());
+        exported = exported + ty + "Prefab, " + ty + "PrefabId, ";
+    }
+    t = t + "export { " + exported + "Prefabs };\n";
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = typeCase(s: f.root());
+        string members = "";
+        foreach (const ref string m in f.members().iterConst()) {
+            if (!members.isEmpty()) { members = members + ", "; }
+            members = members + "`" + m + "`";
+        }
+        t = t + "\n// `" + f.root() + "`'s family: " + members + ".\n";
+        t = t + "@generate(of)\ntype value " + ty + "Prefab {\n";
+        foreach (const ref Component c in f.components().iterConst()) {
+            string alias = c.path() == actionsPath ? "Actions" : aliasOf(path: c.path(), name: c.name(), uses: uses);
+            t = t + "    public " + alias + " " + c.field() + ";\n";
+        }
+        t = t + "}\n\n";
+        t = t + "// Which prefab of `" + f.root() + "`'s family a value starts from: `" + f.root() + "` unless it says.\n";
+        t = t + "@generate(Equatable)\ntype value " + ty + "PrefabId {\n";
+        t = t + "    isize index = 0;\n";
+        t = t + "    friend Prefabs[index];\n\n";
+        isize i = 0;
+        foreach (const ref string m in f.members().iterConst()) {
+            string kind = i == 0 ? "public default ctor " : "public ctor ";
+            t = t + "    " + kind + m + "() { this.index = ${i}; }\n";
+            i = i + 1;
+        }
+        t = t + "}\n";
+    }
+    t = t + "\n// The prefabs' values, a list per family in its members' order, filled by the loader (step 5.5).\n";
+    t = t + "type resource Prefabs {\n";
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = typeCase(s: f.root());
+        t = t + "    DynamicArray<" + ty + "Prefab> of_" + f.root() + " = DynamicArray.empty();\n";
+    }
+    t = t + "\n    public ctor make() { }\n";
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = typeCase(s: f.root());
+        t = t + "\n    // A prefab of `" + f.root() + "`'s family, to start a new entity from.\n";
+        t = t + "    public const fn " + ty + "Prefab " + f.root() + "(" + ty + "PrefabId id) { return this.of_"
+            + f.root() + "[id.index]; }\n";
+    }
+    t = t + "}\n";
+    return t;
+}

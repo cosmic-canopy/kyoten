@@ -1,0 +1,3 @@
+export { Health };
+@generate(Serializable, Deserializable)
+type value Health { @field public int32 hp = 3; public default ctor make() { } }

@@ -1,0 +1,34 @@
+// The kyoten tool's tests, one program. tools/test.sh builds the tool, then runs this with the tool, the kama it
+// builds with and the fixtures folder, all injected, so a test never finds either program by itself:
+//
+//   kyotenclitests <kyoten> <kama> <fixtures> [--wasm]
+//
+// `--wasm` adds the spin fixture's web build, run under node (tools/test.sh passes it when emcc and node are there).
+
+import { core::println, core::eprintln, core::env::args, Tally, Setup, spinTests, refusalTests };
+
+fn uint8 main() {
+    Optional<string> kyoten = args().get(at: 0);
+    Optional<string> kama = args().get(at: 1);
+    Optional<string> fixtures = args().get(at: 2);
+    Optional<string> fourth = args().get(at: 3);
+    bool wasm = match (fourth) { case Some(value: w): w == "--wasm"; case None: false; };
+    Setup s = match (give kyoten) {
+        case Some(value: k): match (give kama) {
+            case Some(value: m): match (give fixtures) {
+                case Some(value: f): Setup.make(kyoten: give k, kama: give m, fixtures: give f, wasm: wasm);
+                case None: { eprintln(s: "usage: kyotenclitests <kyoten> <kama> <fixtures> [--wasm]"); return 2; }
+            };
+            case None: { eprintln(s: "usage: kyotenclitests <kyoten> <kama> <fixtures> [--wasm]"); return 2; }
+        };
+        case None: { eprintln(s: "usage: kyotenclitests <kyoten> <kama> <fixtures> [--wasm]"); return 2; }
+    };
+    Tally t = Tally.make();
+    spinTests(t: t, s: s);
+    refusalTests(t: t, s: s);
+    int32 runs = t.count();
+    int32 failed = t.failed();
+    println(s: "kyoten tool tests: ${runs} cases, ${failed} failed");
+    if (failed > 0) { return 1; }
+    return 0;
+}

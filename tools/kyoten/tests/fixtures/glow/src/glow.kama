@@ -1,0 +1,6 @@
+// A component from a package that is not the engine: the generator finds it by asking kama in glow's own scope.
+
+export { Glow };
+
+@generate(Serializable, Deserializable)
+type value Glow { @field public float32 strength = 1; public default ctor make() { } }

@@ -1,0 +1,22 @@
+// What a run refuses, gathered rather than stopped at, so one run names every problem and its fix. Each line names
+// the file it is about, relative to the game: `content/cube.records.json: prefab `rock` starts from `pebble`, …`.
+
+import { core::eprintln, std::collections::DynamicArray };
+
+export { Refusals };
+
+type resource Refusals {
+    DynamicArray<string> lines = DynamicArray.empty();
+
+    public ctor make() { }
+
+    public fn void add(const ref string where, const ref string what) { this.lines.add(item: "${where}: ${what}"); }
+
+    public const fn bool any() { return this.lines.length() > 0; }
+
+    public fn void print() {
+        foreach (const ref string l in this.lines.iterConst()) { eprintln(s: "refused: ${l}"); }
+        isize n = this.lines.length();
+        eprintln(s: "kyoten: ${n} refused, and nothing was written");
+    }
+}

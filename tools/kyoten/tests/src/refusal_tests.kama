@@ -1,0 +1,93 @@
+// What the generator refuses, each naming the record and the fix (components § Decided: the naming rule of
+// 2026-11-07, a create queue's family, and step 5.3's questions of 2026-11-09). A refusal writes nothing.
+
+import { Tally, Setup, Ran, has, eraseDir, ranAs, none, std::collections::DynamicArray };
+
+export { refusalTests };
+
+fn void says(ref Tally t, const ref string name, const ref Ran r, const ref DynamicArray<string> words) {
+    foreach (const ref string w in words.iterConst()) {
+        if (!r.says(what: w)) {
+            string said = copy r.said();
+            t.verdict(name: name, why: "no `${w}` in: ${said}");
+            return;
+        }
+    }
+    t.verdict(name: name, why: "");
+}
+
+fn DynamicArray<string> allOf(const ref string a, const ref string b, const ref string c) {
+    DynamicArray<string> ws = DynamicArray.empty();
+    ws.add(item: copy a);
+    if (!b.isEmpty()) { ws.add(item: copy b); }
+    if (!c.isEmpty()) { ws.add(item: copy c); }
+    return ws;
+}
+
+unsafe fn void install(ref Tally t, ref Setup s, const ref string game) {
+    DynamicArray<string> argv = DynamicArray.empty();
+    argv.add(item: "pkg");
+    argv.add(item: "install");
+    argv.add(item: s.fixture(at: game + "/kama.json"));
+    Ran r = s.kamaRun(argv: argv);
+    ranAs(t: t, name: "${game}: kama pkg install", r: r, want: 0, says: "");
+}
+
+unsafe fn void refusalTests(ref Tally t, ref Setup s) {
+    // Names, refused from the records alone, before kama is asked anything.
+    install(t: t, s: s, game: "names");
+    eraseDir(path: s.fixture(at: "names/src/generated"));
+    Ran n = s.kyoten(command: "generate", game: "names", more: none());
+    ranAs(t: t, name: "names: refused", r: n, want: 1, says: "");
+    says(t: t, name: "names: an action that is no identifier is refused, naming the fix", r: n,
+         words: allOf(a: "`fast-bullet`", b: "`fastBullet`", c: ""));
+    says(t: t, name: "names: a reserved word is refused", r: n, words: allOf(a: "`match`", b: "reserved", c: ""));
+    says(t: t, name: "names: an action two modules declare is refused, naming both", r: n,
+         words: allOf(a: "`jump`", b: "names::a", c: "names::b"));
+    says(t: t, name: "names: an action named `player`, Actions' own field, is refused", r: n,
+         words: allOf(a: "`player`", b: "Actions", c: ""));
+    says(t: t, name: "names: a prefab name that is no identifier is refused, naming the fix", r: n,
+         words: allOf(a: "`big-rock`", b: "`bigRock`", c: ""));
+    says(t: t, name: "names: a prefab name a generated type uses itself is refused", r: n,
+         words: allOf(a: "`equals`", b: "", c: ""));
+    says(t: t, name: "names: a variant from an unknown prefab is refused", r: n,
+         words: allOf(a: "`rock`", b: "`pebble`", c: ""));
+    says(t: t, name: "names: variants that start from each other are refused, naming the circle", r: n,
+         words: allOf(a: "loopA -> loopB -> loopA", b: "", c: ""));
+    bool wrote = has(path: s.fixture(at: "names/src/generated/actions.kama"));
+    if (wrote) { t.verdict(name: "names: a refusal writes nothing", why: "it wrote actions.kama"); }
+    else { t.verdict(name: "names: a refusal writes nothing", why: ""); }
+
+    // Components, refused once kama has said which types the game and its dependencies declare.
+    install(t: t, s: s, game: "components");
+    eraseDir(path: s.fixture(at: "components/src/generated"));
+    Ran c = s.kyoten(command: "generate", game: "components", more: none());
+    ranAs(t: t, name: "components: refused", r: c, want: 1, says: "");
+    says(t: t, name: "components: a bare name two components share is refused, naming both", r: c,
+         words: allOf(a: "prefab `tower`", b: "components::player::Health", c: "components::towers::Health"));
+    if (c.says(what: "prefab `keep`")) {
+        string said = copy c.said();
+        t.verdict(name: "components: a full path reads where the bare name would not", why: said);
+    } else { t.verdict(name: "components: a full path reads where the bare name would not", why: ""); }
+    says(t: t, name: "components: an unknown component is refused, naming the prefab and the key", r: c,
+         words: allOf(a: "prefab `gun`", b: "`Turet`", c: ""));
+    says(t: t, name: "components: a full path to no component is refused", r: c,
+         words: allOf(a: "prefab `lost`", b: "`nowhere::Thing`", c: ""));
+    says(t: t, name: "components: a resource is refused, since a component is a type value", r: c,
+         words: allOf(a: "prefab `crate`", b: "`Ammo`", c: "type value"));
+    says(t: t, name: "components: one component written twice in a prefab is refused", r: c,
+         words: allOf(a: "prefab `twice`", b: "`components::towers::Turret`", c: "twice"));
+    says(t: t, name: "components: two components of one name in a prefab wait for their field spelling", r: c,
+         words: allOf(a: "prefab `hero`", b: "`Health`", c: "not decided"));
+    // The first pass wrote its names before kama was asked; a refusal after that puts every file back as it was.
+    bool left = has(path: s.fixture(at: "components/src/generated/actions.kama"))
+                || has(path: s.fixture(at: "components/src/generated/prefabs.kama"));
+    if (left) { t.verdict(name: "components: a refusal after kama has answered leaves nothing written", why: "it left the first pass's files"); }
+    else { t.verdict(name: "components: a refusal after kama has answered leaves nothing written", why: ""); }
+
+    // A game must list its generated module, or kama gives its folder to the nearest module above it.
+    install(t: t, s: s, game: "nogen");
+    Ran g = s.kyoten(command: "generate", game: "nogen", more: none());
+    ranAs(t: t, name: "nogen: a manifest that does not list `generated` is refused, naming the fix", r: g, want: 1,
+          says: "\"generated\"");
+}

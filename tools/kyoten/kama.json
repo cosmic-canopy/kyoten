@@ -1,0 +1,15 @@
+{
+  "name": "@kyoten/cli",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "the kyoten tool: generates a game's kama from its records, then runs kama (generate, check, build, run, clean). Built with -o kyoten",
+  "entry": "src/main.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../engine" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" }
+  }
+}

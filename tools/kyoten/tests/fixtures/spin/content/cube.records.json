@@ -1,0 +1,6 @@
+{ "prefabs": {
+    "cube":     { "Transform": {}, "Spin": { "rate": 2 }, "Actions": { "player": 1 } },
+    "fastCube": { "from": "cube", "Spin": { "rate": 4 }, "note": "a variant with the same components: cube's family" },
+    "bigCube":  { "from": "cube", "spin::cube::Size": { "by": 2 }, "Glow": {},
+                  "note": "a variant that adds components: a family of its own, one key by its full path" } },
+  "bindings": { "faster": { "keyboard": "ArrowUp", "gamepad": "RightShoulder" } } }

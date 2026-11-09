@@ -1,0 +1,69 @@
+// kyoten, the engine's tool (components § Decided, 2026-11-07; architecture § Decided, 2026-11-08):
+//
+//   kyoten generate <game kama.json>            write the game's generated kama from its records
+//   kyoten check    <game kama.json> [flags…]   generate, then `kama check`
+//   kyoten build    <game kama.json> [flags…]   generate, then `kama build`
+//   kyoten run      <game kama.json> [flags…]   generate, then `kama run`
+//   kyoten clean    <game kama.json>            remove every generated file
+//
+// `--kama <path>` names the compiler; without it, `$KAMA`, then `kama` on PATH. Every other flag goes to kama as it is.
+// kama cannot run a generator before it analyzes a project (KY-28), so these commands run it first.
+
+import { core::eprintln, core::env::args, std::collections::DynamicArray, Kama, Manifest, findKama, readManifest,
+         generate, clean };
+
+fn void usage() {
+    eprintln(s: "usage: kyoten <generate|check|build|run|clean> <game kama.json> [--kama <path>] [kama's flags…]");
+}
+
+// A child's exit status as this program's: 0 stays 0, a small one passes through, and any other is 1.
+fn uint8 statusOf(int64 code) {
+    if (code == 0) { return 0; }
+    if (code > 0 && code < 256) { return cast<uint8>(code); }
+    return 1;
+}
+
+unsafe fn uint8 go() {
+    DynamicArray<string> all = DynamicArray.empty();
+    foreach (string a in args()) { all.add(item: give a); }
+    if (all.length() < 2) { usage(); return 2; }
+    string command = copy all[0];
+    string manifest = copy all[1];
+    if (command != "generate" && command != "check" && command != "build" && command != "run" && command != "clean") {
+        usage();
+        return 2;
+    }
+    string kamaFlag = "";
+    DynamicArray<string> passed = DynamicArray.empty();
+    isize i = 2;
+    while (i < all.length()) {
+        if (all[i] == "--kama" && i + 1 < all.length()) {
+            kamaFlag = copy all[i + 1];
+            i = i + 2;
+            continue;
+        }
+        passed.add(item: copy all[i]);
+        i = i + 1;
+    }
+    string why = "";
+    Optional<Manifest> read = readManifest(path: manifest, why: why);
+    Manifest game = match (give read) {
+        case Some(value: m): give m;
+        case None: { eprintln(s: "kyoten: ${why}"); return 2; }
+    };
+    if (command == "clean") { return clean(game: game) ? 0 : 1; }
+    Optional<Kama> found = findKama(flag: kamaFlag, why: why);
+    Kama kama = match (give found) {
+        case Some(value: k): give k;
+        case None: { eprintln(s: "kyoten: ${why}"); return 2; }
+    };
+    if (!generate(kama: kama, game: game)) { return 1; }
+    if (command == "generate") { return 0; }
+    DynamicArray<string> argv = DynamicArray.empty();
+    argv.add(item: copy command);
+    argv.add(item: copy manifest);
+    foreach (const ref string p in passed.iterConst()) { argv.add(item: copy p); }
+    return statusOf(code: kama.pass(argv: argv));
+}
+
+fn uint8 main() { return go(); }

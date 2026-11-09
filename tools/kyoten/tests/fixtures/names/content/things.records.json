@@ -1,0 +1,6 @@
+{ "prefabs": {
+    "big-rock": { "A": {} },
+    "rock":     { "from": "pebble" },
+    "loopA":    { "from": "loopB" },
+    "loopB":    { "from": "loopA" },
+    "equals":   { "A": {} } } }

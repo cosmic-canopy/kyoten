@@ -1,0 +1,31 @@
+// The fixture's own main: it reads every name the first pass generates, so a missing or misshapen one fails the build.
+
+import { core::println, kyoten::world::Transform, glow::Glow, spin::cube::Spin, spin::cube::Size,
+         spin::generated::Actions, spin::generated::CubePrefab, spin::generated::CubePrefabId,
+         spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId, spin::generated::Prefabs };
+
+// A processor starts a new entity from a prefab's values this way (REFERENCE.md § What a processor takes).
+fn CubePrefab startFrom(const ref Prefabs prefabs, CubePrefabId id) { return prefabs.cube(id: id); }
+fn BigCubePrefab startBig(const ref Prefabs prefabs, BigCubePrefabId id) { return prefabs.bigCube(id: id); }
+
+fn uint8 main() {
+    Actions a = Actions.forPlayer(player: 1);
+    int32 player = a.player;
+    bool held = a.faster.held;
+    CubePrefab c = CubePrefab.of(actions: a, spin: Spin.default(), transform: Transform.default());
+    float32 rate = c.spin.rate;
+    BigCubePrefab b = BigCubePrefab.of(actions: a, glow: Glow.default(), size: Size.default(), spin: Spin.default(),
+                                       transform: Transform.default());
+    float32 by = b.size.by;
+    float32 strength = b.glow.strength;
+    // Through locals: `CubePrefabId.fastCube() != CubePrefabId.default()` is refused as having no operator (KY-46).
+    CubePrefabId fast = CubePrefabId.fastCube();
+    CubePrefabId first = CubePrefabId.default();
+    bool differ = fast != first;
+    BigCubePrefabId big = BigCubePrefabId.bigCube();
+    BigCubePrefabId bigFirst = BigCubePrefabId.default();
+    bool same = big == bigFirst;
+    Prefabs prefabs = Prefabs.make();
+    println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
+    return 0;
+}

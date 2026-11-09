@@ -1,0 +1,21 @@
+{
+  "name": "spin",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture: the hello cube without Mesh, for the kyoten tool's first pass",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../../../engine" },
+    "glow": { "path": "../glow" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "cube": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "generated"] },
+    "generated": {
+      "visibility": "internal",
+      "importsOnly": ["kyoten::world", "kyoten::input", "glow", "std::collections", "cube"]
+    }
+  }
+}

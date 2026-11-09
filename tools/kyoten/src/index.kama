@@ -1,0 +1,266 @@
+// Which types the game and its dependencies declare, asked of kama (components § Decided, 2026-11-09, question 1).
+//
+// - The game: one `kama query <kama.json> <file> --search "" --json`, which lists every symbol with its kind and file.
+//   It runs after the first pass has written the generated names, since on a fresh clone no query answers until the
+//   generated module exists, and it answers through the type errors those stubs leave in processor bodies. The
+//   generated files are left out of the answer.
+// - Each dependency: the same query rooted at its own kama.json, since `--search` answers only for the package it is
+//   pointed at (KY-45), and that re-checks the whole dependency. Its answer is cached in the game's
+//   `out/kyoten/components/`, keyed by a hash of the kama that answered and of the dependency's kama.json and sources,
+//   so it is asked again only when one of them changes.
+//
+// A file's module is mapped from the package's manifest, since a result names its file and not its module (KY-39).
+
+import { core::println, std::memory::replace, std::collections::DynamicArray, std::io::IoError, std::memory::Owned,
+         std::fs::readText, std::fs::readFile, std::fs::writeText, std::fs::createDirAll, std::fs::canonicalPath,
+         std::fs::exists, std::digest::sha256::Sha256, std::encoding::hex::encode,
+         std::serialization::text::json::JsonValue, std::serialization::text::json::JsonDeserializer,
+         std::serialization::text::json::deserializeJsonBuffer, std::serialization::text::json::serializeJsonBuffer,
+         Kama, Manifest, Dependency, Refusals, readManifest, filesUnder, dirOf };
+
+export { TypeEntry, Index, buildIndex };
+
+// A type kama says a package declares: its name, its full path (`kyoten::world::Transform`) and its kind (`value`,
+// `resource`, `enum`, `view` or `contract`).
+@generate(Serializable, Deserializable)
+type resource TypeEntry {
+    @field(name: "name") string typeName = "";
+    @field(name: "path") string fullPath = "";
+    @field(name: "kind") string typeKind = "";
+
+    public default ctor empty() { }
+    public ctor make(string name, string path, string kind) {
+        this.typeName = give name;
+        this.fullPath = give path;
+        this.typeKind = give kind;
+    }
+
+    public const fn const ref string name() { return this.typeName; }
+    public const fn const ref string path() { return this.fullPath; }
+    public const fn const ref string kind() { return this.typeKind; }
+}
+
+// A dependency's answer, as cached.
+@generate(Serializable, Deserializable)
+type resource CachedAnswer {
+    @field(name: "hash") string hashField = "";
+    @field(name: "types", default) DynamicArray<TypeEntry> typesField = DynamicArray.empty();
+
+    public default ctor empty() { }
+    public ctor make(string hash, DynamicArray<TypeEntry> types) { this.hashField = give hash; this.typesField = give types; }
+
+    public const fn const ref string hash() { return this.hashField; }
+    public fn DynamicArray<TypeEntry> take() {
+        DynamicArray<TypeEntry> fresh = DynamicArray.empty();
+        return replace(place: this.typesField, with: give fresh);
+    }
+}
+
+type resource Index {
+    DynamicArray<TypeEntry> entries = DynamicArray.empty();
+
+    public ctor make() { }
+
+    public unsafe fn void add(TypeEntry e) { this.entries.add(item: give e); }
+
+    public unsafe fn void addAll(DynamicArray<TypeEntry> es) {
+        DynamicArray<TypeEntry> taken = give es;
+        while (taken.length() > 0) {
+            Optional<TypeEntry> last = taken.pop();
+            match (give last) { case Some(value: e): { this.entries.add(item: give e); } case None: { } };
+        }
+    }
+
+    // The full paths of every type with this bare name, of any kind.
+    public const fn DynamicArray<string> named(const ref string name) {
+        DynamicArray<string> found = DynamicArray.empty();
+        foreach (const ref TypeEntry e in this.entries.iterConst()) {
+            if (e.name() == name && !found.contains(item: e.path())) { found.add(item: copy e.path()); }
+        }
+        return found;
+    }
+
+    // The kind of the type at this full path, or "" when none is there.
+    public const fn string kindAt(const ref string path) {
+        foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return copy e.kind(); } }
+        return "";
+    }
+
+    // The bare name of the type at this full path.
+    public const fn string nameAt(const ref string path) {
+        foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return copy e.name(); } }
+        return "";
+    }
+}
+
+// A path made absolute and spelled with `/`, so a query's file and a manifest's folder compare.
+unsafe fn string canonical(const ref string path) {
+    Result<string, IoError> c = canonicalPath(path: path);
+    string made = match (give c) { case Ok(value: p): give p; case Err(error: e): copy path; };
+    return made.replace(old: "\\", with: "/");
+}
+
+fn bool isTypeKind(const ref string k) {
+    return k == "value" || k == "resource" || k == "enum" || k == "view" || k == "contract";
+}
+
+fn bool isGenerated(const ref string rel) {
+    return rel.startsWith(prefix: "generated/") || rel.endsWith(suffix: ".generated.kama");
+}
+
+// The types one package declares, by kama's answer; `skipGenerated` leaves out the generated files' own.
+unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated, ref string why) {
+    DynamicArray<string> argv = DynamicArray.empty();
+    argv.add(item: "query");
+    argv.add(item: m.manifestPath());
+    argv.add(item: m.startFile());
+    argv.add(item: "--search");
+    argv.add(item: "");
+    argv.add(item: "--json");
+    string kamaSaid = "";
+    Optional<string> said = kama.capture(argv: argv, why: kamaSaid);
+    string text = match (give said) {
+        case Some(value: t): give t;
+        case None: { string name = copy m.name(); why = "kama could not answer for `${name}`:\n${kamaSaid}"; return Optional::None; }
+    };
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give text);
+    JsonValue doc = match (give parsed) {
+        case Ok(value: d): give d;
+        case Err(error: e): { string m2 = e.message(); why = "kama's answer is not JSON: ${m2}"; return Optional::None; }
+    };
+    string src = canonical(path: m.sourceDir()) + "/";
+    DynamicArray<TypeEntry> found = DynamicArray.empty();
+    Optional<JsonValue> results = doc.get(key: "results");
+    match (results) {
+        case Some(value: rs): {
+            match (rs) {
+                case Array(items: xs): {
+                    foreach (const ref JsonValue x in xs.iterConst()) {
+                        string kind = textAt(doc: x, key: "kind");
+                        if (!isTypeKind(k: kind)) { continue; }
+                        string file = canonical(path: textAt(doc: x, key: "uri"));
+                        if (!file.startsWithIgnoringAsciiCase(prefix: src)) { continue; }
+                        string rel = file.substring(start: src.length(), end: file.length());
+                        if (skipGenerated && isGenerated(rel: rel)) { continue; }
+                        string name = textAt(doc: x, key: "name");
+                        string path = m.moduleOf(folder: dirOf(path: rel)) + "::" + name;
+                        found.add(item: TypeEntry.make(name: give name, path: give path, kind: give kind));
+                    }
+                }
+                case _: { }
+            };
+        }
+        case None: { }
+    };
+    return Optional::Some(value: give found);
+}
+
+fn string textAt(const ref JsonValue doc, const ref string key) {
+    Optional<JsonValue> v = doc.get(key: key);
+    match (v) {
+        case Some(value: j): { match (j) { case String(value: s): { return copy s; } case _: { return ""; } }; }
+        case None: { return ""; }
+    };
+}
+
+// The hash a dependency's cached answer is kept under: the kama that answered, then each file of the dependency's
+// manifest and sources, by its path and its bytes.
+unsafe fn string hashOf(const ref string kamaVersion, const ref string root) {
+    Sha256 h = Sha256.make();
+    DynamicArray<uint8> nul = DynamicArray.empty();
+    nul.add(item: 0ui8);
+    h.update(bytes: kamaVersion.bytes());
+    h.update(bytes: nul.view());
+    DynamicArray<string> files = DynamicArray.empty();
+    files.add(item: "kama.json");
+    DynamicArray<string> sources = filesUnder(dir: root + "/src");
+    foreach (const ref string s in sources.iterConst()) { files.add(item: "src/" + s); }
+    foreach (const ref string f in files.iterConst()) {
+        h.update(bytes: f.bytes());
+        h.update(bytes: nul.view());
+        Result<DynamicArray<uint8>, IoError> bytes = readFile(path: root + "/" + f);
+        match (bytes) { case Ok(value: b): { h.update(bytes: b.view()); } case Err(error: e): { } };
+        h.update(bytes: nul.view());
+    }
+    InlineArray<uint8>#(32) digest = h.finish();
+    return encode(bytes: digest.view());
+}
+
+// A dependency's types: from its cache when its hash still matches, else asked of kama and cached.
+unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const ref string kamaVersion,
+                                                              const ref Manifest game, const ref Dependency d,
+                                                              ref string why) {
+    string root = copy d.root();
+    string hash = hashOf(kamaVersion: kamaVersion, root: root);
+    string dir = game.root() + "/out/kyoten/components";
+    string cacheFile = dir + "/" + d.name() + ".json";
+    if (exists(path: cacheFile)) {
+        Result<string, IoError> text = readText(path: cacheFile);
+        match (give text) {
+            case Ok(value: t): {
+                JsonDeserializer r = JsonDeserializer.strict(src: give t);
+                Result<CachedAnswer, Owned<Error>> read = CachedAnswer.deserialize(r: r);
+                match (give read) {
+                    case Ok(value: c): {
+                        if (c.hash() == hash) {
+                            string name = copy d.name();
+                            println(s: "kyoten: components of ${name}: cached");
+                            CachedAnswer kept = give c;
+                            return Optional::Some(value: kept.take());
+                        }
+                    }
+                    case Err(error: e): { }
+                };
+            }
+            case Err(error: e): { }
+        };
+    }
+    Optional<Manifest> dm = readManifest(path: root + "/kama.json", why: why);
+    Manifest depManifest = match (give dm) { case Some(value: m): give m; case None: { return Optional::None; } };
+    Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, why: why);
+    DynamicArray<TypeEntry> types = match (give asked) {
+        case Some(value: ts): give ts;
+        case None: { return Optional::None; }
+    };
+    CachedAnswer answer = CachedAnswer.make(hash: give hash, types: give types);
+    Result<string, Owned<Error>> json = serializeJsonBuffer(v: answer);
+    match (give json) {
+        case Ok(value: j): {
+            Result<Unit, IoError> made = createDirAll(path: dir);
+            Result<isize, IoError> wrote = writeText(path: cacheFile, text: j);
+        }
+        case Err(error: e): { }
+    };
+    string name = copy d.name();
+    println(s: "kyoten: components of ${name}: asked");
+    return Optional::Some(value: answer.take());
+}
+
+// Every type the game and its dependencies declare, with the generated `Actions`, which a prefab lists by name. A
+// question kama cannot answer is a refusal, with what kama said.
+unsafe fn Index buildIndex(ref Kama kama, const ref Manifest game, ref Refusals no) {
+    Index idx = Index.make();
+    string gameName = copy game.name();
+    idx.add(e: TypeEntry.make(name: "Actions", path: gameName + "::generated::Actions", kind: "value"));
+    string why = "";
+    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, why: why);
+    match (give own) {
+        case Some(value: ts): { idx.addAll(es: give ts); }
+        case None: { no.add(where: "kama.json", what: why); return idx; }
+    };
+    DynamicArray<string> versionArgs = DynamicArray.empty();
+    versionArgs.add(item: "--version");
+    string versionWhy = "";
+    Optional<string> version = kama.capture(argv: versionArgs, why: versionWhy);
+    string kamaVersion = match (give version) { case Some(value: v): give v; case None: ""; };
+    foreach (const ref Dependency d in game.deps().iterConst()) {
+        string depWhy = "";
+        Optional<DynamicArray<TypeEntry>> theirs = dependencyTypes(kama: kama, kamaVersion: kamaVersion, game: game, d: d,
+                                                                   why: depWhy);
+        match (give theirs) {
+            case Some(value: ts): { idx.addAll(es: give ts); }
+            case None: { no.add(where: "kama.json", what: depWhy); }
+        };
+    }
+    return idx;
+}

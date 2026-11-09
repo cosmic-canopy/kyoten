@@ -1,0 +1,7 @@
+{
+  "lockVersion": 1,
+  "packages": {
+    "glow": { "source": "path", "path": "../glow", "dependencies": [] },
+    "kyoten": { "source": "path", "path": "../../../../../engine", "dependencies": [] }
+  }
+}

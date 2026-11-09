@@ -1,0 +1,161 @@
+// A package's `kama.json`, as far as the tool reads it: its name, its entry, the folders its `modules` list, and its
+// dependencies. A file's module is its folder's, or the nearest listed folder's above it, as kama has it.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
+         std::fs::readText, std::fs::readDir, std::fs::stat, std::fs::Metadata, std::path::parent,
+         std::serialization::text::json::JsonValue, std::serialization::text::json::deserializeJsonBuffer };
+
+export { Manifest, Dependency, readManifest, filesUnder, dirOf };
+
+// One dependency: its name, which is its root module, and the folder holding its kama.json.
+type resource Dependency {
+    string depName = "";
+    string depRoot = "";
+
+    public ctor make(string name, string root) { this.depName = give name; this.depRoot = give root; }
+
+    public const fn const ref string name() { return this.depName; }
+    public const fn const ref string root() { return this.depRoot; }
+}
+
+type resource Manifest {
+    string rootDir = "";
+    string packageName = "";
+    string entryFile = "";
+    DynamicArray<string> folders = DynamicArray.empty();
+    DynamicArray<Dependency> dependencies = DynamicArray.empty();
+
+    public ctor make(string root, string name, string entry, DynamicArray<string> folders,
+                     DynamicArray<Dependency> dependencies) {
+        this.rootDir = give root;
+        this.packageName = give name;
+        this.entryFile = give entry;
+        this.folders = give folders;
+        this.dependencies = give dependencies;
+    }
+
+    // The folder holding kama.json, as it was named.
+    public const fn const ref string root() { return this.rootDir; }
+    public const fn const ref string name() { return this.packageName; }
+    public const fn string manifestPath() { return this.rootDir + "/kama.json"; }
+    public const fn string sourceDir() { return this.rootDir + "/src"; }
+    // The entry file, or else the root module's file, for a query to start from.
+    public const fn string startFile() {
+        if (!this.entryFile.isEmpty()) { return this.rootDir + "/" + this.entryFile; }
+        return this.rootDir + "/src/" + this.packageName + ".kama";
+    }
+    public const fn const ref DynamicArray<Dependency> deps() { return this.dependencies; }
+
+    // Whether `modules` lists this folder (relative to src/, "." for the root).
+    public const fn bool lists(const ref string folder) {
+        foreach (const ref string f in this.folders.iterConst()) { if (f == folder) { return true; } }
+        return false;
+    }
+
+    // The module a folder (relative to src/, "" or "." for src/ itself) belongs to: its own if listed, else the
+    // nearest listed one above it.
+    public const fn string moduleOf(const ref string folder) {
+        string at = copy folder;
+        while (!at.isEmpty() && at != ".") {
+            if (this.lists(folder: at)) { return this.packageName + "::" + at.replace(old: "/", with: "::"); }
+            at = dirOf(path: at);
+        }
+        return copy this.packageName;
+    }
+}
+
+// The folder part of a `/`-separated path: "a/b/c.kama" gives "a/b", and "c.kama" gives "".
+fn string dirOf(const ref string path) {
+    isize i = path.length();
+    while (i > 0) {
+        i = i - 1;
+        if (path[i] == 47ui8) { return path.substring(start: 0, end: i); }
+    }
+    return "";
+}
+
+fn string textAt(const ref JsonValue doc, const ref string key) {
+    Optional<JsonValue> v = doc.get(key: key);
+    match (v) {
+        case Some(value: j): { match (j) { case String(value: s): { return copy s; } case _: { return ""; } }; }
+        case None: { return ""; }
+    };
+}
+
+// The package at `path` (its kama.json), or none, with `why` it cannot be read.
+unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why) {
+    Result<string, IoError> text = readText(path: path);
+    string src = match (give text) {
+        case Ok(value: t): give t;
+        case Err(error: e): { why = "`${path}` cannot be read"; return Optional::None; }
+    };
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give src);
+    JsonValue doc = match (give parsed) {
+        case Ok(value: d): give d;
+        case Err(error: e): { string m = e.message(); why = "`${path}` is not JSON: ${m}"; return Optional::None; }
+    };
+    string root = match (parent(path: path)) { case Some(value: p): give p; case None: "."; };
+    if (root.isEmpty()) { root = "."; }
+    string name = textAt(doc: doc, key: "name");
+    if (name.isEmpty()) { why = "`${path}` has no name"; return Optional::None; }
+    // A scoped name (`@kyoten/cli`) is its scope's package: its root module is the part after the slash.
+    match (name.find(substring: "/")) {
+        case Some(value: slash): { name = name.substring(start: slash + 1, end: name.length()); }
+        case None: { }
+    };
+    string entry = textAt(doc: doc, key: "entry");
+    DynamicArray<string> folders = DynamicArray.empty();
+    Optional<JsonValue> modules = doc.get(key: "modules");
+    match (modules) {
+        case Some(value: ms): {
+            match (ms) {
+                case Object(members: m): { foreach (string k in m) { folders.add(item: copy k); } }
+                case _: { }
+            };
+        }
+        case None: { }
+    };
+    DynamicArray<Dependency> deps = DynamicArray.empty();
+    Optional<JsonValue> declared = doc.get(key: "dependencies");
+    match (declared) {
+        case Some(value: ds): {
+            match (ds) {
+                case Object(members: m): {
+                    foreach (string k in m) {
+                        string at = textAt(doc: m.getRef(key: k), key: "path");
+                        string depRoot = at.isEmpty() ? root + "/.kama/deps/" + k : root + "/" + at;
+                        deps.add(item: Dependency.make(name: copy k, root: give depRoot));
+                    }
+                }
+                case _: { }
+            };
+        }
+        case None: { }
+    };
+    return Optional::Some(value: Manifest.make(root: give root, name: give name, entry: give entry, folders: give folders,
+                                           dependencies: give deps));
+}
+
+// Every file under `dir`, as `/`-separated paths relative to it, sorted; none when `dir` is missing.
+unsafe fn DynamicArray<string> filesUnder(const ref string dir) {
+    SortedMap<string, bool> found = SortedMap.empty();
+    walkInto(dir: dir, rel: "", found: found);
+    return found.keys();
+}
+
+unsafe fn void walkInto(const ref string dir, const ref string rel, ref SortedMap<string, bool> found) {
+    string here = rel.isEmpty() ? copy dir : dir + "/" + rel;
+    Result<DynamicArray<string>, IoError> names = readDir(path: here);
+    match (names) {
+        case Ok(value: ns): {
+            foreach (const ref string n in ns.iterConst()) {
+                string relN = rel.isEmpty() ? copy n : rel + "/" + n;
+                Result<Metadata, IoError> md = stat(path: dir + "/" + relN);
+                bool isDir = match (md) { case Ok(value: m): m.isDir(); case Err(error: e): false; };
+                if (isDir) { walkInto(dir: dir, rel: relN, found: found); }
+                else { found.put(key: copy relN, value: true); }
+            }
+        }
+        case Err(error: e): { }
+    };
+}

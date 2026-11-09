@@ -1,5 +1,6 @@
 {
   "projects": {
-    "engine": { "optional": false }
+    "engine": { "optional": false },
+    "tools/kyoten": { "optional": false }
   }
 }

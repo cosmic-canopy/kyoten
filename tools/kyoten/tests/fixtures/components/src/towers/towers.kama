@@ -1,0 +1,7 @@
+export { Health, Turret, Ammo };
+@generate(Serializable, Deserializable)
+type value Health { @field public int32 hp = 10; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Turret { @field public int32 cooldown = 1; public default ctor make() { } }
+// A resource holds what it owns, so it is no component.
+type resource Ammo { int32 rounds = 0; public ctor make() { } }

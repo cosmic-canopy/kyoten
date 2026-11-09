@@ -1,0 +1,16 @@
+{
+  "name": "names",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture: names the generator refuses before it asks kama anything",
+  "entry": "src/app.kama",
+  "dependencies": { "kyoten": { "path": "../../../../../engine" } },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "a": { "visibility": "internal", "importsOnly": [] },
+    "b": { "visibility": "internal", "importsOnly": [] },
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::input", "std::collections"] }
+  }
+}
