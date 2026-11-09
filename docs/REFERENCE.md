@@ -200,7 +200,8 @@ Decided). *Snapshot reads and queued structural changes were decided at componen
 § Decided); revised on 2026-11-06 so actions belong to a player, and laid out in question 8 part b's record files
 (2026-11-07), with `run` from the game's generated code (target-platforms question 2, 2026-11-07), and with `main` in
 the app's root module and the cube in a module folder, outside and inside the simulation's fence (ai-first-api
-question 3, 2026-11-08). A sketch: no engine compiles it yet.
+question 3, 2026-11-08), and with `Spin` electing its default (components § Decided, 2026-11-09). A sketch: no engine
+compiles it yet.
 
 ```kama
 // src/app.kama, written by `kyoten new`; `run` is generated beside it, in src/hello.generated.kama
@@ -211,8 +212,8 @@ fn uint8 main() { return run(); }
 // src/cube/cube.kama, module hello::cube, a simulation module
 import { kyoten::world::Transform, kyoten::frame::Time, hello::generated::Actions };
 export { Spin, turn };
-@generate(Serializable, Deserializable, of)
-type value Spin { @field(default) public float32 rate = 1; }
+@generate(Serializable, Deserializable)
+type value Spin { @field public float32 rate = 1; public default ctor make() { } }
 fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Time time) {
     if (input.faster.held) { s.rate = s.rate + time.dt; }
     t.rotateY(by: s.rate * time.dt);
@@ -353,6 +354,10 @@ kyoten-towers/
   (`kyoten::world::Transform`) reaches another.
 - **Records hold only what differs from the defaults,** enum values are kama's case names (`"Update"`), rates are
   whole hertz, and a `note` string replaces comments, which kama's JSON refuses.
+- **A component is an exported `type value` that a prefab or a processor names,** found by asking the compiler, so it
+  needs no record of its own. Its defaults are its `default ctor` (`Transform.identity()`), and a record is laid over
+  them. A component without one, such as `Actions`, is listed in every prefab that has it (components § Decided,
+  2026-11-09).
 - **A module may split its records across files;** they merge by key, and a key twice in one content layer is refused.
 
 ```json

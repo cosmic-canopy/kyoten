@@ -1927,3 +1927,50 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     group), which are `kyoten check`'s.
   - **Mutations caught:** a lost `default`, a wrong default, a required field made optional, and a misspelt wire name
     each turn a case red.
+- **2026-11-09, the owner: step 5.3's four questions, before the `kyoten` tool was built** (the first slice, KYR-7).
+  Each was probed on kama `0.9.886+g2159ce21`, in `.scratch/step5-tool`.
+  1. **The generator finds each component by asking the compiler, and no record has to list one.** A prefab names its
+     components (`"Spin"`, `"Transform"`), and the tool resolves each name to the type kama declares. A component
+     still needs no record unless it changes a default, as REFERENCE's rule has it.
+     - **On a fresh clone** every query fails until the generated module exists (*"hello/kama.json lists
+       `hello::generated`, but its folder src/generated does not exist"*), and so does `--symbols` on one file. So the
+       first pass writes every generated name the records imply: `Actions` whole, and each prefab type, its id and
+       `Prefabs` as bare names. Then `kama query --search ""` lists every symbol in the game with its file, one
+       query. *Probed:* it answers through the type errors those stubs leave in processor bodies (`turn` reads
+       `input.faster.held` while the stub `Actions` has no `faster`). The prefab types are then written whole.
+     - **A dependency's components** (the engine's `Transform`) need a query of their own, rooted at the dependency's
+       manifest, since `--search` answers only for the package it is pointed at. That re-checks the whole dependency.
+       *Measured:* 3.6 s for the engine, the same as `kama check engine/kama.json`, against 1.9 s for the probe game's
+       `kama check` and 2.0 s for its own query. It is the part that grows, with the engine, so each dependency's
+       answer is cached in the game's `out/`, keyed by a hash of its sources, and asked again only when they change.
+       KY-45 asks for one query.
+     - **A component is an exported `type value`** that a prefab or a processor names. A name that finds a resource, a
+       function or nothing is refused, naming the prefab and the key.
+     - **The owner asked** whether listing every component would touch each new module and duplicate the code. It
+       would: a `"Spin": {}` says only that the type is a component, and it would break "records hold only what
+       differs from the defaults". On the cost: "8s to 2s doesn't sound like much but if that can grow that is not
+       good." What grows is the dependency's query, so that is what is cached.
+     - **Considered:** every component listed in its module's records file, so records alone answer, quickly but
+       redundantly; and a list the engine keeps of its own components, which saves its query but leaves a
+       third-party package with components needing one too.
+  2. **A component with defaults elects a `default ctor`,** as `Transform.identity()` does. kama builds nothing by
+     default (its `SPEC.md` § Construction), so the generator lays a record over `T.default()` with `mergeFrom`, as
+     steps 5.1 and 5.2 do. A component without one (`Actions`, whose `player` is required) must be listed in every
+     prefab that has it, and is read whole.
+     - *Probed:* `Spin.default()` reads with `public default ctor make() { }`. Without it, kama refuses *"`Spin` has no
+       `default` constructor — electing one is the type's own choice; mark its canonical zero-arg ctor `default ctor
+       name()`"*, in the generated file, so the tool names the prefab and the component itself. `kama query` does not
+       say which ctor a type elected (KY-44).
+     - The hello cube's `Spin` takes its ctor on its one line and drops `of`, so the count stays 15.
+     - **Considered:** reading `{}` through each component's reader, which fails for `Transform`, whose `Vec3`s want
+       every field when read whole (step 5.1).
+  3. **`Actions.player` is an `int32`, numbered from 1,** as the record writes it, with no default. KYR-54 may wrap it
+     in a player type with the same record form. *Probed:* `{}` is refused (*"missing field `player`"*), and so is an
+     action written in a record (*"unknown field `faster`"*), since each action's `Digital` is `@skip`.
+  4. **The tool finds kama** from `--kama <path>`, then `$KAMA`, then `kama` on `PATH`, where kama's toolchain shim
+     applies a project's pin. The owner: "I guess we can also pass the path of kama to the tool as well… that is
+     typical". The engine manager ([version-manager.md](version-manager.md)) may refine it without a break.
+  - **Also probed:** `Digital` read in a fenced module; generated files under `src/generated/` with the header, and
+    `generated` listed with `std::collections` in its `importsOnly`; and a content file read with its prefabs held as
+    `JsonValue`, their component keys in file order. The strict reader takes a key written twice in one file, and
+    the last silently wins: KY-43.
