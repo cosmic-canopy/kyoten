@@ -1,12 +1,12 @@
-# The asset manager: delivering a game's built assets
+# The content delivery tool: delivering a game's built assets
 
-**Status:** draft, split out of KYR-29 on 2026-11-08 as KYR-66. These are questions, not decisions. The name is a
-working one, and question 1 asks it.
+**Status:** draft, split out of KYR-29 on 2026-11-08 as KYR-66. Question 1, its name, is decided for now; the rest
+are questions, not decisions.
 
 ## What the vision asks
 
-- **The owner, 2026-11-08:** the asset manager is "something that kyoten games can use to deliver final asset bundles",
-  while cosmic-forge handles most of the raw content creation.
+- **The owner, 2026-11-08,** first calling it the asset manager: "something that kyoten games can use to deliver final
+  asset bundles", while cosmic-forge handles most of the raw content creation.
 - **Heavy assets are never stored with the code** (the owner, 2026-11-05, [../SPIKE.md](../SPIKE.md) § Standing
   direction): "I just want to make sure we don't store all of the heavy stuff with the code." Three things are kept
   apart:
@@ -86,7 +86,7 @@ standing direction, 2026-11-05).
 
 ## The questions
 
-1. **The name.**
+1. **The name.** *(Decided 2026-11-08, below: the content delivery tool, for now.)*
    - The owner said "asset manager"; the SPIKE and KYR-29 say "delivery tool".
    - In Unreal, the Asset Manager is a runtime object that loads and tracks primary assets *(general knowledge, not
      checked)*, so "asset manager" may read as the runtime loader rather than the delivery side.
@@ -131,8 +131,8 @@ standing direction, 2026-11-05).
     - Signing a published bundle, as kama's registry signs packages.
     - What a remote source may do on each platform (the capability above).
 11. **The boundary with cosmic-forge** (with content-pipeline questions 1 and 2).
-    - forge plans a catalogue, a store, bundles and publish destinations. Does forge publish into the asset manager's
-      store, or is the asset manager forge's publish step seen from the game?
+    - forge plans a catalogue, a store, bundles and publish destinations. Does forge publish into the content delivery
+      tool's store, or is the tool forge's publish step seen from the game?
     - Which side makes the runtime forms (KTX2 compression, glTF optimization)?
 12. **What a game's repository holds.**
     - The lock or manifest of question 5, and a `kyoten` command that fetches and verifies (beside `kyoten generate`).
@@ -141,4 +141,12 @@ standing direction, 2026-11-05).
 
 ## Decided
 
-*(nothing yet)*
+- **2026-11-08, the owner: question 1 — it is the content delivery tool, for now.** Asked "asset manager" (the owner's
+  first words) or "delivery tool" (SPIKE's standing direction and KYR-29), the owner: "Content Delivery Tool is
+  probably fine for now?"
+  - **Why it fits:** it names the delivery side the standing direction describes, so it does not read as the runtime
+    loader that Unreal's Asset Manager is *(general knowledge, not checked)*. It keeps SPIKE's and KYR-29's
+    "delivery tool".
+  - **What it leaves open:** "content" already names the records under `content/` and the content layers. Whether
+    the tool delivers packs (records) as well as built assets is question 3, and the answer says whether the name is
+    exact. "For now" means a rename is cheap until it ships.

@@ -16,10 +16,7 @@ the design doc it settles before building on it.
    `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Then read `../kama`'s log for what
    it fixed or changed since `.kama-version`'s commit, and bump the pin only as a commit of its own, with every suite
    green on the new one.
-2. **The asset manager's name,** [design/asset-manager.md](design/asset-manager.md) question 1, if the owner has not
-   answered it: "asset manager" (the owner's words) or "delivery tool" (SPIKE and KYR-29), or another. The doc's
-   other eleven questions wait for KYR-66's turn; nothing in the first slice needs them.
-3. **Continue step 5** (KYR-7, the component model and the generator) at 5.3. Its seven questions were answered on
+2. **Continue step 5** (KYR-7, the component model and the generator) at 5.3. Its seven questions were answered on
    2026-11-08 (§ Questions the owner answers). Each part is test-first: the test seen to fail, then the code,
    `tools/test.sh` green, mutations caught, and a commit on `main`.
    1. **`kyoten::world`:** built on 2026-11-08 (`bea9ce5`): `Transform` (a `ZoneCoord` and a `float32` offset, on
@@ -57,7 +54,7 @@ the design doc it settles before building on it.
    - **The probes behind the answers** sit in `.scratch/step5-main` (the fence's layout, and the generator's two
      passes), `.scratch/step5-content` (content natively, under node and in Edge) and `.scratch/step5-cli` (the tool's
      package). Each is quoted where its decision is recorded.
-4. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
+3. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
    change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
    first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5
    callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and
@@ -77,7 +74,9 @@ the design doc it settles before building on it.
   - **The 32 KiB frame guard** (2026-11-08, `9286a7d`): in the engine's manifest alone, gated on `!OS_WINDOWS`, since a
     dependency's `cflags` reach every game. `tools/fixtures/frame-guard`, a game with a 40 KB frame, holds it.
   - **Step 5.2, `kyoten::records`** (2026-11-08, `d8cfd92`): 18 cases. The engine's tests are 96 cases in all.
-  - **KYR-66, the asset manager** (2026-11-08, `dea3db1`): its row and doc, twelve questions, nothing decided.
+  - **KYR-66, the content delivery tool** (2026-11-08, `dea3db1`): its row and doc, twelve questions. Its name was
+    question 1, answered the same day; the other eleven wait for KYR-66's turn, and nothing in the first slice needs
+    them.
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
@@ -249,6 +248,9 @@ here), committed with what it measured.
      forward from step 8 because step 5 generates `Actions`; step 5 builds `Digital` (components § Decided).
   7. **The default budget is one chunk per (zone, layer, prefab),** reserved up front and refusing when full
      (components § Decided).
+- **Answered on 2026-11-08, KYR-66's name:** the asset manager is the **content delivery tool**, for now. The owner:
+  "Content Delivery Tool is probably fine for now?" ([design/content-delivery-tool.md](design/content-delivery-tool.md)
+  § Decided).
 - **Step 8: the action kinds,** decided on 2026-11-08 as suggested (above, question 6). The owner had asked: "Button
   and Axis are ok to start I think... but I would prefer something maybe more general? If you have any suggestions."
   *Suggested* (2026-11-07), named for the value a processor reads rather than for a device, so one kind serves a key,

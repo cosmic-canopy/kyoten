@@ -3,7 +3,7 @@
 **Status:** draft for the design spike. These are questions, not decisions.
 
 Delivering the built runtime assets to developer machines and players is its own row since 2026-11-08: KYR-66,
-[asset-manager.md](asset-manager.md).
+[content-delivery-tool.md](content-delivery-tool.md), the content delivery tool.
 
 ## What the vision asks
 
