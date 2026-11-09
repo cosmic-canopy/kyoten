@@ -1,0 +1,20 @@
+{
+  "name": "requires",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture for required components: a chain, a listed one, a variant in its base's family, one without a default ctor listed, and a circle",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../../../engine" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "parts": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world"] },
+    "generated": {
+      "visibility": "internal",
+      "importsOnly": ["kyoten::frame", "kyoten::world", "kyoten::input", "std::collections", "parts"]
+    }
+  }
+}

@@ -1,0 +1,63 @@
+// The requires fixture: required components (components § Decided, step 5.5's questions of 2026-11-09). A requirement
+// adds what a prefab lacks, through a chain, and says so in the generated field; a variant that lists only what its
+// base already requires stays in its base's family; a required component a prefab lists is not added again; one
+// without a `default ctor` that the prefab lists is taken; a circle of requirements ends; and a processor runs on a
+// family that has its components only by requirement.
+
+import { Tally, Setup, Ran, read, eraseDir, ranAs, none, check, linesAfter, std::collections::DynamicArray };
+
+export { requiresTests };
+
+// One generated type's text, from `type value <name> {` to the line that closes it, or "" when there is none.
+fn string typeText(const ref string text, const ref string name) {
+    string opening = "type value " + name + " {";
+    Optional<isize> at = text.find(substring: opening);
+    isize start = match (at) { case Some(value: i): i; case None: -1; };
+    if (start < 0) { return ""; }
+    Optional<isize> closing = text.findFrom(substring: "\n}", start: start);
+    isize end = match (closing) { case Some(value: e): e + 2; case None: text.length(); };
+    return text.substring(start: start, end: end);
+}
+
+unsafe fn void requiresTests(ref Tally t, ref Setup s) {
+    DynamicArray<string> install = DynamicArray.empty();
+    install.add(item: "pkg");
+    install.add(item: "install");
+    install.add(item: s.fixture(at: "requires/kama.json"));
+    Ran installed = s.kamaRun(argv: install);
+    ranAs(t: t, name: "requires: kama pkg install", r: installed, want: 0, says: "");
+
+    eraseDir(path: s.fixture(at: "requires/src/generated"));
+    Ran ran = s.kyoten(command: "run", game: "requires", more: none());
+    ranAs(t: t, name: "requires: on a fresh clone, `kyoten run`, whose main names every field", r: ran, want: 0,
+          says: "requires: oiled is a cart true, carter's player 1, pair's right 2");
+    string prefabs = read(path: s.fixture(at: "requires/src/generated/prefabs.kama"));
+
+    string cart = typeText(text: prefabs, name: "CartPrefab");
+    check(t: t, name: "requires: a requirement adds what a prefab lacks, through a chain, and its field says so",
+          ok: cart.contains(substring: "// Required by `requires::parts::Wheel`.\n    public Axle axle;")
+              && cart.contains(substring: "// Required by `requires::parts::Axle`.\n    public Transform transform;"),
+          why: "prefabs.kama: " + prefabs);
+    check(t: t, name: "requires: a variant that lists only what its base requires stays in its base's family",
+          ok: prefabs.contains(substring: "public ctor oiled()") && !prefabs.contains(substring: "OiledPrefab"),
+          why: "prefabs.kama: " + prefabs);
+    string mill = typeText(text: prefabs, name: "MillPrefab");
+    check(t: t, name: "requires: a required component the prefab lists is the prefab's, not the requirement's",
+          ok: mill.contains(substring: "    public Axle axle;") && !mill.contains(substring: "Required by `requires::parts::Hub`")
+              && mill.contains(substring: "// Required by `requires::parts::Axle`.\n    public Transform transform;"),
+          why: "prefabs.kama: " + prefabs);
+    string carter = typeText(text: prefabs, name: "CarterPrefab");
+    check(t: t, name: "requires: a required component with no default ctor, listed, is taken",
+          ok: carter.contains(substring: "public Actions actions;") && !carter.contains(substring: "Required by"),
+          why: "prefabs.kama: " + prefabs);
+    string pair = typeText(text: prefabs, name: "PairPrefab");
+    check(t: t, name: "requires: a circle of requirements ends, and adds the other",
+          ok: pair.contains(substring: "// Required by `requires::parts::Left`.\n    public Right right;"),
+          why: "prefabs.kama: " + prefabs);
+
+    string said = copy ran.said();
+    DynamicArray<string> shown = linesAfter(text: said, prefix: "shown: ");
+    bool both = shown.length() == 2 && shown[0] == "slot 0 turns 1" && shown[1] == "slot 1 turns 10";
+    check(t: t, name: "requires: a processor runs on a family that has its components only by requirement",
+          ok: both, why: "shown: " + said);
+}

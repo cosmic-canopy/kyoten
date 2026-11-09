@@ -18,7 +18,7 @@
 import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord,
          kyoten::records::ProcessorGroupRecord, kyoten::records::ComponentRecord, kyoten::frame::Rate,
          std::collections::DynamicArray, std::collections::SortedMap, Records, CodeFile, Index, FunctionEntry,
-         ParamEntry, Family, Component, Refusals, FileImports, readImports, Manifest };
+         ParamEntry, Family, Component, Refusals, FileImports, readImports, Manifest, inModule };
 
 export { Access, Param, Processor, Group, Schedule, buildSchedule, phaseName };
 
@@ -197,12 +197,6 @@ fn string moduleOfPath(const ref string path) {
         if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: 0, end: i - 1); }
     }
     return "";
-}
-
-// A record's name for something in its module: a bare name is the module's own, and a full path reaches anywhere.
-fn string inModule(const ref string module, const ref string name) {
-    if (name.contains(substring: "::")) { return copy name; }
-    return module + "::" + name;
 }
 
 // `a, b and c`, each in backticks unless `plain`.
@@ -462,9 +456,6 @@ unsafe fn void componentRecord(const ref string module, const ref string name, c
         case Side: { no.add(where: file, what: "component `${name}` is stored `Side`, and side stores are not built yet: they come with their row"); }
         case Table: { }
     };
-    if (rec.requires().length() > 0) {
-        no.add(where: file, what: "component `${name}` `requires` other components, which is not built yet: required components are step 5's next part");
-    }
 }
 
 // One processor group. One whose record is refused is still made, so its processors are checked against it and not

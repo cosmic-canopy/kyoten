@@ -1,0 +1,9 @@
+{ "components": {
+    "Wall":   { "requires": ["Brick"] },
+    "Gate":   { "requires": ["Health"] },
+    "Moat":   { "requires": ["Ammo"] },
+    "Flag":   { "requires": ["Banner"] },
+    "Banner": { "store": "World" },
+    "Crown":  { "store": "World", "requires": ["Turret"] },
+    "Spire":  { "requires": ["components::towers::Health"] },
+    "Cannon": { "requires": ["Powder"] } } }

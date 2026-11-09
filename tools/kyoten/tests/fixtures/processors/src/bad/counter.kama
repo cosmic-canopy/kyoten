@@ -1,0 +1,2 @@
+// A module `static`, which the generator refuses: state outside the world (components § Decided, 2026-11-07).
+static int32 hits = 0;

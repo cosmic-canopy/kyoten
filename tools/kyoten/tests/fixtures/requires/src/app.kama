@@ -1,0 +1,34 @@
+// The requires fixture's main. It builds each family's prefab with every field named, so a field a requirement should
+// have added, and did not, fails the build; then it creates a cart and a mill, steps the world once and runs Output,
+// whose `show` prints each axle.
+
+import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Rate, kyoten::frame::step,
+         requires::parts::Wheel, requires::parts::Axle, requires::parts::Hub, requires::parts::Driver,
+         requires::parts::Left, requires::parts::Right, requires::generated::Actions, requires::generated::CartPrefab,
+         requires::generated::CartPrefabId, requires::generated::MillPrefab, requires::generated::CarterPrefab,
+         requires::generated::PairPrefab, requires::generated::GameWorld };
+
+fn uint8 main() {
+    // Through locals: `CartPrefabId.oiled() != CartPrefabId.default()` is refused as having no operator (KY-46).
+    CartPrefabId oiled = CartPrefabId.oiled();
+    CartPrefabId first = CartPrefabId.default();
+    bool differ = oiled != first;
+    CarterPrefab carter = CarterPrefab.of(actions: Actions.forPlayer(player: 1), driver: Driver.default());
+    int32 player = carter.actions.player;
+    PairPrefab pair = PairPrefab.of(left: Left.default(), right: Right.default());
+    int32 right = pair.right.n;
+    println(s: "requires: oiled is a cart ${differ}, carter's player ${player}, pair's right ${right}");
+
+    GameWorld world = GameWorld.make();
+    Optional<Handle> cart = world.create_cart(prefab: CartPrefab.of(axle: Axle.default(), transform: Transform.default(),
+                                                                    wheel: Wheel.default()));
+    Axle nine = Axle.default();
+    nine.turns = 9;
+    Optional<Handle> mill = world.create_mill(prefab: MillPrefab.of(axle: nine, hub: Hub.default(),
+                                                                    transform: Transform.default()));
+    int32 baseHz = GameWorld::baseHz;
+    Rate clock = Rate.of(hz: baseHz, over: baseHz);
+    step(world: world, time: clock.at(step: 0));
+    world.output(time: clock.at(step: 0));
+    return 0;
+}

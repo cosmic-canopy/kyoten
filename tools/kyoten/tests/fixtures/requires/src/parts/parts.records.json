@@ -1,0 +1,8 @@
+{ "processors": { "grow": { "phase": "Update" }, "show": { "phase": "Output" } },
+  "components": {
+    "Wheel":  { "requires": ["Axle"] },
+    "Axle":   { "requires": ["kyoten::world::Transform"] },
+    "Hub":    { "requires": ["Axle"] },
+    "Driver": { "requires": ["Actions"] },
+    "Left":   { "requires": ["Right"] },
+    "Right":  { "requires": ["Left"] } } }

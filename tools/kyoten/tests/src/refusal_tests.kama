@@ -79,6 +79,24 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "prefab `twice`", b: "`components::towers::Turret`", c: "twice"));
     says(t: t, name: "components: two components of one name in a prefab wait for their field spelling", r: c,
          words: allOf(a: "prefab `hero`", b: "`Health`", c: "not decided"));
+    // Required components (step 5.5's questions of 2026-11-09).
+    says(t: t, name: "components: a requirement naming no type is refused", r: c,
+         words: allOf(a: "component `Wall`'s `requires` names `Brick`, which is no type", b: "", c: ""));
+    says(t: t, name: "components: a requirement's bare name two types share is refused, naming both", r: c,
+         words: allOf(a: "component `Gate`'s `requires` names `Health`, which is", b: "components::player::Health",
+                      c: "full path"));
+    says(t: t, name: "components: a requirement naming a resource is refused", r: c,
+         words: allOf(a: "component `Moat`'s `requires` names `Ammo`, a resource", b: "type value", c: ""));
+    says(t: t, name: "components: a requirement naming a world component is refused", r: c,
+         words: allOf(a: "component `Flag`'s `requires` names `Banner`, a world component", b: "", c: ""));
+    says(t: t, name: "components: a world component that requires others is refused", r: c,
+         words: allOf(a: "component `Crown` is a world component", b: "`requires`", c: ""));
+    says(t: t, name: "components: a variant dropping what its other components require is refused, naming which", r: c,
+         words: allOf(a: "prefab `ruin` drops `components::towers::Health`", b: "`components::towers::Spire` requires it",
+                      c: "keep"));
+    says(t: t, name: "components: a required component with no default ctor that a prefab lacks is refused, naming what requires it", r: c,
+         words: allOf(a: "prefab `cannon` lacks `components::towers::Powder`", b: "`components::towers::Cannon` requires",
+                      c: "`default ctor`"));
     // The first pass wrote its names before kama was asked; a refusal after that puts every file back as it was.
     bool left = has(path: s.fixture(at: "components/src/generated/actions.kama"))
                 || has(path: s.fixture(at: "components/src/generated/prefabs.kama"));
@@ -138,10 +156,10 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "prefab `unit`", b: "`Score`", c: "world component"));
     says(t: t, name: "processors: a side store waits for its row", r: p,
          words: allOf(a: "`Mark`", b: "`Side`", c: "not built yet"));
-    says(t: t, name: "processors: required components wait for their part of step 5", r: p,
-         words: allOf(a: "`Hp`", b: "`requires`", c: "not built yet"));
     says(t: t, name: "processors: a component record naming no type is refused", r: p,
          words: allOf(a: "`Ghost`", b: "`processors::bad`", c: ""));
+    says(t: t, name: "processors: a module `static` is refused, naming its line and pointing to a world component", r: p,
+         words: allOf(a: "`hits`", b: "src/bad/counter.kama:2", c: "world component"));
     says(t: t, name: "processors: a base clock above 1,000 Hz is warned of, with the nearest rates that fit", r: p,
          words: allOf(a: "4620 Hz", b: "7 Hz as 6 Hz", c: "11 Hz as 10 Hz"));
     bool wroteWorld = has(path: s.fixture(at: "processors/src/generated/world.kama"))

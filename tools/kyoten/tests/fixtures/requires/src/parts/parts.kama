@@ -1,0 +1,31 @@
+// Components that require others (components § Decided, step 5.5's questions of 2026-11-09): `Wheel` requires `Axle`,
+// which requires the engine's `Transform`; `Hub` requires `Axle` too; `Driver` requires `Actions`, which elects no
+// `default ctor`; and `Left` and `Right` require each other. `grow` runs on every family with an `Axle` and a
+// `Transform`, so a family that has them only by requirement is seen to have them, and `show` prints each axle.
+
+import { core::println, kyoten::world::Transform, kyoten::world::Handle };
+
+export { Wheel, Axle, Hub, Driver, Left, Right, grow, show };
+
+@generate(Serializable, Deserializable)
+type value Wheel { @field public int32 spokes = 8; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Axle { @field public int32 turns = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Hub { @field public int32 teeth = 12; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Driver { @field public int32 seat = 1; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Left { @field public int32 n = 1; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Right { @field public int32 n = 2; public default ctor make() { } }
+
+// Reads the transform, which a cart has only because its axle requires one.
+fn void grow(ref Axle axle, const ref Transform t) {
+    if (t.scale.x > 0) { axle.turns = axle.turns + 1; }
+}
+
+fn void show(const ref Axle axle, Handle me) {
+    uint32 slot = me.slot();
+    println(s: "shown: slot ${slot} turns ${axle.turns}");
+}

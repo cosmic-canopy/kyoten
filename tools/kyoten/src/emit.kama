@@ -113,6 +113,8 @@ fn string prefabsKama(const ref string game, const ref DynamicArray<Family> fami
         t = t + "@generate(of)\ntype value " + ty + "Prefab {\n";
         foreach (const ref Component c in f.components().iterConst()) {
             string alias = c.path() == actionsPath ? "Actions" : aliasOf(path: c.path(), name: c.name(), uses: uses);
+            // The visible mapping (components § Decided, question 8, 2026-11-06): where a required component came from.
+            if (!c.requiredBy().isEmpty()) { t = t + "    // Required by `" + c.requiredBy() + "`.\n"; }
             t = t + "    public " + alias + " " + c.field() + ";\n";
         }
         t = t + "}\n\n";

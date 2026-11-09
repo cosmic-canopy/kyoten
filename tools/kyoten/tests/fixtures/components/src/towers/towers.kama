@@ -1,7 +1,30 @@
-export { Health, Turret, Ammo };
+export { Health, Turret, Ammo, Wall, Gate, Moat, Flag, Banner, Crown, Spire, Cannon, Powder };
 @generate(Serializable, Deserializable)
 type value Health { @field public int32 hp = 10; public default ctor make() { } }
 @generate(Serializable, Deserializable)
 type value Turret { @field public int32 cooldown = 1; public default ctor make() { } }
 // A resource holds what it owns, so it is no component.
 type resource Ammo { int32 rounds = 0; public ctor make() { } }
+
+// Required components the generator refuses (step 5.5): a requirement naming no type, a bare name two types share, a
+// resource and a world component; a world component that requires; a variant dropping what its other components
+// require; and a required component with no `default ctor` that a prefab lacks.
+@generate(Serializable, Deserializable)
+type value Wall { @field public int32 height = 3; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Gate { @field public int32 width = 2; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Moat { @field public int32 depth = 1; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Flag { @field public int32 colour = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Banner { @field public int32 colour = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Crown { @field public int32 jewels = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Spire { @field public int32 height = 9; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Cannon { @field public int32 range = 5; public default ctor make() { } }
+// No default: a prefab that has it lists it, with its values.
+@generate(Serializable, Deserializable)
+type value Powder { @field public int32 grams; public ctor of(int32 grams) { this.grams = grams; } }

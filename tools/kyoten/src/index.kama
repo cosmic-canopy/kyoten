@@ -10,27 +10,32 @@
 //   so it is asked again only when one of them changes.
 //
 // A file's module is mapped from the package's manifest, since a result names its file and not its module (KY-39).
+// Whether a type elects a `default ctor` is read from its ctor's line, since a result does not say (KY-44): a required
+// component without defaults must be listed (components § Decided, step 5.5's questions of 2026-11-09).
 //
 // The game's own answer also lists its functions with their parameters (`"params":[{"name","mode","type"}]`), which
 // the second pass reads as processors' signatures, so it asks kama nothing more (components § Decided, 2026-11-09,
-// step 5.4's question 1).
+// step 5.4's question 1); and its module statics (`"kind":"static"`, with their lines), which the generator refuses
+// (step 5.5).
 
-import { core::println, std::memory::replace, std::collections::DynamicArray, std::io::IoError, std::memory::Owned,
+import { core::println, std::memory::replace, std::collections::DynamicArray, std::collections::SortedMap,
+         std::io::IoError, std::memory::Owned,
          std::fs::readText, std::fs::readFile, std::fs::writeText, std::fs::createDirAll, std::fs::canonicalPath,
          std::fs::exists, std::digest::sha256::Sha256, std::encoding::hex::encode,
          std::serialization::text::json::JsonValue, std::serialization::text::json::JsonDeserializer,
          std::serialization::text::json::deserializeJsonBuffer, std::serialization::text::json::serializeJsonBuffer,
          Kama, Manifest, Dependency, Refusals, readManifest, filesUnder, dirOf };
 
-export { TypeEntry, ParamEntry, FunctionEntry, Index, buildIndex };
+export { TypeEntry, ParamEntry, FunctionEntry, StaticEntry, Index, buildIndex };
 
-// A type kama says a package declares: its name, its full path (`kyoten::world::Transform`) and its kind (`value`,
-// `resource`, `enum`, `view` or `contract`).
+// A type kama says a package declares: its name, its full path (`kyoten::world::Transform`), its kind (`value`,
+// `resource`, `enum`, `view` or `contract`), and whether it elects a `default ctor`.
 @generate(Serializable, Deserializable)
 type resource TypeEntry {
     @field(name: "name") string typeName = "";
     @field(name: "path") string fullPath = "";
     @field(name: "kind") string typeKind = "";
+    @field(name: "default", default) bool defaulted = false;
 
     public default ctor empty() { }
     public ctor make(string name, string path, string kind) {
@@ -42,6 +47,9 @@ type resource TypeEntry {
     public const fn const ref string name() { return this.typeName; }
     public const fn const ref string path() { return this.fullPath; }
     public const fn const ref string kind() { return this.typeKind; }
+    // Whether the type elects a `default ctor`, read from its ctor's line until kama's KR-360 marks it (KY-44).
+    public const fn bool electsDefault() { return this.defaulted; }
+    public fn void markDefault() { this.defaulted = true; }
 }
 
 // One parameter as kama gives it: its name, its mode (`ref`, `const ref`, or "" by value) and its type as written,
@@ -86,15 +94,43 @@ type resource FunctionEntry {
     public const fn const ref string returns() { return this.returnType; }
 }
 
+// A module `static` the game declares: its name, its file from the game's root, and its line. kama allows `static`
+// only at module scope, so every `static` in kama's answer is one (components § Decided, step 5.5's questions).
+type resource StaticEntry {
+    string staticName = "";
+    string filePath = "";
+    int64 lineNo = 0;
+
+    public ctor make(string name, string file, int64 line) {
+        this.staticName = give name;
+        this.filePath = give file;
+        this.lineNo = line;
+    }
+
+    public const fn const ref string name() { return this.staticName; }
+    public const fn const ref string file() { return this.filePath; }
+    public const fn int64 line() { return this.lineNo; }
+}
+
+// What a cached answer holds, numbered: raise it whenever `TypeEntry` learns something, so an answer cached before is
+// asked again rather than read as if it knew. 1 added each type's `default ctor` (step 5.5); before it, none was written.
+fn int32 cacheFormat() { return 1; }
+
 // A dependency's answer, as cached.
 @generate(Serializable, Deserializable)
 type resource CachedAnswer {
+    @field(name: "format", default) int32 formatField = 0;
     @field(name: "hash") string hashField = "";
     @field(name: "types", default) DynamicArray<TypeEntry> typesField = DynamicArray.empty();
 
     public default ctor empty() { }
-    public ctor make(string hash, DynamicArray<TypeEntry> types) { this.hashField = give hash; this.typesField = give types; }
+    public ctor make(string hash, DynamicArray<TypeEntry> types) {
+        this.formatField = cacheFormat();
+        this.hashField = give hash;
+        this.typesField = give types;
+    }
 
+    public const fn int32 format() { return this.formatField; }
     public const fn const ref string hash() { return this.hashField; }
     public fn DynamicArray<TypeEntry> take() {
         DynamicArray<TypeEntry> fresh = DynamicArray.empty();
@@ -105,11 +141,17 @@ type resource CachedAnswer {
 type resource Index {
     DynamicArray<TypeEntry> entries = DynamicArray.empty();
     DynamicArray<FunctionEntry> functionList = DynamicArray.empty();
+    DynamicArray<StaticEntry> staticList = DynamicArray.empty();
+
+    friend buildIndex[staticList];
 
     public ctor make() { }
 
     // The game's own free functions.
     public const fn const ref DynamicArray<FunctionEntry> functions() { return this.functionList; }
+
+    // The game's own module statics, which the generator refuses.
+    public const fn const ref DynamicArray<StaticEntry> statics() { return this.staticList; }
 
     // Where the function at this full path is in `functions()`, or -1 when the game declares none there.
     public const fn isize functionAt(const ref string path) {
@@ -148,6 +190,12 @@ type resource Index {
         return found;
     }
 
+    // Whether the type at this full path elects a `default ctor`; false when none is there.
+    public const fn bool defaultAt(const ref string path) {
+        foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return e.electsDefault(); } }
+        return false;
+    }
+
     // The kind of the type at this full path, or "" when none is there.
     public const fn string kindAt(const ref string path) {
         foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return copy e.kind(); } }
@@ -176,10 +224,11 @@ fn bool isGenerated(const ref string rel) {
     return rel.startsWith(prefix: "generated/") || rel.endsWith(suffix: ".generated.kama");
 }
 
-// The types one package declares, by kama's answer, with its free functions into `functions`; `skipGenerated` leaves
-// out the generated files' own.
+// The types one package declares, by kama's answer, with its free functions into `functions` and its module statics
+// into `statics`; `skipGenerated` leaves out the generated files' own.
 unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated,
-                                                ref DynamicArray<FunctionEntry> functions, ref string why) {
+                                                ref DynamicArray<FunctionEntry> functions,
+                                                ref DynamicArray<StaticEntry> statics, ref string why) {
     DynamicArray<string> argv = DynamicArray.empty();
     argv.add(item: "query");
     argv.add(item: m.manifestPath());
@@ -200,6 +249,8 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
     };
     string src = canonical(path: m.sourceDir()) + "/";
     DynamicArray<TypeEntry> found = DynamicArray.empty();
+    SortedMap<string, bool> defaulted = SortedMap.empty();
+    SortedMap<string, string> texts = SortedMap.empty();
     Optional<JsonValue> results = doc.get(key: "results");
     match (results) {
         case Some(value: rs): {
@@ -208,13 +259,31 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
                     foreach (const ref JsonValue x in xs.iterConst()) {
                         string kind = textAt(doc: x, key: "kind");
                         bool isFunction = kind == "function";
-                        if (!isTypeKind(k: kind) && !isFunction) { continue; }
+                        bool isStatic = kind == "static";
+                        bool isCtor = kind == "ctor";
+                        if (!isTypeKind(k: kind) && !isFunction && !isStatic && !isCtor) { continue; }
                         string file = canonical(path: textAt(doc: x, key: "uri"));
                         if (!file.startsWithIgnoringAsciiCase(prefix: src)) { continue; }
                         string rel = file.substring(start: src.length(), end: file.length());
                         if (skipGenerated && isGenerated(rel: rel)) { continue; }
                         string name = textAt(doc: x, key: "name");
+                        if (isStatic) {
+                            statics.add(item: StaticEntry.make(name: give name, file: "src/" + rel, line: numberAt(doc: x, key: "line")));
+                            continue;
+                        }
                         string module = m.moduleOf(folder: dirOf(path: rel));
+                        if (isCtor) {
+                            if (!texts.contains(key: file)) {
+                                Result<string, IoError> read = readText(path: file);
+                                string got = match (give read) { case Ok(value: t): give t; case Err(error: e): ""; };
+                                texts.put(key: copy file, value: give got);
+                            }
+                            if (ctorIsDefault(text: texts.getRef(key: file), line: numberAt(doc: x, key: "line"),
+                                              column: numberAt(doc: x, key: "column"))) {
+                                defaulted.put(key: module + "::" + textAt(doc: x, key: "container"), value: true);
+                            }
+                            continue;
+                        }
                         string path = module + "::" + name;
                         if (isFunction) {
                             functions.add(item: FunctionEntry.make(path: give path, module: give module, file: "src/" + rel,
@@ -230,7 +299,33 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
         }
         case None: { }
     };
+    foreach (ref TypeEntry e in found.iterMut()) { if (defaulted.contains(key: e.path())) { e.markDefault(); } }
     return Optional::Some(value: give found);
+}
+
+// Whether the ctor kama found at `line` (from 1) and `column` (from 0, its name) of a file's text is its type's
+// `default ctor`: the two words ahead of its name are `default ctor`. KY-44's stopgap: kama's query does not mark the
+// default ctor, so the tool reads the line kama points at, text kama has already checked. KR-360's mark replaces it.
+fn bool ctorIsDefault(const ref string text, int64 line, int64 column) {
+    int64 at = 1;
+    foreach (string l in text.split(separator: "\n")) {
+        if (at == line) {
+            isize col = cast<isize>(column);
+            isize end = col < l.length() ? col : l.length();
+            string before = l.substring(start: 0, end: end);
+            string spaced = before.replace(old: "\t", with: " ");
+            string last = "";
+            string previous = "";
+            foreach (string w in spaced.split(separator: " ")) {
+                if (w.isEmpty()) { continue; }
+                previous = copy last;
+                last = copy w;
+            }
+            return last == "ctor" && previous == "default";
+        }
+        at = at + 1;
+    }
+    return false;
 }
 
 // A function's parameters from its entry in kama's answer, in order.
@@ -252,6 +347,15 @@ fn DynamicArray<ParamEntry> paramsOf(const ref JsonValue doc) {
         case None: { }
     };
     return made;
+}
+
+// A whole number in kama's answer, or 0 when it is not there.
+fn int64 numberAt(const ref JsonValue doc, const ref string key) {
+    Optional<JsonValue> v = doc.get(key: key);
+    match (v) {
+        case Some(value: j): { Optional<int64> n = j.asInt64(); return match (n) { case Some(value: x): x; case None: 0; }; }
+        case None: { return 0; }
+    };
 }
 
 fn string textAt(const ref JsonValue doc, const ref string key) {
@@ -301,7 +405,7 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
                 Result<CachedAnswer, Owned<Error>> read = CachedAnswer.deserialize(r: r);
                 match (give read) {
                     case Ok(value: c): {
-                        if (c.hash() == hash) {
+                        if (c.hash() == hash && c.format() == cacheFormat()) {
                             string name = copy d.name();
                             println(s: "kyoten: components of ${name}: cached");
                             CachedAnswer kept = give c;
@@ -317,8 +421,9 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
     Optional<Manifest> dm = readManifest(path: root + "/kama.json", why: why);
     Manifest depManifest = match (give dm) { case Some(value: m): give m; case None: { return Optional::None; } };
     DynamicArray<FunctionEntry> theirFunctions = DynamicArray.empty();
+    DynamicArray<StaticEntry> theirStatics = DynamicArray.empty();
     Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, functions: theirFunctions,
-                                                  why: why);
+                                                  statics: theirStatics, why: why);
     DynamicArray<TypeEntry> types = match (give asked) {
         case Some(value: ts): give ts;
         case None: { return Optional::None; }
@@ -345,12 +450,15 @@ unsafe fn Index buildIndex(ref Kama kama, const ref Manifest game, ref Refusals 
     idx.add(e: TypeEntry.make(name: "Actions", path: gameName + "::generated::Actions", kind: "value"));
     string why = "";
     DynamicArray<FunctionEntry> functions = DynamicArray.empty();
-    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, functions: functions, why: why);
+    DynamicArray<StaticEntry> statics = DynamicArray.empty();
+    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, functions: functions,
+                                                statics: statics, why: why);
     match (give own) {
         case Some(value: ts): { idx.addAll(es: give ts); }
         case None: { no.add(where: "kama.json", what: why); return idx; }
     };
     idx.addFunctions(fs: give functions);
+    idx.staticList = give statics;
     DynamicArray<string> versionArgs = DynamicArray.empty();
     versionArgs.add(item: "--version");
     string versionWhy = "";

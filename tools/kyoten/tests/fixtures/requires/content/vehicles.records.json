@@ -1,0 +1,6 @@
+{ "prefabs": {
+    "cart":   { "Wheel": {}, "note": "lists only Wheel: Axle comes by Wheel's requirement, and Transform by Axle's" },
+    "oiled":  { "from": "cart", "Axle": { "turns": 5 }, "note": "lists only what cart already requires, so it is in cart's family" },
+    "mill":   { "Hub": {}, "Axle": { "turns": 9 }, "note": "lists Axle, which Hub requires, so no requirement adds it" },
+    "carter": { "Driver": {}, "Actions": { "player": 1 }, "note": "Driver requires Actions, which has no default ctor, so it is listed" },
+    "pair":   { "Left": {}, "note": "Left and Right require each other: a circle is allowed" } } }

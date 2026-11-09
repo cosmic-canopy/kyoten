@@ -2,7 +2,7 @@
 // 2): a lowerCamel ASCII identifier, not a word kama or C reserves, and not a member the generated type already has.
 // The build refuses any other and names the fix, so a record's typo never becomes a parse error in generated code.
 
-export { isIdentifier, suggestIdentifier, isReserved, typeCase, fieldCase, nameProblem };
+export { isIdentifier, suggestIdentifier, isReserved, typeCase, fieldCase, nameProblem, inModule };
 
 fn bool isLower(uint8 b) { return b >= 97ui8 && b <= 122ui8; }
 fn bool isUpper(uint8 b) { return b >= 65ui8 && b <= 90ui8; }
@@ -87,4 +87,10 @@ fn string nameProblem(const ref string name, const ref string taken, const ref s
         return "`${name}` is a member ${owner} has itself: choose another";
     }
     return "";
+}
+
+// A record's name for something in its module: a bare name is the module's own, and a full path reaches anywhere.
+fn string inModule(const ref string module, const ref string name) {
+    if (name.contains(substring: "::")) { return copy name; }
+    return module + "::" + name;
 }
