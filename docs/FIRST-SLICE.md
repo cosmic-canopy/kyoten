@@ -8,34 +8,23 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, end of the day's third session)
+## Where it stands (2026-11-09, the day's fourth session, under way)
 
-**The next session starts here:**
+**The fourth session so far:**
 
-1. **Run the suites on kyoten's pinned kama** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md § Build):
-   `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Then read `../kama`'s log for what
-   it fixed or changed since `.kama-version`'s commit, and bump the pin only as a commit of its own, with every suite
-   green on the new one.
-   - **kama took kyoten's open gaps on 2026-11-09** (`21bac390`): KR-357 (KY-41, KY-42), KR-358 (KY-46), KR-359
-     (KY-43) and KR-360 (KY-39, KY-44), claimed by its session on this machine, and KR-361 (KY-45) on its roadmap.
-     None was committed by the third session's start (`../kama` still at `64c7e2d2`). By its end kama had rebased
-     its `dev`, so `21bac390` is now `e9ce33af` and `64c7e2d2` is `be4ee00a` (the pin's `2159ce21` is untouched), and
-     had committed 0.9.892 (a sub-`int` operation beside an unsuffixed literal takes the operand's type, so
-     `(a + 100) / 2ui8` wraps) and **KR-357 at `1ff7c096` (0.9.893)**; KR-358 and KR-360 were in its working tree,
-     uncommitted. **Start the next session by bumping the pin** to kama's newest commit, never its working tree. Run
-     each gap's repro on the new binary, remove what is fixed (`docs/KAMA_GAPS.md`), and take what each frees,
-     test-first:
-     - **KR-360:** read each parameter's full path from the query and delete `tools/kyoten/src/imports.kama`, the
-       owner's stopgap (components § Decided, 2026-11-09, step 5.4's question 1); read the `default ctor` mark and
-       delete `ctorIsDefault` in `tools/kyoten/src/index.kama`, step 5.5's stopgap (question 4), raising
-       `cacheFormat()` if what is cached changes; and refuse a component that is not exported, by name, before kama's
-       error in generated code.
-     - **KR-358:** `spin`'s `main` compares `CubePrefabId.fastCube() != CubePrefabId.default()` directly.
-     - **KR-357:** `ChunkSize::rowsFor` counts in `isize`, kama's count type.
-     - **KR-359:** a records file with a key written twice is refused; add a case to the tool's refusal fixtures.
-     - **KR-361,** when it lands: one query answers for the dependencies, and the tool's per-dependency cache goes.
-   - **KY-47** (filed at step 5.4, a bounded list's `isize` length) and **KY-48** (filed at step 5.5: no reader over
-     a parsed `JsonValue`, so the loader re-reads each subtree) are new to kama; the owner relays them.
+1. **The pin is `0.9.899+gf32373ea`** (`e3e6164`, a commit of its own), with every suite green on it. **kama's fixes
+   are taken** (`0c6f9fe`; components § Decided, the built entry "kama's fixes taken"):
+   - `ChunkSize` counts in `isize` (KR-357);
+   - the tool reads each parameter's `path` and the `default ctor` mark (KR-360), so `imports.kama` and
+     `ctorIsDefault` are gone;
+   - a component its module does not export is refused by name;
+   - a key written twice is refused (KR-359);
+   - ids compare directly (KR-358);
+   - a bounded list is one size on every target (KY-47).
+
+   KY-39, KY-41 to KY-44, KY-46 and KY-47 are removed from `docs/KAMA_GAPS.md`. Still open: KY-45 (kama KR-361, not
+   started; when it lands, one query answers for the dependencies and the per-dependency cache goes) and KY-48 (no
+   reader over a parsed `JsonValue`, the loader's stopgap). The owner relays KY-48.
 2. **Continue step 5** (KYR-7, the component model and the generator) at the loader, step 5.5's last part. Its seven
    questions were answered on 2026-11-08, 5.3's four, 5.4's two and 5.5's four on 2026-11-09 (§ Questions the owner
    answers). Each part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught,
@@ -139,8 +128,9 @@ the design doc it settles before building on it.
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
-- **kama:** kyoten's pin is `0.9.886+g2159ce21` (`.kama-version`, 2026-11-08), built from a clean clone; step 4 was
-  built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `../kama`'s working binary, `0.9.881+g4267d2ec`.
+- **kama:** kyoten's pin is `0.9.899+gf32373ea` (`.kama-version`, 2026-11-09; `0.9.886+g2159ce21` before it),
+  built from a clean clone; step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `../kama`'s working
+  binary, `0.9.881+g4267d2ec`.
   - **That binary was built at 09:59 on 2026-11-08** from kama's working tree, which held uncommitted changes to its
     emitter and driver. kama had committed 0.9.878 to 0.9.881 that morning: `kama run` on Android over adb, every std
     module building on bare metal or refused by name, and a board's clocks declared in kama.
@@ -169,9 +159,9 @@ the design doc it settles before building on it.
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08, and again three times on 2026-11-09),** as before on
+- **Green on the pin, `0.9.899+gf32373ea` (2026-11-09, the fourth session),** as before on `0.9.886+g2159ce21`,
   `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
-  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 117 cases,
+  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 126 cases,
     `examples/games/fps` (it prints `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
   - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.

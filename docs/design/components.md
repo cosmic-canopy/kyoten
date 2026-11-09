@@ -2263,3 +2263,38 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      naming no component of its prefab's family, and a placement's `group` or a layer other than `main` (not built
      yet) are refused, so a typo is a build error. The loader refuses the same, in the same words, when it arrives
      later, as a mod's would. **Considered:** checking scenes only when they load, at run time.
+- **2026-11-09, built: kama's fixes taken** (`0c6f9fe`), on kyoten's pin, moved to `0.9.899+gf32373ea` as a commit of
+  its own (`e3e6164`), test-first. Each gap's repro passed on the new binary first ([../KAMA_GAPS.md](../KAMA_GAPS.md)).
+  - **`ChunkSize::rowsFor` counts in `isize`** (KR-357, closing KY-41 and KY-42), as question 6, choice 4 meant. The
+    generator writes `cast<int32>(ChunkSize::rowsFor(rowBytes: cast<isize>(sizeof(…) + sizeof(Handle))))`.
+  - **The tool's two KR-360 stopgaps are gone** (closing KY-39 and KY-44; step 5.4's question 1 and step 5.5's
+    question 4, each replaced as the owner was told it would be):
+    - A processor's parameter is classified by the `path` kama gives its type: `const ref Tick`, imported
+      `as Tick`, is `kyoten::frame::Time`. A primitive or a name that resolved to nothing keeps its spelling, with no
+      `::`, and is refused as before. `tools/kyoten/src/imports.kama` is deleted.
+    - A type's `default ctor` is read from the signature kama marks (`default ctor make()`). `ctorIsDefault` is deleted.
+    - Each type carries whether its module exports it, so the cache's format is 2.
+  - **A component its module does not export is refused by name,** before kama's error lands in generated code. This
+    covers a prefab's key, a `requires` and a component record:
+    ``prefab `safe` names `Secret`, which module `components::towers` does not export: add `Secret` to its file's
+    `export { … }`, since a component is an exported `type value` ``.
+    - A bare name resolves among the exported `type value`s only, so another module's private type of the same name
+      leaves it unambiguous.
+  - **A key written twice in a records file is refused** (KR-359, closing KY-43), naming the file and the key:
+    ``content/twice.records.json: duplicate key `prefabs.twice` ``.
+  - **The prefab ids compare directly** in the fixtures (KR-358, closing KY-46).
+  - **A bounded list is one size on every target** (kama 0.9.896, closing KY-47). The `schedule` fixture's `crate`, a
+    48-float list, fills its one chunk with 80 rows natively and on wasm, then the table refuses. On 0.9.886 it was
+    200 bytes natively, so 78 rows.
+  - **Tested:** the tool's tests are 126 cases with the wasm legs, and the engine's are 114. Nine mutations each turn
+    a case red:
+    - a parameter resolved by its bare name;
+    - the export check off, for a full path, for a bare name's private match, and for a component record;
+    - a bare name counting private types;
+    - the `default ctor` mark ignored, and every ctor read as the default;
+    - the cache's format left at 1;
+    - `exported` not read.
+  - **Measured,** warm, with nothing else running: on `spin`, `kyoten generate` took 1.17 to 1.39 s and `kama check`
+    1.24 s, against step 5.4's 0.75 s and 0.67 s. Neither the compiler nor the tool explains it: both pins check the
+    tool's own package in the same 7.7 to 8.0 s, and the tool asks kama nothing new. KYR-24's load-time work should
+    measure on a quiet, fixed machine.
