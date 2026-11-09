@@ -16,6 +16,19 @@ the design doc it settles before building on it.
    `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Then read `../kama`'s log for what
    it fixed or changed since `.kama-version`'s commit, and bump the pin only as a commit of its own, with every suite
    green on the new one.
+   - **kama took kyoten's open gaps on 2026-11-09** (`21bac390`): KR-357 (KY-41, KY-42), KR-358 (KY-46), KR-359
+     (KY-43) and KR-360 (KY-39, KY-44), claimed by its session on this machine, and KR-361 (KY-45) on its roadmap.
+     When they are committed, bump the pin to them, run each gap's repro on the new binary, remove what is fixed
+     (`docs/KAMA_GAPS.md`), and take what each frees, test-first:
+     - **KR-360:** read each parameter's full path from the query and delete `tools/kyoten/src/imports.kama`, the
+       owner's stopgap (components § Decided, 2026-11-09, step 5.4's question 1); and refuse a component that is not
+       exported, or that elects no `default ctor` and is missing from a prefab, by name, before kama's error in
+       generated code.
+     - **KR-358:** `spin`'s `main` compares `CubePrefabId.fastCube() != CubePrefabId.default()` directly.
+     - **KR-357:** `ChunkSize::rowsFor` counts in `isize`, kama's count type.
+     - **KR-359:** a records file with a key written twice is refused; add a case to the tool's refusal fixtures.
+     - **KR-361,** when it lands: one query answers for the dependencies, and the tool's per-dependency cache goes.
+   - **KY-47** (filed at step 5.4, a bounded list's `isize` length) is new to kama; the owner relays it.
 2. **Continue step 5** (KYR-7, the component model and the generator) at 5.5. Its seven
    questions were answered on 2026-11-08, 5.3's four and 5.4's two on 2026-11-09 (§ Questions the owner answers). Each
    part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught, and a commit on
@@ -119,6 +132,10 @@ the design doc it settles before building on it.
     not bumped.
   - **Filed at step 5.4:** KY-47 (an `InlineDynamicArray`'s `isize` length makes a component holding a bounded list a
     different size natively and on wasm, so its chunk's row count can differ).
+  - **`../kama` at the session's end** (2026-11-09) was at `64c7e2d2`: 0.9.888 (a wasm program that spawns compiles its
+    `csources` with `-pthread`), 0.9.889 (`parallel_for` on kama's job pool, KR-3 step 2), the roadmap rows above and
+    KY-38's fix. kyoten uses neither feature yet, and the fixes it waits for are not committed, so the pin stays at
+    0.9.886 until they are.
   - **The rule:** kyoten builds with its own pin, `.kama-pin/`, made from a clean clone at `.kama-version`'s commit
     (the owner, 2026-11-08), because `../kama`'s binary is rebuilt as kama develops on this machine. Never rebuild
     or edit `../kama`, and check `--version` before quoting one.
@@ -337,9 +354,8 @@ here), committed with what it measured.
 - **Fixed on 2026-11-07 and removed:** KY-37 (kama KR-344, `546dd54e`): a module's `importsOnly` now lists std's,
   `core`'s and other packages' modules too, and the command line and the environment moved to `core::env`. Step 6
   made the simulation rule a module fence on it (2026-11-08).
-- **KY-38** (filed 2026-11-08, worked around): kama's `docs/targets.md` names only musl's licence as the notice
-  `reproducible-float` brings, while the code it compiles in also carries Sun's and Arm's notices.
-  `engine/THIRD-PARTY-NOTICES.md` carries all of them.
+- **Fixed on 2026-11-09 and removed:** KY-38 (kama `64c7e2d2`): `docs/targets.md` now names musl's, Sun's and Arm's
+  notices, all three of which `engine/THIRD-PARTY-NOTICES.md` already carries.
 - **KY-2:** kama's `1e5099bb` (KR-283 step 1) builds an installable Android APK. It is not in this machine's binary,
   so re-check KY-2 on a build that has it. VR follows the gate.
 - **Fixed on 2026-11-07 and removed:** KY-19, so `reproducible-float` now gives `std::math` the same bits natively and

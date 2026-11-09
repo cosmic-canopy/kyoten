@@ -8,9 +8,11 @@ notices of other people's code that a program built on kyoten contains, which tr
 kyoten's manifest declares `"reproducible-float": true`, so a simulation gives the same bits on every target
 (frame-phases.md § Decided). kama then compiles 14 of `std::math`'s functions (`sin`, `cos`, `tan`, `asin`, `acos`,
 `atan`, `exp`, `log`, `log2`, `log10`, `cbrt`, `pow`, `atan2` and `hypot`, in both widths) from musl 1.2.6 into every
-program built on kyoten, natively and on wasm (kama `docs/targets.md`, "And a notice"). The key propagates from a
+program built on kyoten, natively and on wasm (kama `docs/targets.md`, "And its notices"). The key propagates from a
 dependency, so every game built on kyoten is built with it, and kama's documentation says that a program built with
-the key carries musl's licence.
+the key carries three notices: musl's MIT licence, Sun Microsystems' notice and Arm's MIT notice (since kama
+`64c7e2d2`, 2026-11-09; it named only musl's before, KY-38). The header's notices are the same at kama `64c7e2d2` as at
+0.9.876.
 
 The text below is copied verbatim from kama's `include/kama_libm.h` (kama 0.9.876), which kama generates from musl's
 sources: first its first comment, musl's licence, then the notices that header keeps above the code that carries
