@@ -12,9 +12,10 @@ the design doc it settles before building on it.
 
 **The next session starts here:**
 
-1. **Check `../kama`'s log and `kama --version`** first. Then run `tools/test.sh` and both packages' `tools/test.sh`
-   on that binary. kama's own session was mid-change on 2026-11-08 (uncommitted work in its emitter and driver, and a
-   new `include/kama_asset.h`), so read `git -C ../kama status` before calling a red test a regression.
+1. **Run the suites on kyoten's pinned kama** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md § Build):
+   `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Then read `../kama`'s log for what
+   it fixed or changed since `.kama-version`'s commit, and bump the pin only as a commit of its own, with every suite
+   green on the new one.
 2. **The asset manager's name,** [design/asset-manager.md](design/asset-manager.md) question 1, if the owner has not
    answered it: "asset manager" (the owner's words) or "delivery tool" (SPIKE and KYR-29), or another. The doc's
    other eleven questions wait for KYR-66's turn; nothing in the first slice needs them.
@@ -80,19 +81,22 @@ the design doc it settles before building on it.
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
-- **kama:** step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `0.9.881+g4267d2ec`.
+- **kama:** kyoten's pin is `0.9.886+g2159ce21` (`.kama-version`, 2026-11-08), built from a clean clone; step 4 was
+  built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `../kama`'s working binary, `0.9.881+g4267d2ec`.
   - **That binary was built at 09:59 on 2026-11-08** from kama's working tree, which held uncommitted changes to its
     emitter and driver. kama had committed 0.9.878 to 0.9.881 that morning: `kama run` on Android over adb, every std
     module building on bare metal or refused by name, and a board's clocks declared in kama.
   - **Filed on the way:** KY-40 (std::math has no integer vectors; beside kama's KR-343) and KY-41 (kama does not
     evaluate an `isize` local at compile time, so `ChunkSize` counts in `usize` until it does).
-  - **The rule:** never rebuild kama or edit `../kama`, and check `--version` before quoting one.
+  - **The rule:** kyoten builds with its own pin, `.kama-pin/`, made from a clean clone at `.kama-version`'s commit
+    (the owner, 2026-11-08), because `../kama`'s binary is rebuilt as kama develops on this machine. Never rebuild
+    or edit `../kama`, and check `--version` before quoting one.
   - **`std::app` runs an owned `App`:** `run(app: Owned<App>)`, where an `App` has `tick()` and `lifecycle(event:)`
     (`Resumed`, `Suspended`, `SurfaceReady`, `SurfaceLost`, `FocusGained`, `FocusLost`, `LowMemory`). Every host says
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on `0.9.881+g4267d2ec` (2026-11-08):**
+- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08),** as before on `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
   - kyoten's `tools/test.sh`: the engine and its 96 tests, the frame guard, `examples/games/fps` (it prints
     `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
@@ -300,8 +304,8 @@ here), committed with what it measured.
 - **Read [REFERENCE.md](REFERENCE.md) first,** and use its words: a processor, a module, a tier, a scene's layer. Its
   § One way to do each thing is the API's rule.
 - **Verify, don't trust.** Compile it, run it, read the emitted C, and record what was measured where it is decided.
-- **kama runs in UCRT64:** `MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc '../kama/out/UCRT64-x86_64/kama.exe …'`, or
-  `-lic` for `emcc`. **git runs from Git Bash.**
+- **kama runs in UCRT64, through the pin:** `MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc 'tools/kama …'` from the
+  repository's root, or `-lic` for `emcc`. **git runs from Git Bash.**
 - **A decision goes in its design doc's *Decided*** with its reason, and the work it creates becomes a roadmap row.
 - **Test-driven, with injected dependencies** (AGENTS.kyoten.md § Rules, the owner, 2026-11-08). The test comes
   first and is seen to fail, a bug's fix starts with the test that reproduces it, and the full suite passes before

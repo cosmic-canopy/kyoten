@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# tools/kama — the kama compiler kyoten builds with, through one indirection.
+#
+# kama is developed on this machine, and ../kama's binary is rebuilt as it develops (three times in one session on
+# 2026-11-08), so kyoten builds with its own copy (the owner, 2026-11-08). The copy lives in .kama-pin/, git-ignored:
+# the binary beside the lib/, include/ and prelude/ it was built with, from a CLEAN clone of kama at the commit
+# .kama-version names. AGENTS.kyoten.md § Build has the recipe for making and bumping it.
+#
+# Resolution, first match wins:
+#   1. $KAMA                 an explicit binary: bisecting, or trying a newer kama before a bump
+#   2. .kama-pin/kama(.exe)  the pin, proved by running it, so a copy for another platform falls through
+#   3. kama on PATH          a released compiler, once one is installed
+# ../kama is deliberately not a fallback: its binary moves under us, which is the reason the pin exists.
+#
+# It warns, and never fails, when the compiler it runs is not the one .kama-version pins (KAMA_PIN_QUIET=1 silences
+# it). `tools/kama --which` prints the binary it resolved, for a script that runs the binary directly.
+#
+#   tools/kama check engine/kama.json
+#   KAMA=../kama/out/UCRT64-x86_64/kama.exe tools/test.sh
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+resolve() {
+    if [ -n "${KAMA:-}" ]; then
+        [ -x "$KAMA" ] || { echo "tools/kama: \$KAMA is '$KAMA', which is not an executable" >&2; exit 1; }
+        printf '%s' "$KAMA"
+        return
+    fi
+    local pin
+    for pin in "$ROOT/.kama-pin/kama.exe" "$ROOT/.kama-pin/kama"; do
+        if [ -x "$pin" ] && "$pin" --version >/dev/null 2>&1; then
+            printf '%s' "$pin"
+            return
+        fi
+    done
+    if command -v kama >/dev/null 2>&1; then
+        command -v kama
+        return
+    fi
+    cat >&2 <<EOF
+tools/kama: no kama compiler.
+
+  Looked for, in order:
+    \$KAMA                       (unset)
+    $ROOT/.kama-pin/kama(.exe)   (missing, or not runnable here)
+    kama on PATH                 (not found)
+
+  Make the pin from a clean clone of kama at the commit in .kama-version (AGENTS.kyoten.md § Build),
+  or name a binary with:  export KAMA=/path/to/kama
+EOF
+    exit 1
+}
+
+# Compares the binary's own `kama --version` ("kama 0.9.886+g2159ce21") with the pin, since a binary's version is
+# what it was built from, while a checkout's HEAD is routinely ahead of its binary.
+check_pin() {
+    local pin="$ROOT/.kama-version"
+    [ -f "$pin" ] || return 0
+    [ -n "${KAMA_PIN_QUIET:-}" ] && return 0
+    local want_ver want_build have have_ver have_build
+    want_ver="$(sed -n 's/^KAMA_VERSION=//p' "$pin")"
+    want_build="$(sed -n 's/^KAMA_BUILD=//p' "$pin")"
+    have="$("$KAMA_BIN" --version 2>/dev/null || true)"
+    have="${have#kama }"
+    have_ver="${have%%+*}"
+    have_build="${have#*+}"
+    [ "$have_build" = "$have" ] && have_build=""
+    [ "$have_ver" = "$want_ver" ] && [ "$have_build" = "$want_build" ] && return 0
+    {
+        echo "tools/kama: this compiler is not the one .kama-version pins"
+        echo "  pinned:  $want_ver+$want_build"
+        echo "  running: ${have_ver:-?}${have_build:++$have_build}   ($KAMA_BIN)"
+        echo "  A break here may be kama's change, not kyoten's. Bump the pin deliberately, with the suite green."
+    } >&2
+}
+
+KAMA_BIN="$(resolve)"
+check_pin
+
+if [ "${1:-}" = "--which" ]; then
+    printf '%s\n' "$KAMA_BIN"
+    exit 0
+fi
+exec "$KAMA_BIN" "$@"

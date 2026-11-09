@@ -1,0 +1,10 @@
+# The kama compiler kyoten builds with: .kama-pin/ (git-ignored), made from a CLEAN clone of kama at the commit below,
+# the binary beside the lib/, include/ and prelude/ it was built with. tools/kama runs it and warns when the compiler
+# it runs is another. AGENTS.kyoten.md § Build has the recipe; a bump is a commit of its own, made with every suite
+# green on the new compiler and nothing else changed.
+#
+# Windows (msys2 UCRT64), 2026-11-08: first pin, 0.9.886 (2159ce21), at the owner's direction that kyoten keep its own
+# copy because ../kama rebuilds as it develops on this machine (it moved 0.9.877 -> 0.9.881 -> 0.9.884 in one session).
+# Before it, steps 4 to 5.2 were built on ../kama's working binary: 0.9.876, then 0.9.881+g4267d2ec.
+KAMA_VERSION=0.9.886
+KAMA_BUILD=g2159ce21

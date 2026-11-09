@@ -15,3 +15,7 @@ kama.local.json
 # A new kind of example (a simulation, a graphics sample) gets its own folder under examples/ and its own line. See
 # README.md.
 examples/games/
+
+# The pinned kama compiler: a copy kyoten builds with, made from a clean clone of kama at the commit .kama-version
+# names (AGENTS.kyoten.md § Build). Each machine makes its own; ../kama is rebuilt as it develops.
+.kama-pin/

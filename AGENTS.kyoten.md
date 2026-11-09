@@ -47,12 +47,37 @@ compare and measure, then ask.
 ## Build
 
 ```sh
-kama pkg install kama_workspace.json          # the engine
-kama check engine/kama.json
-kama pkg install examples/games/fps/kama.json # an example, when kyoten-example-fps is cloned there
-kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
-tools/test.sh                                 # the whole suite: the gate before every commit
+tools/kama pkg install kama_workspace.json          # the engine
+tools/kama check engine/kama.json
+tools/kama pkg install examples/games/fps/kama.json # an example, when kyoten-example-fps is cloned there
+tools/kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
+tools/test.sh                                       # the whole suite: the gate before every commit
 ```
+
+**kyoten builds with its own copy of kama, `.kama-pin/`** (the owner, 2026-11-08: kama "will rebuild as it develops
+on this machine so you need to keep your own copy if you want it stable"). `tools/kama` runs it, and so does
+`tools/test.sh`. `.kama-version` names the commit it was built from, and the shim warns when the compiler it runs is
+another. `$KAMA` overrides it, to try a newer kama before a bump. `../kama` is never the fallback, and never edited
+or rebuilt from here.
+
+- **Make the pin from a clean clone, never from `../kama`'s binary,** which may hold uncommitted work and lag its own
+  HEAD. Clone `../kama`, check out the commit, build it in UCRT64, and copy the binary with the trees it reads:
+
+  ```sh
+  git clone ../kama .scratch/kama-pin-src && git -C .scratch/kama-pin-src checkout <commit>
+  (cd .scratch/kama-pin-src && make -j8)                    # in UCRT64; leave cores for kama's own session
+  rm -rf .kama-pin && mkdir .kama-pin
+  cp .scratch/kama-pin-src/out/UCRT64-x86_64/kama.exe .kama-pin/
+  cp -r .scratch/kama-pin-src/lib .scratch/kama-pin-src/include .scratch/kama-pin-src/prelude .kama-pin/
+  tools/kama --version                                      # must be .kama-version's, with no warning
+  ```
+
+  The binary finds `include/` and `lib/` beside itself, and its prelude is embedded, so `prelude/` is only what an
+  editor opens.
+- **Bump the pin as a commit of its own:** rebuild at the new commit, run `tools/test.sh` and both packages' suites on
+  it with no other change, then update `.kama-version` with what moved and re-check `docs/KAMA_GAPS.md`'s entries.
+- **The packages' suites take `KAMA`,** so run them on kyoten's pin:
+  `KAMA=$PWD/.kama-pin/kama.exe ../kama-gpu/tools/test.sh`.
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
 engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, and the 32 KiB

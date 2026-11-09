@@ -22,14 +22,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) PLAT="${MSYSTEM:-$(uname -s)}-$(uname -m)"; EXE=.exe ;;
-    *) PLAT="$(uname -s)-$(uname -m)"; EXE= ;;
+    MINGW*|MSYS*|CYGWIN*) EXE=.exe ;;
+    *) EXE= ;;
 esac
-if [ -n "${KAMA:-}" ]; then :
-elif command -v kama >/dev/null 2>&1; then KAMA=kama
-elif [ -x "$ROOT/../kama/out/$PLAT/kama$EXE" ]; then KAMA="$ROOT/../kama/out/$PLAT/kama$EXE"
-else echo "test: no kama (set KAMA)" >&2; exit 1
-fi
+# The compiler is the pin in .kama-pin/, through tools/kama: $KAMA if set, else the pin, else a released kama. It warns
+# when the compiler is not the one .kama-version names.
+KAMA="$("$ROOT/tools/kama" --which)"
 
 failed=0
 step() { echo; echo "== $*"; }
