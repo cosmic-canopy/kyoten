@@ -35,7 +35,7 @@ the design doc it settles before building on it.
       a first pass of generated names, with each dependency's answer cached by a hash of its sources. 43 cases on
       four fixture games under `tools/kyoten/tests/fixtures/`, plus `spin`'s web build under node; details in
       [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09.
-   4. **Signatures, passes and the world:** built on 2026-11-09 (`043f75a`, and the tool's commit after it). The
+   4. **Signatures, passes and the world:** built on 2026-11-09 (`043f75a` and `72ce358`). The
       engine gained `Store::World`, `kyoten::frame::Rate` (gating on the base clock, each rate's `Time`, the base as the
       rates' least common multiple, 60 Hz when no record rates a processor) and `kyoten::world::Lookup`. The tool reads
       each processor's signature from the `--search ""` it already ran, resolves each parameter's type through its
@@ -93,7 +93,7 @@ the design doc it settles before building on it.
   - **Step 5.3, the `kyoten` tool's first pass** (2026-11-09, `86fbdf4` and `3ab910e`): `kyoten::input::Digital`,
     3 cases, so the engine's tests are 99; and `@kyoten/cli`, 43 cases on its fixture games natively and 2 on wasm.
     Its four questions were answered that morning (components § Decided, 2026-11-09).
-  - **Step 5.4, the second pass** (2026-11-09, `043f75a` and the tool's commit after it): `Store::World`, `Rate` and
+  - **Step 5.4, the second pass** (2026-11-09, `043f75a` and `72ce358`): `Store::World`, `Rate` and
     `Lookup` in the engine, 15 cases, so the engine's tests are 114; and the tool's tables, passes and world, so its
     tests are 101 cases with the wasm legs, on the `spin`, `schedule` and `processors` fixtures. Its two questions
     were answered the same day (components § Decided, 2026-11-09).
