@@ -2016,3 +2016,27 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     and world (5.4); the loader that fills `Prefabs` from the prefabs' values (5.5); a prefab's `layer`; the field
     spelling for two components of one name in one prefab, refused until it is decided; and naming the record behind
     an error kama finds in generated code.
+- **2026-11-09, the owner: step 5.4's two questions, before the second pass was built** (the first slice, KYR-7).
+  Each was probed on kama `0.9.886+g2159ce21`, kyoten's pin.
+  1. **A processor parameter's type is resolved through its own file's imports, until kama answers KY-39.** The
+     game's `kama query --search "" --json`, which the tool already runs, lists every function with its parameters
+     (`"params":[{"name":"s","mode":"ref","type":"Spin"}, …]`), so the second pass asks kama nothing new. But each type
+     comes back bare (`Time`), and so do `--type` and `--sighelp` at it.
+     - **kama's visibility is per file:** every name a signature uses is declared in that file, imported by its
+       module's path (`kyoten::frame::Time`), or imported scope-less from the file's own module (`Spin`). The file's
+       import block therefore names each type's module, and the tool reads it: text kama has already checked.
+     - **It is one function in the tool,** and KY-39's answer, the full path in the query's answer, replaces it. The
+       owner: "sounds like option 1 is a good workaround and easy to replace when kama addresses your gap".
+     - *Measured* with the pin's binary, warm, on `.scratch/step5-tool/hello`: the game's `--search ""` took 1.06 to
+       1.09 s, and a `--def` query 1.00 to 1.03 s. A `--def` asks about one file, so it would be paid again for every
+       file that holds processors.
+     - **Considered:** `--def` at each parameter's type, the workaround KY-39's row first named. kama answers it, but
+       its cost grows with the game.
+  2. **A world component is declared by its component record, `"store": "World"`,** a third case beside `Table` and
+     `Side`.
+     - It is a field of the generated world, starting from its `default ctor`, and is handed only to the processors
+       that name it. A record is laid over its default once content first sets one (the loader's, step 5.5).
+     - `Zone`, a world component held once per zone, joins it when a scene has more than one zone (KYR-61).
+     - A prefab that lists a world component is refused: the world holds one, not each entity.
+     - **Considered:** a `worldComponents` section of the module record, which splits one kind of record in two; and
+       leaving the spelling to step 9, when render's `Environment` is the engine's first.
