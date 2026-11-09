@@ -2040,3 +2040,87 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      - A prefab that lists a world component is refused: the world holds one, not each entity.
      - **Considered:** a `worldComponents` section of the module record, which splits one kind of record in two; and
        leaving the spelling to step 9, when render's `Environment` is the engine's first.
+- **2026-11-09, built: the `kyoten` tool's second pass — the tables, the passes and the world** (step 5.4, with the
+  two questions above), on kama `0.9.886+g2159ce21`, test-first.
+  - **The engine's part** (`043f75a`):
+    - `kyoten::records::Store` gains `World`; `Zone` is refused until a scene has more than one zone (KYR-61).
+    - `kyoten::frame::Rate`: a processor at `hz` runs every base/hz steps of the base clock, from step 0, and is
+      handed its own rate's dt with the base step's index. `Rate::baseOf` is two rates' least common multiple, in
+      `int64`, and `Rate::defaultHz`, 60, is the engine's rate for a simulation processor that neither its record nor
+      its module rates (KYR-55's gameplay default), one constant the tool and the engine share.
+    - `kyoten::world::Lookup`: handles issued slot by slot from generation 0, each slot's `Place` (table, chunk, row,
+      `int32`s, since a save will hold them), and a stale or unknown handle answered gone. Freeing and moving rows
+      come with `Destroy` and the queues. The world tier's `importsOnly` gains `std::collections` for it.
+    - 15 cases; the engine's tests are 114.
+  - **What the tool reads now:** every module's records files whole; the game's free functions with their
+    parameters, from the same `--search ""` answer the first pass already runs, so no query was added; and each
+    parameter's type through its file's import block (`tools/kyoten/src/imports.kama`, KY-39's stopgap). kama gives
+    a by-value parameter's mode as `value`.
+  - **The schedule** (`tools/kyoten/src/schedule.kama`):
+    - Each processor record meets its function in its module. Its phase is its own or its group's; its rate is its
+      own, else its module's, else 60 Hz, and an Output processor takes none; only a Constraints processor or group
+      iterates.
+    - Built parameters: `ref C` and `const ref C` (a table component), `ref W` and `const ref W` (a component whose
+      record says `"store": "World"`), `Handle` by value and `const ref Time`. The other decided parameters are
+      refused as not built yet, and anything else as no parameter, naming the list.
+    - Each phase's order: its groups and its ungrouped processors at the top, each group's processors inside it;
+      `after` and `before` between siblings, `first` and `last`, ties by full path; a circle is refused, naming it.
+      The no-conflict rule (frame-phases question 5): two processors with no order between them may not write what
+      the other reads or writes.
+    - The base clock is the rates' least common multiple. Above 1,000 Hz the tool warns, naming the rates and, for
+      each rate the others' base does not hold, the nearest rate that divides it, where one is within a quarter of
+      it: 7, 11 and 60 Hz give 4,620 Hz, with 7 Hz as 6 Hz and 11 Hz as 10 Hz.
+    - Every refusal names its record's or its code's file and the fix, one run names them all, and a refusal leaves
+      every file as it was.
+  - **What the second pass writes,** into `src/generated/`, split as the naming rule's rule 5 has it:
+    - `tables.kama`, which imports no processor: per family, a chunk `type value` with a column
+      `InlineDynamicArray<C>#(rows_<family>)` per component and one of handles, and a table `type resource` holding
+      its chunks in one `FixedArray` allocated once (the default budget, one chunk), whose `add` takes a prefab's
+      values and a handle the lookup issues at the row's place, or refuses when every chunk is full. The row count is
+      `comptime int32 rows_<family> = cast<int32>(ChunkSize::rowsFor(rowBytes: sizeof(…) + sizeof(Handle)))`.
+    - `passes.kama`, the only file that imports processors, each as `run_<path>`: one function a phase, each processor
+      in the phase's order, gated by its `Rate`, repeated by its iterations (a group's as A, B, A, B), over every table
+      whose family has all its components, chunk by chunk and row by row; Output with the frame's `Time`.
+    - `world.kama`: `GameWorld implements kyoten::frame::World`, holding the lookup, each table and each world
+      component from its `default ctor`, its base rate as `comptime int32 baseHz`, the four phase calls, and
+      `create_<family>(prefab:)`, which the loader (step 5.5) and later `Create<P>` call.
+    - Every name in them is the generator's own (rule 5). Each name it writes into a game's namespace has an
+      underscore (`table_cube`, `pass_update`, `run_spin_cube_turn`, `entity_handle`), which no record's name has.
+  - **Settled while building it, each probed on the pin:**
+    - **A chunk's columns are `InlineDynamicArray`s,** which need no value per place: a component without a
+      `default ctor` (`Actions`) can be a column, and every vacated place is zero, so equal chunks are equal bytes
+      (question 2). An `InlineArray` column needs a fill value per type. An element of one feeds a processor's `ref`
+      parameter (`.scratch/step54-chunk`).
+    - **The row count is a module-level `comptime`:** one declared inside the chunk type is not inferred in its
+      columns' initializers.
+    - **A pass reaches the tables and the world components through `friend` grants,** since a resource's fields are
+      private; a grant names a function from another file of the module (`.scratch/step54-friend`). kama refuses
+      `__` inside a name, so the aliases use single underscores.
+  - **Tested** by `tools/kyoten/tests/`, on three new or grown fixtures:
+    - `spin`, the hello cube without Mesh, now with `view::show`, an Output processor in render's place: two cubes,
+      one with `faster` held, stepped 60 times through `kyoten::frame::step`, each cube's rate and rotation the same
+      bits as the same turns made by hand, natively (debug and release) and under node.
+    - `schedule`: processors at 60, 30 and 50 Hz on a 300 Hz base, each run's dt and step exact; a Constraints group
+      iterating twice in its stated order, against its names' order (1212); a world component summing what a writer
+      before it wrote (1830); Output once a frame through `frame`, fed one second in 60 frames (300 steps settled, none
+      discarded); and a crate whose chunk is at the 16 KiB target, built for wasm under the 32 KiB frame guard.
+    - `processors`: every refusal above, in one run.
+    - The tool's tests are 101 cases with the wasm legs.
+  - **Measured** on `spin` with the pin's binary, warm, nothing else running: `kyoten generate` 0.75 s, of which the
+    game's one `--search ""` query, there since step 5.3, is 0.73 s; `kama check` 0.67 s; `kyoten check`, the two
+    together, 1.4 s. Step 5.3 measured 0.5 s and 0.34 s on the smaller game it had. The second pass added no query;
+    the query and the check grew with the game's code, the generated world and the `view` module among it.
+  - **Mutations caught,** each turning a case red: gating off by one in the passes, a group's iterations ignored, a
+    stated order reversed, the base step's `Time` handed to every rate, the base taken as the largest rate, a
+    processor run on a family missing one of its components, a parameter not resolved through its file's imports,
+    the no-conflict rule off, a circle of orders accepted, a write in Output accepted, and a world component in a
+    prefab accepted.
+  - **Found on the way:** KY-47 (an `InlineDynamicArray` keeps its length in an `isize`, so a component holding a
+    bounded list is a different size natively and on wasm, and its chunk holds 75 rows natively and 78 on wasm in the
+    probe). A fixed array in a component has no serialization yet, which is kama's KR-342, already scheduled.
+  - **Left to later rows:** required components and the module `static` refusal (step 5's remaining scope, at the start of 5.5);
+    the engine's and dependencies' own processors and world components (step 9, with render); the clock's owed-step
+    cap counting only steps with work, as frame-phases question 2 decided, before a game's base passes 60 Hz (the cap
+    of 5 counts base steps, so a 300 Hz base below a 60 Hz display discards steps); `Prefabs` and the queues as
+    parameters; checking that the generated module's `importsOnly` lists each module with processors, which kama
+    names today; and naming the record behind an error kama finds in generated code.

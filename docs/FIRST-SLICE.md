@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, end of the day's first session)
+## Where it stands (2026-11-09, end of the day's second session)
 
 **The next session starts here:**
 
@@ -16,9 +16,10 @@ the design doc it settles before building on it.
    `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Then read `../kama`'s log for what
    it fixed or changed since `.kama-version`'s commit, and bump the pin only as a commit of its own, with every suite
    green on the new one.
-2. **Continue step 5** (KYR-7, the component model and the generator) at 5.4. Its seven questions were answered on
-   2026-11-08, and 5.3's four on 2026-11-09 (§ Questions the owner answers). Each part is test-first: the test seen to
-   fail, then the code, `tools/test.sh` green, mutations caught, and a commit on `main`.
+2. **Continue step 5** (KYR-7, the component model and the generator) at 5.5. Its seven
+   questions were answered on 2026-11-08, 5.3's four and 5.4's two on 2026-11-09 (§ Questions the owner answers). Each
+   part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught, and a commit on
+   `main`.
    1. **`kyoten::world`:** built on 2026-11-08 (`bea9ce5`): `Transform` (a `ZoneCoord` and a `float32` offset, on
       `std::math`; `rotateY(by:)` about its own Y axis, renormalized; `offsetTo(other:, zoneSize:)`;
       `place(zone:, position:)`), the 8-byte `Handle`, and `ChunkSize::rowsFor(rowBytes:)`, run at compile time from
@@ -34,17 +35,27 @@ the design doc it settles before building on it.
       a first pass of generated names, with each dependency's answer cached by a hash of its sources. 43 cases on
       four fixture games under `tools/kyoten/tests/fixtures/`, plus `spin`'s web build under node; details in
       [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09.
-   4. **Signatures, passes and the world, next:** the generator asks `kama query` for each processor's parameters
-      (the game's `--search ""` the tool already runs answers them too), and maps each type to its module as the tool
-      maps a component's file today, until KY-39 is answered; the second pass writes the tables, the passes, with
-      rate gating at the base rate, and a world that implements `kyoten::frame::World`. A fixture game with a spinning
-      entity and no render is generated, built and stepped through `step`, natively (debug and release) and on wasm,
-      and its rotation checked exactly, then mutations caught, as step 4's were. **Start with:** the processor
-      records' fields the second pass needs (`phase`, `group`, `rate`), and how the table type and the passes split
-      into files so no generated column shares a processor's name in one file (the naming rule's rule 5).
-   5. **The loader:** a zone's placements and the prefab values become rows at start, through `RecordSource`, with the
-      engine's default records in `engine/content/` (declared in the engine's `preloadFiles` for wasm). Under node,
-      run a wasm program from its build folder, where emscripten looks for the `.data` file.
+   4. **Signatures, passes and the world:** built on 2026-11-09 (`043f75a`, and the tool's commit after it). The
+      engine gained `Store::World`, `kyoten::frame::Rate` (gating on the base clock, each rate's `Time`, the base as the
+      rates' least common multiple, 60 Hz when no record rates a processor) and `kyoten::world::Lookup`. The tool reads
+      each processor's signature from the `--search ""` it already ran, resolves each parameter's type through its
+      file's imports (the owner's answer to KY-39's stopgap), checks the records (phases, groups, rates, iterations,
+      the relative order, circles and the no-conflict rule), and writes `tables.kama`, `passes.kama` and `world.kama`.
+      `spin` is stepped 60 times and each cube's rotation is the same bits as by hand, natively and under node; the
+      `schedule` fixture runs 60, 30 and 50 Hz on a 300 Hz base through `frame`. Details in
+      [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09 for step 5.4.
+   5. **The loader, next, starting with step 5's last two in-scope items:**
+      - **Required components:** a component's record `requires` others, which join every prefab that has it, filled
+        with their defaults; until then the tool refuses `requires` as not built yet. **Start with** whether a
+        required component a prefab already lists keeps the prefab's values (it should: a requirement adds, never
+        overwrites).
+      - **The module `static` refusal:** a module `static` in a game's package is refused, pointing to a world
+        component. **Start with** which kind `kama query --search ""` gives a module `static`, since the tool already
+        reads that answer.
+      - **The loader itself:** a zone's placements and the prefab values become rows at start, through
+        `RecordSource`, into the world's `create_<family>`, with the engine's default records in `engine/content/`
+        (declared in the engine's `preloadFiles` for wasm). Under node, run a wasm program from its build folder,
+        where emscripten looks for the `.data` file.
    6. **Step 6, KYR-53's check,** reads the manifests and the code records.
    - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
      `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
@@ -82,6 +93,10 @@ the design doc it settles before building on it.
   - **Step 5.3, the `kyoten` tool's first pass** (2026-11-09, `86fbdf4` and `3ab910e`): `kyoten::input::Digital`,
     3 cases, so the engine's tests are 99; and `@kyoten/cli`, 43 cases on its fixture games natively and 2 on wasm.
     Its four questions were answered that morning (components § Decided, 2026-11-09).
+  - **Step 5.4, the second pass** (2026-11-09, `043f75a` and the tool's commit after it): `Store::World`, `Rate` and
+    `Lookup` in the engine, 15 cases, so the engine's tests are 114; and the tool's tables, passes and world, so its
+    tests are 101 cases with the wasm legs, on the `spin`, `schedule` and `processors` fixtures. Its two questions
+    were answered the same day (components § Decided, 2026-11-09).
   - **KYR-66, the content delivery tool** (2026-11-08, `dea3db1`): its row and doc, twelve questions. Its name was
     question 1, answered the same day; the other eleven wait for KYR-66's turn, and nothing in the first slice needs
     them.
@@ -98,7 +113,12 @@ the design doc it settles before building on it.
     5.3: KY-43 (the strict JSON reader takes a repeated key), KY-44 (a query result says neither whether a symbol is
     exported nor which ctor is the default), KY-45 (`--search` does not reach a dependency, so the tool caches each
     dependency's answer) and KY-46 (`==` with a `T.default()` operand is refused).
-  - **`../kama` had no commits past the pin** on 2026-11-09 (its HEAD was `2159ce21`), so the pin was not bumped.
+  - **`../kama` had no commits past the pin** on the morning of 2026-11-09 (its HEAD was `2159ce21`). By the second
+    session it held `59fcda4d` (0.9.887, KR-354: `Atomic` on an Xtensa core masks interrupts) and a roadmap brief
+    (`3d0bac8c`); nothing kyoten builds on changed, and none of KY-39 or KY-43 to KY-47 was answered, so the pin was
+    not bumped.
+  - **Filed at step 5.4:** KY-47 (an `InlineDynamicArray`'s `isize` length makes a component holding a bounded list a
+    different size natively and on wasm, so its chunk's row count can differ).
   - **The rule:** kyoten builds with its own pin, `.kama-pin/`, made from a clean clone at `.kama-version`'s commit
     (the owner, 2026-11-08), because `../kama`'s binary is rebuilt as kama develops on this machine. Never rebuild
     or edit `../kama`, and check `--version` before quoting one.
@@ -107,9 +127,9 @@ the design doc it settles before building on it.
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08, and again on 2026-11-09),** as before on `0.9.881+g4267d2ec`
-  and `0.9.884+g88a0054c`:
-  - kyoten's `tools/test.sh`: the engine and its 99 tests, the frame guard, the `kyoten` tool's 45 cases,
+- **Green on the pin, `0.9.886+g2159ce21` (2026-11-08, and again twice on 2026-11-09),** as before on
+  `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
+  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 101 cases,
     `examples/games/fps` (it prints `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
   - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
