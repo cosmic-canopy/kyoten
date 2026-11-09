@@ -34,6 +34,7 @@ compare and measure, then ask.
 | `engine/tests/` | the engine's tests, one program depending on the engine by path |
 | `engine/THIRD-PARTY-NOTICES.md` | the notices of code compiled into every program built on kyoten (musl's, through `reproducible-float`) |
 | `tools/test.sh` | the whole suite, the gate before every commit |
+| `tools/kyoten/` | the `kyoten` tool, package `@kyoten/cli`, built with `-o kyoten`: it writes a game's generated kama from its records, then runs kama (`generate`, `check`, `build`, `run`, `clean`). Its tests are one program in `tools/kyoten/tests/`, run on the fixture games there |
 | `examples/<kind>/<name>/` | **one separate repository per example**, git-ignored here and optional, kept by kind (the owner, 2026-11-08): games under `examples/games/`, and later kinds such as a simulation or a graphics sample beside it. The games so far are `examples/games/fps` ([kyoten-example-fps](https://github.com/cosmic-canopy/kyoten-example-fps)) and `examples/games/vr` ([kyoten-example-vr](https://github.com/cosmic-canopy/kyoten-example-vr), Meta Quest). Each is a standalone project that depends on `../../../engine` by path. Commit an example in its own repository, never here |
 | `docs/VISION.md` | the owner's brief |
 | `docs/SPIKE.md` | the design spike: what it decided, then its brief as written |
@@ -51,6 +52,8 @@ tools/kama pkg install kama_workspace.json          # the engine
 tools/kama check engine/kama.json
 tools/kama pkg install examples/games/fps/kama.json # an example, when kyoten-example-fps is cloned there
 tools/kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
+tools/kama build tools/kyoten/kama.json -o tools/kyoten/out/kyoten   # the kyoten tool
+tools/kyoten/out/kyoten check <game>/kama.json --kama "$(tools/kama --which)"   # generate, then kama check
 tools/test.sh                                       # the whole suite: the gate before every commit
 ```
 
@@ -81,7 +84,8 @@ or rebuilt from here.
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
 engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, and the 32 KiB
-frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows). Then each cloned
+frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows), and the `kyoten`
+tool's tests (`tools/kyoten/tests/`, on its fixture games, natively and with one built for wasm). Then each cloned
 example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
 no `emcc` or `node`, or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell
 (`bash -lic`) so the wasm legs run.

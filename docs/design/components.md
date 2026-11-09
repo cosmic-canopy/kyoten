@@ -1940,10 +1940,11 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
        `input.faster.held` while the stub `Actions` has no `faster`). The prefab types are then written whole.
      - **A dependency's components** (the engine's `Transform`) need a query of their own, rooted at the dependency's
        manifest, since `--search` answers only for the package it is pointed at. That re-checks the whole dependency.
-       *Measured:* 3.6 s for the engine, the same as `kama check engine/kama.json`, against 1.9 s for the probe game's
-       `kama check` and 2.0 s for its own query. It is the part that grows, with the engine, so each dependency's
-       answer is cached in the game's `out/`, keyed by a hash of its sources, and asked again only when they change.
-       KY-45 asks for one query.
+       *Measured* with the pin's binary, warm: 2.7 s for the engine, the same as `kama check engine/kama.json`
+       (2.6 s), against 1.0 s for the probe game's own query and 1.0 s for its `kama check`. The owner was first shown
+       3.6 s, 2.0 s and 1.9 s, measured through `tools/kama`, whose own start adds about 0.7 s to each, while the
+       packages' suites ran. It is the part that grows, with the engine, so each dependency's answer is cached in the
+       game's `out/`, keyed by a hash of its sources, and asked again only when they change. KY-45 asks for one query.
      - **A component is an exported `type value`** that a prefab or a processor names. A name that finds a resource, a
        function or nothing is refused, naming the prefab and the key.
      - **The owner asked** whether listing every component would touch each new module and duplicate the code. It
@@ -1974,3 +1975,44 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     `generated` listed with `std::collections` in its `importsOnly`; and a content file read with its prefabs held as
     `JsonValue`, their component keys in file order. The strict reader takes a key written twice in one file, and
     the last silently wins: KY-43.
+- **2026-11-09, built: the `kyoten` tool's first pass** (step 5.3, with the four questions above), on kama
+  `0.9.886+g2159ce21`, test-first.
+  - **`kyoten::input::Digital`:** `held`, `pressed` and `released`, off by default, 3 bytes on every target, in a
+    fenced module (`importsOnly: []`). 3 cases; the engine's tests are 99. How `pressed` and `released` are set
+    across steps is step 8's.
+  - **`@kyoten/cli`, in `tools/kyoten/`, built with `-o kyoten` and listed in the workspace:** `generate`, `check`,
+    `build`, `run` and `clean`, each naming the game's `kama.json` as kama's commands do. `--kama <path>` names the
+    compiler, else `$KAMA`, else `kama` on PATH, and every other flag goes to kama unchanged.
+  - **What the first pass writes,** into `src/generated/`, each file under the header:
+    - `actions.kama`: `Actions`, with the required `int32 player`, one `@skip` `Digital` per action and
+      `Actions.forPlayer(player:)`;
+    - `prefabs.kama`: per family, `<Base>Prefab` (`@generate(of)`, a public field per component, named for its type
+      in lowerCamel) and `<Base>PrefabId` (`@generate(Equatable)`, a ctor per member named for it, the base its
+      `default ctor`); then `Prefabs`, with `<base>(id:)` per family, which the loader fills (step 5.5).
+  - **How a run goes:** the records are read strictly (each module's actions, and the content's prefabs, bindings and
+    app; `content/scenes/` is the loader's); names, bindings and variants are checked; every generated name there
+    must carry the header; `actions.kama` and the prefab names are written; kama is asked for the game's types, and
+    for each dependency's unless its cache holds; the prefabs resolve into families; `prefabs.kama` is written whole;
+    and every generated file the run did not write is deleted. A refusal at any step leaves every file as it was, and
+    one run names every problem it finds, each with its file and the fix.
+  - **Measured** on the `spin` fixture with the pin's binary: a fresh `kyoten check`, asking for the game and its two
+    dependencies, took 3.3 s, and a warm one 0.5 s, against 0.34 s for `kama check` alone. `actions.kama` is
+    written only when its text changes; `prefabs.kama` is written twice every run, its names and then whole, so kama
+    rebuilds its object each time. Skipping the names when they have not changed is left until it is measured to
+    matter.
+  - **Tested** by `tools/kyoten/tests/`, one program `tools/test.sh` runs with the tool, the pin and the fixtures
+    handed to it: 43 cases natively, and 2 more when `emcc` and node are there (`spin` built for wasm and run under
+    node). Its fixture games: `spin`, the hello cube without `Mesh` (step 9's), with a variant in its base's family, a
+    variant that adds components and so has a family of its own, one key written by its full path, and `glow`, a
+    package of components other than the engine; `names` and `components`, every refusal, each naming its record;
+    and `nogen`, a manifest that does not list `generated`.
+  - **Mutations caught:** no header check, stale files kept, a bare name two components share taken as the first,
+    no reserved-word check, a variant that adds a component merged into its base's family, the cache ignoring its
+    hash, a refusal after the first pass keeping its files, an action two modules declare kept, and a resource taken
+    as a component each turn a case red.
+  - **Found on the way:** KY-46, `==` with a `T.default()` operand refused as if the type had no `Equatable`; the
+    `spin` fixture compares ids through locals until kama fixes it.
+  - **Left to later rows:** a module's own `<module>.generated.kama` (random keys); the second pass's tables, passes
+    and world (5.4); the loader that fills `Prefabs` from the prefabs' values (5.5); a prefab's `layer`; the field
+    spelling for two components of one name in one prefab, refused until it is decided; and naming the record behind
+    an error kama finds in generated code.
