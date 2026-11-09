@@ -1,4 +1,5 @@
-// What the first pass reads from records alone: each module's actions (its `*.records.json` beside its code), and the
+// What the generator reads from records alone: each module's records files beside its code (`*.records.json`), kept
+// whole for the second pass's processors, groups and components, with their actions gathered for the first; and the
 // prefabs, bindings and app in the content files at the root of `content/` and below it, outside `content/scenes/`,
 // whose files hold a scene's own record and its zones (REFERENCE.md § Records and their files).
 //
@@ -11,7 +12,7 @@ import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::r
          std::serialization::text::json::JsonDeserializer, std::serialization::text::json::JsonValue,
          Manifest, Refusals, filesUnder, dirOf, nameProblem };
 
-export { Records, PrefabDecl, readRecords };
+export { Records, PrefabDecl, CodeFile, readRecords };
 
 // Members the generated `Actions` has itself, which no action may take.
 fn string actionMembers() { return " player forPlayer serialize deserialize mergeFrom "; }
@@ -54,14 +55,32 @@ type resource PrefabDecl {
     public const fn const ref DynamicArray<string> dropped() { return this.nulls; }
 }
 
+// One module's records file, as read: its module, its path from the game's root, and its record.
+type resource CodeFile {
+    string moduleName = "";
+    string filePath = "";
+    ModuleRecord rec = ModuleRecord.make();
+
+    public ctor of(string module, string file, ModuleRecord record) {
+        this.moduleName = give module;
+        this.filePath = give file;
+        this.rec = give record;
+    }
+
+    public const fn const ref string module() { return this.moduleName; }
+    public const fn const ref string file() { return this.filePath; }
+    public const fn const ref ModuleRecord record() { return this.rec; }
+}
+
 type resource Records {
+    DynamicArray<CodeFile> codeFiles = DynamicArray.empty();
     SortedMap<string, string> actionModules = SortedMap.empty();
     SortedMap<string, string> actionFiles = SortedMap.empty();
     SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
     SortedMap<string, string> bindingFiles = SortedMap.empty();
     string appFile = "";
 
-    friend readRecords[addAction, addContent, crossCheck];
+    friend readRecords[codeFiles, addAction, addContent, crossCheck];
 
     public ctor make() { }
 
@@ -69,6 +88,8 @@ type resource Records {
     public const fn const ref SortedMap<string, string> actions() { return this.actionModules; }
     public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
     public const fn DynamicArray<string> prefabNames() { return this.prefabDecls.keys(); }
+    // Every module's records files, in the order of their paths.
+    public const fn const ref DynamicArray<CodeFile> code() { return this.codeFiles; }
 
     unsafe fn void addAction(const ref string name, const ref string module, const ref string file, ref Refusals no) {
         if (this.actionModules.contains(key: name)) {
@@ -206,6 +227,7 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
                 case _: { no.add(where: file, what: "action `${a}`: only `Digital` actions are built so far; the other kinds come with KYR-54 (step 8)"); }
             };
         }
+        r.codeFiles.add(item: CodeFile.of(module: copy module, file: copy file, record: give m));
     }
     string content = game.root() + "/content";
     DynamicArray<string> contents = filesUnder(dir: content);

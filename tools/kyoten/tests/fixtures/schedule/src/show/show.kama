@@ -1,0 +1,15 @@
+// Output, once a frame: what each counter, the log and the world's score hold.
+
+import { core::println, kyoten::frame::Time, kyoten::world::Handle, schedule::sim::Fast, schedule::sim::Slow,
+         schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Score };
+
+export { report };
+
+fn void report(const ref Fast f, const ref Slow s, const ref Fifty y, const ref Log l, const ref Score score,
+               Handle me, const ref Time time) {
+    uint32 fd = bitcast<uint32>(f.dt);
+    uint32 sd = bitcast<uint32>(s.dt);
+    uint32 yd = bitcast<uint32>(y.dt);
+    uint32 slot = me.slot();
+    println(s: "report: slot ${slot} fast ${f.runs} ${f.last} ${fd} slow ${s.runs} ${s.last} ${sd} fifty ${y.runs} ${y.last} ${yd} log ${l.seq} score ${score.total} at ${time.step}");
+}

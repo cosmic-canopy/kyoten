@@ -1,0 +1,40 @@
+// Every signature the second pass refuses, and processors whose records it refuses. Each reads `Hp`, so none conflicts
+// with another, but `hitA` and `hitB`, which both write `Armor` with no order between them.
+
+import { kyoten::frame::Time, kyoten::world::Handle, std::math::Vec3 };
+
+export { Hp, Armor, Mark, Score, Ghostly, refTime, timeByValue, handleByRef, byValue, notKyoten, notBuilt,
+         writesInOutput, returns, both, neither, lost, tooSlow, outputRated, iterates, randomly, sorted, nowhere, loopA,
+         loopB, hitA, hitB, outer, inner, seven, eleven };
+
+type value Hp { public int32 hp = 10; public default ctor make() { } }
+type value Armor { public int32 points = 0; public default ctor make() { } }
+type value Mark { public int32 on = 0; public default ctor make() { } }
+type value Score { public int32 n = 0; public default ctor make() { } }
+type value Ghostly { public int32 n = 0; public default ctor make() { } }
+
+fn void refTime(const ref Hp h, ref Time time) { }
+fn void timeByValue(const ref Hp h, Time time) { }
+fn void handleByRef(const ref Hp h, const ref Handle me) { }
+fn void byValue(Hp h) { }
+fn void notKyoten(const ref Hp h, ref Vec3 v) { }
+fn void notBuilt(const ref Hp h, ref Destroy d) { }
+fn void writesInOutput(ref Hp h) { }
+fn int32 returns(const ref Hp h) { return 0; }
+fn void both(const ref Hp h) { }
+fn void neither(const ref Hp h) { }
+fn void lost(const ref Hp h) { }
+fn void tooSlow(const ref Hp h) { }
+fn void outputRated(const ref Hp h) { }
+fn void iterates(const ref Hp h) { }
+fn void randomly(const ref Hp h) { }
+fn void sorted(const ref Hp h) { }
+fn void nowhere(const ref Hp h) { }
+fn void loopA(const ref Hp h) { }
+fn void loopB(const ref Hp h) { }
+fn void hitA(ref Armor a) { }
+fn void hitB(ref Armor a) { }
+fn void outer(const ref Hp h) { }
+fn void inner(const ref Hp h) { }
+fn void seven(const ref Hp h) { }
+fn void eleven(const ref Hp h) { }

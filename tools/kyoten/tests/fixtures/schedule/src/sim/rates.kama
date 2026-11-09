@@ -1,0 +1,21 @@
+// Three processors at three rates: the module's 60 Hz, then 50 Hz, so the base clock is their least common multiple.
+// `fast` imports its component scope-less, from a file next door in its module.
+
+import { kyoten::frame::Time, Fast, Fifty, Score };
+
+export { fast, fifty, tally };
+
+fn void fast(ref Fast c, const ref Time time) {
+    c.runs = c.runs + 1;
+    c.last = time.step;
+    c.dt = time.dt;
+}
+
+fn void fifty(ref Fifty c, const ref Time time) {
+    c.runs = c.runs + 1;
+    c.last = time.step;
+    c.dt = time.dt;
+}
+
+// Reads what `fast` wrote, so its record orders it after `fast`.
+fn void tally(ref Score s, const ref Fast c) { s.total = s.total + cast<int64>(c.runs); }

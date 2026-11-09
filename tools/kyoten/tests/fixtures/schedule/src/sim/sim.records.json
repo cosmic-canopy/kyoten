@@ -1,0 +1,10 @@
+{ "groups": { "settle": { "phase": "Constraints", "iterations": 2 } },
+  "processors": {
+    "fast":   { "phase": "Update" },
+    "slow":   { "phase": "Update", "rate": 30 },
+    "fifty":  { "phase": "Update", "rate": 50 },
+    "tally":  { "phase": "Update", "after": ["fast"] },
+    "clear":  { "phase": "Update" },
+    "later":  { "group": "settle", "after": ["sooner"] },
+    "sooner": { "group": "settle" } },
+  "components": { "Score": { "store": "World" } } }

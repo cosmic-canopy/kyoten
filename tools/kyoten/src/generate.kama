@@ -1,17 +1,20 @@
 // `kyoten generate`, which `check`, `build` and `run` begin with, and `kyoten clean` (components § Decided, step 5's
-// two passes of 2026-11-08 and step 5.3's questions of 2026-11-09).
+// two passes of 2026-11-08, step 5.3's questions and step 5.4's, of 2026-11-09).
 //
 // 1. From the records alone: the manifest lists `generated`; every name a record makes into kama is an identifier,
 //    and unique; every variant's base is a prefab; every generated name there now carries the header.
 // 2. The first pass writes `Actions` whole and the prefab types' names, so the game's imports resolve.
-// 3. kama is asked which types the game and its dependencies declare, and each prefab's components resolve.
-// 4. The prefab types are written whole, and what this run did not write is deleted.
+// 3. kama is asked which types and functions the game and its dependencies declare; each prefab's components resolve,
+//    and each processor record meets its function, whose parameters are classified (the schedule).
+// 4. The second pass writes the prefab types whole, then the tables, the passes and the world, and what this run did
+//    not write is deleted.
 //
 // A refusal at any step leaves every file as it was.
 
-import { core::println, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir, std::fs::removeDirAll,
-         Kama, Manifest, Refusals, Records, Index, Family, Kept, readRecords, buildIndex, resolveFamilies,
-         actionsKama, prefabsStub, prefabsKama, generatedFiles, checkHeaders, writeIfChanged, removeFile };
+import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir,
+         std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index, Family, Kept, Schedule, readRecords,
+         buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
+         worldKama, generatedFiles, checkHeaders, writeIfChanged, removeFile };
 
 export { generate, clean };
 
@@ -38,18 +41,37 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
 
     Index idx = buildIndex(kama: kama, game: game, no: no);
     DynamicArray<Family> families = DynamicArray.empty();
-    if (!no.any()) { families = resolveFamilies(r: records, idx: idx, no: no); }
+    Schedule schedule = Schedule.make();
+    DynamicArray<string> warnings = DynamicArray.empty();
+    if (!no.any()) {
+        families = resolveFamilies(r: records, idx: idx, no: no);
+        schedule = buildSchedule(r: records, idx: idx, game: game, families: families, warnings: warnings, no: no);
+    }
+    foreach (const ref string w in warnings.iterConst()) { eprintln(s: "kyoten: warning: ${w}"); }
     if (no.any()) {
         keptPrefabs.restore();
         keptActions.restore();
         no.print();
         return false;
     }
-    writeIfChanged(path: prefabsPath, text: prefabsKama(game: game.name(), families: families));
+    string gameName = copy game.name();
+    DynamicArray<string> written = DynamicArray.empty();
+    written.add(item: copy actionsFile);
+    written.add(item: copy prefabsFile);
+    writeIfChanged(path: prefabsPath, text: prefabsKama(game: gameName, families: families));
+    string tablesFile = "src/generated/tables.kama";
+    string passesFile = "src/generated/passes.kama";
+    string worldFile = "src/generated/world.kama";
+    writeIfChanged(path: game.root() + "/" + tablesFile, text: tablesKama(game: gameName, families: families));
+    writeIfChanged(path: game.root() + "/" + passesFile, text: passesKama(game: gameName, families: families, s: schedule));
+    writeIfChanged(path: game.root() + "/" + worldFile, text: worldKama(game: gameName, families: families, s: schedule));
+    written.add(item: give tablesFile);
+    written.add(item: give passesFile);
+    written.add(item: give worldFile);
     foreach (const ref string f in before.iterConst()) {
-        if (f != actionsFile && f != prefabsFile) { removeFile(path: game.root() + "/" + f); }
+        if (!written.contains(item: f)) { removeFile(path: game.root() + "/" + f); }
     }
-    println(s: "kyoten: generated ${actionsFile} and ${prefabsFile}");
+    println(s: "kyoten: generated src/generated/: actions, prefabs, tables, passes and world");
     return true;
 }
 

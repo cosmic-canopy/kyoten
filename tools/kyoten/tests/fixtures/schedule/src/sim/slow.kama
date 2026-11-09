@@ -1,0 +1,11 @@
+// `slow` names the step's time under another name, so the tool must resolve a parameter through this file's imports.
+
+import { kyoten::frame::Time as Tick, Slow };
+
+export { slow };
+
+fn void slow(ref Slow c, const ref Tick time) {
+    c.runs = c.runs + 1;
+    c.last = time.step;
+    c.dt = time.dt;
+}

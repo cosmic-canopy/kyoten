@@ -1,0 +1,1 @@
+{ "prefabs": { "unit": { "Hp": {}, "Armor": {}, "Score": {}, "note": "lists a world component, which is refused" } } }

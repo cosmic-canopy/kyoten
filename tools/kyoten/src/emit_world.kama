@@ -1,0 +1,448 @@
+// The kama the second pass writes into the game's `src/generated/` (components § Decided: the naming rule of
+// 2026-11-07, rule 5, and step 5.4), each file under the header:
+//
+// - `tables.kama`: per prefab family, a chunk (a column per component and one of handles, up to its row count, rows
+//   packed at the front) and a table (its chunks in one block, allocated once). It imports no processor, since a
+//   column may not share a processor's name in one file.
+// - `passes.kama`: one function a phase, calling each processor in the phase's order, at its rate on the base clock and
+//   its iterations, over every table whose family has the components it names. Only this file imports processors,
+//   each under an alias of the generator's own.
+// - `world.kama`: the world, implementing `kyoten::frame::World`: the lookup, each table, each world component, the
+//   base rate, and a `create_<family>` that the loader (step 5.5) and later `Create<P>` call.
+//
+// Every name here is the generator's own and may change in any release (rule 5): a game writes none of them. A name
+// the generator writes into a game's namespace has an underscore (`table_cube`, `pass_update`, `run_cube_turn`), which
+// no record's name has, so none can meet one a game chose.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Phase, Family, Component,
+         Schedule, Processor, Group, Param, Access, headerLine, typeCase };
+
+export { tablesKama, passesKama, worldKama, worldTypeName };
+
+// The world type's name, which the fixtures and, at step 7, the generated `run` name.
+fn string worldTypeName() { return "GameWorld"; }
+
+fn string lastSegment(const ref string path) {
+    isize i = path.length();
+    while (i > 1) {
+        i = i - 1;
+        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: i + 1, end: path.length()); }
+    }
+    return copy path;
+}
+
+fn string moduleSegment(const ref string path) {
+    isize i = path.length();
+    while (i > 1) {
+        i = i - 1;
+        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: 0, end: i - 1); }
+    }
+    return "";
+}
+
+// A path as one name: `spin::cube::Spin` gives `spin_cube_Spin`. kama refuses `__` inside a name, so none is made.
+fn string flat(const ref string path) {
+    string made = path.replace(old: "::", with: "_");
+    while (made.contains(substring: "__")) { made = made.replace(old: "__", with: "_"); }
+    return made;
+}
+
+// The names one generated file imports: each path by its bare name, unless another path the file imports, or a name
+// the file declares, has it too, when it is written by a name made from its whole path. A path in the generated module
+// itself is imported scope-less, as a sibling.
+type resource ImportSet {
+    string own = "";
+    SortedMap<string, string> aliased = SortedMap.empty();
+    SortedMap<string, bool> paths = SortedMap.empty();
+    SortedMap<string, int32> bareUses = SortedMap.empty();
+    SortedMap<string, bool> declared = SortedMap.empty();
+
+    public ctor make(string module) { this.own = give module; }
+
+    // A name this file declares, which no import may take.
+    public fn void declare(const ref string name) { this.declared.put(key: copy name, value: true); }
+
+    public fn void add(const ref string path) {
+        if (this.paths.contains(key: path)) { return; }
+        this.paths.put(key: copy path, value: true);
+        string bare = lastSegment(path: path);
+        int32 seen = this.bareUses.contains(key: bare) ? this.bareUses.getRef(key: bare) : 0;
+        this.bareUses.put(key: give bare, value: seen + 1);
+    }
+
+    // A path imported under a name of the generator's choosing.
+    public fn void addAs(const ref string path, const ref string alias) {
+        this.paths.put(key: copy path, value: true);
+        this.aliased.put(key: copy path, value: copy alias);
+    }
+
+    public const fn string nameOf(const ref string path) {
+        if (this.aliased.contains(key: path)) { return copy this.aliased.getRef(key: path); }
+        string bare = lastSegment(path: path);
+        bool shared = this.bareUses.contains(key: bare) && this.bareUses.getRef(key: bare) > 1;
+        if (shared || this.declared.contains(key: bare)) { return flat(path: path); }
+        return bare;
+    }
+
+    // The file's import block, or "" when it imports nothing.
+    public const fn string block() {
+        DynamicArray<string> all = this.paths.keys();
+        if (all.length() == 0) { return ""; }
+        string entries = "";
+        foreach (const ref string p in all.iterConst()) {
+            string name = this.nameOf(path: p);
+            string bare = lastSegment(path: p);
+            string written = moduleSegment(path: p) == this.own ? copy bare : copy p;
+            string entry = name == bare ? copy written : written + " as " + name;
+            entries = entries.isEmpty() ? copy entry : entries + ", " + entry;
+        }
+        return "import { " + entries + " };\n\n";
+    }
+}
+
+fn DynamicArray<Phase> phases() {
+    DynamicArray<Phase> ps = DynamicArray.empty();
+    ps.add(item: Phase::Input);
+    ps.add(item: Phase::Update);
+    ps.add(item: Phase::Constraints);
+    ps.add(item: Phase::Output);
+    return ps;
+}
+
+fn string passName(Phase phase) {
+    return match (phase) {
+        case Input: "pass_input";
+        case Update: "pass_update";
+        case Constraints: "pass_constraints";
+        case Output: "pass_output";
+    };
+}
+
+fn string chunkType(const ref Family f) { return typeCase(s: f.root()) + "Chunk"; }
+fn string tableType(const ref Family f) { return typeCase(s: f.root()) + "Table"; }
+fn string prefabType(const ref Family f) { return typeCase(s: f.root()) + "Prefab"; }
+fn string rowsName(const ref Family f) { return "rows_" + f.root(); }
+fn string tableField(const ref Family f) { return "table_" + f.root(); }
+
+// The handle column's name. A component's column is its type's name in lowerCamel, which has no underscore unless its
+// type's name does, so this one never meets a component's.
+fn string handleColumn() { return "entity_handle"; }
+
+fn string tablesKama(const ref string game, const ref DynamicArray<Family> families) {
+    string own = game + "::generated";
+    ImportSet imports = ImportSet.make(module: copy own);
+    foreach (const ref Family f in families.iterConst()) {
+        imports.declare(name: chunkType(f: f));
+        imports.declare(name: tableType(f: f));
+        imports.add(path: own + "::" + prefabType(f: f));
+        foreach (const ref Component c in f.components().iterConst()) { imports.add(path: c.path()); }
+    }
+    imports.add(path: "kyoten::world::Handle");
+    imports.add(path: "kyoten::world::ChunkSize");
+    imports.add(path: "kyoten::world::Lookup");
+    imports.add(path: "kyoten::world::Place");
+    imports.add(path: "std::collections::InlineDynamicArray");
+    imports.add(path: "std::collections::FixedArray");
+    imports.add(path: "std::collections::CapacityFull");
+    foreach (Phase p in phases()) { imports.add(path: own + "::" + passName(phase: p)); }
+    string handle = imports.nameOf(path: "kyoten::world::Handle");
+    string chunkSize = imports.nameOf(path: "kyoten::world::ChunkSize");
+    string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
+    string place = imports.nameOf(path: "kyoten::world::Place");
+    string inlineArray = imports.nameOf(path: "std::collections::InlineDynamicArray");
+    string fixed = imports.nameOf(path: "std::collections::FixedArray");
+    string full = imports.nameOf(path: "std::collections::CapacityFull");
+
+    string t = headerLine() + "\n";
+    t = t + "// The tables (components § Decided): for each prefab family, a chunk holding up to its row count of entities, a\n";
+    t = t + "// column per component and one of handles, its rows packed at the front; and a table holding its chunks in one\n";
+    t = t + "// block, allocated once. No processor is imported here, since a column may not share a processor's name in one\n";
+    t = t + "// file (the naming rule's rule 5). The generator's own names: no game writes them.\n\n";
+    t = t + imports.block();
+    string exported = "";
+    foreach (const ref Family f in families.iterConst()) {
+        exported = exported.isEmpty() ? "" : exported + ", ";
+        exported = exported + chunkType(f: f) + ", " + tableType(f: f);
+    }
+    if (!exported.isEmpty()) { t = t + "export { " + exported + " };\n"; }
+    foreach (const ref Family f in families.iterConst()) {
+        string rows = rowsName(f: f);
+        string bytes = "";
+        foreach (const ref Component c in f.components().iterConst()) {
+            bytes = bytes + "sizeof(" + imports.nameOf(path: c.path()) + ") + ";
+        }
+        bytes = bytes + "sizeof(" + handle + ")";
+        t = t + "\n// `" + f.root() + "`'s family: a row is its components and its handle, and a chunk holds as many rows as fit\n";
+        t = t + "// 16 KiB, at most 128 (components § Decided, question 6, choice 4).\n";
+        t = t + "comptime int32 " + rows + " = cast<int32>(" + chunkSize + "::rowsFor(rowBytes: " + bytes + "));\n\n";
+        t = t + "type value " + chunkType(f: f) + " {\n";
+        foreach (const ref Component c in f.components().iterConst()) {
+            string ty = imports.nameOf(path: c.path());
+            t = t + "    public " + inlineArray + "<" + ty + ">#(" + rows + ") " + c.field() + " = " + inlineArray + ".empty();\n";
+        }
+        t = t + "    public " + inlineArray + "<" + handle + ">#(" + rows + ") " + handleColumn() + " = " + inlineArray + ".empty();\n\n";
+        t = t + "    public default ctor empty() { }\n}\n\n";
+        t = t + "type resource " + tableType(f: f) + " {\n";
+        t = t + "    " + fixed + "<" + chunkType(f: f) + "> chunks;\n\n";
+        foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[chunks];\n"; }
+        t = t + "\n    public ctor make(isize count) { this.chunks = " + fixed + ".make(size: count); }\n\n";
+        t = t + "    // A row from a prefab's values, with the handle the lookup issues at its place, or none when every chunk is\n";
+        t = t + "    // full: the budget refuses (components § Decided, question 6).\n";
+        t = t + "    public fn Optional<" + handle + "> add(ref " + lookupType + " lookup, int32 table, " + prefabType(f: f) + " row) {\n";
+        t = t + "        isize k = 0;\n";
+        t = t + "        while (k < this.chunks.length()) {\n";
+        t = t + "            isize n = this.chunks[k]." + handleColumn() + ".length();\n";
+        t = t + "            if (n < cast<isize>(" + rows + ")) {\n";
+        t = t + "                " + handle + " who = lookup.issue(at: " + place + ".of(table: table, chunk: cast<int32>(k), row: cast<int32>(n)));\n";
+        isize i = 0;
+        foreach (const ref Component c in f.components().iterConst()) {
+            string ty = imports.nameOf(path: c.path());
+            t = t + "                Result<Unit, " + full + "<" + ty + ">> added${i} = this.chunks[k]." + c.field() + ".add(item: row." + c.field() + ");\n";
+            i = i + 1;
+        }
+        t = t + "                Result<Unit, " + full + "<" + handle + ">> addedHandle = this.chunks[k]." + handleColumn() + ".add(item: who);\n";
+        t = t + "                return Optional::Some(value: who);\n";
+        t = t + "            }\n";
+        t = t + "            k = k + 1;\n";
+        t = t + "        }\n";
+        t = t + "        return Optional::None;\n";
+        t = t + "    }\n}\n";
+    }
+    return t;
+}
+
+// The alias a processor is imported under in passes.kama: `run_` and its path made one name.
+fn string runName(const ref string path) { return "run_" + flat(path: path); }
+
+// The families a processor runs on: each whose components include every table component it names.
+fn DynamicArray<isize> familiesFor(const ref Processor p, const ref DynamicArray<Family> families) {
+    DynamicArray<isize> found = DynamicArray.empty();
+    DynamicArray<string> needs = p.tableComponents();
+    isize i = 0;
+    while (i < families.length()) {
+        bool all = true;
+        foreach (const ref string n in needs.iterConst()) {
+            bool has = false;
+            foreach (const ref Component c in families[i].components().iterConst()) { if (c.path() == n) { has = true; } }
+            if (!has) { all = false; }
+        }
+        if (all) { found.add(item: i); }
+        i = i + 1;
+    }
+    return found;
+}
+
+// The column of a family that holds the component at `path`.
+fn string columnOf(const ref Family f, const ref string path) {
+    foreach (const ref Component c in f.components().iterConst()) { if (c.path() == path) { return copy c.field(); } }
+    return "";
+}
+
+// One call of a processor, its arguments in its parameters' order: a column's row, a world component, the row's
+// handle, or the step's time.
+fn string callOf(const ref Processor p, const ref Family f, bool perRow, const ref string time,
+                 const ref ImportSet worldNames) {
+    string args = "";
+    foreach (const ref Param a in p.params().iterConst()) {
+        string value = match (a.access()) {
+            case TableComponent: "c." + columnOf(f: f, path: a.path()) + "[i]";
+            case WorldComponent: "w.world_" + worldNames.nameOf(path: a.path());
+            case EntityHandle: "c." + handleColumn() + "[i]";
+            case StepTime: copy time;
+        };
+        args = args.isEmpty() ? a.name() + ": " + value : args + ", " + a.name() + ": " + value;
+    }
+    return runName(path: p.path()) + "(" + args + ");";
+}
+
+// One processor's block in its phase's pass, indented by `pad`: its rate's gate, its iterations, and its call over
+// every table its family set gives, or once when it names no entity's component or handle.
+fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> families, const ref ImportSet worldNames,
+                         const ref string timeType, const ref string pad, ref int32 counter) {
+    bool output = p.phase() == Phase::Output;
+    string time = output ? "time" : "at";
+    string t = "";
+    int32 rate = p.rate();
+    string hz = "${rate}";
+    t = t + pad + "// `" + p.path() + "`" + (output ? ", once a display frame" : ", at " + hz + " Hz") + "\n";
+    string inner = copy pad;
+    if (!output) {
+        t = t + pad + "if (r" + hz + ".due(step: time.step)) {\n";
+        inner = pad + "    ";
+        bool takesTime = false;
+        foreach (const ref Param a in p.params().iterConst()) { if (a.access() == Access::StepTime) { takesTime = true; } }
+        if (takesTime) { t = t + inner + timeType + " at = r" + hz + ".at(step: time.step);\n"; }
+    }
+    string body = copy inner;
+    int32 times = p.iterations();
+    string again = "";
+    if (times > 1) {
+        counter = counter + 1;
+        again = "again${counter}";
+        t = t + inner + "int32 " + again + " = 0;\n";
+        t = t + inner + "while (" + again + " < ${times}) {\n";
+        body = inner + "    ";
+    }
+    if (p.perEntity()) {
+        DynamicArray<isize> on = familiesFor(p: p, families: families);
+        foreach (isize fi in on) {
+            t = t + body + "foreach (ref " + chunkType(f: families[fi]) + " c in w." + tableField(f: families[fi]) + ".chunks.iterMut()) {\n";
+            t = t + body + "    isize i = 0;\n";
+            t = t + body + "    while (i < c." + handleColumn() + ".length()) {\n";
+            t = t + body + "        " + callOf(p: p, f: families[fi], perRow: true, time: time, worldNames: worldNames) + "\n";
+            t = t + body + "        i = i + 1;\n";
+            t = t + body + "    }\n";
+            t = t + body + "}\n";
+        }
+    } else {
+        Family none = Family.make(origin: "", members: DynamicArray.empty(), parts: DynamicArray.empty());
+        t = t + body + callOf(p: p, f: none, perRow: false, time: time, worldNames: worldNames) + "\n";
+    }
+    if (times > 1) {
+        t = t + body + again + " = " + again + " + 1;\n";
+        t = t + inner + "}\n";
+    }
+    if (!output) { t = t + pad + "}\n"; }
+    return t;
+}
+
+fn string passesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
+    string own = game + "::generated";
+    string worldType = worldTypeName();
+    ImportSet imports = ImportSet.make(module: copy own);
+    foreach (Phase p in phases()) { imports.declare(name: passName(phase: p)); }
+    imports.add(path: "kyoten::frame::Rate");
+    imports.add(path: "kyoten::frame::Time");
+    imports.add(path: own + "::" + worldType);
+    foreach (const ref Family f in families.iterConst()) { imports.add(path: own + "::" + chunkType(f: f)); }
+    foreach (const ref Processor p in s.processors().iterConst()) { imports.addAs(path: p.path(), alias: runName(path: p.path())); }
+    ImportSet worldNames = worldImports(game: game, families: families, s: s);
+    string rateType = imports.nameOf(path: "kyoten::frame::Rate");
+    string timeType = imports.nameOf(path: "kyoten::frame::Time");
+    string world = imports.nameOf(path: own + "::" + worldType);
+
+    string t = headerLine() + "\n";
+    t = t + "// The passes (components § Decided; frame-phases § Decided, questions 1, 2 and 5): one function a phase, calling\n";
+    t = t + "// each of its processors in the phase's order, at its rate on the base clock and its iterations, over every table\n";
+    t = t + "// whose family has the components it names. Output runs once a display frame. Only this file imports processors.\n";
+    t = t + "// The generator's own names: no game writes them.\n\n";
+    t = t + imports.block();
+    t = t + "export { pass_input, pass_update, pass_constraints, pass_output };\n";
+    int32 counter = 0;
+    foreach (Phase phase in phases()) {
+        t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time) {\n";
+        // One Rate a distinct rate the phase's processors run at.
+        SortedMap<int32, bool> rates = SortedMap.empty();
+        foreach (const ref Processor p in s.processors().iterConst()) {
+            if (p.phase() == phase && p.rate() > 0) { rates.put(key: p.rate(), value: true); }
+        }
+        DynamicArray<int32> hzs = rates.keys();
+        foreach (int32 hz in hzs) {
+            t = t + "    " + rateType + " r${hz} = " + rateType + ".of(hz: ${hz}, over: " + world + "::baseHz);\n";
+        }
+        DynamicArray<string> order = s.orderOf(phase: phase);
+        foreach (const ref string key in order.iterConst()) {
+            string path = key.substring(start: 2, end: key.length());
+            if (key.startsWith(prefix: "p:")) {
+                isize at = s.processorAt(path: path);
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", counter: counter); }
+                continue;
+            }
+            isize gi = s.groupAt(path: path);
+            if (gi < 0) { continue; }
+            counter = counter + 1;
+            string round = "round${counter}";
+            int32 times = s.groups()[gi].iterations();
+            t = t + "    // group `" + path + "`, ${times} times a step\n";
+            t = t + "    int32 " + round + " = 0;\n";
+            t = t + "    while (" + round + " < ${times}) {\n";
+            foreach (const ref string member in s.groups()[gi].order().iterConst()) {
+                isize at = s.processorAt(path: member);
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", counter: counter); }
+            }
+            t = t + "        " + round + " = " + round + " + 1;\n";
+            t = t + "    }\n";
+        }
+        t = t + "}\n";
+    }
+    return t;
+}
+
+// The names world.kama gives each world component, which passes.kama uses to reach its field.
+fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
+    string own = game + "::generated";
+    ImportSet imports = ImportSet.make(module: copy own);
+    imports.declare(name: worldTypeName());
+    foreach (Phase p in phases()) { imports.add(path: own + "::" + passName(phase: p)); }
+    imports.add(path: "kyoten::frame::Time");
+    imports.add(path: "kyoten::frame::World");
+    imports.add(path: "kyoten::world::Handle");
+    imports.add(path: "kyoten::world::Lookup");
+    foreach (const ref Family f in families.iterConst()) {
+        imports.add(path: own + "::" + prefabType(f: f));
+        imports.add(path: own + "::" + tableType(f: f));
+    }
+    foreach (const ref string w in s.worldComponents().iterConst()) { imports.add(path: w); }
+    return imports;
+}
+
+fn string worldKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
+    string worldType = worldTypeName();
+    ImportSet imports = worldImports(game: game, families: families, s: s);
+    string handle = imports.nameOf(path: "kyoten::world::Handle");
+    string contract = imports.nameOf(path: "kyoten::frame::World");
+    string time = imports.nameOf(path: "kyoten::frame::Time");
+    // Every field a pass reaches.
+    string fields = "";
+    foreach (const ref Family f in families.iterConst()) { fields = fields.isEmpty() ? tableField(f: f) : fields + ", " + tableField(f: f); }
+    foreach (const ref string w in s.worldComponents().iterConst()) {
+        string field = "world_" + imports.nameOf(path: w);
+        fields = fields.isEmpty() ? copy field : fields + ", " + field;
+    }
+
+    string t = headerLine() + "\n";
+    t = t + "// The world (components § Decided): each prefab family's table, each world component and the lookup, which the\n";
+    t = t + "// frame's driver runs through the four phase calls of `kyoten::frame::World`. No processor is imported here. The\n";
+    t = t + "// generator's own names: no game writes them.\n\n";
+    t = t + imports.block();
+    t = t + "export { " + worldType + " };\n\n";
+    t = t + "type resource " + worldType + " implements " + contract + " {\n";
+    int32 baseHz = s.baseHz();
+    t = t + "    // The base clock, in steps a second: the least common multiple of the simulation processors' rates, which the\n";
+    t = t + "    // clock that drives this world runs at (frame-phases § Decided, question 2).\n";
+    t = t + "    public comptime int32 baseHz = ${baseHz};\n\n";
+    string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
+    t = t + "    " + lookupType + " lookup = " + lookupType + ".make();\n";
+    isize n = 0;
+    foreach (const ref Family f in families.iterConst()) {
+        t = t + "    // Table ${n}: `" + f.root() + "`'s family, one chunk, the engine's default budget (components § Decided, 2026-11-08).\n";
+        t = t + "    " + tableType(f: f) + " " + tableField(f: f) + " = " + tableType(f: f) + ".make(count: 1);\n";
+        n = n + 1;
+    }
+    foreach (const ref string w in s.worldComponents().iterConst()) {
+        string ty = imports.nameOf(path: w);
+        t = t + "    // The world component `" + w + "`, from its default.\n";
+        t = t + "    " + ty + " world_" + ty + " = " + ty + ".default();\n";
+    }
+    if (!fields.isEmpty()) {
+        t = t + "\n";
+        foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[" + fields + "];\n"; }
+    }
+    t = t + "\n    public ctor make() { }\n\n";
+    foreach (Phase p in phases()) {
+        string method = match (p) { case Input: "input"; case Update: "update"; case Constraints: "constraints"; case Output: "output"; };
+        t = t + "    public fn void " + method + "(const ref " + time + " time) { " + passName(phase: p) + "(w: this, time: time); }\n";
+    }
+    isize k = 0;
+    foreach (const ref Family f in families.iterConst()) {
+        string prefab = imports.nameOf(path: game + "::generated::" + prefabType(f: f));
+        t = t + "\n    // A new entity of `" + f.root() + "`'s family from a prefab's values, or none when its table is full: what the\n";
+        t = t + "    // loader (step 5.5) and `Create<" + prefabType(f: f) + ">` call.\n";
+        t = t + "    public fn Optional<" + handle + "> create_" + f.root() + "(" + prefab + " prefab) {\n";
+        t = t + "        return this." + tableField(f: f) + ".add(lookup: this.lookup, table: ${k}, row: prefab);\n";
+        t = t + "    }\n";
+        k = k + 1;
+    }
+    t = t + "}\n";
+    return t;
+}

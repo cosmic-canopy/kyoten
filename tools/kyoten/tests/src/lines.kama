@@ -1,0 +1,23 @@
+// Reading what a run printed, line by line: the second pass's fixtures print what their processors saw, and a case
+// compares those lines with what the fixture computed by hand.
+
+import { std::collections::DynamicArray };
+
+export { linesAfter, lastAfter };
+
+// Every line `text` holds that starts with `prefix`, with the prefix cut off, in order.
+fn DynamicArray<string> linesAfter(const ref string text, const ref string prefix) {
+    DynamicArray<string> found = DynamicArray.empty();
+    foreach (string line in text.split(separator: "\n")) {
+        string l = line.trimEnd();
+        if (l.startsWith(prefix: prefix)) { found.add(item: l.substring(start: prefix.length(), end: l.length())); }
+    }
+    return found;
+}
+
+// The last such line, or "" when there is none.
+fn string lastAfter(const ref string text, const ref string prefix) {
+    DynamicArray<string> all = linesAfter(text: text, prefix: prefix);
+    if (all.length() == 0) { return ""; }
+    return copy all[all.length() - 1];
+}

@@ -1,0 +1,2 @@
+{ "prefabs": { "ticker": { "Fast": {}, "Slow": {}, "Fifty": {}, "Log": {} },
+               "crate":  { "Bulk": {}, "note": "a chunk at the 16 KiB target, with no processor" } } }

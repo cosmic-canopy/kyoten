@@ -1,0 +1,70 @@
+// The schedule fixture: the second pass's passes (components § Decided, step 5.4). Processors at 60, 30 and 50 Hz make
+// a 300 Hz base clock, each run handed its own rate's dt and the base step; a Constraints group runs twice a step, in
+// its stated order against its names' order; a world component gathers a reader's sums after its writer; and Output
+// runs once a frame through the frame's driver, fed one second in 60 frames.
+
+import { Tally, Setup, Ran, has, read, eraseDir, ranAs, none, check, linesAfter, lastAfter,
+         std::collections::DynamicArray };
+
+export { scheduleTests };
+
+// After 300 base steps (0 to 299): `fast` (60 Hz) ran every 5th, last on 295, with 1/60's dt; `slow` (30 Hz) every
+// 10th, last on 290; `fifty` (50 Hz) every 6th, last on 294; the log holds one step's A, B, A, B; and the score is
+// 1 + 2 + … + 60. The dt bits are Time.dtAt's, which the engine's time tests hold: 0x3c888889 (1/60) is 1015580809,
+// 0x3d088889 (1/30) is 1023969417, and 0x3ca3d70a (1/50) is 1017370378.
+fn string expectedReport() {
+    return "slot 0 fast 60 295 1015580809 slow 30 290 1023969417 fifty 50 294 1017370378 log 1212 score 1830 at 299";
+}
+
+fn void reported(ref Tally t, const ref string leg, const ref Ran r) {
+    string said = copy r.said();
+    DynamicArray<string> reports = linesAfter(text: said, prefix: "report: ");
+    string last = lastAfter(text: said, prefix: "report: ");
+    string want = expectedReport();
+    string why = last == want ? "" : "the last report is `${last}`, wanted `${want}`";
+    t.verdict(name: "schedule: ${leg}: each processor ran at its rate, in its order, with its own dt", why: why);
+    isize n = reports.length();
+    check(t: t, name: "schedule: ${leg}: Output ran once a frame, 61 frames", ok: n == 61, why: "${n} reports");
+    check(t: t, name: "schedule: ${leg}: the base clock is 300 Hz, the rates' least common multiple, and every step ran",
+          ok: r.says(what: "schedule: base 300 Hz") && r.says(what: "schedule: settled 300, discarded 0"), why: said);
+    // `crate`'s chunk is at the 16 KiB target; on wasm the 32 KiB frame guard is on, so this run also shows the chunk is
+    // built in its table's block, not on the stack.
+    check(t: t, name: "schedule: ${leg}: a second family's table, its chunk at 16 KiB, takes the lookup's next slot",
+          ok: r.says(what: "schedule: crate slot 1"), why: said);
+}
+
+unsafe fn void scheduleTests(ref Tally t, ref Setup s) {
+    DynamicArray<string> install = DynamicArray.empty();
+    install.add(item: "pkg");
+    install.add(item: "install");
+    install.add(item: s.fixture(at: "schedule/kama.json"));
+    Ran installed = s.kamaRun(argv: install);
+    ranAs(t: t, name: "schedule: kama pkg install", r: installed, want: 0, says: "");
+
+    eraseDir(path: s.fixture(at: "schedule/src/generated"));
+    Ran ran = s.kyoten(command: "run", game: "schedule", more: none());
+    ranAs(t: t, name: "schedule: on a fresh clone, `kyoten run`", r: ran, want: 0, says: "");
+    reported(t: t, leg: "native", r: ran);
+
+    DynamicArray<string> release = DynamicArray.empty();
+    release.add(item: "--release");
+    Ran ranRelease = s.kyoten(command: "run", game: "schedule", more: release);
+    ranAs(t: t, name: "schedule: `kyoten run --release`", r: ranRelease, want: 0, says: "");
+    reported(t: t, leg: "native release", r: ranRelease);
+
+    if (s.wasm()) {
+        string js = s.fixture(at: "schedule/out/web/schedule.js");
+        DynamicArray<string> web = DynamicArray.empty();
+        web.add(item: "--target");
+        web.add(item: "WASM");
+        web.add(item: "-o");
+        web.add(item: copy js);
+        Ran built = s.kyoten(command: "build", game: "schedule", more: web);
+        ranAs(t: t, name: "schedule: `kyoten build --target WASM`", r: built, want: 0, says: "");
+        DynamicArray<string> node = DynamicArray.empty();
+        node.add(item: copy js);
+        Ran underNode = s.runProgram(program: "node", argv: node);
+        ranAs(t: t, name: "schedule: the web build runs under node", r: underNode, want: 0, says: "");
+        reported(t: t, leg: "wasm under node", r: underNode);
+    }
+}

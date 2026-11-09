@@ -85,6 +85,70 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
     if (left) { t.verdict(name: "components: a refusal after kama has answered leaves nothing written", why: "it left the first pass's files"); }
     else { t.verdict(name: "components: a refusal after kama has answered leaves nothing written", why: ""); }
 
+    // The second pass: processors, their records and the world components, refused once kama has answered (step 5.4).
+    install(t: t, s: s, game: "processors");
+    eraseDir(path: s.fixture(at: "processors/src/generated"));
+    Ran p = s.kyoten(command: "generate", game: "processors", more: none());
+    ranAs(t: t, name: "processors: refused", r: p, want: 1, says: "");
+    says(t: t, name: "processors: `ref Time` is refused, naming the fix", r: p,
+         words: allOf(a: "`processors::bad::refTime`", b: "`ref Time`", c: "`const ref Time`"));
+    says(t: t, name: "processors: `Time` by value is refused", r: p,
+         words: allOf(a: "`processors::bad::timeByValue`", b: "`const ref Time`", c: ""));
+    says(t: t, name: "processors: a handle by reference is refused: it is taken by value", r: p,
+         words: allOf(a: "`processors::bad::handleByRef`", b: "by value", c: ""));
+    says(t: t, name: "processors: a component by value is refused", r: p,
+         words: allOf(a: "`processors::bad::byValue`", b: "`Hp` by value", c: "`const ref`"));
+    says(t: t, name: "processors: a type that is no parameter is refused, naming the list", r: p,
+         words: allOf(a: "`processors::bad::notKyoten`", b: "`std::math::Vec3`", c: "`const ref Time`"));
+    says(t: t, name: "processors: a decided parameter not built yet is refused as such", r: p,
+         words: allOf(a: "`processors::bad::notBuilt`", b: "`Destroy`", c: "not built yet"));
+    says(t: t, name: "processors: a write in Output is refused", r: p,
+         words: allOf(a: "`processors::bad::writesInOutput`", b: "Output", c: "never writes"));
+    says(t: t, name: "processors: a processor that returns a value is refused", r: p,
+         words: allOf(a: "`processors::bad::returns`", b: "returns nothing", c: ""));
+    says(t: t, name: "processors: a phase and a group both are refused", r: p,
+         words: allOf(a: "`both`", b: "a phase and a group", c: ""));
+    says(t: t, name: "processors: neither a phase nor a group is refused", r: p,
+         words: allOf(a: "`neither`", b: "neither a phase nor a group", c: ""));
+    says(t: t, name: "processors: an unknown group is refused", r: p, words: allOf(a: "`lost`", b: "`nope`", c: ""));
+    says(t: t, name: "processors: a rate below 1 Hz is refused", r: p, words: allOf(a: "`tooSlow`", b: "0 Hz", c: ""));
+    says(t: t, name: "processors: a rate on an Output processor is refused", r: p,
+         words: allOf(a: "`outputRated`", b: "once a display frame", c: ""));
+    says(t: t, name: "processors: iterations outside Constraints are refused", r: p,
+         words: allOf(a: "`iterates`", b: "only a Constraints", c: ""));
+    says(t: t, name: "processors: random purposes wait for random keys", r: p,
+         words: allOf(a: "`randomly`", b: "not built yet", c: ""));
+    says(t: t, name: "processors: an orderBy waits for its row", r: p,
+         words: allOf(a: "`sorted`", b: "`orderBy`", c: "not built yet"));
+    says(t: t, name: "processors: a parallel group waits for its row", r: p,
+         words: allOf(a: "group `g`", b: "`parallel`", c: "not built yet"));
+    says(t: t, name: "processors: an order naming nothing in the phase is refused", r: p,
+         words: allOf(a: "`nowhere`", b: "`ghost`", c: ""));
+    says(t: t, name: "processors: a circle of orders is refused, naming it", r: p,
+         words: allOf(a: "`processors::bad::loopA` -> `processors::bad::loopB` -> `processors::bad::loopA`", b: "", c: ""));
+    says(t: t, name: "processors: two writers of one component with no order between them are refused", r: p,
+         words: allOf(a: "`processors::bad::hitA` and `processors::bad::hitB`", b: "`processors::bad::Armor`", c: "no order"));
+    says(t: t, name: "processors: an order across a group's edge is refused, naming the fix", r: p,
+         words: allOf(a: "`inner`", b: "`outer`", c: "the group"));
+    says(t: t, name: "processors: a record naming no function is refused", r: p,
+         words: allOf(a: "`missing`", b: "`processors::bad::missing`", c: ""));
+    says(t: t, name: "processors: another module's processor waits for its row", r: p,
+         words: allOf(a: "`kyoten::physics::solve`", b: "not built yet", c: ""));
+    says(t: t, name: "processors: a world component listed in a prefab is refused", r: p,
+         words: allOf(a: "prefab `unit`", b: "`Score`", c: "world component"));
+    says(t: t, name: "processors: a side store waits for its row", r: p,
+         words: allOf(a: "`Mark`", b: "`Side`", c: "not built yet"));
+    says(t: t, name: "processors: required components wait for their part of step 5", r: p,
+         words: allOf(a: "`Hp`", b: "`requires`", c: "not built yet"));
+    says(t: t, name: "processors: a component record naming no type is refused", r: p,
+         words: allOf(a: "`Ghost`", b: "`processors::bad`", c: ""));
+    says(t: t, name: "processors: a base clock above 1,000 Hz is warned of, with the nearest rates that fit", r: p,
+         words: allOf(a: "4620 Hz", b: "7 Hz as 6 Hz", c: "11 Hz as 10 Hz"));
+    bool wroteWorld = has(path: s.fixture(at: "processors/src/generated/world.kama"))
+                      || has(path: s.fixture(at: "processors/src/generated/actions.kama"));
+    if (wroteWorld) { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: "it left generated files"); }
+    else { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: ""); }
+
     // A game must list its generated module, or kama gives its folder to the nearest module above it.
     install(t: t, s: s, game: "nogen");
     Ran g = s.kyoten(command: "generate", game: "nogen", more: none());

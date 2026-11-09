@@ -4,7 +4,7 @@
   "license": "MIT OR Apache-2.0",
   "kind": "executable",
   "kama": ">=0.9.886",
-  "description": "a fixture: the hello cube without Mesh, for the kyoten tool's first pass",
+  "description": "a fixture: the hello cube without Mesh, generated, built and stepped, with an Output processor in render's place",
   "entry": "src/app.kama",
   "dependencies": {
     "kyoten": { "path": "../../../../../engine" },
@@ -13,9 +13,10 @@
   "modules": {
     ".": { "visibility": "internal" },
     "cube": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "generated"] },
+    "view": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world", "cube"] },
     "generated": {
       "visibility": "internal",
-      "importsOnly": ["kyoten::world", "kyoten::input", "glow", "std::collections", "cube"]
+      "importsOnly": ["kyoten::frame", "kyoten::world", "kyoten::input", "glow", "std::collections", "cube", "view"]
     }
   }
 }

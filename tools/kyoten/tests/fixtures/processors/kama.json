@@ -1,0 +1,17 @@
+{
+  "name": "processors",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture: every refusal of the second pass, each named with its record or its code, in one run",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../../../engine" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "bad": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "std::math", "generated"] },
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "std::collections", "bad"] }
+  }
+}

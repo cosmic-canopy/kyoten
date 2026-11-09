@@ -1,12 +1,36 @@
-// The fixture's own main: it reads every name the first pass generates, so a missing or misshapen one fails the build.
+// The fixture's own main. It reads every name the first pass generates, so a missing or misshapen one fails the build;
+// then it builds the generated world, creates two cubes as the loader will (step 5.5), one with `faster` held, steps
+// it 60 times through the frame's driver, and runs Output, whose `show` prints each cube. Beside that it prints what
+// `turn` gives when the same turns are made by hand, for the tool's tests to compare bit for bit.
 
-import { core::println, kyoten::world::Transform, glow::Glow, spin::cube::Spin, spin::cube::Size,
+import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
+         kyoten::frame::step, glow::Glow, spin::cube::Spin, spin::cube::Size,
          spin::generated::Actions, spin::generated::CubePrefab, spin::generated::CubePrefabId,
-         spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId, spin::generated::Prefabs };
+         spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId, spin::generated::Prefabs,
+         spin::generated::GameWorld };
 
 // A processor starts a new entity from a prefab's values this way (REFERENCE.md § What a processor takes).
 fn CubePrefab startFrom(const ref Prefabs prefabs, CubePrefabId id) { return prefabs.cube(id: id); }
 fn BigCubePrefab startBig(const ref Prefabs prefabs, BigCubePrefabId id) { return prefabs.bigCube(id: id); }
+
+// `turn`, by hand: `steps` steps at `dt` from a rate of 2, with `faster` held or not.
+fn void expect(uint32 slot, bool held, float32 dt, int64 steps) {
+    Transform t = Transform.default();
+    float32 rate = 2;
+    int64 i = 0;
+    while (i < steps) {
+        if (held) { rate = rate + dt; }
+        t.rotateY(by: rate * dt);
+        i = i + 1;
+    }
+    uint32 r = bitcast<uint32>(rate);
+    uint32 x = bitcast<uint32>(t.rotation.x);
+    uint32 y = bitcast<uint32>(t.rotation.y);
+    uint32 z = bitcast<uint32>(t.rotation.z);
+    uint32 w = bitcast<uint32>(t.rotation.w);
+    int64 last = steps - 1;
+    println(s: "expect: slot ${slot} rate ${r} rotation ${x} ${y} ${z} ${w} at ${last}");
+}
 
 fn uint8 main() {
     Actions a = Actions.forPlayer(player: 1);
@@ -27,5 +51,27 @@ fn uint8 main() {
     bool same = big == bigFirst;
     Prefabs prefabs = Prefabs.make();
     println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
+
+    GameWorld world = GameWorld.make();
+    Spin two = Spin.default();
+    two.rate = 2;
+    Actions calm = Actions.forPlayer(player: 1);
+    Actions pressed = Actions.forPlayer(player: 1);
+    pressed.faster.held = true;
+    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, spin: two, transform: Transform.default()));
+    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, spin: two, transform: Transform.default()));
+    int32 baseHz = GameWorld::baseHz;
+    Rate clock = Rate.of(hz: baseHz, over: baseHz);
+    int64 i = 0;
+    while (i < 60) {
+        Time at = clock.at(step: i);
+        step(world: world, time: at);
+        i = i + 1;
+    }
+    world.output(time: clock.at(step: 59));
+    float32 dt = Time::dtAt(hz: 60);
+    expect(slot: 0, held: false, dt: dt, steps: 60);
+    expect(slot: 1, held: true, dt: dt, steps: 60);
+    println(s: "spin: base ${baseHz} Hz");
     return 0;
 }

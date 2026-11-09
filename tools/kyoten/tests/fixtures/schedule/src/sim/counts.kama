@@ -1,0 +1,16 @@
+// How often each rated processor ran, and the step and dt it was last handed.
+
+export { Fast, Slow, Fifty, Score };
+
+@generate(Serializable, Deserializable)
+type value Fast { @field public int32 runs = 0; @field public int64 last = -1; @field public float32 dt = 0; public default ctor make() { } }
+
+@generate(Serializable, Deserializable)
+type value Slow { @field public int32 runs = 0; @field public int64 last = -1; @field public float32 dt = 0; public default ctor make() { } }
+
+@generate(Serializable, Deserializable)
+type value Fifty { @field public int32 runs = 0; @field public int64 last = -1; @field public float32 dt = 0; public default ctor make() { } }
+
+// A world component: the world holds one, and `tally` adds every run of `fast` to it.
+@generate(Serializable, Deserializable)
+type value Score { @field public int64 total = 0; public default ctor make() { } }

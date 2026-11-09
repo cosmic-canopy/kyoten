@@ -1,0 +1,862 @@
+// The second pass's schedule: which processors run in each phase, in what order, at what rate, and what each one is
+// handed (components § Decided; frame-phases § Decided, questions 1, 2 and 5; REFERENCE.md § What a processor takes).
+//
+// - **A processor is a function plus its record,** matched by name in its module. Its signature is its access: each
+//   parameter means what its type says. Built: `ref C` and `const ref C` (a component in its entity's table),
+//   `ref W` and `const ref W` (a world component, `"store": "World"`), `Handle` by value and `const ref Time`. Every
+//   other decided parameter is refused as not built yet, and anything else as no parameter.
+// - **A parameter's type is resolved through its file's imports** (components § Decided, 2026-11-09, question 1),
+//   since kama's answer gives it bare until KY-39.
+// - **Order inside a phase is relative:** groups and processors run `after` or `before` their siblings, or `first` or
+//   `last` among them; ties fall back to the full path, so the order is fixed, and a circle is refused. Two processors
+//   with no order between them may not conflict: neither may write what the other reads or writes (question 5).
+// - **Rates are whole hertz on one base clock,** their least common multiple, warned of above 1,000 Hz with the nearest
+//   rates that fit (question 2). Output runs once a display frame and takes no rate.
+//
+// Every problem is named, with its record's or its code's file and the fix, and one run names them all.
+
+import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord,
+         kyoten::records::ProcessorGroupRecord, kyoten::records::ComponentRecord, kyoten::frame::Rate,
+         std::collections::DynamicArray, std::collections::SortedMap, Records, CodeFile, Index, FunctionEntry,
+         ParamEntry, Family, Component, Refusals, FileImports, readImports, Manifest };
+
+export { Access, Param, Processor, Group, Schedule, buildSchedule, phaseName };
+
+// What a parameter is handed.
+type enum Access { TableComponent, WorldComponent, EntityHandle, StepTime }
+
+type resource Param {
+    string paramName = "";
+    Access kind = Access::StepTime;
+    bool writing = false;
+    string fullPath = "";
+
+    public ctor make(string name, Access kind, bool writes, string path) {
+        this.paramName = give name;
+        this.kind = kind;
+        this.writing = writes;
+        this.fullPath = give path;
+    }
+
+    public const fn const ref string name() { return this.paramName; }
+    public const fn Access access() { return this.kind; }
+    public const fn bool writes() { return this.writing; }
+    // The component's or world component's full path; "" for a handle or the step's time.
+    public const fn const ref string path() { return this.fullPath; }
+}
+
+type resource Processor {
+    string fullPath = "";
+    string recordFile = "";
+    string codeFile = "";
+    Phase phaseValue = Phase::Update;
+    string groupPath = "";
+    int32 hz = 0;
+    int32 times = 1;
+    DynamicArray<Param> paramList = DynamicArray.empty();
+
+    public ctor make(string path, string recordFile, string codeFile, Phase phase, string group, int32 hz, int32 times,
+                     DynamicArray<Param> params) {
+        this.fullPath = give path;
+        this.recordFile = give recordFile;
+        this.codeFile = give codeFile;
+        this.phaseValue = phase;
+        this.groupPath = give group;
+        this.hz = hz;
+        this.times = times;
+        this.paramList = give params;
+    }
+
+    public const fn const ref string path() { return this.fullPath; }
+    public const fn Phase phase() { return this.phaseValue; }
+    // Its group's full path, or "" when it has none.
+    public const fn const ref string group() { return this.groupPath; }
+    // Its rate in hertz; 0 in Output, which runs once a display frame.
+    public const fn int32 rate() { return this.hz; }
+    public const fn int32 iterations() { return this.times; }
+    public const fn const ref DynamicArray<Param> params() { return this.paramList; }
+    // The records file that declares it.
+    public const fn const ref string recordFileOf() { return this.recordFile; }
+
+    // The table components it names, by full path: the family a processor runs on has all of them.
+    public const fn DynamicArray<string> tableComponents() {
+        DynamicArray<string> found = DynamicArray.empty();
+        foreach (const ref Param p in this.paramList.iterConst()) {
+            if (p.access() == Access::TableComponent) { found.add(item: copy p.path()); }
+        }
+        return found;
+    }
+
+    // Whether it runs once per entity: it names a table component or the entity's handle.
+    public const fn bool perEntity() {
+        foreach (const ref Param p in this.paramList.iterConst()) {
+            if (p.access() == Access::TableComponent || p.access() == Access::EntityHandle) { return true; }
+        }
+        return false;
+    }
+}
+
+type resource Group {
+    string fullPath = "";
+    Phase phaseValue = Phase::Update;
+    int32 times = 1;
+    DynamicArray<string> members = DynamicArray.empty();
+
+    public ctor make(string path, Phase phase, int32 times) {
+        this.fullPath = give path;
+        this.phaseValue = phase;
+        this.times = times;
+    }
+
+    public const fn const ref string path() { return this.fullPath; }
+    public const fn Phase phase() { return this.phaseValue; }
+    public const fn int32 iterations() { return this.times; }
+    // Its processors' full paths, in the order they run.
+    public const fn const ref DynamicArray<string> order() { return this.members; }
+
+    public fn void setOrder(DynamicArray<string> order) { this.members = give order; }
+}
+
+type resource Schedule {
+    int32 baseRate = 60;
+    DynamicArray<Processor> processorList = DynamicArray.empty();
+    DynamicArray<Group> groupList = DynamicArray.empty();
+    DynamicArray<string> worldList = DynamicArray.empty();
+    // Each phase's order: "p:<path>" for a processor, "g:<path>" for a group.
+    SortedMap<string, DynamicArray<string>> orders = SortedMap.empty();
+
+    friend buildSchedule[baseRate, processorList, groupList, worldList, orders];
+
+    public ctor make() { }
+
+    public const fn int32 baseHz() { return this.baseRate; }
+    public const fn const ref DynamicArray<Processor> processors() { return this.processorList; }
+    public const fn const ref DynamicArray<Group> groups() { return this.groupList; }
+    // The world components, by full path, sorted.
+    public const fn const ref DynamicArray<string> worldComponents() { return this.worldList; }
+
+    // The phase's order of processors and groups, each "p:<path>" or "g:<path>".
+    public const fn DynamicArray<string> orderOf(Phase phase) {
+        string key = phaseName(phase: phase);
+        if (this.orders.contains(key: key)) { return copy this.orders.getRef(key: key); }
+        return DynamicArray.empty();
+    }
+
+    public const fn isize processorAt(const ref string path) {
+        isize i = 0;
+        while (i < this.processorList.length()) {
+            if (this.processorList[i].path() == path) { return i; }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    public const fn isize groupAt(const ref string path) {
+        isize i = 0;
+        while (i < this.groupList.length()) {
+            if (this.groupList[i].path() == path) { return i; }
+            i = i + 1;
+        }
+        return -1;
+    }
+}
+
+fn string phaseName(Phase phase) {
+    return match (phase) {
+        case Input: "Input";
+        case Update: "Update";
+        case Constraints: "Constraints";
+        case Output: "Output";
+    };
+}
+
+fn DynamicArray<Phase> allPhases() {
+    DynamicArray<Phase> ps = DynamicArray.empty();
+    ps.add(item: Phase::Input);
+    ps.add(item: Phase::Update);
+    ps.add(item: Phase::Constraints);
+    ps.add(item: Phase::Output);
+    return ps;
+}
+
+// The part of a path after its last `::`.
+fn string lastOf(const ref string path) {
+    isize i = path.length();
+    while (i > 1) {
+        i = i - 1;
+        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: i + 1, end: path.length()); }
+    }
+    return copy path;
+}
+
+// The part of a path before its last `::`, or "" when it has none.
+fn string moduleOfPath(const ref string path) {
+    isize i = path.length();
+    while (i > 1) {
+        i = i - 1;
+        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: 0, end: i - 1); }
+    }
+    return "";
+}
+
+// A record's name for something in its module: a bare name is the module's own, and a full path reaches anywhere.
+fn string inModule(const ref string module, const ref string name) {
+    if (name.contains(substring: "::")) { return copy name; }
+    return module + "::" + name;
+}
+
+// `a, b and c`, each in backticks unless `plain`.
+fn string listed(const ref DynamicArray<string> items, bool plain) {
+    string made = "";
+    isize i = 0;
+    while (i < items.length()) {
+        if (i > 0) { made = made + (i == items.length() - 1 ? " and " : ", "); }
+        string item = copy items[i];
+        made = made + (plain ? item : "`" + item + "`");
+        i = i + 1;
+    }
+    return made;
+}
+
+// The type names a processor may take that are decided but not built yet (REFERENCE.md § What a processor takes).
+fn bool decidedNotBuilt(const ref string head) {
+    return head == "Previous" || head == "Current" || head == "Create" || head == "Destroy" || head == "Gain"
+        || head == "Lose" || head == "Send" || head == "Edit" || head == "Section" || head.endsWith(suffix: "RandomKeys");
+}
+
+// One parameter, classified, or none with a refusal naming the fix.
+unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref FileImports imports, const ref string module,
+                                   const ref string game, const ref Index idx, const ref SortedMap<string, bool> world,
+                                   Phase phase, const ref string label, const ref string file, ref Refusals no) {
+    string written = copy p.type();
+    string head = copy written;
+    match (written.find(substring: "<")) { case Some(value: at): { head = written.substring(start: 0, end: at).trim(); } case None: { } };
+    string path = imports.resolve(name: head);
+    if (path.isEmpty() && !idx.kindAt(path: module + "::" + head).isEmpty()) { path = module + "::" + head; }
+    // kama gives a parameter's mode as `ref`, `const ref`, or `value` when it is taken by value.
+    string mode = p.mode() == "value" ? "" : copy p.mode();
+    string shown = mode.isEmpty() ? copy written : mode + " " + written;
+    if (path == "kyoten::frame::Time") {
+        if (mode == "const ref") { return Optional::Some(value: Param.make(name: copy p.name(), kind: Access::StepTime, writes: false, path: "")); }
+        if (mode == "ref") { no.add(where: file, what: "processor `${label}` takes `ref ${written}`: the step's time is handed in to be read: write `const ref ${written}`"); }
+        else { no.add(where: file, what: "processor `${label}` takes `${shown}`: the step's time is handed in by reference: write `const ref ${written}`"); }
+        return Optional::None;
+    }
+    if (path == "kyoten::world::Handle") {
+        if (mode.isEmpty()) { return Optional::Some(value: Param.make(name: copy p.name(), kind: Access::EntityHandle, writes: false, path: "")); }
+        no.add(where: file, what: "processor `${label}` takes `${shown}`: an entity's handle is taken by value, `${written} me`");
+        return Optional::None;
+    }
+    if (path == game + "::generated::Prefabs") {
+        no.add(where: file, what: "processor `${label}` takes `${shown}`, and `Prefabs` as a parameter is not built yet: it comes with the loader (step 5.5) and `Create<P>`");
+        return Optional::None;
+    }
+    bool known = idx.kindAt(path: path) == "value";
+    if (!known && decidedNotBuilt(head: head)) {
+        no.add(where: file, what: "processor `${label}` takes a `${head}` (`${shown}`), which is decided but not built yet: the queues, the read modes and random keys come with their rows");
+        return Optional::None;
+    }
+    if (!known) {
+        string named = path.isEmpty() ? "a type this file neither declares nor imports" : "`" + path + "`";
+        no.add(where: file, what: "processor `${label}` takes `${shown}` (${named}), which is no parameter a processor takes: a component or a world component by `ref` or `const ref`, `Handle` by value, or `const ref Time`");
+        return Optional::None;
+    }
+    if (mode.isEmpty()) {
+        no.add(where: file, what: "processor `${label}` takes `${written}` by value: a component is taken by `ref` to write it or `const ref` to read it");
+        return Optional::None;
+    }
+    bool writes = mode == "ref";
+    if (writes && phase == Phase::Output) {
+        no.add(where: file, what: "processor `${label}` is in Output and takes `ref ${written}`: Output reads the simulation and never writes it: write `const ref ${written}`");
+        return Optional::None;
+    }
+    Access kind = world.contains(key: path) ? Access::WorldComponent : Access::TableComponent;
+    return Optional::Some(value: Param.make(name: copy p.name(), kind: kind, writes: writes, path: give path));
+}
+
+// The relation "runs before" among one level's items: explicit orders and `first`/`last`, with the order they run in.
+type resource Level {
+    DynamicArray<string> nodes = DynamicArray.empty();
+    SortedMap<string, int32> rank = SortedMap.empty();
+    DynamicArray<string> froms = DynamicArray.empty();
+    DynamicArray<string> tos = DynamicArray.empty();
+
+    public ctor make() { }
+
+    // `rank`: 0 for `first`, 1, 2 for `last`.
+    public fn void node(const ref string key, int32 rank) {
+        this.nodes.add(item: copy key);
+        this.rank.put(key: copy key, value: rank);
+    }
+
+    public const fn bool has(const ref string key) { return this.rank.contains(key: key); }
+
+    public fn void before(const ref string first, const ref string then) {
+        this.froms.add(item: copy first);
+        this.tos.add(item: copy then);
+    }
+
+    // Every edge, `first`/`last` included.
+    const fn bool edge(const ref string a, const ref string b) {
+        isize i = 0;
+        while (i < this.froms.length()) {
+            if (this.froms[i] == a && this.tos[i] == b) { return true; }
+            i = i + 1;
+        }
+        return this.rank.getRef(key: a) < this.rank.getRef(key: b);
+    }
+
+    // Whether `a` runs before `b` by some chain of stated orders.
+    public const fn bool reaches(const ref string a, const ref string b) {
+        SortedMap<string, bool> seen = SortedMap.empty();
+        DynamicArray<string> todo = DynamicArray.empty();
+        todo.add(item: copy a);
+        while (todo.length() > 0) {
+            Optional<string> top = todo.pop();
+            string at = match (give top) { case Some(value: v): give v; case None: ""; };
+            foreach (const ref string n in this.nodes.iterConst()) {
+                if (seen.contains(key: n) || !this.edge(a: at, b: n)) { continue; }
+                if (n == b) { return true; }
+                seen.put(key: copy n, value: true);
+                todo.add(item: copy n);
+            }
+        }
+        return false;
+    }
+
+    // The order the items run in, ties broken by key; or, when they run in a circle, none and the circle in `circle`.
+    public const fn DynamicArray<string> sorted(ref DynamicArray<string> circle) {
+        SortedMap<string, bool> placed = SortedMap.empty();
+        SortedMap<string, bool> keys = SortedMap.empty();
+        foreach (const ref string n in this.nodes.iterConst()) { keys.put(key: copy n, value: true); }
+        DynamicArray<string> byKey = keys.keys();
+        DynamicArray<string> order = DynamicArray.empty();
+        while (order.length() < byKey.length()) {
+            string next = "";
+            foreach (const ref string n in byKey.iterConst()) {
+                if (placed.contains(key: n)) { continue; }
+                bool ready = true;
+                foreach (const ref string m in byKey.iterConst()) {
+                    if (!placed.contains(key: m) && m != n && this.edge(a: m, b: n)) { ready = false; break; }
+                }
+                if (ready) { next = copy n; break; }
+            }
+            if (next.isEmpty()) {
+                circle = this.circleIn(placed: placed, byKey: byKey);
+                return DynamicArray.empty();
+            }
+            placed.put(key: copy next, value: true);
+            order.add(item: give next);
+        }
+        return order;
+    }
+
+    // A circle among the unplaced items, from its first by key, each running before the next.
+    const fn DynamicArray<string> circleIn(const ref SortedMap<string, bool> placed, const ref DynamicArray<string> byKey) {
+        // Walk back along "runs after" from the first unplaced item until one repeats; every unplaced item has an
+        // unplaced one before it, or it would have been placed.
+        DynamicArray<string> walk = DynamicArray.empty();
+        string at = "";
+        foreach (const ref string n in byKey.iterConst()) { if (!placed.contains(key: n)) { at = copy n; break; } }
+        while (!walk.contains(item: at)) {
+            walk.add(item: copy at);
+            string prev = "";
+            foreach (const ref string m in byKey.iterConst()) {
+                if (!placed.contains(key: m) && m != at && this.edge(a: m, b: at)) { prev = copy m; break; }
+            }
+            at = give prev;
+        }
+        // `walk` from where `at` first appears is the circle, backwards.
+        DynamicArray<string> back = DynamicArray.empty();
+        bool inside = false;
+        foreach (const ref string w in walk.iterConst()) {
+            if (w == at) { inside = true; }
+            if (inside) { back.add(item: copy w); }
+        }
+        DynamicArray<string> forward = DynamicArray.empty();
+        isize i = back.length();
+        while (i > 0) { i = i - 1; forward.add(item: copy back[i]); }
+        // Start from its first item by key.
+        SortedMap<string, isize> byName = SortedMap.empty();
+        isize j = 0;
+        while (j < forward.length()) { byName.put(key: copy forward[j], value: j); j = j + 1; }
+        Optional<string> least = byName.first();
+        isize start = match (least) { case Some(value: n): byName.getRef(key: n); case None: 0; };
+        DynamicArray<string> ring = DynamicArray.empty();
+        isize k = 0;
+        while (k < forward.length()) { ring.add(item: copy forward[(start + k) % forward.length()]); k = k + 1; }
+        ring.add(item: copy ring[0]);
+        return ring;
+    }
+}
+
+fn int32 rankOf(bool first, bool last) {
+    if (first) { return 0; }
+    if (last) { return 2; }
+    return 1;
+}
+
+// A level's key for a processor or a group, as the orders hold them.
+fn string keyOf(bool isGroup, const ref string path) { return (isGroup ? "g:" : "p:") + path; }
+
+fn string pathOfKey(const ref string key) { return key.substring(start: 2, end: key.length()); }
+
+// What one item names in its `after` or `before`, resolved among its level, or "" with a refusal.
+unsafe fn string sibling(const ref string name, const ref string module, const ref Level level,
+                         const ref SortedMap<string, string> groupOf, const ref string ownGroup, const ref string label,
+                         const ref string phase, const ref string file, ref Refusals no) {
+    string path = inModule(module: module, name: name);
+    string asProcessor = keyOf(isGroup: false, path: path);
+    string asGroup = keyOf(isGroup: true, path: path);
+    bool p = level.has(key: asProcessor);
+    bool g = level.has(key: asGroup);
+    if (p && g) {
+        no.add(where: file, what: "`${label}` runs after or before `${name}`, which names both a processor and a group: write the one it means by its full path");
+        return "";
+    }
+    if (p) { return asProcessor; }
+    if (g) { return asGroup; }
+    if (groupOf.contains(key: path)) {
+        string theirs = copy groupOf.getRef(key: path);
+        if (ownGroup.isEmpty() && !theirs.isEmpty()) {
+            no.add(where: file, what: "processor `${label}` runs after or before `${name}`, which is in group `${theirs}`: order it against the group instead");
+        } else if (!ownGroup.isEmpty()) {
+            no.add(where: file, what: "processor `${label}`, in group `${ownGroup}`, runs after or before `${name}`, which is not in its group: order the group instead");
+        } else {
+            no.add(where: file, what: "`${label}` runs after or before `${name}`, which is in another phase: an order is among one phase's processors and groups");
+        }
+        return "";
+    }
+    no.add(where: file, what: "`${label}` runs after or before `${name}`, which is no processor or group in ${phase}");
+    return "";
+}
+
+// The nearest rate to `hz` that divides `over`, the lower of two as near; 0 when none is within a quarter of `hz`.
+fn int64 nearestFitting(int64 hz, int64 over) {
+    int64 best = 0;
+    int64 d = 1;
+    while (d <= over) {
+        if (over % d == 0) {
+            int64 off = d > hz ? d - hz : hz - d;
+            int64 bestOff = best > hz ? best - hz : hz - best;
+            if (best == 0 || off < bestOff) { best = d; }
+        }
+        d = d + 1;
+    }
+    int64 gap = best > hz ? best - hz : hz - best;
+    if (gap * 4 > hz) { return 0; }
+    return best;
+}
+
+// One component record: a world component goes into `world`, and what is not built yet is refused.
+unsafe fn void componentRecord(const ref string module, const ref string name, const ref ComponentRecord rec,
+                               const ref string file, const ref Index idx, ref SortedMap<string, bool> world,
+                               ref Refusals no) {
+    string path = inModule(module: module, name: name);
+    if (idx.kindAt(path: path) != "value") {
+        no.add(where: file, what: "component record `${name}` names no `type value` in module `${module}`: a component record describes a component its module declares");
+        return;
+    }
+    match (rec.store()) {
+        case World: { world.put(key: copy path, value: true); }
+        case Side: { no.add(where: file, what: "component `${name}` is stored `Side`, and side stores are not built yet: they come with their row"); }
+        case Table: { }
+    };
+    if (rec.requires().length() > 0) {
+        no.add(where: file, what: "component `${name}` `requires` other components, which is not built yet: required components are step 5's next part");
+    }
+}
+
+// One processor group. One whose record is refused is still made, so its processors are checked against it and not
+// refused again as being in a group that does not exist.
+unsafe fn Group groupRecord(const ref string module, const ref string name, const ref ProcessorGroupRecord rec,
+                            const ref string file, ref Refusals no) {
+    if (rec.parallel()) {
+        no.add(where: file, what: "processor group `${name}` asks for `parallel`, which is not built yet: groups run serially until measurement says otherwise");
+    }
+    int32 times = rec.iterations();
+    if (times < 1) { no.add(where: file, what: "processor group `${name}` runs ${times} iterations: at least 1"); }
+    else if (times > 1 && rec.phase() != Phase::Constraints) {
+        string ph = phaseName(phase: rec.phase());
+        no.add(where: file, what: "processor group `${name}` runs ${times} iterations in ${ph}: only a Constraints processor or group iterates");
+    }
+    return Group.make(path: inModule(module: module, name: name), phase: rec.phase(), times: times);
+}
+
+// One processor's record checked: its phase (its own or its group's), its rate and its iterations, into `phase`, `group`
+// and `hz`; false when anything is refused.
+unsafe fn bool processorRecord(const ref string key, const ref ProcessorRecord rec, const ref string module,
+                               const ref string file, const ref Schedule s, const ref SortedMap<string, int32> moduleRate,
+                               ref Phase phase, ref string group, ref int32 hz, ref Refusals no) {
+    bool ok = true;
+    match (rec.group()) {
+        case Some(value: g): {
+            group = inModule(module: module, name: g);
+            match (rec.phase()) {
+                case Some(value: p): { no.add(where: file, what: "processor `${key}` names a phase and a group: name one, since a group's phase is its own"); ok = false; }
+                case None: { }
+            };
+            isize gi = s.groupAt(path: group);
+            if (gi < 0) {
+                string gm = moduleOfPath(path: group);
+                no.add(where: file, what: "processor `${key}` is in group `${g}`, which module `${gm}` does not declare");
+                ok = false;
+            } else { phase = s.groups()[gi].phase(); }
+        }
+        case None: {
+            match (rec.phase()) {
+                case Some(value: p): { phase = p; }
+                case None: { no.add(where: file, what: "processor `${key}` names neither a phase nor a group: name one"); ok = false; }
+            };
+        }
+    };
+    if (phase == Phase::Output) {
+        match (rec.rate()) {
+            case Some(value: v): { no.add(where: file, what: "processor `${key}` is in Output, which runs once a display frame, so it takes no rate"); ok = false; }
+            case None: { }
+        };
+        hz = 0;
+    } else {
+        hz = match (rec.rate()) {
+            case Some(value: v): v;
+            case None: moduleRate.contains(key: module) ? moduleRate.getRef(key: module) : Rate::defaultHz;
+        };
+        if (hz < 1) { no.add(where: file, what: "processor `${key}` has a rate of ${hz} Hz: a rate is whole hertz, at least 1"); ok = false; }
+    }
+    int32 times = rec.iterations();
+    if (times < 1) { no.add(where: file, what: "processor `${key}` runs ${times} iterations: at least 1"); ok = false; }
+    else if (times > 1 && phase != Phase::Constraints) {
+        string ph = phaseName(phase: phase);
+        no.add(where: file, what: "processor `${key}` runs ${times} iterations in ${ph}: only a Constraints processor or group iterates");
+        ok = false;
+    }
+    if (rec.random().length() > 0) {
+        no.add(where: file, what: "processor `${key}` lists random purposes, and random keys are not built yet: they come with their row");
+        ok = false;
+    }
+    match (rec.orderBy()) {
+        case Some(value: o): { no.add(where: file, what: "processor `${key}` names an `orderBy`, which is not built yet: it comes with its row"); ok = false; }
+        case None: { }
+    };
+    return ok;
+}
+
+// One processor's signature, classified through its file's imports; false when anything is refused.
+unsafe fn bool signature(const ref FunctionEntry found, const ref string module, const ref Manifest game,
+                         const ref Index idx, const ref SortedMap<string, bool> world, Phase phase,
+                         ref DynamicArray<Param> params, ref Refusals no) {
+    bool ok = true;
+    if (found.returns() != "void") {
+        string label = copy found.path();
+        string returned = copy found.returns();
+        no.add(where: found.file(), what: "processor `${label}` returns `${returned}`: a processor returns nothing, and writes what it changes through its `ref` parameters");
+        ok = false;
+    }
+    FileImports imports = readImports(path: game.root() + "/" + found.file(), module: module);
+    string gameName = copy game.name();
+    foreach (const ref ParamEntry p in found.params().iterConst()) {
+        Optional<Param> made = classify(p: p, imports: imports, module: module, game: gameName, idx: idx, world: world,
+                                        phase: phase, label: found.path(), file: found.file(), no: no);
+        match (give made) { case Some(value: m): { params.add(item: give m); } case None: { ok = false; } };
+    }
+    return ok;
+}
+
+// A processor's or a group's place among its siblings: 0 when `first`, 2 when `last`, else 1.
+fn int32 rankIn(const ref Records r, const ref string path, bool isGroup) {
+    string module = moduleOfPath(path: path);
+    string name = lastOf(path: path);
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        if (f.module() != module) { continue; }
+        if (isGroup && f.record().groups().contains(key: name)) {
+            return rankOf(first: f.record().groups().getRef(key: name).first(), last: f.record().groups().getRef(key: name).last());
+        }
+        if (!isGroup && f.record().processors().contains(key: name)) {
+            return rankOf(first: f.record().processors().getRef(key: name).first(),
+                          last: f.record().processors().getRef(key: name).last());
+        }
+    }
+    return 1;
+}
+
+// One stated order: `me` runs after (or, `isAfter` false, before) `name`, at its level.
+unsafe fn void stateOrder(const ref string me, const ref string name, bool isAfter, const ref string module,
+                          ref Level level, const ref SortedMap<string, string> groupOf, const ref string ownGroup,
+                          const ref string label, const ref string phase, const ref string file, ref Refusals no) {
+    string other = sibling(name: name, module: module, level: level, groupOf: groupOf, ownGroup: ownGroup, label: label,
+                           phase: phase, file: file, no: no);
+    if (other.isEmpty()) { return; }
+    if (isAfter) { level.before(first: other, then: me); } else { level.before(first: me, then: other); }
+}
+
+// Two processors of a phase with no order between them, refused when they conflict.
+unsafe fn void checkPair(const ref Processor a, const ref Processor b, const ref Level top,
+                         const ref SortedMap<string, Level> inner, const ref string phase, ref Refusals no) {
+    if (ordered(a: a, b: b, top: top, inner: inner)) { return; }
+    string clash = conflict(a: a, b: b);
+    if (clash.isEmpty()) { return; }
+    string first = copy a.path();
+    string second = copy b.path();
+    no.add(where: a.recordFileOf(), what: "`${first}` and `${second}` ${clash} in ${phase}, with no order between them: order one after the other");
+}
+
+// The schedule of every processor the game's records declare, against the functions kama found and the families the
+// prefabs make. Refusals land in `no`, and warnings in `warnings`.
+unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const ref Manifest game,
+                                 const ref DynamicArray<Family> families, ref DynamicArray<string> warnings,
+                                 ref Refusals no) {
+    Schedule s = Schedule.make();
+
+    // The component records: world components, and what is not built yet.
+    SortedMap<string, bool> world = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        DynamicArray<string> names = f.record().components().keys();
+        foreach (const ref string c in names.iterConst()) {
+            componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
+                            idx: idx, world: world, no: no);
+        }
+    }
+    s.worldList = world.keys();
+    foreach (const ref Family fam in families.iterConst()) {
+        foreach (const ref Component c in fam.components().iterConst()) {
+            if (!world.contains(key: c.path())) { continue; }
+            string where = copy r.prefabs().getRef(key: fam.root()).where();
+            string prefab = copy fam.root();
+            string named = copy c.name();
+            no.add(where: where, what: "prefab `${prefab}` lists `${named}`, a world component: the world holds one, not each entity");
+        }
+    }
+
+    // Each module's rate, and the groups.
+    SortedMap<string, string> groupFile = SortedMap.empty();
+    SortedMap<string, int32> moduleRate = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        string fileModule = copy f.module();
+        match (f.record().rate()) {
+            case Some(value: hz): {
+                if (hz < 1) { no.add(where: f.file(), what: "module `${fileModule}` has a rate of ${hz} Hz: a rate is whole hertz, at least 1"); }
+                else if (moduleRate.contains(key: f.module())) { no.add(where: f.file(), what: "module `${fileModule}` has its rate set in two records files: set it in one"); }
+                else { moduleRate.put(key: copy f.module(), value: hz); }
+            }
+            case None: { }
+        };
+        DynamicArray<string> names = f.record().groups().keys();
+        foreach (const ref string g in names.iterConst()) {
+            string path = inModule(module: f.module(), name: g);
+            if (groupFile.contains(key: path)) {
+                no.add(where: f.file(), what: "processor group `${g}` is declared in two records files of its module: one layer holds a key once");
+                continue;
+            }
+            groupFile.put(key: copy path, value: copy f.file());
+            s.groupList.add(item: groupRecord(module: f.module(), name: g, rec: f.record().groups().getRef(key: g),
+                                              file: f.file(), no: no));
+        }
+    }
+
+    // The processors.
+    SortedMap<string, string> groupOf = SortedMap.empty();
+    SortedMap<string, string> recordOf = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        DynamicArray<string> names = f.record().processors().keys();
+        foreach (const ref string key in names.iterConst()) {
+            string module = copy f.module();
+            if (key.contains(substring: "::") && moduleOfPath(path: key) != module) {
+                no.add(where: f.file(), what: "processor `${key}`: a processor of another module, tuned from this one, is not built yet: it comes with the engine's own processors (step 9)");
+                continue;
+            }
+            string path = inModule(module: module, name: key);
+            if (recordOf.contains(key: path)) {
+                no.add(where: f.file(), what: "processor `${key}` is declared in two records files of its module: one layer holds a key once");
+                continue;
+            }
+            recordOf.put(key: copy path, value: copy f.file());
+            isize at = idx.functionAt(path: path);
+            if (at < 0) {
+                no.add(where: f.file(), what: "processor `${key}` names no function `${path}`: declare it in module `${module}`, and export it");
+                continue;
+            }
+            Phase phase = Phase::Update;
+            string group = "";
+            int32 hz = 0;
+            bool ok = processorRecord(key: key, rec: f.record().processors().getRef(key: key), module: module, file: f.file(),
+                                      s: s, moduleRate: moduleRate, phase: phase, group: group, hz: hz, no: no);
+            DynamicArray<Param> params = DynamicArray.empty();
+            bool typed = signature(found: idx.functions()[at], module: module, game: game, idx: idx, world: world,
+                                   phase: phase, params: params, no: no);
+            groupOf.put(key: copy path, value: copy group);
+            if (!ok || !typed) { continue; }
+            s.processorList.add(item: Processor.make(path: copy path, recordFile: copy f.file(),
+                                                     codeFile: copy idx.functions()[at].file(), phase: phase,
+                                                     group: give group, hz: hz,
+                                                     times: f.record().processors().getRef(key: key).iterations(),
+                                                     params: give params));
+        }
+    }
+
+    // Each phase's order, and the no-conflict rule (frame-phases question 5).
+    foreach (Phase phase in allPhases()) {
+        string ph = phaseName(phase: phase);
+        Level top = Level.make();
+        SortedMap<string, Level> inner = SortedMap.empty();
+        foreach (const ref Group g in s.groupList.iterConst()) {
+            if (g.phase() != phase) { continue; }
+            top.node(key: keyOf(isGroup: true, path: g.path()), rank: rankIn(r: r, path: g.path(), isGroup: true));
+            Level l = Level.make();
+            foreach (const ref Processor p in s.processorList.iterConst()) {
+                if (p.group() == g.path()) { l.node(key: keyOf(isGroup: false, path: p.path()), rank: rankIn(r: r, path: p.path(), isGroup: false)); }
+            }
+            inner.put(key: copy g.path(), value: give l);
+        }
+        foreach (const ref Processor p in s.processorList.iterConst()) {
+            if (p.phase() == phase && p.group().isEmpty()) {
+                top.node(key: keyOf(isGroup: false, path: p.path()), rank: rankIn(r: r, path: p.path(), isGroup: false));
+            }
+        }
+        // The stated orders, each between siblings.
+        foreach (const ref CodeFile f in r.code().iterConst()) {
+            DynamicArray<string> gnames = f.record().groups().keys();
+            foreach (const ref string gname in gnames.iterConst()) {
+                string me = keyOf(isGroup: true, path: inModule(module: f.module(), name: gname));
+                if (!top.has(key: me)) { continue; }
+                string label = "processor group " + gname;
+                foreach (const ref string a in f.record().groups().getRef(key: gname).after().iterConst()) {
+                    stateOrder(me: me, name: a, isAfter: true, module: f.module(), level: top, groupOf: groupOf, ownGroup: "",
+                               label: label, phase: ph, file: f.file(), no: no);
+                }
+                foreach (const ref string b in f.record().groups().getRef(key: gname).before().iterConst()) {
+                    stateOrder(me: me, name: b, isAfter: false, module: f.module(), level: top, groupOf: groupOf, ownGroup: "",
+                               label: label, phase: ph, file: f.file(), no: no);
+                }
+            }
+            DynamicArray<string> pnames = f.record().processors().keys();
+            foreach (const ref string pname in pnames.iterConst()) {
+                string path = inModule(module: f.module(), name: pname);
+                isize at = s.processorAt(path: path);
+                if (at < 0) { continue; }
+                if (s.processorList[at].phase() != phase) { continue; }
+                string own = copy s.processorList[at].group();
+                string me = keyOf(isGroup: false, path: path);
+                string ownName = own.isEmpty() ? "" : lastOf(path: own);
+                foreach (const ref string a in f.record().processors().getRef(key: pname).after().iterConst()) {
+                    if (own.isEmpty()) {
+                        stateOrder(me: me, name: a, isAfter: true, module: f.module(), level: top, groupOf: groupOf,
+                                   ownGroup: ownName, label: pname, phase: ph, file: f.file(), no: no);
+                    } else {
+                        stateOrder(me: me, name: a, isAfter: true, module: f.module(), level: inner.getRefMut(key: own),
+                                   groupOf: groupOf, ownGroup: ownName, label: pname, phase: ph, file: f.file(), no: no);
+                    }
+                }
+                foreach (const ref string b in f.record().processors().getRef(key: pname).before().iterConst()) {
+                    if (own.isEmpty()) {
+                        stateOrder(me: me, name: b, isAfter: false, module: f.module(), level: top, groupOf: groupOf,
+                                   ownGroup: ownName, label: pname, phase: ph, file: f.file(), no: no);
+                    } else {
+                        stateOrder(me: me, name: b, isAfter: false, module: f.module(), level: inner.getRefMut(key: own),
+                                   groupOf: groupOf, ownGroup: ownName, label: pname, phase: ph, file: f.file(), no: no);
+                    }
+                }
+            }
+        }
+        DynamicArray<string> circle = DynamicArray.empty();
+        DynamicArray<string> order = top.sorted(circle: circle);
+        if (circle.length() > 0) { refuseCircle(circle: circle, phase: ph, recordOf: recordOf, groupFile: groupFile, no: no); }
+        s.orders.put(key: copy ph, value: give order);
+        DynamicArray<string> groupPaths = inner.keys();
+        foreach (const ref string gp in groupPaths.iterConst()) {
+            DynamicArray<string> ring = DynamicArray.empty();
+            DynamicArray<string> members = inner.getRef(key: gp).sorted(circle: ring);
+            if (ring.length() > 0) { refuseCircle(circle: ring, phase: ph, recordOf: recordOf, groupFile: groupFile, no: no); }
+            DynamicArray<string> paths = DynamicArray.empty();
+            foreach (const ref string m in members.iterConst()) { paths.add(item: pathOfKey(key: m)); }
+            isize gi = s.groupAt(path: gp);
+            s.groupList[gi].setOrder(order: give paths);
+        }
+        // Two processors of the phase with no order between them may not conflict.
+        isize i = 0;
+        while (i < s.processorList.length()) {
+            isize j = i + 1;
+            while (j < s.processorList.length()) {
+                if (s.processorList[i].phase() == phase && s.processorList[j].phase() == phase) {
+                    checkPair(a: s.processorList[i], b: s.processorList[j], top: top, inner: inner, phase: ph, no: no);
+                }
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+    }
+
+    // The base clock: the least common multiple of every simulation rate.
+    SortedMap<int32, bool> rates = SortedMap.empty();
+    foreach (const ref Processor p in s.processorList.iterConst()) { if (p.rate() > 0) { rates.put(key: p.rate(), value: true); } }
+    DynamicArray<int32> distinct = rates.keys();
+    int64 shared = 0;
+    foreach (int32 hz in distinct) { shared = shared == 0 ? cast<int64>(hz) : Rate::baseOf(a: shared, b: cast<int64>(hz)); }
+    if (shared == 0) { shared = cast<int64>(Rate::defaultHz); }
+    if (shared > 1000) { warnings.add(item: baseWarning(over: shared, distinct: distinct)); }
+    if (shared > 2147483647) { shared = 2147483647; }
+    s.baseRate = cast<int32>(shared);
+    return s;
+}
+
+// The warning for a base clock above 1,000 Hz: the rates that make it, and for each rate the others' base does not hold,
+// the nearest rate that divides it, where one is within a quarter of it (frame-phases question 2).
+fn string baseWarning(int64 over, const ref DynamicArray<int32> distinct) {
+    DynamicArray<string> shown = DynamicArray.empty();
+    DynamicArray<string> fits = DynamicArray.empty();
+    foreach (int32 hz in distinct) {
+        shown.add(item: "${hz}");
+        int64 others = 0;
+        foreach (int32 o in distinct) {
+            if (o != hz) { others = others == 0 ? cast<int64>(o) : Rate::baseOf(a: others, b: cast<int64>(o)); }
+        }
+        if (others == 0 || others % cast<int64>(hz) == 0) { continue; }
+        int64 near = nearestFitting(hz: cast<int64>(hz), over: others);
+        if (near > 0) { fits.add(item: "${hz} Hz as ${near} Hz"); }
+    }
+    string all = listed(items: shown, plain: true);
+    string advice = fits.length() > 0 ? "; the nearest rates that fit: " + listed(items: fits, plain: true) : "";
+    return "the base clock is ${over} Hz, the least common multiple of the processors' rates (${all} Hz), above 1,000 Hz${advice}";
+}
+
+unsafe fn void refuseCircle(const ref DynamicArray<string> circle, const ref string phase,
+                            const ref SortedMap<string, string> recordOf, const ref SortedMap<string, string> groupFile,
+                            ref Refusals no) {
+    string shown = "";
+    foreach (const ref string k in circle.iterConst()) {
+        string p = pathOfKey(key: k);
+        shown = shown.isEmpty() ? "`" + p + "`" : shown + " -> `" + p + "`";
+    }
+    string first = pathOfKey(key: circle[0]);
+    string where = "src";
+    if (recordOf.contains(key: first)) { where = copy recordOf.getRef(key: first); }
+    else if (groupFile.contains(key: first)) { where = copy groupFile.getRef(key: first); }
+    no.add(where: where, what: "the order in ${phase} runs in a circle, each before the next: ${shown}: drop one of the orders");
+}
+
+// Whether two processors of one phase have an order between them: within one group by its orders, else by their
+// groups' or their own places at the phase's top level.
+fn bool ordered(const ref Processor a, const ref Processor b, const ref Level top, const ref SortedMap<string, Level> inner) {
+    if (!a.group().isEmpty() && a.group() == b.group()) {
+        string ka = keyOf(isGroup: false, path: a.path());
+        string kb = keyOf(isGroup: false, path: b.path());
+        return inner.getRef(key: a.group()).reaches(a: ka, b: kb) || inner.getRef(key: a.group()).reaches(a: kb, b: ka);
+    }
+    string ta = a.group().isEmpty() ? keyOf(isGroup: false, path: a.path()) : keyOf(isGroup: true, path: a.group());
+    string tb = b.group().isEmpty() ? keyOf(isGroup: false, path: b.path()) : keyOf(isGroup: true, path: b.group());
+    return top.reaches(a: ta, b: tb) || top.reaches(a: tb, b: ta);
+}
+
+// How two processors conflict, in words ("both write `X`"), or "" when they do not.
+fn string conflict(const ref Processor a, const ref Processor b) {
+    foreach (const ref Param pa in a.params().iterConst()) {
+        if (pa.path().isEmpty()) { continue; }
+        string what = copy pa.path();
+        foreach (const ref Param pb in b.params().iterConst()) {
+            if (pa.path() != pb.path()) { continue; }
+            if (pa.writes() && pb.writes()) { return "both write `${what}`"; }
+            if (pa.writes()) { return "conflict: the first writes `${what}`, which the second reads,"; }
+            if (pb.writes()) { return "conflict: the second writes `${what}`, which the first reads,"; }
+        }
+    }
+    return "";
+}

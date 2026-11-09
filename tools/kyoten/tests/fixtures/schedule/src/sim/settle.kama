@@ -1,0 +1,13 @@
+// A Constraints group run twice a step, A, B, A, B. `sooner` appends a 1 and `later` a 2, and the record orders
+// `later` after `sooner`, against their names' order, so one step leaves 1212. `Log` is declared in this same file.
+
+export { Log, clear, sooner, later };
+
+@generate(Serializable, Deserializable)
+type value Log { @field public int64 seq = 0; public default ctor make() { } }
+
+fn void clear(ref Log l) { l.seq = 0; }
+
+fn void sooner(ref Log l) { l.seq = l.seq * 10 + 1; }
+
+fn void later(ref Log l) { l.seq = l.seq * 10 + 2; }

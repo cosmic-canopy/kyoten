@@ -1,0 +1,18 @@
+{
+  "name": "schedule",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture for the second pass: processors at 60, 30 and 50 Hz, a Constraints group iterating twice, a stated order, a world component and Output",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../../../engine" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "sim": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "std::collections", "generated"] },
+    "show": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world", "sim"] },
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "std::collections", "sim", "show"] }
+  }
+}

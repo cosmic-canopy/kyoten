@@ -1,0 +1,28 @@
+// The schedule fixture's main: one ticker, run through the frame's driver at the world's base rate for one second of
+// fed time, in 60 frames, each owing about five base steps. Output's `report` prints once a frame.
+
+import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
+         schedule::sim::Fast, schedule::sim::Slow, schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Bulk,
+         schedule::generated::TickerPrefab, schedule::generated::CratePrefab, schedule::generated::GameWorld };
+
+fn uint8 main() {
+    GameWorld world = GameWorld.make();
+    Optional<Handle> h = world.create_ticker(prefab: TickerPrefab.of(fast: Fast.default(), fifty: Fifty.default(),
+                                                                     log: Log.default(), slow: Slow.default()));
+    // A crate, in its own table at the 16 KiB target: the lookup issues it the next slot.
+    Optional<Handle> boxed = world.create_crate(prefab: CratePrefab.of(bulk: Bulk.default()));
+    uint32 slot = match (boxed) { case Some(value: b): b.slot(); case None: 99; };
+    println(s: "schedule: crate slot ${slot}");
+    int32 baseHz = GameWorld::baseHz;
+    println(s: "schedule: base ${baseHz} Hz");
+    Clock clock = Clock.make(hz: baseHz, maxSteps: 10);
+    int64 k = 0;
+    while (k <= 60) {
+        Owed owed = frame(world: world, clock: clock, now: k * 1000000000 / 60);
+        k = k + 1;
+    }
+    int64 settled = clock.settled();
+    int64 discarded = clock.discarded();
+    println(s: "schedule: settled ${settled}, discarded ${discarded}");
+    return 0;
+}

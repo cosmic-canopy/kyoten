@@ -10,6 +10,10 @@
 //   so it is asked again only when one of them changes.
 //
 // A file's module is mapped from the package's manifest, since a result names its file and not its module (KY-39).
+//
+// The game's own answer also lists its functions with their parameters (`"params":[{"name","mode","type"}]`), which
+// the second pass reads as processors' signatures, so it asks kama nothing more (components § Decided, 2026-11-09,
+// step 5.4's question 1).
 
 import { core::println, std::memory::replace, std::collections::DynamicArray, std::io::IoError, std::memory::Owned,
          std::fs::readText, std::fs::readFile, std::fs::writeText, std::fs::createDirAll, std::fs::canonicalPath,
@@ -18,7 +22,7 @@ import { core::println, std::memory::replace, std::collections::DynamicArray, st
          std::serialization::text::json::deserializeJsonBuffer, std::serialization::text::json::serializeJsonBuffer,
          Kama, Manifest, Dependency, Refusals, readManifest, filesUnder, dirOf };
 
-export { TypeEntry, Index, buildIndex };
+export { TypeEntry, ParamEntry, FunctionEntry, Index, buildIndex };
 
 // A type kama says a package declares: its name, its full path (`kyoten::world::Transform`) and its kind (`value`,
 // `resource`, `enum`, `view` or `contract`).
@@ -40,6 +44,48 @@ type resource TypeEntry {
     public const fn const ref string kind() { return this.typeKind; }
 }
 
+// One parameter as kama gives it: its name, its mode (`ref`, `const ref`, or "" by value) and its type as written,
+// without its path (KY-39).
+type resource ParamEntry {
+    string paramName = "";
+    string paramMode = "";
+    string paramType = "";
+
+    public ctor make(string name, string mode, string type) {
+        this.paramName = give name;
+        this.paramMode = give mode;
+        this.paramType = give type;
+    }
+
+    public const fn const ref string name() { return this.paramName; }
+    public const fn const ref string mode() { return this.paramMode; }
+    public const fn const ref string type() { return this.paramType; }
+}
+
+// A free function the game declares: its full path, its module, its file from the game's root, its parameters in
+// order, and what it returns.
+type resource FunctionEntry {
+    string fullPath = "";
+    string moduleName = "";
+    string filePath = "";
+    DynamicArray<ParamEntry> paramList = DynamicArray.empty();
+    string returnType = "";
+
+    public ctor make(string path, string module, string file, DynamicArray<ParamEntry> params, string returns) {
+        this.fullPath = give path;
+        this.moduleName = give module;
+        this.filePath = give file;
+        this.paramList = give params;
+        this.returnType = give returns;
+    }
+
+    public const fn const ref string path() { return this.fullPath; }
+    public const fn const ref string module() { return this.moduleName; }
+    public const fn const ref string file() { return this.filePath; }
+    public const fn const ref DynamicArray<ParamEntry> params() { return this.paramList; }
+    public const fn const ref string returns() { return this.returnType; }
+}
+
 // A dependency's answer, as cached.
 @generate(Serializable, Deserializable)
 type resource CachedAnswer {
@@ -58,8 +104,30 @@ type resource CachedAnswer {
 
 type resource Index {
     DynamicArray<TypeEntry> entries = DynamicArray.empty();
+    DynamicArray<FunctionEntry> functionList = DynamicArray.empty();
 
     public ctor make() { }
+
+    // The game's own free functions.
+    public const fn const ref DynamicArray<FunctionEntry> functions() { return this.functionList; }
+
+    // Where the function at this full path is in `functions()`, or -1 when the game declares none there.
+    public const fn isize functionAt(const ref string path) {
+        isize i = 0;
+        while (i < this.functionList.length()) {
+            if (this.functionList[i].path() == path) { return i; }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    public unsafe fn void addFunctions(DynamicArray<FunctionEntry> fs) {
+        DynamicArray<FunctionEntry> taken = give fs;
+        while (taken.length() > 0) {
+            Optional<FunctionEntry> last = taken.pop();
+            match (give last) { case Some(value: f): { this.functionList.add(item: give f); } case None: { } };
+        }
+    }
 
     public unsafe fn void add(TypeEntry e) { this.entries.add(item: give e); }
 
@@ -108,8 +176,10 @@ fn bool isGenerated(const ref string rel) {
     return rel.startsWith(prefix: "generated/") || rel.endsWith(suffix: ".generated.kama");
 }
 
-// The types one package declares, by kama's answer; `skipGenerated` leaves out the generated files' own.
-unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated, ref string why) {
+// The types one package declares, by kama's answer, with its free functions into `functions`; `skipGenerated` leaves
+// out the generated files' own.
+unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated,
+                                                ref DynamicArray<FunctionEntry> functions, ref string why) {
     DynamicArray<string> argv = DynamicArray.empty();
     argv.add(item: "query");
     argv.add(item: m.manifestPath());
@@ -137,13 +207,21 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
                 case Array(items: xs): {
                     foreach (const ref JsonValue x in xs.iterConst()) {
                         string kind = textAt(doc: x, key: "kind");
-                        if (!isTypeKind(k: kind)) { continue; }
+                        bool isFunction = kind == "function";
+                        if (!isTypeKind(k: kind) && !isFunction) { continue; }
                         string file = canonical(path: textAt(doc: x, key: "uri"));
                         if (!file.startsWithIgnoringAsciiCase(prefix: src)) { continue; }
                         string rel = file.substring(start: src.length(), end: file.length());
                         if (skipGenerated && isGenerated(rel: rel)) { continue; }
                         string name = textAt(doc: x, key: "name");
-                        string path = m.moduleOf(folder: dirOf(path: rel)) + "::" + name;
+                        string module = m.moduleOf(folder: dirOf(path: rel));
+                        string path = module + "::" + name;
+                        if (isFunction) {
+                            functions.add(item: FunctionEntry.make(path: give path, module: give module, file: "src/" + rel,
+                                                                   params: paramsOf(doc: x),
+                                                                   returns: textAt(doc: x, key: "returns")));
+                            continue;
+                        }
                         found.add(item: TypeEntry.make(name: give name, path: give path, kind: give kind));
                     }
                 }
@@ -153,6 +231,27 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
         case None: { }
     };
     return Optional::Some(value: give found);
+}
+
+// A function's parameters from its entry in kama's answer, in order.
+fn DynamicArray<ParamEntry> paramsOf(const ref JsonValue doc) {
+    DynamicArray<ParamEntry> made = DynamicArray.empty();
+    Optional<JsonValue> ps = doc.get(key: "params");
+    match (ps) {
+        case Some(value: p): {
+            match (p) {
+                case Array(items: xs): {
+                    foreach (const ref JsonValue x in xs.iterConst()) {
+                        made.add(item: ParamEntry.make(name: textAt(doc: x, key: "name"), mode: textAt(doc: x, key: "mode"),
+                                                       type: textAt(doc: x, key: "type")));
+                    }
+                }
+                case _: { }
+            };
+        }
+        case None: { }
+    };
+    return made;
 }
 
 fn string textAt(const ref JsonValue doc, const ref string key) {
@@ -217,7 +316,9 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
     }
     Optional<Manifest> dm = readManifest(path: root + "/kama.json", why: why);
     Manifest depManifest = match (give dm) { case Some(value: m): give m; case None: { return Optional::None; } };
-    Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, why: why);
+    DynamicArray<FunctionEntry> theirFunctions = DynamicArray.empty();
+    Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, functions: theirFunctions,
+                                                  why: why);
     DynamicArray<TypeEntry> types = match (give asked) {
         case Some(value: ts): give ts;
         case None: { return Optional::None; }
@@ -243,11 +344,13 @@ unsafe fn Index buildIndex(ref Kama kama, const ref Manifest game, ref Refusals 
     string gameName = copy game.name();
     idx.add(e: TypeEntry.make(name: "Actions", path: gameName + "::generated::Actions", kind: "value"));
     string why = "";
-    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, why: why);
+    DynamicArray<FunctionEntry> functions = DynamicArray.empty();
+    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, functions: functions, why: why);
     match (give own) {
         case Some(value: ts): { idx.addAll(es: give ts); }
         case None: { no.add(where: "kama.json", what: why); return idx; }
     };
+    idx.addFunctions(fs: give functions);
     DynamicArray<string> versionArgs = DynamicArray.empty();
     versionArgs.add(item: "--version");
     string versionWhy = "";

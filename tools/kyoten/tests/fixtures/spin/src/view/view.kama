@@ -1,0 +1,16 @@
+// What Output will do with the hello cube once render exists (step 9), as text: each cube's rate and rotation, bit for
+// bit, so the tool's tests can compare them with the same turns made by hand.
+
+import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin };
+
+export { show };
+
+fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
+    uint32 slot = me.slot();
+    uint32 rate = bitcast<uint32>(s.rate);
+    uint32 x = bitcast<uint32>(t.rotation.x);
+    uint32 y = bitcast<uint32>(t.rotation.y);
+    uint32 z = bitcast<uint32>(t.rotation.z);
+    uint32 w = bitcast<uint32>(t.rotation.w);
+    println(s: "shown: slot ${slot} rate ${rate} rotation ${x} ${y} ${z} ${w} at ${time.step}");
+}

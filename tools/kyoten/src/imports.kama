@@ -1,0 +1,126 @@
+// The names one kama file brings into scope by its import block, each with the full path it names: how the tool learns
+// which type a processor's parameter means while kama's answer gives it bare (KY-39; components § Decided, 2026-11-09,
+// step 5.4's question 1). kama's visibility is per file, so a name a signature uses is declared in that file, imported
+// by its module's path (`kyoten::frame::Time`, or `… as Tick`), or imported scope-less from the file's own module
+// (`Spin`). The block is text kama has already checked. KY-39's answer, the full path in the query, replaces this file.
+
+import { std::collections::SortedMap, std::collections::DynamicArray, std::io::IoError, std::fs::readText };
+
+export { FileImports, readImports };
+
+type resource FileImports {
+    // A name the file can write, by the full path it names.
+    SortedMap<string, string> visible = SortedMap.empty();
+    // An aliased entry's own last name, by its full path; "" where two entries share it.
+    SortedMap<string, string> underAlias = SortedMap.empty();
+
+    friend readImports[visible, underAlias];
+
+    public ctor make() { }
+
+    // The full path `name` names in this file, or "" when the file imports nothing by it. A type the file declares
+    // itself is not here: its path is its module's.
+    public const fn string resolve(const ref string name) {
+        if (this.visible.contains(key: name)) { return copy this.visible.getRef(key: name); }
+        if (this.underAlias.contains(key: name)) { return copy this.underAlias.getRef(key: name); }
+        return "";
+    }
+}
+
+// The text with its comments blanked, so an entry never reads a word from one.
+fn string uncommented(const ref string text) {
+    string kept = "";
+    isize i = 0;
+    isize from = 0;
+    while (i < text.length()) {
+        uint8 b = text[i];
+        if (b == 47ui8 && i + 1 < text.length() && text[i + 1] == 47ui8) {
+            kept = kept + text.substring(start: from, end: i) + " ";
+            while (i < text.length() && text[i] != 10ui8) { i = i + 1; }
+            from = i;
+            continue;
+        }
+        if (b == 47ui8 && i + 1 < text.length() && text[i + 1] == 42ui8) {
+            kept = kept + text.substring(start: from, end: i) + " ";
+            i = i + 2;
+            while (i + 1 < text.length() && !(text[i] == 42ui8 && text[i + 1] == 47ui8)) { i = i + 1; }
+            i = i + 2;
+            if (i > text.length()) { i = text.length(); }
+            from = i;
+            continue;
+        }
+        i = i + 1;
+    }
+    return kept + text.substring(start: from, end: text.length());
+}
+
+fn bool isSpace(uint8 b) { return b == 32ui8 || b == 9ui8 || b == 10ui8 || b == 13ui8; }
+
+// The words of one entry: `kyoten::frame::Time`, or `kyoten::frame::Time`, `as`, `Tick`.
+fn DynamicArray<string> wordsOf(const ref string entry) {
+    DynamicArray<string> words = DynamicArray.empty();
+    isize i = 0;
+    while (i < entry.length()) {
+        while (i < entry.length() && isSpace(b: entry[i])) { i = i + 1; }
+        isize start = i;
+        while (i < entry.length() && !isSpace(b: entry[i])) { i = i + 1; }
+        if (i > start) { words.add(item: entry.substring(start: start, end: i)); }
+    }
+    return words;
+}
+
+fn string lastName(const ref string path) {
+    string last = copy path;
+    match (path.find(substring: "::")) {
+        case Some(value: at): {
+            isize i = path.length();
+            while (i > 1) {
+                i = i - 1;
+                if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: i + 1, end: path.length()); }
+            }
+        }
+        case None: { }
+    };
+    return last;
+}
+
+// The import block of the file at `path`, in module `module`; empty when the file cannot be read or imports nothing.
+unsafe fn FileImports readImports(const ref string path, const ref string module) {
+    FileImports made = FileImports.make();
+    Result<string, IoError> read = readText(path: path);
+    string raw = match (give read) { case Ok(value: t): give t; case Err(error: e): ""; };
+    string text = uncommented(text: raw);
+    // The block is the file's first `import`, followed by `{`.
+    isize at = -1;
+    isize from = 0;
+    while (at < 0) {
+        Optional<isize> found = text.findFrom(substring: "import", start: from);
+        isize i = match (found) { case Some(value: v): v; case None: -1; };
+        if (i < 0) { return made; }
+        isize j = i + 6;
+        bool before = i == 0 || isSpace(b: text[i - 1]) || text[i - 1] == 59ui8 || text[i - 1] == 125ui8;
+        while (j < text.length() && isSpace(b: text[j])) { j = j + 1; }
+        if (before && j < text.length() && text[j] == 123ui8) { at = j + 1; } else { from = i + 6; }
+    }
+    Optional<isize> close = text.findFrom(substring: "}", start: at);
+    isize end = match (close) { case Some(value: v): v; case None: text.length(); };
+    string block = text.substring(start: at, end: end);
+    SortedMap<string, int32> aliasUses = SortedMap.empty();
+    foreach (string entry in block.split(separator: ",")) {
+        DynamicArray<string> words = wordsOf(entry: entry);
+        if (words.length() == 0) { continue; }
+        string named = copy words[0];
+        string full = named.contains(substring: "::") ? copy named : module + "::" + named;
+        string own = lastName(path: full);
+        if (words.length() >= 3 && words[1] == "as") {
+            made.visible.put(key: copy words[2], value: copy full);
+            int32 seen = aliasUses.contains(key: own) ? aliasUses.getRef(key: own) : 0;
+            aliasUses.put(key: copy own, value: seen + 1);
+            if (seen == 0) { made.underAlias.put(key: copy own, value: copy full); }
+            else { made.underAlias.put(key: copy own, value: ""); }
+        } else {
+            made.visible.put(key: copy own, value: copy full);
+        }
+    }
+    return made;
+}
