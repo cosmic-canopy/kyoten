@@ -289,10 +289,31 @@ fn void content(ref Tally t) {
             want: "unknown field `app.titel`");
 }
 
+// A component record's `store`: in its prefab's table, in a side store, or held once by the world, a world component
+// (components § Decided, 2026-11-09). `Zone`, held once per zone, waits for more than one zone (KYR-61).
+fn void stores(ref Tally t) {
+    ModuleRecord m = ModuleRecord.make();
+    string why = mergeModule(m: m, src: "{ \"components\": { \"T\": { \"store\": \"Table\" }, \"S\": { \"store\": \"Side\" }, \"W\": { \"store\": \"World\", \"saved\": false } } }");
+    if (why.isEmpty()) {
+        bool ok = m.components().getRef(key: "T").store() == Store::Table
+            && m.components().getRef(key: "S").store() == Store::Side
+            && m.components().getRef(key: "W").store() == Store::World
+            && !m.components().getRef(key: "W").saved();
+        if (!ok) { why = "a store read wrong"; }
+    }
+    t.verdict(name: "records: a component is stored in a table, a side store, or once by the world", why: why);
+
+    ModuleRecord z = ModuleRecord.make();
+    string zone = mergeModule(m: z, src: "{ \"components\": { \"Grid\": { \"store\": \"Zone\" } } }");
+    refused(t: t, name: "records: a store held once per zone waits for more than one zone", why: zone,
+            want: "`Zone` is not a `Store` (at `components.Grid.store`)");
+}
+
 fn void recordsTests(ref Tally t) {
     helloCube(t: t);
     moduleExample(t: t);
     codeDefaults(t: t);
+    stores(t: t);
     actionKinds(t: t);
     codeRefusals(t: t);
     layering(t: t);

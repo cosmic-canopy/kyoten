@@ -1,0 +1,55 @@
+// kyoten::world::Lookup — where each entity lives now, by its handle's slot (components § Decided, question 8 part a,
+// choices 3 and 5).
+//
+// - **A slot holds a place** (table, chunk, row) and a generation. The generated world numbers its tables, and issues a
+//   handle here for every row it adds, so a handle reaches its entity however rows move.
+// - **A handle answers gone** when its slot was never issued or its generation is not the slot's.
+// - **Deterministic:** the same history issues the same handles, since randomness is keyed by handle and ties are
+//   broken by it (question 4). Slots are issued in order from 0, each from generation 0.
+// - **Left to their rows:** freeing a slot, which bumps its generation and lets the lowest free slot be issued again,
+//   and moving a row (swap-and-pop, a zone or layer change) come with `Destroy` and the queues; an unloaded answer, and
+//   the lookup's own ceiling, with KYR-61. The places are fixed widths, since a save will hold the slots of unloaded
+//   entities.
+
+import { std::collections::DynamicArray, Handle };
+
+export { Lookup, Place };
+
+// Where a row is: the generated world's table number, the chunk in that table, the row in that chunk.
+type value Place {
+    public int32 table;
+    public int32 chunk;
+    public int32 row;
+
+    public ctor of(int32 table, int32 chunk, int32 row) {
+        this.table = table;
+        this.chunk = chunk;
+        this.row = row;
+    }
+}
+
+type resource Lookup {
+    DynamicArray<Place> places = DynamicArray.empty();
+    DynamicArray<uint32> generations = DynamicArray.empty();
+
+    public ctor make() { }
+
+    // A handle for a new entity placed at `at`: the next slot, at generation 0.
+    public fn Handle issue(Place at) {
+        uint32 slot = cast<uint32>(this.places.length());
+        this.places.add(item: at);
+        this.generations.add(item: 0);
+        return Handle.of(slot: slot, generation: 0);
+    }
+
+    // Where `who` lives now, or none when it is gone.
+    public const fn Optional<Place> locate(Handle who) {
+        isize slot = cast<isize>(who.slot());
+        if (slot >= this.places.length()) { return Optional::None; }
+        if (this.generations[slot] != who.generation()) { return Optional::None; }
+        return Optional::Some(value: this.places[slot]);
+    }
+
+    // How many slots have been issued.
+    public const fn isize count() { return this.places.length(); }
+}

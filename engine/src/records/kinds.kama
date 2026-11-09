@@ -7,10 +7,11 @@ export { Phase, Store, Blend, Combine, ZoneShape, LayerStart, WhenFull, LimitSco
 @generate(Serializable, Deserializable)
 type enum Phase { Input, Update, Constraints, Output }
 
-// Where a component's values live: in its prefab's table, or in a side store for one gained at run time
-// (components question 1).
+// Where a component's values live: in its prefab's table, in a side store for one gained at run time (components
+// question 1), or once, held by the world: a world component (components § Decided, 2026-11-09). `Zone`, one held by
+// each zone, joins them when a scene has more than one zone (KYR-61).
 @generate(Serializable, Deserializable)
-type enum Store { Table, Side }
+type enum Store { Table, Side, World }
 
 // How Output blends a component between two steps (components question 3).
 @generate(Serializable, Deserializable)

@@ -1,0 +1,57 @@
+// kyoten::world::Lookup (components § Decided, question 8 part a, choices 3 and 5): a handle's slot says where its
+// entity lives now, by (table, chunk, row), and a handle the lookup did not issue, or whose generation is not the
+// slot's, answers gone. The same history gives the same handles, since randomness is keyed and ties are broken by
+// handle (question 4).
+
+import { Tally, kyoten::world::Lookup, kyoten::world::Place, kyoten::world::Handle };
+
+export { lookupTests };
+
+fn bool at(const ref Lookup l, Handle who, int32 table, int32 chunk, int32 row) {
+    Optional<Place> p = l.locate(who: who);
+    return match (p) {
+        case Some(value: v): v.table == table && v.chunk == chunk && v.row == row;
+        case None: false;
+    };
+}
+
+fn bool gone(const ref Lookup l, Handle who) {
+    Optional<Place> p = l.locate(who: who);
+    return match (p) { case Some(value: v): false; case None: true; };
+}
+
+fn void issued(ref Tally t) {
+    Lookup l = Lookup.make();
+    Handle a = l.issue(at: Place.of(table: 0, chunk: 0, row: 0));
+    Handle b = l.issue(at: Place.of(table: 2, chunk: 1, row: 7));
+    bool order = a.slot() == 0 && b.slot() == 1 && a.generation() == 0 && b.generation() == 0;
+    t.verdict(name: "Lookup: handles are issued slot by slot, from generation 0", why: order ? "" : "the handles differ");
+    bool found = at(l: l, who: a, table: 0, chunk: 0, row: 0) && at(l: l, who: b, table: 2, chunk: 1, row: 7);
+    t.verdict(name: "Lookup: a handle locates where its entity was placed", why: found ? "" : "a place differs");
+}
+
+fn void unknown(ref Tally t) {
+    Lookup l = Lookup.make();
+    Handle a = l.issue(at: Place.of(table: 0, chunk: 0, row: 0));
+    bool never = gone(l: l, who: Handle.of(slot: 5, generation: 0)) && gone(l: l, who: Handle.of(slot: 1, generation: 0));
+    t.verdict(name: "Lookup: a slot never issued answers gone, the next one to be issued too", why: never ? "" : "it was found");
+    bool stale = gone(l: l, who: Handle.of(slot: 0, generation: 1));
+    t.verdict(name: "Lookup: a handle whose generation is not its slot's answers gone", why: stale ? "" : "it was found");
+}
+
+fn void sameHistory(ref Tally t) {
+    Lookup one = Lookup.make();
+    Lookup two = Lookup.make();
+    Handle a1 = one.issue(at: Place.of(table: 1, chunk: 0, row: 0));
+    Handle b1 = one.issue(at: Place.of(table: 0, chunk: 0, row: 0));
+    Handle a2 = two.issue(at: Place.of(table: 1, chunk: 0, row: 0));
+    Handle b2 = two.issue(at: Place.of(table: 0, chunk: 0, row: 0));
+    bool ok = a1 == a2 && b1 == b2 && one.count() == 2;
+    t.verdict(name: "Lookup: the same history gives the same handles", why: ok ? "" : "they differ");
+}
+
+fn void lookupTests(ref Tally t) {
+    issued(t: t);
+    unknown(t: t);
+    sameHistory(t: t);
+}

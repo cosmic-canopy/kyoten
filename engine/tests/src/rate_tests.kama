@@ -1,0 +1,83 @@
+// kyoten::frame::Rate (frame-phases § Decided, question 2 and step 4 question 2): a processor at a rate runs every
+// k-th step of the base clock, k = base / rate, and is handed its own rate's dt with the base step's index. The base
+// is the rates' least common multiple, and 60 Hz is the engine's rate for a simulation processor no record rates.
+
+import { Tally, kyoten::frame::Rate, kyoten::frame::Time };
+
+export { rateTests };
+
+// How many of the base steps `from` to `from + count - 1` a rate is due on.
+fn int32 dueIn(const ref Rate r, int64 from, int32 count) {
+    int32 runs = 0;
+    int64 s = from;
+    while (s < from + cast<int64>(count)) {
+        if (r.due(step: s)) { runs = runs + 1; }
+        s = s + 1;
+    }
+    return runs;
+}
+
+fn void everyStep(ref Tally t) {
+    Rate r = Rate.of(hz: 60, over: 60);
+    int32 runs = dueIn(r: r, from: 0, count: 60);
+    string why = runs == 60 ? "" : "due on ${runs} of 60 steps";
+    t.verdict(name: "Rate: at the base rate, due on every step", why: why);
+}
+
+fn void slower(ref Tally t) {
+    Rate r = Rate.of(hz: 30, over: 60);
+    int32 runs = dueIn(r: r, from: 0, count: 60);
+    bool onEven = r.due(step: 0) && !r.due(step: 1) && r.due(step: 2) && !r.due(step: 59);
+    string why = "";
+    if (runs != 30) { why = "due on ${runs} of 60 steps"; }
+    else if (!onEven) { why = "not due on the even steps alone"; }
+    t.verdict(name: "Rate: 30 Hz over a 60 Hz base is due on every second step, from step 0", why: why);
+
+    Rate fifty = Rate.of(hz: 50, over: 300);
+    int32 fifties = dueIn(r: fifty, from: 0, count: 300);
+    bool sixth = fifty.due(step: 0) && fifty.due(step: 6) && !fifty.due(step: 3) && fifty.period() == 6;
+    string whyFifty = fifties == 50 && sixth ? "" : "due on ${fifties} of 300 steps";
+    t.verdict(name: "Rate: 50 Hz over a 300 Hz base is due on every sixth step", why: whyFifty);
+}
+
+// A step index past int32's range still gates right: the base clock's index is an int64.
+fn void farSteps(ref Tally t) {
+    Rate r = Rate.of(hz: 30, over: 60);
+    int64 far = 5000000000;
+    bool ok = r.due(step: far) && !r.due(step: far + 1);
+    t.verdict(name: "Rate: gating holds past int32's steps", why: ok ? "" : "wrong past 2^31");
+}
+
+// The Time a run is handed: its own rate's dt, bit for bit Time.dtAt's, and the base step's index.
+fn void handed(ref Tally t) {
+    Rate r = Rate.of(hz: 30, over: 60);
+    int64 big = 4000000002;
+    Time at = r.at(step: big);
+    bool ok = bitcast<uint32>(at.dt) == bitcast<uint32>(Time::dtAt(hz: 30)) && at.step == big && r.hz() == 30;
+    t.verdict(name: "Rate: a run is handed its own rate's dt and the base step", why: ok ? "" : "the Time differs");
+}
+
+fn void bases(ref Tally t) {
+    bool ok = Rate::baseOf(a: 60, b: 30) == 60 && Rate::baseOf(a: 120, b: 60) == 120 && Rate::baseOf(a: 60, b: 50) == 300
+        && Rate::baseOf(a: 7, b: 11) == 77 && Rate::baseOf(a: 60, b: 60) == 60;
+    t.verdict(name: "Rate: two rates share their least common multiple as a base (frame-phases question 2)",
+              why: ok ? "" : "a base is wrong");
+    int64 wide = Rate::baseOf(a: 2147483647, b: 2147483646);
+    t.verdict(name: "Rate: a base is counted in int64, so coprime rates do not overflow",
+              why: wide == 4611686011984936962 ? "" : "the base is ${wide}");
+}
+
+fn void defaultRate(ref Tally t) {
+    int32 hz = Rate::defaultHz;
+    t.verdict(name: "Rate: the engine's simulation rate, when no record names one, is 60 Hz (KYR-55)",
+              why: hz == 60 ? "" : "it is ${hz}");
+}
+
+fn void rateTests(ref Tally t) {
+    everyStep(t: t);
+    slower(t: t);
+    farSteps(t: t);
+    handed(t: t);
+    bases(t: t);
+    defaultRate(t: t);
+}

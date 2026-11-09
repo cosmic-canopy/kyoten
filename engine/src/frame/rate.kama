@@ -1,0 +1,58 @@
+// kyoten::frame::Rate — when a processor runs on the base clock, and the `Time` it is handed (frame-phases § Decided,
+// question 2 and step 4 question 2).
+//
+// - **One clock:** a processor at `hz` runs every k-th step of the base clock, k = base / hz, from step 0. The base is
+//   the rates' least common multiple, which the generator derives with `baseOf`, so every rate divides it.
+// - **A processor never reads a clock:** each run is handed its own rate's `dt`, computed once by `Time.dtAt`, with the
+//   base step's index, as `Time`'s `step` always is.
+// - **60 Hz is the engine's rate for a simulation processor** (Input, Update, Constraints) whose record and module
+//   name none: KYR-55's gameplay default, which a game's records lower or raise wherever a scene still holds.
+// - The generated passes hold one `Rate` per distinct rate and ask it each step, so gating is this code, tested here,
+//   and never arithmetic written into each game.
+
+import { Time };
+
+export { Rate };
+
+type value Rate {
+    int32 hzValue;
+    int32 every;
+    float32 stepDt;
+
+    // The engine's rate for a simulation processor when neither its record nor its module's names one.
+    public comptime int32 defaultHz = 60;
+
+    // `hz` over a base clock of `over` steps a second. The base is a multiple of every rate on it; anything else is a
+    // generator bug, and traps.
+    public ctor of(int32 hz, int32 over) {
+        assert(cond: hz > 0 && over >= hz && over % hz == 0, msg: "a rate divides the base clock it runs on");
+        this.hzValue = hz;
+        this.every = over / hz;
+        this.stepDt = Time::dtAt(hz: hz);
+    }
+
+    public const fn int32 hz() { return this.hzValue; }
+
+    // How many base steps pass between two runs.
+    public const fn int32 period() { return this.every; }
+
+    // Whether a run is due on this base step.
+    public const fn bool due(int64 step) { return step % cast<int64>(this.every) == 0; }
+
+    // The `Time` a run on this base step is handed: this rate's dt, and the base step's index.
+    public const fn Time at(int64 step) { return Time.of(dt: this.stepDt, step: step); }
+
+    // The base two rates share: their least common multiple, in int64, so rates that share no factor do not overflow.
+    // The generator folds it over every rate in the game.
+    public static fn int64 baseOf(int64 a, int64 b) {
+        assert(cond: a > 0 && b > 0, msg: "a rate is at least 1 Hz");
+        int64 x = a;
+        int64 y = b;
+        while (y != 0) {
+            int64 r = x % y;
+            x = y;
+            y = r;
+        }
+        return a / x * b;
+    }
+}
