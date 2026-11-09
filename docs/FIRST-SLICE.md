@@ -309,6 +309,15 @@ here), committed with what it measured.
   3. **`Actions.player` is an `int32`, numbered from 1.**
   4. **The tool finds kama from `--kama`, then `$KAMA`, then `kama` on PATH.** The owner: "I guess we can also pass the
      path of kama to the tool as well… that is typical".
+- **Answered on 2026-11-09, step 5.4's two questions** ([design/components.md](design/components.md) § Decided): a
+  processor parameter's type is resolved through its own file's imports until kama answers KY-39; and a world
+  component is declared by its component record, `"store": "World"`.
+- **Answered on 2026-11-09, step 5.5's four questions, required components** (components § Decided), each as
+  recommended:
+  1. **A requirement adds, never overwrites:** a required component a prefab lists keeps the prefab's values.
+  2. **A variant that drops a component its others still require is refused,** naming what requires it.
+  3. **A requirement names only the component,** never values; a prefab that wants other values lists it.
+  4. **The tool reads a ctor's source line for `default ctor` until kama's KR-360 marks it** (KY-44's stopgap).
 - **Answered on 2026-11-08, KYR-66's name:** the asset manager is the **content delivery tool**, for now. The owner:
   "Content Delivery Tool is probably fine for now?" ([design/content-delivery-tool.md](design/content-delivery-tool.md)
   § Decided).

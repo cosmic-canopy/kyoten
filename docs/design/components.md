@@ -2124,3 +2124,48 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     of 5 counts base steps, so a 300 Hz base below a 60 Hz display discards steps); `Prefabs` and the queues as
     parameters; checking that the generated module's `importsOnly` lists each module with processors, which kama
     names today; and naming the record behind an error kama finds in generated code.
+- **2026-11-09, the owner: step 5.5's four questions, required components** (the first slice, KYR-7), before they
+  were built. Each was asked with a recommendation and answered as recommended.
+  1. **A requirement adds, never overwrites.** A required component a prefab lists keeps the prefab's values; a
+     requirement adds only what the prefab lacks.
+     - **Why:** the prefab is where a component's starting values are written. Bevy's required components are added
+       "if it was not manually specified" (question 7's prior art).
+     - **Considered:** the requirement's default overwriting the prefab's values, and refusing a prefab that lists a
+       component another requires. Either leaves no way to start a required component from other values.
+  2. **A variant that drops a component its other components still require is refused,** naming the component that
+     requires it and the fix: "drop `Mesh` too, or keep `Transform`".
+     - **Why:** a missing requirement is a build error, not a surprise in play (question 8, 2026-11-06).
+     - **Considered:** adding it back with its default, which makes the `null` silently do nothing; and dropping the
+       component that requires it as well, which removes a component the record kept.
+  3. **A requirement names only the component,** `"requires": ["Material"]`, never values. It starts from its
+     component's default, and a prefab that wants other values lists it (answer 1). This closes what question 8 left
+     open on 2026-11-06.
+     - **Why:** a component's starting values come from one place (REFERENCE § One way to do each thing).
+     - **Considered:** `"requires": { "Material": { … } }`, a second place a component's starting values come from.
+  4. **The tool reads a ctor's source line to learn whether it is the `default ctor`, until kama's KR-360 marks it**
+     (KY-44). The query already gives each ctor's file, line and column, and one function reads the text before the
+     column for `default ctor`: text kama has already checked, as `imports.kama` reads import blocks for KY-39.
+     KR-360's mark replaces it.
+     - **Why:** a required component without defaults that a prefab does not list is refused, naming the component
+       that requires it (question 8), and the loader needs the same fact for every component: a record laid over its
+       default, or read whole.
+     - **Considered:** waiting for KR-360, with kama's error in generated code, which names neither the prefab nor the
+       component that requires it, until then.
+  - **Also settled, in the plan the owner approved the same day:**
+    - **Requirements are transitive,** closed over each prefab's explicit set: its base's explicit set with its own
+      keys added and its `null`s dropped. A variant that drops `Mesh` loses a `Transform` only `Mesh` required.
+      Families compare the closed sets, so a variant that adds only what its base already requires stays in its
+      base's family.
+    - **A circle of requirements is allowed:** it means the components always come together, and the closure ends.
+    - **A requirement resolves as a prefab's key does:** by its bare name while exactly one type has it, else by its
+      full path. It names a `type value` that is no world component.
+    - **The mapping is visible in the generated prefab type:** each field a requirement added says `// required by`
+      the component that required it. The query that answers it is KYR-25's.
+    - **The game's own component records only, for now.** A dependency's or the engine's (`Mesh` requires a
+      `Transform` and a `Material`) arrive with step 9, when the tool reads those records.
+  - **The module `static` refusal, probed** on the pin: `kama query --search "" --json` gives a module `static` as
+    `"kind":"static"`, with its `uri` and `line` (`../kama/tests/app_loop.kama`'s `static int32 result = 0;`), and a
+    module `comptime` as `"kind":"constant"`. kama allows `static` only at module scope (its `docs/KEYWORDS.md`: a
+    type holds no static storage), so each `static` entry is a module `static`. The tool refuses each one in the
+    game's package, its root module included, naming its file and line and pointing to a world component (the
+    decision of 2026-11-07). A dependency is not checked.
