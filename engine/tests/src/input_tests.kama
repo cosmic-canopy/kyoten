@@ -1,0 +1,26 @@
+// kyoten::input (components § Decided, step 5 question 6): `Digital`, the action kind a processor reads as on or off.
+// Each `Actions` field holds one, filled by the Input phase from the player's bindings (KYR-54, step 8), and a
+// processor reads it through `const ref Actions`: `if (input.faster.held) { … }`.
+
+import { Tally, kyoten::input::Digital };
+
+export { inputTests };
+
+// A processor reads an action through a `const ref`, so its fields must read there.
+fn bool heldThrough(const ref Digital d) { return d.held; }
+
+fn void inputTests(ref Tally t) {
+    Digital off = Digital.default();
+    bool ok = !off.held && !off.pressed && !off.released;
+    t.verdict(name: "Digital: off by default, neither held nor pressed nor released", why: ok ? "" : "not all false");
+
+    Digital on = Digital.default();
+    on.held = true;
+    on.pressed = true;
+    bool seen = heldThrough(d: on) && on.pressed && !on.released;
+    t.verdict(name: "Digital: its fields read through a const ref", why: seen ? "" : "held or pressed not read");
+
+    // An `Actions` row holds one per action, so its size feeds the chunk size (components question 6, choice 4).
+    usize size = sizeof(Digital);
+    t.verdict(name: "Digital: 3 bytes on every target", why: size == 3 ? "" : "${size} bytes");
+}

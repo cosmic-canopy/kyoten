@@ -13,6 +13,7 @@
     ".": { "visibility": "public" },
     "frame": { "visibility": "public", "importsOnly": [] },
     "world": { "visibility": "public", "importsOnly": ["std::math"] },
-    "records": { "visibility": "public", "importsOnly": ["std::collections"] }
+    "records": { "visibility": "public", "importsOnly": ["std::collections"] },
+    "input": { "visibility": "public", "importsOnly": [] }
   }
 }

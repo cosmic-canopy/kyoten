@@ -1,0 +1,21 @@
+// kyoten::input::Digital — an action a processor reads as on or off (components § Decided, step 5 question 6). An
+// action's kind names the value a processor reads, not a device, so one `Digital` serves a key, a button, a trigger
+// past a threshold and a UI button.
+//
+// Each field of a game's generated `Actions` holds one, filled by the Input phase from the player the entity names
+// (KYR-54, step 8), and a processor reads it through `const ref Actions`: `if (input.faster.held) { … }`. How
+// `pressed` and `released` are set across steps, rate gating included, is step 8's.
+
+export { Digital };
+
+type value Digital {
+    // On this step.
+    public bool held = false;
+    // On this step, and off the step before.
+    public bool pressed = false;
+    // Off this step, and on the step before.
+    public bool released = false;
+
+    // Off, as every action is before its first input.
+    public default ctor off() { }
+}
