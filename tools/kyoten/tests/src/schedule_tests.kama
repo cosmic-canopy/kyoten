@@ -31,6 +31,10 @@ fn void reported(ref Tally t, const ref string leg, const ref Ran r) {
     // built in its table's block, not on the stack.
     check(t: t, name: "schedule: ${leg}: a second family's table, its chunk at 16 KiB, takes the lookup's next slot",
           ok: r.says(what: "schedule: crate slot 1"), why: said);
+    // A bounded list is one size on every target (KY-47, fixed in kama 0.9.896), so `crate`'s row count, which the
+    // compiler computes from its row's bytes, is 80 natively and on wasm: before it, 78 natively and 80 on wasm.
+    check(t: t, name: "schedule: ${leg}: a chunk of a bounded-list component holds 80 rows, then the table refuses",
+          ok: r.says(what: "schedule: the crate table holds 80 rows"), why: said);
 }
 
 unsafe fn void scheduleTests(ref Tally t, ref Setup s) {

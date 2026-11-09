@@ -13,6 +13,14 @@ fn uint8 main() {
     Optional<Handle> boxed = world.create_crate(prefab: CratePrefab.of(bulk: Bulk.default()));
     uint32 slot = match (boxed) { case Some(value: b): b.slot(); case None: 99; };
     println(s: "schedule: crate slot ${slot}");
+    // The table's one chunk (the default budget) takes crates up to its row count, then refuses.
+    int32 held = 1;
+    bool full = false;
+    while (!full && held < 1000) {
+        Optional<Handle> more = world.create_crate(prefab: CratePrefab.of(bulk: Bulk.default()));
+        match (more) { case Some(value: m): { held = held + 1; } case None: { full = true; } };
+    }
+    println(s: "schedule: the crate table holds ${held} rows");
     int32 baseHz = GameWorld::baseHz;
     println(s: "schedule: base ${baseHz} Hz");
     Clock clock = Clock.make(hz: baseHz, maxSteps: 10);

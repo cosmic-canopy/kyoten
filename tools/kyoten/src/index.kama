@@ -9,14 +9,17 @@
 //   `out/kyoten/components/`, keyed by a hash of the kama that answered and of the dependency's kama.json and sources,
 //   so it is asked again only when one of them changes.
 //
-// A file's module is mapped from the package's manifest, since a result names its file and not its module (KY-39).
-// Whether a type elects a `default ctor` is read from its ctor's line, since a result does not say (KY-44): a required
-// component without defaults must be listed (components § Decided, step 5.5's questions of 2026-11-09).
+// A type's module is mapped from its file through the package's manifest, since a result names a declaration's file
+// and not its own module. Since kama 0.9.897 (KR-360, closing KY-39 and KY-44) every result says whether its symbol is
+// `exported`, an elected ctor's signature reads `default ctor …`, and each parameter carries the `path` of the
+// declaration its type resolved to: a component must be exported, a required component without defaults must be
+// listed (components § Decided, step 5.5's questions of 2026-11-09), and a processor's parameter is classified by its
+// path.
 //
-// The game's own answer also lists its functions with their parameters (`"params":[{"name","mode","type"}]`), which
-// the second pass reads as processors' signatures, so it asks kama nothing more (components § Decided, 2026-11-09,
-// step 5.4's question 1); and its module statics (`"kind":"static"`, with their lines), which the generator refuses
-// (step 5.5).
+// The game's own answer also lists its functions with their parameters (`"params":[{"name","mode","type","path"}]`),
+// which the second pass reads as processors' signatures, so it asks kama nothing more (components § Decided,
+// 2026-11-09, step 5.4's question 1); and its module statics (`"kind":"static"`, with their lines), which the
+// generator refuses (step 5.5).
 
 import { core::println, std::memory::replace, std::collections::DynamicArray, std::collections::SortedMap,
          std::io::IoError, std::memory::Owned,
@@ -29,45 +32,53 @@ import { core::println, std::memory::replace, std::collections::DynamicArray, st
 export { TypeEntry, ParamEntry, FunctionEntry, StaticEntry, Index, buildIndex };
 
 // A type kama says a package declares: its name, its full path (`kyoten::world::Transform`), its kind (`value`,
-// `resource`, `enum`, `view` or `contract`), and whether it elects a `default ctor`.
+// `resource`, `enum`, `view` or `contract`), whether its module exports it, and whether it elects a `default ctor`.
 @generate(Serializable, Deserializable)
 type resource TypeEntry {
     @field(name: "name") string typeName = "";
     @field(name: "path") string fullPath = "";
     @field(name: "kind") string typeKind = "";
+    @field(name: "exported", default) bool exportedField = false;
     @field(name: "default", default) bool defaulted = false;
 
     public default ctor empty() { }
-    public ctor make(string name, string path, string kind) {
+    public ctor make(string name, string path, string kind, bool exported) {
         this.typeName = give name;
         this.fullPath = give path;
         this.typeKind = give kind;
+        this.exportedField = exported;
     }
 
     public const fn const ref string name() { return this.typeName; }
     public const fn const ref string path() { return this.fullPath; }
     public const fn const ref string kind() { return this.typeKind; }
-    // Whether the type elects a `default ctor`, read from its ctor's line until kama's KR-360 marks it (KY-44).
+    // Whether the type's module exports it, so another module (and the generated one) can import it.
+    public const fn bool isExported() { return this.exportedField; }
+    // Whether the type elects a `default ctor`, which kama's answer marks (KR-360).
     public const fn bool electsDefault() { return this.defaulted; }
     public fn void markDefault() { this.defaulted = true; }
 }
 
-// One parameter as kama gives it: its name, its mode (`ref`, `const ref`, or "" by value) and its type as written,
-// without its path (KY-39).
+// One parameter as kama gives it: its name, its mode (`ref`, `const ref`, or "" by value), its type as written
+// (`Tick`), and the path of the declaration that type resolved to (`kyoten::frame::Time`), type arguments included. A
+// primitive, a type parameter and a name that resolved to nothing keep their spelling, with no `::`.
 type resource ParamEntry {
     string paramName = "";
     string paramMode = "";
     string paramType = "";
+    string paramPath = "";
 
-    public ctor make(string name, string mode, string type) {
+    public ctor make(string name, string mode, string type, string path) {
         this.paramName = give name;
         this.paramMode = give mode;
         this.paramType = give type;
+        this.paramPath = give path;
     }
 
     public const fn const ref string name() { return this.paramName; }
     public const fn const ref string mode() { return this.paramMode; }
     public const fn const ref string type() { return this.paramType; }
+    public const fn const ref string path() { return this.paramPath; }
 }
 
 // A free function the game declares: its full path, its module, its file from the game's root, its parameters in
@@ -113,8 +124,9 @@ type resource StaticEntry {
 }
 
 // What a cached answer holds, numbered: raise it whenever `TypeEntry` learns something, so an answer cached before is
-// asked again rather than read as if it knew. 1 added each type's `default ctor` (step 5.5); before it, none was written.
-fn int32 cacheFormat() { return 1; }
+// asked again rather than read as if it knew. 1 added each type's `default ctor` (step 5.5); 2 whether it is exported,
+// and the `default ctor` as kama marks it rather than as read from its line (KR-360); before 1, none was written.
+fn int32 cacheFormat() { return 2; }
 
 // A dependency's answer, as cached.
 @generate(Serializable, Deserializable)
@@ -196,6 +208,12 @@ type resource Index {
         return false;
     }
 
+    // Whether the type at this full path is exported from its module; false when none is there.
+    public const fn bool exportedAt(const ref string path) {
+        foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return e.isExported(); } }
+        return false;
+    }
+
     // The kind of the type at this full path, or "" when none is there.
     public const fn string kindAt(const ref string path) {
         foreach (const ref TypeEntry e in this.entries.iterConst()) { if (e.path() == path) { return copy e.kind(); } }
@@ -250,7 +268,6 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
     string src = canonical(path: m.sourceDir()) + "/";
     DynamicArray<TypeEntry> found = DynamicArray.empty();
     SortedMap<string, bool> defaulted = SortedMap.empty();
-    SortedMap<string, string> texts = SortedMap.empty();
     Optional<JsonValue> results = doc.get(key: "results");
     match (results) {
         case Some(value: rs): {
@@ -273,13 +290,8 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
                         }
                         string module = m.moduleOf(folder: dirOf(path: rel));
                         if (isCtor) {
-                            if (!texts.contains(key: file)) {
-                                Result<string, IoError> read = readText(path: file);
-                                string got = match (give read) { case Ok(value: t): give t; case Err(error: e): ""; };
-                                texts.put(key: copy file, value: give got);
-                            }
-                            if (ctorIsDefault(text: texts.getRef(key: file), line: numberAt(doc: x, key: "line"),
-                                              column: numberAt(doc: x, key: "column"))) {
+                            // An elected ctor reads as written, `default ctor make()` (KR-360).
+                            if (textAt(doc: x, key: "signature").startsWith(prefix: "default ctor ")) {
                                 defaulted.put(key: module + "::" + textAt(doc: x, key: "container"), value: true);
                             }
                             continue;
@@ -291,7 +303,8 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
                                                                    returns: textAt(doc: x, key: "returns")));
                             continue;
                         }
-                        found.add(item: TypeEntry.make(name: give name, path: give path, kind: give kind));
+                        found.add(item: TypeEntry.make(name: give name, path: give path, kind: give kind,
+                                                       exported: flagAt(doc: x, key: "exported")));
                     }
                 }
                 case _: { }
@@ -301,31 +314,6 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
     };
     foreach (ref TypeEntry e in found.iterMut()) { if (defaulted.contains(key: e.path())) { e.markDefault(); } }
     return Optional::Some(value: give found);
-}
-
-// Whether the ctor kama found at `line` (from 1) and `column` (from 0, its name) of a file's text is its type's
-// `default ctor`: the two words ahead of its name are `default ctor`. KY-44's stopgap: kama's query does not mark the
-// default ctor, so the tool reads the line kama points at, text kama has already checked. KR-360's mark replaces it.
-fn bool ctorIsDefault(const ref string text, int64 line, int64 column) {
-    int64 at = 1;
-    foreach (string l in text.split(separator: "\n")) {
-        if (at == line) {
-            isize col = cast<isize>(column);
-            isize end = col < l.length() ? col : l.length();
-            string before = l.substring(start: 0, end: end);
-            string spaced = before.replace(old: "\t", with: " ");
-            string last = "";
-            string previous = "";
-            foreach (string w in spaced.split(separator: " ")) {
-                if (w.isEmpty()) { continue; }
-                previous = copy last;
-                last = copy w;
-            }
-            return last == "ctor" && previous == "default";
-        }
-        at = at + 1;
-    }
-    return false;
 }
 
 // A function's parameters from its entry in kama's answer, in order.
@@ -338,7 +326,7 @@ fn DynamicArray<ParamEntry> paramsOf(const ref JsonValue doc) {
                 case Array(items: xs): {
                     foreach (const ref JsonValue x in xs.iterConst()) {
                         made.add(item: ParamEntry.make(name: textAt(doc: x, key: "name"), mode: textAt(doc: x, key: "mode"),
-                                                       type: textAt(doc: x, key: "type")));
+                                                       type: textAt(doc: x, key: "type"), path: textAt(doc: x, key: "path")));
                     }
                 }
                 case _: { }
@@ -355,6 +343,15 @@ fn int64 numberAt(const ref JsonValue doc, const ref string key) {
     match (v) {
         case Some(value: j): { Optional<int64> n = j.asInt64(); return match (n) { case Some(value: x): x; case None: 0; }; }
         case None: { return 0; }
+    };
+}
+
+// A `true` in kama's answer; false when it is `false` or not there.
+fn bool flagAt(const ref JsonValue doc, const ref string key) {
+    Optional<JsonValue> v = doc.get(key: key);
+    match (v) {
+        case Some(value: j): { match (j) { case Bool(value: b): { return b; } case _: { return false; } }; }
+        case None: { return false; }
     };
 }
 
@@ -447,7 +444,7 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
 unsafe fn Index buildIndex(ref Kama kama, const ref Manifest game, ref Refusals no) {
     Index idx = Index.make();
     string gameName = copy game.name();
-    idx.add(e: TypeEntry.make(name: "Actions", path: gameName + "::generated::Actions", kind: "value"));
+    idx.add(e: TypeEntry.make(name: "Actions", path: gameName + "::generated::Actions", kind: "value", exported: true));
     string why = "";
     DynamicArray<FunctionEntry> functions = DynamicArray.empty();
     DynamicArray<StaticEntry> statics = DynamicArray.empty();

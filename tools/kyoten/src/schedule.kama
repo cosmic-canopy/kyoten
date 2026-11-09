@@ -5,8 +5,9 @@
 //   parameter means what its type says. Built: `ref C` and `const ref C` (a component in its entity's table),
 //   `ref W` and `const ref W` (a world component, `"store": "World"`), `Handle` by value and `const ref Time`. Every
 //   other decided parameter is refused as not built yet, and anything else as no parameter.
-// - **A parameter's type is resolved through its file's imports** (components § Decided, 2026-11-09, question 1),
-//   since kama's answer gives it bare until KY-39.
+// - **A parameter's type is the declaration it resolved to,** which kama's answer names since 0.9.897 (KR-360, closing
+//   KY-39): `const ref Tick` imported `as Tick` is `kyoten::frame::Time`. Until then it was read from the file's
+//   import block (components § Decided, 2026-11-09, step 5.4's question 1).
 // - **Order inside a phase is relative:** groups and processors run `after` or `before` their siblings, or `first` or
 //   `last` among them; ties fall back to the full path, so the order is fixed, and a circle is refused. Two processors
 //   with no order between them may not conflict: neither may write what the other reads or writes (question 5).
@@ -18,7 +19,7 @@
 import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord,
          kyoten::records::ProcessorGroupRecord, kyoten::records::ComponentRecord, kyoten::frame::Rate,
          std::collections::DynamicArray, std::collections::SortedMap, Records, CodeFile, Index, FunctionEntry,
-         ParamEntry, Family, Component, Refusals, FileImports, readImports, Manifest, inModule };
+         ParamEntry, Family, Component, Refusals, Manifest, inModule, lastOf, moduleOfPath };
 
 export { Access, Param, Processor, Group, Schedule, buildSchedule, phaseName };
 
@@ -179,26 +180,6 @@ fn DynamicArray<Phase> allPhases() {
     return ps;
 }
 
-// The part of a path after its last `::`.
-fn string lastOf(const ref string path) {
-    isize i = path.length();
-    while (i > 1) {
-        i = i - 1;
-        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: i + 1, end: path.length()); }
-    }
-    return copy path;
-}
-
-// The part of a path before its last `::`, or "" when it has none.
-fn string moduleOfPath(const ref string path) {
-    isize i = path.length();
-    while (i > 1) {
-        i = i - 1;
-        if (path[i] == 58ui8 && path[i - 1] == 58ui8) { return path.substring(start: 0, end: i - 1); }
-    }
-    return "";
-}
-
 // `a, b and c`, each in backticks unless `plain`.
 fn string listed(const ref DynamicArray<string> items, bool plain) {
     string made = "";
@@ -218,15 +199,21 @@ fn bool decidedNotBuilt(const ref string head) {
         || head == "Lose" || head == "Send" || head == "Edit" || head == "Section" || head.endsWith(suffix: "RandomKeys");
 }
 
-// One parameter, classified, or none with a refusal naming the fix.
-unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref FileImports imports, const ref string module,
-                                   const ref string game, const ref Index idx, const ref SortedMap<string, bool> world,
-                                   Phase phase, const ref string label, const ref string file, ref Refusals no) {
+// The part of a written type ahead of its type arguments: `Create<P>` is `Create`.
+fn string headOf(const ref string written) {
+    match (written.find(substring: "<")) { case Some(value: at): { return written.substring(start: 0, end: at).trim(); } case None: { return copy written; } };
+}
+
+// One parameter, classified by the declaration its type resolved to, which kama names (KR-360), or none with a
+// refusal naming the fix.
+unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref string game, const ref Index idx,
+                                   const ref SortedMap<string, bool> world, Phase phase, const ref string label,
+                                   const ref string file, ref Refusals no) {
     string written = copy p.type();
-    string head = copy written;
-    match (written.find(substring: "<")) { case Some(value: at): { head = written.substring(start: 0, end: at).trim(); } case None: { } };
-    string path = imports.resolve(name: head);
-    if (path.isEmpty() && !idx.kindAt(path: module + "::" + head).isEmpty()) { path = module + "::" + head; }
+    string head = headOf(written: written);
+    // A type that resolved to nothing, a primitive or a type parameter keeps its spelling, with no `::`.
+    string resolved = headOf(written: p.path());
+    string path = resolved.contains(substring: "::") ? copy resolved : "";
     // kama gives a parameter's mode as `ref`, `const ref`, or `value` when it is taken by value.
     string mode = p.mode() == "value" ? "" : copy p.mode();
     string shown = mode.isEmpty() ? copy written : mode + " " + written;
@@ -451,6 +438,11 @@ unsafe fn void componentRecord(const ref string module, const ref string name, c
         no.add(where: file, what: "component record `${name}` names no `type value` in module `${module}`: a component record describes a component its module declares");
         return;
     }
+    if (!idx.exportedAt(path: path)) {
+        string bare = lastOf(path: path);
+        no.add(where: file, what: "component record `${name}` names `${path}`, which its module does not export: add `${bare}` to its file's `export { … }`, since a component is an exported `type value`");
+        return;
+    }
     match (rec.store()) {
         case World: { world.put(key: copy path, value: true); }
         case Side: { no.add(where: file, what: "component `${name}` is stored `Side`, and side stores are not built yet: they come with their row"); }
@@ -532,10 +524,10 @@ unsafe fn bool processorRecord(const ref string key, const ref ProcessorRecord r
     return ok;
 }
 
-// One processor's signature, classified through its file's imports; false when anything is refused.
-unsafe fn bool signature(const ref FunctionEntry found, const ref string module, const ref Manifest game,
-                         const ref Index idx, const ref SortedMap<string, bool> world, Phase phase,
-                         ref DynamicArray<Param> params, ref Refusals no) {
+// One processor's signature, each parameter classified by its resolved type; false when anything is refused.
+unsafe fn bool signature(const ref FunctionEntry found, const ref Manifest game, const ref Index idx,
+                         const ref SortedMap<string, bool> world, Phase phase, ref DynamicArray<Param> params,
+                         ref Refusals no) {
     bool ok = true;
     if (found.returns() != "void") {
         string label = copy found.path();
@@ -543,11 +535,10 @@ unsafe fn bool signature(const ref FunctionEntry found, const ref string module,
         no.add(where: found.file(), what: "processor `${label}` returns `${returned}`: a processor returns nothing, and writes what it changes through its `ref` parameters");
         ok = false;
     }
-    FileImports imports = readImports(path: game.root() + "/" + found.file(), module: module);
     string gameName = copy game.name();
     foreach (const ref ParamEntry p in found.params().iterConst()) {
-        Optional<Param> made = classify(p: p, imports: imports, module: module, game: gameName, idx: idx, world: world,
-                                        phase: phase, label: found.path(), file: found.file(), no: no);
+        Optional<Param> made = classify(p: p, game: gameName, idx: idx, world: world, phase: phase, label: found.path(),
+                                        file: found.file(), no: no);
         match (give made) { case Some(value: m): { params.add(item: give m); } case None: { ok = false; } };
     }
     return ok;
@@ -672,8 +663,8 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
             bool ok = processorRecord(key: key, rec: f.record().processors().getRef(key: key), module: module, file: f.file(),
                                       s: s, moduleRate: moduleRate, phase: phase, group: group, hz: hz, no: no);
             DynamicArray<Param> params = DynamicArray.empty();
-            bool typed = signature(found: idx.functions()[at], module: module, game: game, idx: idx, world: world,
-                                   phase: phase, params: params, no: no);
+            bool typed = signature(found: idx.functions()[at], game: game, idx: idx, world: world, phase: phase,
+                                   params: params, no: no);
             groupOf.put(key: copy path, value: copy group);
             if (!ok || !typed) { continue; }
             s.processorList.add(item: Processor.make(path: copy path, recordFile: copy f.file(),

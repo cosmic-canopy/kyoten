@@ -9,10 +9,7 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          requires::generated::PairPrefab, requires::generated::GameWorld };
 
 fn uint8 main() {
-    // Through locals: `CartPrefabId.oiled() != CartPrefabId.default()` is refused as having no operator (KY-46).
-    CartPrefabId oiled = CartPrefabId.oiled();
-    CartPrefabId first = CartPrefabId.default();
-    bool differ = oiled != first;
+    bool differ = CartPrefabId.oiled() != CartPrefabId.default();
     CarterPrefab carter = CarterPrefab.of(actions: Actions.forPlayer(player: 1), driver: Driver.default());
     int32 player = carter.actions.player;
     PairPrefab pair = PairPrefab.of(left: Left.default(), right: Right.default());

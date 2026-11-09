@@ -5,20 +5,19 @@
 // archetype of small components gets 128 rows and a large one fewer, and a row above 16 KiB gets one. An archetype's
 // record may override N; the generator applies that. Slice B measures the rule (KYR-12).
 //
-// The generator writes `comptime usize N = ChunkSize::rowsFor(rowBytes: sizeof(…) + … + sizeof(Handle));`, so N is
-// computed by the compiler for the target being built. Rows count as a `usize` here, the type of `sizeof`, because
-// kama does not evaluate an `isize` local at compile time (KY-41). Once it does, `rowsFor` returns an `isize`, kama's
-// count type.
+// The generator writes `comptime int32 N = cast<int32>(ChunkSize::rowsFor(rowBytes: cast<isize>(sizeof(…) + … +
+// sizeof(Handle))));`, so N is computed by the compiler for the target being built. Rows count as an `isize`, kama's
+// count type, which kama evaluates at compile time at the target's width since 0.9.893 (KR-357, closing KY-41).
 
 export { ChunkSize };
 
 type value ChunkSize {
-    public comptime usize targetBytes = 16384;
-    public comptime usize maxRows = 128;
+    public comptime isize targetBytes = 16384;
+    public comptime isize maxRows = 128;
 
     // A row of 0 bytes is a bug, and the division traps on it, at run time and at compile time alike.
-    public static fn usize rowsFor(usize rowBytes) {
-        usize n = ChunkSize::targetBytes / rowBytes;
+    public static fn isize rowsFor(isize rowBytes) {
+        isize n = ChunkSize::targetBytes / rowBytes;
         if (n > ChunkSize::maxRows) { return ChunkSize::maxRows; }
         if (n < 1) { return 1; }
         return n;

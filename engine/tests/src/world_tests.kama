@@ -7,7 +7,7 @@ import { Tally, kyoten::world::Transform, kyoten::world::ZoneCoord, kyoten::worl
 export { worldTests };
 
 // A row of the hello cube's table: a Transform and the handle column. The generator writes the same expression.
-comptime usize transformRows = ChunkSize::rowsFor(rowBytes: sizeof(Transform) + sizeof(Handle));
+comptime isize transformRows = ChunkSize::rowsFor(rowBytes: cast<isize>(sizeof(Transform) + sizeof(Handle)));
 
 // The rule sizes an array at compile time, which is the shape a generated chunk's columns take.
 type value TransformColumn {
@@ -207,8 +207,8 @@ fn void handle(ref Tally t) {
     t.verdict(name: "Handle: ordered by slot, then generation", why: order ? "" : "the order is wrong");
 }
 
-fn void rows(ref Tally t, usize rowBytes, usize want) {
-    usize got = ChunkSize::rowsFor(rowBytes: rowBytes);
+fn void rows(ref Tally t, isize rowBytes, isize want) {
+    isize got = ChunkSize::rowsFor(rowBytes: rowBytes);
     t.verdict(name: "ChunkSize: a row of ${rowBytes} bytes gives ${want} rows a chunk",
               why: got == want ? "" : "got ${got}");
 }
@@ -224,7 +224,7 @@ fn void chunkSize(ref Tally t) {
     rows(t: t, rowBytes: 8192, want: 2);
     rows(t: t, rowBytes: 16384, want: 1);
     rows(t: t, rowBytes: 20000, want: 1);
-    usize n = transformRows;
+    isize n = transformRows;
     usize column = sizeof(TransformColumn);
     t.verdict(name: "ChunkSize: the rule sizes a column at compile time (Transform and handle: 128 rows)",
               why: n == 128 && column == 512 ? "" : "rows ${n}, column ${column} bytes");

@@ -8,4 +8,6 @@
     "lost":   { "nowhere::Thing": {} },
     "spire":  { "Spire": {} },
     "ruin":   { "from": "spire", "components::towers::Health": null, "note": "drops the Health that Spire requires" },
-    "cannon": { "Cannon": {}, "note": "lacks Powder, which Cannon requires and which elects no default ctor" } } }
+    "cannon": { "Cannon": {}, "note": "lacks Powder, which Cannon requires and which elects no default ctor" },
+    "safe":      { "Secret": {} },
+    "strongbox": { "components::towers::Secret": {} } } }

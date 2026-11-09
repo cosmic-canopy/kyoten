@@ -1,4 +1,4 @@
-export { Health, Turret, Ammo, Wall, Gate, Moat, Flag, Banner, Crown, Spire, Cannon, Powder };
+export { Health, Turret, Ammo, Wall, Gate, Moat, Flag, Banner, Crown, Spire, Cannon, Powder, Lock };
 @generate(Serializable, Deserializable)
 type value Health { @field public int32 hp = 10; public default ctor make() { } }
 @generate(Serializable, Deserializable)
@@ -28,3 +28,12 @@ type value Cannon { @field public int32 range = 5; public default ctor make() { 
 // No default: a prefab that has it lists it, with its values.
 @generate(Serializable, Deserializable)
 type value Powder { @field public int32 grams; public ctor of(int32 grams) { this.grams = grams; } }
+
+// Components the module does not export, which a prefab, a requirement and a component record name (KR-360): each is
+// refused by name. `Lock` is exported and requires `Secret`.
+@generate(Serializable, Deserializable)
+type value Secret { @field public int32 code = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Vault { @field public int32 gold = 0; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Lock { @field public int32 pins = 4; public default ctor make() { } }

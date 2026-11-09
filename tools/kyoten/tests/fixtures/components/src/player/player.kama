@@ -1,3 +1,6 @@
 export { Health };
 @generate(Serializable, Deserializable)
 type value Health { @field public int32 hp = 3; public default ctor make() { } }
+// Not exported, so `towers`' `Turret` is still the only one a bare `Turret` can mean.
+@generate(Serializable, Deserializable)
+type value Turret { @field public int32 aim = 0; public default ctor make() { } }

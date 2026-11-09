@@ -96,18 +96,19 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
               && changed.says(what: "components of kyoten: cached"),
           why: changed.said());
     // A cached answer of another format is asked again, so a cache written before the tool learned something new (step
-    // 5.5: each type's `default ctor`) is never read as if it knew it.
+    // 5.5: each type's `default ctor`; KR-360: whether it is exported) is never read as if it knew it.
     // The run above cached glow's answer with the stamp in its sources, so it is asked again once, to cache it as it is
     // now; then only the format differs.
     Ran recached = s.kyoten(command: "generate", game: "spin", more: none());
     Ran warm = s.kyoten(command: "generate", game: "spin", more: none());
     string cached = s.fixture(at: "spin/out/kyoten/components/glow.json");
     string answer = read(path: cached);
-    write(path: cached, text: answer.replace(old: "\"format\":1", with: "\"format\":0"));
+    write(path: cached, text: answer.replace(old: "\"format\":2", with: "\"format\":1"));
     Ran reformatted = s.kyoten(command: "generate", game: "spin", more: none());
     check(t: t, name: "spin: a cached answer of another format is asked again",
           ok: recached.code() == 0 && warm.says(what: "components of glow: cached")
-              && answer.contains(substring: "\"format\":1") && reformatted.code() == 0
+              && answer.contains(substring: "\"format\":2") && answer.contains(substring: "\"exported\":true")
+              && reformatted.code() == 0
               && reformatted.says(what: "components of glow: asked") && reformatted.says(what: "components of kyoten: cached"),
           why: warm.said() + "\n" + reformatted.said() + "\n" + answer);
 

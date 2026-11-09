@@ -6,4 +6,6 @@
     "Banner": { "store": "World" },
     "Crown":  { "store": "World", "requires": ["Turret"] },
     "Spire":  { "requires": ["components::towers::Health"] },
-    "Cannon": { "requires": ["Powder"] } } }
+    "Cannon": { "requires": ["Powder"] },
+    "Lock":   { "requires": ["Secret"] },
+    "Vault":  { "store": "World" } } }

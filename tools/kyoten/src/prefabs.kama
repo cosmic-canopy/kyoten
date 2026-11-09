@@ -13,7 +13,7 @@
 // Requirements come from the game's own component records; a dependency's and the engine's arrive with step 9.
 
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Store, Records, PrefabDecl,
-         CodeFile, Index, Refusals, fieldCase, isReserved, inModule };
+         CodeFile, Index, Refusals, fieldCase, isReserved, inModule, lastOf, moduleOfPath };
 
 export { Component, Family, resolveFamilies };
 
@@ -55,8 +55,18 @@ type resource Family {
     public const fn const ref DynamicArray<Component> components() { return this.parts; }
 }
 
+// The refusal of a component its module does not export: the generated module imports every component, and kama
+// would refuse that import in generated code, naming neither the record nor the fix.
+unsafe fn void notExported(const ref string subject, const ref string key, const ref string path, const ref string file,
+                           ref Refusals no) {
+    string module = moduleOfPath(path: path);
+    string name = lastOf(path: path);
+    no.add(where: file, what: "${subject} names `${key}`, which module `${module}` does not export: add `${name}` to its file's `export { … }`, since a component is an exported `type value`");
+}
+
 // The full path a key names, or "" when it names none, which is refused. `subject` is what names it, as a refusal
-// opens: "prefab `tower`", or "component `Gate`'s `requires`".
+// opens: "prefab `tower`", or "component `Gate`'s `requires`". A bare name resolves among the exported `type value`s,
+// since no other module can name a type its module keeps, and kama says which are exported (KR-360).
 unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref string subject, const ref string file,
                             ref Refusals no) {
     if (key.contains(substring: "::")) {
@@ -69,14 +79,21 @@ unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref
             no.add(where: file, what: "${subject} names `${key}`, a ${kind}, and a component is a `type value`");
             return "";
         }
+        if (!idx.exportedAt(path: key)) {
+            notExported(subject: subject, key: key, path: key, file: file, no: no);
+            return "";
+        }
         return copy key;
     }
     DynamicArray<string> paths = idx.named(name: key);
     DynamicArray<string> values = DynamicArray.empty();
+    string hidden = "";
     string otherKind = "";
     foreach (const ref string p in paths.iterConst()) {
         string kind = idx.kindAt(path: p);
-        if (kind == "value") { values.add(item: copy p); } else { otherKind = copy kind; }
+        if (kind != "value") { otherKind = copy kind; }
+        else if (idx.exportedAt(path: p)) { values.add(item: copy p); }
+        else { hidden = copy p; }
     }
     if (values.length() == 1) { return copy values[0]; }
     if (values.length() > 1) {
@@ -86,6 +103,10 @@ unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref
             all = all + "`" + v + "`";
         }
         no.add(where: file, what: "${subject} names `${key}`, which is ${all}: write the full path of the one it means");
+        return "";
+    }
+    if (!hidden.isEmpty()) {
+        notExported(subject: subject, key: key, path: hidden, file: file, no: no);
         return "";
     }
     if (!otherKind.isEmpty()) {

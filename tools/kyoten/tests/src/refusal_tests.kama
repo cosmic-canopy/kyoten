@@ -54,6 +54,12 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`rock`", b: "`pebble`", c: ""));
     says(t: t, name: "names: variants that start from each other are refused, naming the circle", r: n,
          words: allOf(a: "loopA -> loopB -> loopA", b: "", c: ""));
+    // The strict reader refuses a key its object already gave (kama KR-359, 0.9.895, closing KY-43), so a prefab or an
+    // action written twice in one file is named rather than the first silently lost.
+    says(t: t, name: "names: a key written twice in a module's records file is refused, naming it and its file", r: n,
+         words: allOf(a: "src/a/more.records.json: duplicate key `actions.fire`", b: "", c: ""));
+    says(t: t, name: "names: a key written twice in a content file is refused, naming it and its file", r: n,
+         words: allOf(a: "content/twice.records.json: duplicate key `prefabs.twice`", b: "", c: ""));
     bool wrote = has(path: s.fixture(at: "names/src/generated/actions.kama"));
     if (wrote) { t.verdict(name: "names: a refusal writes nothing", why: "it wrote actions.kama"); }
     else { t.verdict(name: "names: a refusal writes nothing", why: ""); }
@@ -79,6 +85,21 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "prefab `twice`", b: "`components::towers::Turret`", c: "twice"));
     says(t: t, name: "components: two components of one name in a prefab wait for their field spelling", r: c,
          words: allOf(a: "prefab `hero`", b: "`Health`", c: "not decided"));
+    // A component its module does not export is refused by name, before kama's error lands in generated code: kama's
+    // query says whether a symbol is exported since 0.9.897 (KR-360, closing KY-44). A bare name resolves among the
+    // exported types only, so `player`'s private `Turret` leaves `keep`'s `Turret` meaning `towers`'.
+    says(t: t, name: "components: a prefab naming a component its module does not export is refused, by bare name", r: c,
+         words: allOf(a: "prefab `safe` names `Secret`, which module `components::towers` does not export",
+                      b: "add `Secret` to its file's `export { … }`", c: ""));
+    says(t: t, name: "components: a prefab naming a component its module does not export is refused, by full path", r: c,
+         words: allOf(a: "prefab `strongbox` names `components::towers::Secret`, which module `components::towers` does not export",
+                      b: "", c: ""));
+    says(t: t, name: "components: a requirement naming a component its module does not export is refused", r: c,
+         words: allOf(a: "component `Lock`'s `requires` names `Secret`, which module `components::towers` does not export",
+                      b: "", c: ""));
+    says(t: t, name: "components: a component record for a type its module does not export is refused", r: c,
+         words: allOf(a: "component record `Vault` names `components::towers::Vault`, which its module does not export",
+                      b: "", c: ""));
     // Required components (step 5.5's questions of 2026-11-09).
     says(t: t, name: "components: a requirement naming no type is refused", r: c,
          words: allOf(a: "component `Wall`'s `requires` names `Brick`, which is no type", b: "", c: ""));

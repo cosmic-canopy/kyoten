@@ -174,7 +174,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
         bytes = bytes + "sizeof(" + handle + ")";
         t = t + "\n// `" + f.root() + "`'s family: a row is its components and its handle, and a chunk holds as many rows as fit\n";
         t = t + "// 16 KiB, at most 128 (components § Decided, question 6, choice 4).\n";
-        t = t + "comptime int32 " + rows + " = cast<int32>(" + chunkSize + "::rowsFor(rowBytes: " + bytes + "));\n\n";
+        t = t + "comptime int32 " + rows + " = cast<int32>(" + chunkSize + "::rowsFor(rowBytes: cast<isize>(" + bytes + ")));\n\n";
         t = t + "type value " + chunkType(f: f) + " {\n";
         foreach (const ref Component c in f.components().iterConst()) {
             string ty = imports.nameOf(path: c.path());

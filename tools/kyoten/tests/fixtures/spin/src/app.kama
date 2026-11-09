@@ -42,13 +42,8 @@ fn uint8 main() {
                                        transform: Transform.default());
     float32 by = b.size.by;
     float32 strength = b.glow.strength;
-    // Through locals: `CubePrefabId.fastCube() != CubePrefabId.default()` is refused as having no operator (KY-46).
-    CubePrefabId fast = CubePrefabId.fastCube();
-    CubePrefabId first = CubePrefabId.default();
-    bool differ = fast != first;
-    BigCubePrefabId big = BigCubePrefabId.bigCube();
-    BigCubePrefabId bigFirst = BigCubePrefabId.default();
-    bool same = big == bigFirst;
+    bool differ = CubePrefabId.fastCube() != CubePrefabId.default();
+    bool same = BigCubePrefabId.bigCube() == BigCubePrefabId.default();
     Prefabs prefabs = Prefabs.make();
     println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
 

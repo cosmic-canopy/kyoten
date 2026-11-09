@@ -1,10 +1,11 @@
-// A large component, so `crate`'s chunk is at the 16 KiB target: a row of 120 bytes (28 floats and the list's length)
-// and its 8-byte handle gives 128 rows of 128 bytes. The world builds such a chunk in its table's block; the 32 KiB
-// frame guard holds it off the stack on wasm.
+// A large component, so `crate`'s chunk is at the 16 KiB target: a row of 196 bytes (48 floats and the list's `int32`
+// length) and its 8-byte handle gives 80 rows of 204 bytes, 16,320 bytes. The world builds such a chunk in its table's
+// block; the 32 KiB frame guard holds it off the stack on wasm. A bounded list is one size on every target since kama
+// 0.9.896 (KY-47), so the row count is too.
 
 import { std::collections::InlineDynamicArray };
 
 export { Bulk };
 
 @generate(Serializable, Deserializable)
-type value Bulk { @field public InlineDynamicArray<float32>#(28) xs = InlineDynamicArray.empty(); public default ctor make() { } }
+type value Bulk { @field public InlineDynamicArray<float32>#(48) xs = InlineDynamicArray.empty(); public default ctor make() { } }
