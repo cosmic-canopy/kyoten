@@ -6,5 +6,18 @@
 # Windows (msys2 UCRT64), 2026-11-08: first pin, 0.9.886 (2159ce21), at the owner's direction that kyoten keep its own
 # copy because ../kama rebuilds as it develops on this machine (it moved 0.9.877 -> 0.9.881 -> 0.9.884 in one session).
 # Before it, steps 4 to 5.2 were built on ../kama's working binary: 0.9.876, then 0.9.881+g4267d2ec.
-KAMA_VERSION=0.9.886
-KAMA_BUILD=g2159ce21
+#
+# 2026-11-09: 0.9.886 -> 0.9.899 (f32373ea), kama's dev HEAD with a clean tree. What moved, for kyoten:
+#   0.9.893 KR-357 (KY-41, KY-42): isize and usize at the target's width at compile time.
+#   0.9.894 KR-358 (KY-46): `T.default()` is an operand, so `Id.second() != Id.default()` builds.
+#   0.9.895 KR-359 (KY-43): the strict reader refuses a key the object already gave, naming its path.
+#   0.9.896 (KY-47): InlineDynamicArray's length is an int32, one size on every target.
+#   0.9.897 KR-360 (KY-39, KY-44): a query names each type's declaration (`path`), says whether a symbol is
+#           `exported`, and reads an elected ctor as `default ctor`.
+#   Also 0.9.887-0.9.892 (Xtensa atomics, a wasm program that spawns compiles with -pthread, parallel_for on the job
+#   pool, a sub-int operation beside an unsuffixed literal takes the operand's type) and 0.9.898-0.9.899 (fibers on
+#   Windows), none of which kyoten uses. Green on it with no other change: tools/test.sh (engine 114 cases native debug,
+#   release and wasm; the frame guard; the tool's 117; fps native and wasm; vr checked), @kama/window's (36 native,
+#   20 under node) and @kama/gpu's (3 cases, the clear example's 60 frames, the xfail, the wasm build).
+KAMA_VERSION=0.9.899
+KAMA_BUILD=gf32373ea
