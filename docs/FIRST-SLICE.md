@@ -8,61 +8,75 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, end of the day's fifth session)
+## Where it stands (2026-11-10, end of the sixth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
 - the tool checks both at build;
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
+**Track 1 has begun:** `@kama/gpu`'s two steps are built (an adapter, then a device from it), the first of the
+packages' stopgaps.
+
 **The join waits on Track 1. The next session starts here:**
 
-1. **Run the suites on kyoten's pin, `0.9.899+gf32373ea`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
+1. **Run the suites on kyoten's pin, `0.9.909+g64f011de`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
    - **When kama's own session is running its tests on this machine,** run nothing heavy and time nothing. When both
-     run at once, only relative timings hold, taken back to back.
-   - **Read `../kama`'s log since `b112fb33`,** its HEAD at this session's end (0.9.905), when it also had work
-     uncommitted. Since the pin it gained:
-     - 0.9.900 to 0.9.903: fibers on Windows, which kyoten does not use;
-     - 0.9.905: a `match` subject reached through a raw pointer is borrowed in place, which kyoten does not use;
-     - KR-364, kama's answer to KY-48, ruled. 0.9.904 shipped its first half:
-       - `JsonDeserializer.strict(src:)` becomes `JsonDeserializer.make(src:, strict: true)`. kyoten calls it in
-         `engine/src/content/lay.kama`, the engine's tests and the tool's `index.kama`;
-       - the tree's `reader(strict:)`, which retires `subtreeText`, was not committed yet;
-     - KR-365, kama's answer to KY-49, ruled but not built: `kama query --modules sim,cube`.
+     run at once, only relative timings hold, taken back to back. They ran through most of the sixth session.
+   - **Read `../kama`'s log since `64f011de`,** its HEAD at this session's end (0.9.909, a clean tree), and first check
+     that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 64f011de HEAD`. kama rebased its
+     `dev` twice between the fifth and sixth sessions, so the 0.9.899 pin's commit left it and a clean clone could no
+     longer rebuild it (its binary is kept in `.scratch/kama-pin-0.9.899`).
+   - **Still open with kama:** KY-45 (KR-361, not started: one query for the dependencies, and the tool's
+     per-dependency cache goes) and KY-40 (no integer vectors). KY-48 and KY-49 were closed this session.
+2. **Track 1 continues,** each stopgap that changes an API first, test-first, its questions asked in full before code:
+   - `@kama/gpu` item 8: `surface.capabilities(adapter:)` (formats in order of preference, present modes, alpha
+     modes), and `configure` taking a choice among them. Its questions were not asked yet: the configuration's shape,
+     the present and alpha mode enums, which surface formats `TextureFormat` grows to hold, and sRGB through view
+     formats;
+   - `@kama/gpu` item 7: `SurfaceError::OutOfMemory` goes;
+   - `@kama/gpu` item 2: errors per device, and error scopes;
+   - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
+   - `@kama/window` item 5: held keys and buttons released on a focus change;
+   - then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with
+     Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6, which also runs the two steps' web leg and
+     holds `maxBindGroupsPlusVertexBuffers` and `CoreFeaturesAndLimits` there), gamepads (W3), and the triangle's
+     pipeline set.
 
-     `docs/KAMA_GAPS.md` has the details.
-   - **Bump the pin as a commit of its own,** with every suite green on the new one.
-     - Once KR-364's reader is committed, the bump carries the rename's port, since kyoten does not build on 0.9.904
-       without it. Say so to the owner when bumping, because the rule's "no other change" cannot hold for a breaking
-       rename.
-     - `subtreeText`'s replacement by the tree's reader is a commit of its own after the bump, test-first.
-   - **Still open with kama:**
-     - KY-49 (KR-365, ruled): when `--modules` lands, the tool's query costs only the simulation code it reads, and the
-       tool moves to it test-first (components § Decided, the owner, 2026-11-09).
-     - KY-45 (KR-361, not started): one query answers for the dependencies, and the tool's per-dependency cache goes.
-     - KY-48 (KR-364, ruled, half shipped): the loader's `subtreeText` goes when the tree's reader is committed.
-     - KY-40 (no integer vectors).
-2. **Then the join, which waits on Track 1.** Step 7, the platform seam, builds:
+   A page served from localhost to headless Edge prints its console to stderr
+   (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
+3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
 
-   Track 1 comes first, in a session of its own:
-   - first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix test-first;
-   - in `@kama/gpu`, WebGPU's two steps first (an adapter, then a device from it), since the format choice and the
-     request methods follow from them;
-   - then:
-     - `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
-       Events);
-     - `@kama/gpu`'s canvas surface, and a run in Edge (G6);
-     - gamepads (W3);
-     - the triangle's pipeline set.
+**The sixth session** (2026-11-10). Each part was built test-first, with its suites green and mutations caught before
+its commit:
 
-   A page served from localhost to headless Edge prints its console to stderr
-   (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
+- **The pin moved to `0.9.909+g64f011de`** (`4589796`), carrying KR-364's rename, the one change "nothing else
+  changed" could not hold off: 12 `JsonDeserializer.strict(src: x)` calls became `make(src: x, strict: true)`, and 3
+  `deserializeJsonBuffer` calls, which were lenient, state `strict: false`. Every suite was green on 0.9.899 that
+  morning and on 0.9.909 with the port alone, with the same counts.
+- **KY-48 closed** (`f147132`): the loader reads each subtree through the parsed tree's own reader,
+  `JsonValue.reader(strict: true)`, with nothing written back to text. `mergeTree` and `readTree` in
+  `kyoten::content`, 6 cases (two of them for a gap the mutations found), 10 mutations caught. The engine's tests are
+  164 cases.
+- **KY-49 closed** (`6dad66c`; the owner, 2026-11-10, components § Decided): the tool's query names every module
+  but the game's root with `--modules`, 0.09 times the whole package's cost on `spin`, measured relative only. A
+  `static` in a game's root is the app's own; a processor or component there is refused, pointing to a module folder;
+  a library's root is exempt. 5 mutations caught. The tool's tests are 192 cases with the wasm legs.
+- **`@kama/gpu`'s two steps** (kama-gpu `c7e00a3`; the owner's three answers of 2026-11-10 in its AGENTS.gpu.md):
+  `requestAdapter`, `AdapterInfo`, `Limits`, `FeatureSet` and `DeviceOptions`, and `adapter.requestDevice(options:)`.
+  12 cases natively over Vulkan, 9 of 11 mutations caught (the other 2 equivalent on wgpu-native). wgpu-native was
+  measured reporting `maxBindGroupsPlusVertexBuffers` as 0 and not listing `CoreFeaturesAndLimits`; the tests hold
+  each per leg.
+- **The owner asked** whether the highest-resolution timers per platform are kyoten's or kama's. They are kama's
+  (`std::time`: `QueryPerformanceCounter`, `CLOCK_MONOTONIC`, `performance.now()`, and a high-resolution waitable timer
+  for `sleep` on Windows; frame-phases § Decided already says so). kyoten owns the frame source and the `Clock`, which
+  is handed each frame's time.
 
 **The fifth session** (2026-11-09). Each part was built test-first, with `tools/test.sh` green and mutations caught
 before its commit:
@@ -195,9 +209,9 @@ commit:
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
-- **kama:** kyoten's pin is `0.9.899+gf32373ea` (`.kama-version`, 2026-11-09; `0.9.886+g2159ce21` before it),
-  built from a clean clone; step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and 5.2 on `../kama`'s working
-  binary, `0.9.881+g4267d2ec`.
+- **kama:** kyoten's pin is `0.9.909+g64f011de` (`.kama-version`, 2026-11-10; `0.9.899+gf32373ea` and
+  `0.9.886+g2159ce21` before it), built from a clean clone; step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and
+  5.2 on `../kama`'s working binary, `0.9.881+g4267d2ec`.
   - **That binary was built at 09:59 on 2026-11-08** from kama's working tree, which held uncommitted changes to its
     emitter and driver. kama had committed 0.9.878 to 0.9.881 that morning: `kama run` on Android over adb, every std
     module building on bare metal or refused by name, and a board's clocks declared in kama.
@@ -226,17 +240,17 @@ commit:
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.899+gf32373ea` (2026-11-09, the fifth session),** as before on `0.9.886+g2159ce21`,
-  `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
+- **Green on the pin, `0.9.909+g64f011de` (2026-11-10, the sixth session),** as before on `0.9.899+gf32373ea`,
+  `0.9.886+g2159ce21`, `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
   - kyoten's `tools/test.sh`:
-    - the engine and its 158 tests;
+    - the engine and its 164 tests;
     - the frame guard;
-    - the `kyoten` tool's 188 cases;
+    - the `kyoten` tool's 192 cases;
     - `kyoten check engine/kama.json`;
     - `examples/games/fps`, which prints `fps example, on kyoten` natively and on wasm;
     - `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
-  - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
+  - `@kama/gpu`'s gate: the bindings, its 12 cases, the clear example's 60 frames, the xfail, and the wasm build.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
   ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
   It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
