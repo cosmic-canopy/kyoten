@@ -17,7 +17,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Phase, Family, Component,
          Schedule, Processor, Group, Param, Access, headerLine, typeCase };
 
-export { tablesKama, passesKama, worldKama, worldTypeName };
+export { tablesKama, passesKama, worldKama, worldTypeName, ImportSet };
 
 // The world type's name, which the fixtures and, at step 7, the generated `run` name.
 fn string worldTypeName() { return "GameWorld"; }

@@ -1,13 +1,80 @@
 // The fixture's own main. It reads every name the first pass generates, so a missing or misshapen one fails the build;
-// then it builds the generated world, creates two cubes as the loader will (step 5.5), one with `faster` held, steps
-// it 60 times through the frame's driver, and runs Output, whose `show` prints each cube. Beside that it prints what
-// `turn` gives when the same turns are made by hand, for the tool's tests to compare bit for bit.
+// then it builds the generated world, creates two cubes by hand, one with `faster` held, steps it 60 times through
+// the frame's driver, and runs Output, whose `show` prints each cube. Beside that it prints what `turn` gives when the
+// same turns are made by hand, for the tool's tests to compare bit for bit. Last, it loads the content (step 5.5).
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
-         kyoten::frame::step, glow::Glow, spin::cube::Spin, spin::cube::Size,
-         spin::generated::Actions, spin::generated::CubePrefab, spin::generated::CubePrefabId,
-         spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId, spin::generated::Prefabs,
-         spin::generated::GameWorld };
+         kyoten::frame::step, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
+         kyoten::content::LoadRefusals, kyoten::content::readContent, std::collections::DynamicArray,
+         std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow,
+         spin::cube::Spin, spin::cube::Size, spin::generated::Actions, spin::generated::CubePrefab,
+         spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
+         spin::generated::Prefabs, spin::generated::GameWorld, openContent, loadPrefabs, placeFirstScene };
+
+// A mod's content, held in memory: a source the loader is handed like the game's folder (dependencies are injected).
+type resource MemorySource implements RecordSource {
+    string label = "";
+    SortedMap<string, string> texts = SortedMap.empty();
+
+    public ctor make(string label) { this.label = give label; }
+    public fn void put(const ref string path, const ref string text) { this.texts.put(key: copy path, value: copy text); }
+
+    public const fn string name() { return copy this.label; }
+    public const fn DynamicArray<string> files() { return this.texts.keys(); }
+    public const fn Result<string, IoError> text(const ref string path) {
+        if (!this.texts.contains(key: path)) { return Result::Err(error: IoError.of(kind: IoErrorKind::NotFound)); }
+        return Result::Ok(value: copy this.texts.getRef(key: path));
+    }
+}
+
+fn void refused(const ref LoadRefusals no) {
+    foreach (const ref string l in no.lines().iterConst()) { println(s: "refused at load: ${l}"); }
+}
+
+// The loader (step 5.5): the game's content folder through the stack, each family's prefabs laid in layer order, and
+// the first scene's placements made rows in a world of their own, whose Output shows them.
+fn void load() {
+    Result<LayerStack, LoadRefusals> opened = openContent();
+    LayerStack stack = LayerStack.make();
+    match (give opened) { case Ok(value: s): { stack = give s; } case Err(error: no): { refused(no: no); return; } };
+    LoadRefusals no = LoadRefusals.make();
+    Content content = readContent(stack: stack, no: no);
+    if (no.any()) { refused(no: no); return; }
+    Result<Prefabs, LoadRefusals> loaded = loadPrefabs(content: content);
+    match (give loaded) {
+        case Ok(value: prefabs): {
+            CubePrefab cube = prefabs.cube(id: CubePrefabId.cube());
+            CubePrefab fast = prefabs.cube(id: CubePrefabId.fastCube());
+            BigCubePrefab big = prefabs.bigCube(id: BigCubePrefabId.bigCube());
+            println(s: "loaded: cube rate ${cube.spin.rate} player ${cube.actions.player}, fastCube rate ${fast.spin.rate}, bigCube rate ${big.spin.rate} size ${big.size.by}");
+            GameWorld world = GameWorld.make();
+            Result<isize, LoadRefusals> placed = placeFirstScene(world: world, prefabs: prefabs, content: content);
+            match (give placed) {
+                case Ok(value: n): { println(s: "spin: placed world, ${n} placed"); }
+                case Err(error: e): { refused(no: e); }
+            };
+            int32 baseHz = GameWorld::baseHz;
+            Rate clock = Rate.of(hz: baseHz, over: baseHz);
+            world.output(time: clock.at(step: 0));
+        }
+        case Err(error: e): { refused(no: e); }
+    };
+}
+
+// A mod laid as the only layer, whose prefabs the loader refuses: a misspelt field and a misspelt component, one
+// with no default missing a field, and a prefab no build knows.
+fn void loadMod() {
+    MemorySource mod = MemorySource.make(label: "mod");
+    mod.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"Transform\": {}, \"Spin\": { \"rat\": 3 }, \"Actions\": {} }, \"fastCube\": { \"from\": \"cube\" }, \"bigCube\": { \"from\": \"cube\", \"spin::cube::Size\": {}, \"Glow\": {}, \"Glw\": {} }, \"extra\": { \"Spin\": {} } } }");
+    LayerStack stack = LayerStack.make();
+    Owned<RecordSource> boxed = give mod;
+    stack.push(source: give boxed);
+    LoadRefusals no = LoadRefusals.make();
+    Content content = readContent(stack: stack, no: no);
+    refused(no: no);
+    Result<Prefabs, LoadRefusals> loaded = loadPrefabs(content: content);
+    match (give loaded) { case Ok(value: p): { println(s: "the mod loaded"); } case Err(error: e): { refused(no: e); } };
+}
 
 // A processor starts a new entity from a prefab's values this way (REFERENCE.md § What a processor takes).
 fn CubePrefab startFrom(const ref Prefabs prefabs, CubePrefabId id) { return prefabs.cube(id: id); }
@@ -44,7 +111,6 @@ fn uint8 main() {
     float32 strength = b.glow.strength;
     bool differ = CubePrefabId.fastCube() != CubePrefabId.default();
     bool same = BigCubePrefabId.bigCube() == BigCubePrefabId.default();
-    Prefabs prefabs = Prefabs.make();
     println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
 
     GameWorld world = GameWorld.make();
@@ -68,5 +134,7 @@ fn uint8 main() {
     expect(slot: 0, held: false, dt: dt, steps: 60);
     expect(slot: 1, held: true, dt: dt, steps: 60);
     println(s: "spin: base ${baseHz} Hz");
+    load();
+    loadMod();
     return 0;
 }

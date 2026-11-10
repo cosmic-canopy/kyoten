@@ -1,0 +1,38 @@
+// The first scene's zone files, checked at build with the loader's own code (components § Decided, the loader's
+// question 4 of 2026-11-09), so a typo is a build error and the loader refuses the same, in the same words, when a
+// mod's arrives at load: a placement naming no prefab, a `values` key naming no component of its prefab's family, a
+// layer group or a layer other than `main`, and a zone other than the origin (KYR-61).
+
+import { std::collections::DynamicArray, std::io::IoError, std::memory::Owned, std::fs::exists,
+         kyoten::content::RecordSource, kyoten::content::FolderSource, kyoten::content::LayerStack,
+         kyoten::content::Content, kyoten::content::Placement, kyoten::content::LoadRefusals,
+         kyoten::content::readScene, Manifest, Records, Family, Component, Index, Refusals, spellingsOf };
+
+export { checkZones };
+
+unsafe fn void checkZones(const ref Manifest game, const ref Records r, const ref DynamicArray<Family> families,
+                          const ref Index idx, ref Refusals no) {
+    string root = game.root() + "/content";
+    if (!exists(path: root)) { return; }
+    Result<FolderSource, IoError> opened = FolderSource.open(root: root, label: "content");
+    LayerStack stack = LayerStack.make();
+    match (give opened) {
+        case Ok(value: folder): { Owned<RecordSource> boxed = give folder; stack.push(source: give boxed); }
+        case Err(error: e): { string why = e.message(); no.add(where: "content", what: "cannot be listed: ${why}"); return; }
+    };
+    LoadRefusals found = LoadRefusals.make();
+    Content scene = readScene(stack: stack, prefabs: r.prefabNames(), firstScene: r.firstScene(),
+                              firstSceneFile: r.firstSceneFile(), no: found);
+    foreach (const ref Placement p in scene.placements().iterConst()) {
+        foreach (const ref Family f in families.iterConst()) {
+            if (!f.members().contains(item: p.prefab())) { continue; }
+            DynamicArray<string> keys = DynamicArray.empty();
+            foreach (const ref Component c in f.components().iterConst()) {
+                DynamicArray<string> spelled = spellingsOf(c: c, idx: idx);
+                foreach (const ref string k in spelled.iterConst()) { keys.add(item: copy k); }
+            }
+            p.checkValues(spellings: keys, no: found);
+        }
+    }
+    foreach (const ref string l in found.lines().iterConst()) { no.addLine(line: l); }
+}

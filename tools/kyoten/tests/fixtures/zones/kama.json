@@ -1,0 +1,19 @@
+{
+  "name": "zones",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.899",
+  "description": "a fixture: the first scene's zone files, each problem the tool refuses at build in the loader's words",
+  "entry": "src/app.kama",
+  "preloadFiles": ["content@/zones/content"],
+  "dependencies": { "kyoten": { "path": "../../../../../engine" } },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "parts": { "visibility": "internal", "importsOnly": [] },
+    "generated": {
+      "visibility": "internal",
+      "importsOnly": ["kyoten::frame", "kyoten::world", "kyoten::input", "std::collections", "parts"]
+    }
+  }
+}

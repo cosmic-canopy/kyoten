@@ -1,0 +1,4 @@
+// The one component the zones fixture's prefab has.
+export { Spin };
+@generate(Serializable, Deserializable)
+type value Spin { @field public float32 rate = 1; public default ctor make() { } }

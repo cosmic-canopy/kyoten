@@ -1,1 +1,3 @@
-{ "place": { "cube": { "prefab": "cube" } } }
+{ "place": { "cube":  { "prefab": "cube" },
+             "fast":  { "prefab": "fastCube", "values": { "Spin": { "rate": 5 } }, "note": "its own rate over its prefab's" },
+             "quick": { "prefab": "fastCube", "note": "no values: its prefab's own, 4" } } }

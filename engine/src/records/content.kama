@@ -1,7 +1,7 @@
 // kyoten::records — the content records whose shape is the engine's: the app and the bindings. A content file at the
-// root of `content/` holds keyed sections (`{ "app": … }`, `{ "bindings": … }`, `{ "prefabs": … }`), and since a
-// game's prefabs are its own, the file's full type is generated per game around these (REFERENCE.md § Records and
-// their files).
+// root of `content/` holds keyed sections (`{ "app": … }`, `{ "bindings": … }`, `{ "prefabs": … }`), read whole as
+// kyoten::content's `ContentFile`, whose prefabs are kept as JSON since a game's components are its own (REFERENCE.md
+// § Records and their files; components § Decided, the loader's question 2 of 2026-11-09).
 
 export { AppRecord, BindingRecord };
 

@@ -5,8 +5,8 @@
 
 import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, kyoten::content::LayerStack,
          kyoten::content::Content, kyoten::content::Placement, kyoten::content::Subtree,
-         kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::layOver,
-         kyoten::content::readWhole, kyoten::content::subtreeText, kyoten::world::Transform,
+         kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
+         kyoten::content::readWhole, kyoten::content::subtreeText, kyoten::content::folderFor, kyoten::world::Transform,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
          std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
@@ -220,7 +220,7 @@ fn void keys(ref Tally t) {
     LoadRefusals no = LoadRefusals.make();
     Content c = readContent(stack: stack, no: no);
     t.verdict(name: "readContent: a prefab written in two files of one layer is refused, naming both",
-              why: said(no: no, line: "content/b.records.json: prefab `cube` is written twice in one layer, also in content/a.records.json: keep one"));
+              why: said(no: no, line: "content/b.records.json: prefab `cube` is in content/a.records.json too: one content layer holds a key once"));
     t.verdict(name: "readContent: a content file is read strictly, its misspelt section named",
               why: said(no: no, line: "content/c.records.json: unknown field `prefabz`"));
 
@@ -270,6 +270,19 @@ fn void scenes(ref Tally t) {
     bool placedB = n2.placements().length() == 1 && n2.placements()[0].placed() == "b";
     t.verdict(name: "readContent: `app.firstScene` names the first scene among several",
               why: chosen == "two" && placedB && !none.any() ? "" : "scene `${chosen}`");
+
+    // The tool reads prefabs and the app record itself, and checks the zones with the loader's own code.
+    MemorySource alone = MemorySource.make(label: "content");
+    alone.put(path: "scenes/one/zone.0.0.records.json", text: "{ \"place\": { \"a\": { \"prefab\": \"cube\" }, \"b\": { \"prefab\": \"rock\" } } }");
+    alone.put(path: "scenes/two/zone.0.0.records.json", text: "{ \"place\": { \"c\": { \"prefab\": \"cube\" } } }");
+    DynamicArray<string> known = DynamicArray.empty();
+    known.add(item: "cube");
+    LoadRefusals sceneNo = LoadRefusals.make();
+    Content sc = readScene(stack: stackOf(low: give alone, high: Optional::None), prefabs: known, firstScene: "one",
+                           firstSceneFile: "content/app.records.json", no: sceneNo);
+    bool onlyA = sc.scene() == "one" && sc.placements().length() == 1 && sc.placements()[0].placed() == "a";
+    t.verdict(name: "readScene: the named scene's placements, against the prefabs it is handed",
+              why: onlyA ? said(no: sceneNo, line: "content/scenes/one/zone.0.0.records.json: placement `b` names prefab `rock`, which no content file declares") : all(no: sceneNo));
 }
 
 fn void sceneRefusals(ref Tally t) {
@@ -336,7 +349,22 @@ fn void subtrees(ref Tally t) {
               why: same && !no.any() ? "" : "position.x ${tr.position.x}, scale.y ${tr.scale.y}\n" + all(no: no));
 }
 
+// Where a game's content folder is in this build: `/<game>/content` on the web, where its manifest's `preloadFiles`
+// line packs it, and the folder the generator found natively.
+@compileFor(ARCH_WASM32)
+fn string expectedFolder() { return "/hello/content"; }
+@compileFor(!ARCH_WASM32)
+fn string expectedFolder() { return "C:/games/hello/content"; }
+
+fn void folders(ref Tally t) {
+    string at = folderFor(game: "hello", native: "C:/games/hello/content");
+    string want = expectedFolder();
+    t.verdict(name: "folderFor: the content folder of the build being made, the engine's choice per target",
+              why: at == want ? "" : "`${at}`, wanted `${want}`");
+}
+
 unsafe fn void contentTests(ref Tally t) {
+    folders(t: t);
     folderSource(t: t);
     layers(t: t);
     spelling(t: t);

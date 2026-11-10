@@ -11,7 +11,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::fs::readDir,
          std::fs::readText, std::fs::stat, std::fs::Metadata };
 
-export { RecordSource, FolderSource };
+export { RecordSource, FolderSource, folderFor };
 
 // Where records come from: one layer of the stack.
 type contract RecordSource for resource {
@@ -77,3 +77,11 @@ unsafe fn void walk(const ref string root, const ref string rel, ref SortedMap<s
         case Err(error: e): { }
     };
 }
+
+// Where a game's content folder is in the build being made: on the web where `preloadFiles` packs it,
+// `/<game>/content` (the manifest line the `kyoten` tool requires); natively the folder the generator found, `native`.
+// The choice is the engine's, so a game's generated code names no target.
+@compileFor(ARCH_WASM32)
+fn string folderFor(const ref string game, const ref string native) { return "/" + game + "/content"; }
+@compileFor(!ARCH_WASM32)
+fn string folderFor(const ref string game, const ref string native) { return copy native; }

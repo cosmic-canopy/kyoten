@@ -12,10 +12,11 @@
 //
 // A refusal at any step leaves every file as it was.
 
-import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir, std::fs::exists,
-         std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index, StaticEntry, Family, Kept, Schedule, readRecords,
+import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir,
+         std::fs::exists, std::fs::canonicalPath, std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index,
+         StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
-         worldKama, generatedFiles, checkHeaders, writeIfChanged, removeFile };
+         worldKama, generatedFiles, checkHeaders, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
 
 export { generate, clean };
 
@@ -56,6 +57,7 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
         refuseStatics(idx: idx, no: no);
         families = resolveFamilies(r: records, idx: idx, no: no);
         schedule = buildSchedule(r: records, idx: idx, game: game, families: families, warnings: warnings, no: no);
+        checkZones(game: game, r: records, families: families, idx: idx, no: no);
     }
     foreach (const ref string w in warnings.iterConst()) { eprintln(s: "kyoten: warning: ${w}"); }
     if (no.any()) {
@@ -78,10 +80,21 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     written.add(item: give tablesFile);
     written.add(item: give passesFile);
     written.add(item: give worldFile);
+    // The loader's game-shaped half, in the root module (components § Decided, the loader's question 1 of 2026-11-09).
+    string loader = loaderFile(game: gameName);
+    string contentDir = "";
+    if (exists(path: game.root() + "/content")) {
+        Result<string, IoError> c = canonicalPath(path: game.root() + "/content");
+        contentDir = match (give c) { case Ok(value: p): give p; case Err(error: e): game.root() + "/content"; };
+    }
+    writeIfChanged(path: game.root() + "/" + loader, text: loaderKama(game: gameName, families: families, idx: idx,
+                                                                       contentDir: contentDir));
+    written.add(item: give loader);
     foreach (const ref string f in before.iterConst()) {
         if (!written.contains(item: f)) { removeFile(path: game.root() + "/" + f); }
     }
-    println(s: "kyoten: generated src/generated/: actions, prefabs, tables, passes and world");
+    println(s: "kyoten: generated src/generated/: actions, prefabs, tables, passes and world; and the loader, src/${gameName}"
+             + ".generated.kama");
     return true;
 }
 

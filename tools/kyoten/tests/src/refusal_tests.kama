@@ -1,7 +1,7 @@
 // What the generator refuses, each naming the record and the fix (components § Decided: the naming rule of
 // 2026-11-07, a create queue's family, and step 5.3's questions of 2026-11-09). A refusal writes nothing.
 
-import { Tally, Setup, Ran, has, eraseDir, ranAs, none, std::collections::DynamicArray };
+import { Tally, Setup, Ran, has, erase, eraseDir, ranAs, none, check, std::collections::DynamicArray };
 
 export { refusalTests };
 
@@ -54,6 +54,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`rock`", b: "`pebble`", c: ""));
     says(t: t, name: "names: variants that start from each other are refused, naming the circle", r: n,
          words: allOf(a: "loopA -> loopB -> loopA", b: "", c: ""));
+    says(t: t, name: "names: a prefab's layer other than `main` is refused in the loader's words, as not built yet", r: n,
+         words: allOf(a: "content/things.records.json: prefab `high` names layer `sky`, and only `main` is built yet: more layers come with their row (KYR-61)", b: "", c: ""));
     // The strict reader refuses a key its object already gave (kama KR-359, 0.9.895, closing KY-43), so a prefab or an
     // action written twice in one file is named rather than the first silently lost.
     says(t: t, name: "names: a key written twice in a module's records file is refused, naming it and its file", r: n,
@@ -187,6 +189,32 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
                       || has(path: s.fixture(at: "processors/src/generated/actions.kama"));
     if (wroteWorld) { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: "it left generated files"); }
     else { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: ""); }
+
+    // The first scene's zone files, checked at build with the loader's own code, so each is refused in its words
+    // (components § Decided, the loader's question 4 of 2026-11-09). The scene `app.firstScene` does not name is not read.
+    install(t: t, s: s, game: "zones");
+    eraseDir(path: s.fixture(at: "zones/src/generated"));
+    erase(path: s.fixture(at: "zones/src/zones.generated.kama"));
+    Ran z = s.kyoten(command: "generate", game: "zones", more: none());
+    ranAs(t: t, name: "zones: refused", r: z, want: 1, says: "");
+    string zone = "content/scenes/hello/zone.0.0.records.json: ";
+    says(t: t, name: "zones: a placement naming no prefab is refused", r: z,
+         words: allOf(a: zone + "placement `a` names prefab `nope`, which no content file declares", b: "", c: ""));
+    says(t: t, name: "zones: a placement's layer group is refused, as not built yet", r: z,
+         words: allOf(a: zone + "placement `b` names group `boss`, and layer groups are not built yet: they come with their row (KYR-61)", b: "", c: ""));
+    says(t: t, name: "zones: a placement's layer other than `main` is refused, as not built yet", r: z,
+         words: allOf(a: zone + "placement `c` names layer `fx`, and only `main` is built yet: more layers come with their row (KYR-61)", b: "", c: ""));
+    says(t: t, name: "zones: a `values` key naming no component of its prefab's family is refused", r: z,
+         words: allOf(a: zone + "placement `d` sets `Mesh`, which is no component of prefab `cube`'s family: `Spin`", b: "", c: ""));
+    says(t: t, name: "zones: a placement with no prefab is refused by the reader", r: z,
+         words: allOf(a: zone + "placement `e`: missing field `prefab`", b: "", c: ""));
+    says(t: t, name: "zones: a zone other than the origin is refused, as not built yet", r: z,
+         words: allOf(a: "content/scenes/hello/far/zone.1.0.records.json: only the zone at the origin, `zone.0.0`, is built yet: more zones come with KYR-61", b: "", c: ""));
+    bool quiet = !z.says(what: "placement `ok`") && !z.says(what: "scenes/other");
+    check(t: t, name: "zones: a placement nothing is wrong with, and a scene that is not the first, are not refused",
+          ok: quiet, why: z.said());
+    t.verdict(name: "zones: a refusal writes nothing",
+              why: has(path: s.fixture(at: "zones/src/zones.generated.kama")) ? "it wrote the loader" : "");
 
     // A game must list its generated module, or kama gives its folder to the nearest module above it.
     install(t: t, s: s, game: "nogen");

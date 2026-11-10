@@ -7,7 +7,7 @@
 // alone; their values are the loader's to read (step 5.5). Every file is read strictly, so a misspelt key is named.
 
 import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::records::ActionKind,
-         kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::DynamicArray,
+         kyoten::content::ContentFile, kyoten::content::notMainLayer, std::collections::DynamicArray,
          std::collections::SortedMap, std::io::IoError, std::memory::Owned, std::fs::readText,
          std::serialization::text::json::JsonDeserializer, std::serialization::text::json::JsonValue,
          Manifest, Refusals, filesUnder, dirOf, nameProblem };
@@ -18,20 +18,6 @@ export { Records, PrefabDecl, CodeFile, readRecords };
 fn string actionMembers() { return " player forPlayer serialize deserialize mergeFrom "; }
 // Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
 fn string prefabMembers() { return " make of index equals hash compareTo format copy serialize deserialize mergeFrom "; }
-
-// A content file, as the tool reads it: the engine's sections typed, and prefabs kept as JSON.
-@generate(Deserializable)
-type resource ContentFile {
-    @field(name: "app") Optional<AppRecord> appField = Optional::None;
-    @field(name: "bindings", default) SortedMap<string, BindingRecord> bindingsField = SortedMap.empty();
-    @field(name: "prefabs", default) SortedMap<string, JsonValue> prefabsField = SortedMap.empty();
-
-    public default ctor make() { }
-
-    public const fn bool hasApp() { return match (this.appField) { case Some(value: a): true; case None: false; }; }
-    public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
-    public const fn const ref SortedMap<string, JsonValue> prefabs() { return this.prefabsField; }
-}
 
 // One prefab as its record writes it: where it is, what it starts from, and its components' keys as written, those
 // with values and those set to `null`, which a variant drops.
@@ -79,6 +65,8 @@ type resource Records {
     SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
     SortedMap<string, string> bindingFiles = SortedMap.empty();
     string appFile = "";
+    string sceneFirst = "";
+    string sceneFirstFile = "";
 
     friend readRecords[codeFiles, addAction, addContent, crossCheck];
 
@@ -88,6 +76,9 @@ type resource Records {
     public const fn const ref SortedMap<string, string> actions() { return this.actionModules; }
     public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
     public const fn DynamicArray<string> prefabNames() { return this.prefabDecls.keys(); }
+    // The scene `app.firstScene` names, or "" when no app record names one; and the file that names it.
+    public const fn const ref string firstScene() { return this.sceneFirst; }
+    public const fn const ref string firstSceneFile() { return this.sceneFirstFile; }
     // Every module's records files, in the order of their paths.
     public const fn const ref DynamicArray<CodeFile> code() { return this.codeFiles; }
 
@@ -110,6 +101,15 @@ type resource Records {
                 no.add(where: file, what: "the `app` record is in ${this.appFile} too: one content layer holds one");
             }
             this.appFile = copy file;
+            match (c.app()) {
+                case Some(value: a): {
+                    match (a.firstScene()) {
+                        case Some(value: s): { this.sceneFirst = copy s; this.sceneFirstFile = copy file; }
+                        case None: { }
+                    };
+                }
+                case None: { }
+            };
         }
         DynamicArray<string> bound = c.bindings().keys();
         foreach (const ref string b in bound.iterConst()) {
@@ -187,7 +187,13 @@ unsafe fn PrefabDecl declare(const ref string name, const ref JsonValue value, c
     match (value) {
         case Object(members: m): {
             foreach (string k in m) {
-                if (k == "layer" || k == "note") { continue; }
+                if (k == "note") { continue; }
+                if (k == "layer") {
+                    // Only `main` is built yet (KYR-61), refused in the loader's words.
+                    string named = match (m.getRef(key: k)) { case String(value: s): copy s; case _: "?"; };
+                    if (named != "main") { no.add(where: file, what: notMainLayer(subject: "prefab `" + name + "`", layer: named)); }
+                    continue;
+                }
                 match (m.getRef(key: k)) {
                     case String(value: s): {
                         if (k == "from") { origin = copy s; }

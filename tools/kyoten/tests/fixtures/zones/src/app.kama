@@ -1,0 +1,2 @@
+// The zones fixture: refused at build, so its main is never run.
+fn uint8 main() { return 0; }

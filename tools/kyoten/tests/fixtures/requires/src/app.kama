@@ -1,12 +1,35 @@
 // The requires fixture's main. It builds each family's prefab with every field named, so a field a requirement should
 // have added, and did not, fails the build; then it creates a cart and a mill, steps the world once and runs Output,
-// whose `show` prints each axle.
+// whose `show` prints each axle; then it loads the prefabs from the content (step 5.5).
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Rate, kyoten::frame::step,
          requires::parts::Wheel, requires::parts::Axle, requires::parts::Hub, requires::parts::Driver,
          requires::parts::Left, requires::parts::Right, requires::generated::Actions, requires::generated::CartPrefab,
          requires::generated::CartPrefabId, requires::generated::MillPrefab, requires::generated::CarterPrefab,
-         requires::generated::PairPrefab, requires::generated::GameWorld };
+         requires::generated::PairPrefab, requires::generated::GameWorld, requires::generated::MillPrefabId,
+         requires::generated::CarterPrefabId,
+         requires::generated::Prefabs, kyoten::content::LayerStack, kyoten::content::Content,
+         kyoten::content::LoadRefusals, kyoten::content::readContent, openContent, loadPrefabs };
+
+// The prefabs as the loader reads them from the content (step 5.5): a listed required component keeps its values.
+fn void load() {
+    Result<LayerStack, LoadRefusals> opened = openContent();
+    LayerStack stack = LayerStack.make();
+    match (give opened) { case Ok(value: s): { stack = give s; } case Err(error: e): { string m = e.message(); println(s: give m); return; } };
+    LoadRefusals no = LoadRefusals.make();
+    Content content = readContent(stack: stack, no: no);
+    Result<Prefabs, LoadRefusals> loaded = loadPrefabs(content: content);
+    match (give loaded) {
+        case Ok(value: p): {
+            MillPrefab mill = p.mill(id: MillPrefabId.mill());
+            CartPrefab oiled = p.cart(id: CartPrefabId.oiled());
+            CartPrefab cart = p.cart(id: CartPrefabId.cart());
+            CarterPrefab carter = p.carter(id: CarterPrefabId.carter());
+            println(s: "requires loaded: mill's axle turns ${mill.axle.turns}, oiled's ${oiled.axle.turns}, cart's ${cart.axle.turns}, mill's hub teeth ${mill.hub.teeth}, carter's player ${carter.actions.player}");
+        }
+        case Err(error: e): { string m = e.message(); println(s: give m); }
+    };
+}
 
 fn uint8 main() {
     bool differ = CartPrefabId.oiled() != CartPrefabId.default();
@@ -27,5 +50,6 @@ fn uint8 main() {
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
     step(world: world, time: clock.at(step: 0));
     world.output(time: clock.at(step: 0));
+    load();
     return 0;
 }

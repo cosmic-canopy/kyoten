@@ -1,0 +1,7 @@
+{ "place": {
+    "a":  { "prefab": "nope" },
+    "b":  { "prefab": "cube", "group": "boss" },
+    "c":  { "prefab": "cube", "layer": "fx" },
+    "d":  { "prefab": "cube", "values": { "Mesh": {} } },
+    "e":  { "values": { "Spin": {} } },
+    "ok": { "prefab": "cube", "layer": "main", "values": { "Spin": { "rate": 3 } }, "note": "nothing refused" } } }

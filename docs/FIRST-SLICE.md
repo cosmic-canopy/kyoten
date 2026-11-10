@@ -8,97 +8,113 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, the day's fourth session, under way)
+## Where it stands (2026-11-09, end of the day's fourth session)
 
-**The fourth session so far:**
+**Step 5's build is done** (KYR-7, the component model and the generator). Records generate the world, the
+loader reads content into it, and the tool checks both at build. **The next session starts here:**
 
-1. **The pin is `0.9.899+gf32373ea`** (`e3e6164`, a commit of its own), with every suite green on it. **kama's fixes
-   are taken** (`0c6f9fe`; components § Decided, the built entry "kama's fixes taken"):
-   - `ChunkSize` counts in `isize` (KR-357);
-   - the tool reads each parameter's `path` and the `default ctor` mark (KR-360), so `imports.kama` and
-     `ctorIsDefault` are gone;
-   - a component its module does not export is refused by name;
-   - a key written twice is refused (KR-359);
-   - ids compare directly (KR-358);
-   - a bounded list is one size on every target (KY-47).
+1. **Run the suites on kyoten's pin, `0.9.899+gf32373ea`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
+   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Read `../kama`'s log since
+   `f32373ea`, and bump the pin only as a commit of its own, with every suite green on the new one.
+   - **Still open with kama:**
+     - KY-45 (KR-361, not started): when it lands, one query answers for the dependencies and the tool's
+       per-dependency cache goes.
+     - KY-48 (no reader over a parsed `JsonValue`): the loader's `subtreeText` goes when kama has one. The owner
+       relays it.
+     - KY-40 (no integer vectors).
+2. **A question for the owner first: the loader's analysis cost.** With the loader, `spin`'s `kyoten generate` went
+   from 2.9 s to 8 s, and its `kama check` from 3 s to 7.7 s, measured back to back. The game now analyzes std's JSON
+   reader and file system and the loader's generic lays (components § Decided, the loader's built entry).
+   - The game's check would pay that anyway once step 7's `run` calls the loader.
+   - The tool's one query also pays it on every `generate`, for code it never reads.
 
-   KY-39, KY-41 to KY-44, KY-46 and KY-47 are removed from `docs/KAMA_GAPS.md`. Still open: KY-45 (kama KR-361, not
-   started; when it lands, one query answers for the dependencies and the per-dependency cache goes) and KY-48 (no
-   reader over a parsed `JsonValue`, the loader's stopgap). The owner relays KY-48.
-2. **Continue step 5** (KYR-7, the component model and the generator) at the loader, step 5.5's last part. Its seven
-   questions were answered on 2026-11-08, 5.3's four, 5.4's two and 5.5's four on 2026-11-09 (§ Questions the owner
-   answers). Each part is test-first: the test seen to fail, then the code, `tools/test.sh` green, mutations caught,
-   and a commit on `main`.
-   1. **`kyoten::world`:** built on 2026-11-08 (`bea9ce5`): `Transform` (a `ZoneCoord` and a `float32` offset, on
-      `std::math`; `rotateY(by:)` about its own Y axis, renormalized; `offsetTo(other:, zoneSize:)`;
-      `place(zone:, position:)`), the 8-byte `Handle`, and `ChunkSize::rowsFor(rowBytes:)`, run at compile time from
-      `sizeof`. Details in [design/components.md](design/components.md) § Decided, 2026-11-08.
-   2. **`kyoten::records`:** built on 2026-11-08 (`d8cfd92`): every record kind whose shape is the engine's, read with
-      `mergeFrom` through `JsonDeserializer.strict`, so layers merge by key and refusals name the path
-      (``unknown field `app.titel` ``). A content file's full type is generated per game around `AppRecord` and
-      `BindingRecord`, since prefabs are a game's own.
-   3. **The `kyoten` tool:** built on 2026-11-09 (`86fbdf4`, `3ab910e`): `kyoten::input::Digital`, and
-      `@kyoten/cli` in `tools/kyoten/`, built with `-o kyoten`, whose `generate`, `check`, `build`, `run` and `clean`
-      write `Actions`, the prefab types and ids and `Prefabs` into `src/generated/`, clear what a run did not write
-      under the header rule, and then run kama (KY-28). It finds each component a prefab names by asking kama, after
-      a first pass of generated names, with each dependency's answer cached by a hash of its sources. 43 cases on
-      four fixture games under `tools/kyoten/tests/fixtures/`, plus `spin`'s web build under node; details in
-      [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09.
-   4. **Signatures, passes and the world:** built on 2026-11-09 (`043f75a` and `72ce358`). The
-      engine gained `Store::World`, `kyoten::frame::Rate` (gating on the base clock, each rate's `Time`, the base as the
-      rates' least common multiple, 60 Hz when no record rates a processor) and `kyoten::world::Lookup`. The tool reads
-      each processor's signature from the `--search ""` it already ran, resolves each parameter's type through its
-      file's imports (the owner's answer to KY-39's stopgap), checks the records (phases, groups, rates, iterations,
-      the relative order, circles and the no-conflict rule), and writes `tables.kama`, `passes.kama` and `world.kama`.
-      `spin` is stepped 60 times and each cube's rotation is the same bits as by hand, natively and under node; the
-      `schedule` fixture runs 60, 30 and 50 Hz on a 300 Hz base through `frame`. Details in
-      [design/components.md](design/components.md) § Decided, the built entry of 2026-11-09 for step 5.4.
-   5. **Required components and the module `static` refusal:** built on 2026-11-09 (`dc785f3`), with step 5.5's
-      four questions answered that session. A component record's `requires` joins every prefab that has it, through a
-      chain, without overwriting what a prefab lists; a variant may not drop what its other components require; a
-      required component without a `default ctor` must be listed, which the tool learns by reading the ctor's line
-      until KR-360 (KY-44); and each field a requirement added says so in `prefabs.kama`. A module `static` in the
-      game's package is refused by its file and line. Details in [design/components.md](design/components.md)
-      § Decided, the built entry of 2026-11-09 for step 5.5.
-   6. **The loader, next: build it.** Its four questions were answered on 2026-11-09 (components § Decided, the
-      loader's four questions; probe in `.scratch/step55-loader`), so the next session starts with its tests.
-      - **`kyoten::content`,** a new engine module outside the simulation's fence: the `RecordSource` contract, shaped
-        so a pack fetched on the web fits behind it later (the loader is handed sources already open); the folder
-        source; and the layer stack. `engine/content/` waits for its first record (step 7's window).
-      - **The generated part,** in the root module's `src/<game>.generated.kama`, where step 7's `run` will call it:
-        each content file's prefabs read as `JsonValue` trees, each component's subtree laid over its `default ctor`
-        with `mergeFrom` through the strict reader, in layer order (engine content, game content, base prefab,
-        variant, a placement's `values`), and read whole when the type elects no default (`TypeEntry.electsDefault()`
-        knows which). A refusal names the file, the prefab and the component. The re-serialize of each subtree is one
-        function, KY-48's stopgap.
-      - **The first scene's zone placements become rows** through `create_<family>`, after `Prefabs` is filled.
-      - **The tool, at build time:** a game with `content/` whose manifest has no
-        `"preloadFiles": ["content@/<game>/content"]` is refused, naming the line; and the first scene's zone files
-        are checked: a placement naming no prefab, a `values` key naming no component of its family, and a `group` or
-        a layer other than `main` (not built yet) are refused. The loader refuses the same when it arrives later.
-      - Under node, run a wasm program from its build folder, where emscripten looks for the `.data` file. Step 5.5's
-        question 1 gets its own test here: a listed required component keeps the prefab's values.
-   7. **Step 6, KYR-53's check,** reads the manifests and the code records.
-   - **In scope:** what the hello cube touches. Parameters `ref C` and `const ref C`, `ref W` and `const ref W`,
-     `Handle` and `const ref Time`, with every other decided parameter refused as not built yet; `Digital` actions in
-     `kyoten::input`; required components added with their defaults; the module `static` refusal; and the 32 KiB
-     frame guard on every target but Windows (**built on 2026-11-08,** in the engine's manifest alone, which reaches
-     every game: [design/components.md](design/components.md) § Decided, the frame guard's entry of 2026-11-08).
-   - **Left to later rows:** side stores, `Previous` and `Current`, the queues, random keys, world stores, more than
-     one zone or layer, the footprint report, fusing a table's processors into one pass, `PARALLEL`, and `Mesh`,
-     `Material`, `Camera` and `Light` (step 9). The generated `run` is step 7's.
-   - **The probes behind the answers** sit in `.scratch/step5-main` (the fence's layout, and the generator's two
-     passes), `.scratch/step5-content` (content natively, under node and in Edge), `.scratch/step5-cli` (the tool's
-     package) and `.scratch/step5-tool` (step 5.3's: `Digital`, the generated files, prefabs read untyped, the query on
-     a fresh clone, a component's defaults, and KY-43 to KY-46's repros). Each is quoted where its decision is
-     recorded.
-3. **Meanwhile, Track 1,** in a session of its own: first the stopgaps each package's `AGENTS.*.md` lists, since they
-   change the API, each fix test-first. In `@kama/gpu`, WebGPU's two steps (an adapter, then a device from it) come
-   first, since the format choice and the request methods follow from them. Then `@kama/window`'s web half (W2: html5
-   callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer Events), `@kama/gpu`'s canvas surface and
-   a run in Edge (G6), gamepads (W3), and the triangle's pipeline set. A page served from localhost to headless Edge
-   prints its console to stderr (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's
-   content probe ran.
+   Bring the options with a recommendation:
+   - accept it;
+   - ask kama for a query that analyzes only the modules the tool reads, a new KY gap beside KY-45;
+   - or move what the loader imports.
+3. **Step 6, KYR-53's import check** (§ The order of work, step 6). It was decided on 2026-11-08: the simulation rule
+   is a module fence in `importsOnly`, with `core::env` on its list (ai-first-api § Decided, question 3, item 5). The
+   check reads the manifests and the code records, covers games too, and reads source only for the OS-flag refusal.
+   Bring any question its build meets to the owner first, then build it test-first.
+4. **Then the join waits on Track 1.** Step 7, the platform seam, builds the generated `run` on the `Platform` contract
+   and `@kama/window`. `run` calls `openContent`, `readContent`, `loadPrefabs` and `placeFirstScene`, and step 7 is also
+   where `engine/content/` gets its first records. Track 1, in a session of its own:
+   - first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix test-first;
+   - in `@kama/gpu`, WebGPU's two steps first (an adapter, then a device from it), since the format choice and the
+     request methods follow from them;
+   - then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with
+     Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's pipeline
+     set.
+
+   A page served from localhost to headless Edge prints its console to stderr
+   (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
+
+**The fourth session** (2026-11-09), each part test-first, `tools/test.sh` green and mutations caught before its
+commit:
+
+- **The pin moved to `0.9.899+gf32373ea`** (`e3e6164`), and kama's fixes were taken (`0c6f9fe`, `14abe9a`):
+  - `ChunkSize` counts in `isize` (KR-357);
+  - the tool reads each parameter's `path` and the `default ctor` mark (KR-360), so `imports.kama` and `ctorIsDefault`
+    are gone, and a component its module does not export is refused by name;
+  - a key written twice is refused (KR-359);
+  - ids compare directly (KR-358);
+  - a bounded list is one size on every target (KY-47).
+
+  KY-39, KY-41 to KY-44, KY-46 and KY-47 are removed from `docs/KAMA_GAPS.md`.
+- **`std::asset` was probed, and `preloadFiles` kept for development** (`7bf10bd`; the owner, 2026-11-09;
+  project-database § Decided). A dependency cannot ship assets, so the engine's content could not arrive that way.
+  `std::asset` becomes the shipped and Quest source behind `RecordSource`, with KYR-66's packs.
+- **`kyoten::content`, the loader's engine half** (`482e6b5`):
+  - `RecordSource`, `FolderSource` and `LayerStack`;
+  - the content and zone file shapes;
+  - `readContent`, `layOver`, `readWhole` and KY-48's `subtreeText`.
+
+  A game whose manifest does not preload its `content/` is refused.
+- **The loader's game-shaped half** (this session's last commit): `src/<game>.generated.kama` with `openContent`,
+  `loadPrefabs` and `placeFirstScene`, `Prefabs.of`, and the first scene's zones checked at build in the loader's
+  words. The details of each are in [design/components.md](design/components.md) § Decided, the built entries of
+  2026-11-09.
+
+**Step 5's parts, each with its details in components § Decided:**
+
+1. **`kyoten::world`** (2026-11-08, `bea9ce5`):
+   - `Transform`: a `ZoneCoord` and a `float32` offset, on `std::math`;
+   - the 8-byte `Handle`;
+   - `ChunkSize::rowsFor(rowBytes:)`, run at compile time from `sizeof`.
+2. **`kyoten::records`** (2026-11-08, `d8cfd92`): every record kind whose shape is the engine's, read with `mergeFrom`
+   through `JsonDeserializer.strict`.
+3. **The `kyoten` tool's first pass** (2026-11-09, `86fbdf4`, `3ab910e`): `@kyoten/cli`'s `generate`, `check`,
+   `build`, `run` and `clean`, which write `Actions`, the prefab types and ids and `Prefabs`. It finds components by
+   asking kama, and each dependency's answer is cached.
+4. **Signatures, passes and the world** (2026-11-09, `043f75a`, `72ce358`): `Store::World`, `Rate`, `Lookup`, and the
+   tool's `tables.kama`, `passes.kama` and `world.kama`.
+5. **Required components and the module `static` refusal** (2026-11-09, `dc785f3`).
+6. **The loader** (2026-11-09, this session): `kyoten::content`, the generated half, and the zone checks.
+7. **Step 6, KYR-53's check,** next.
+
+- **In scope, and built:** what the hello cube touches.
+  - Parameters `ref C` and `const ref C`, `ref W` and `const ref W`, `Handle`, and `const ref Time`, with every other
+    decided parameter refused as not built yet.
+  - `Digital` actions in `kyoten::input`, and required components added with their defaults.
+  - The module `static` refusal.
+  - The 32 KiB frame guard on every target but Windows.
+  - Content loaded from one layer, into one zone and the layer `main`.
+- **Left to later rows:**
+  - side stores, `Previous` and `Current`, the queues, random keys and world stores;
+  - more than one zone, layer or group (KYR-61), and `scene.records.json`;
+  - placed names mapped to handles;
+  - the footprint report, fusing a table's processors into one pass, and `PARALLEL`;
+  - `Mesh`, `Material`, `Camera` and `Light` (step 9);
+  - the generated `run` (step 7).
+- **The probes behind the answers** sit in `.scratch/`:
+  - `step5-main`: the fence's layout, and the generator's two passes;
+  - `step5-content`: content natively, under node and in Edge;
+  - `step5-cli`: the tool's package;
+  - `step5-tool`: step 5.3's, with the gap repros;
+  - `step55-loader`: the loader's questions;
+  - `step55-asset`: `std::asset`.
+
+  Each is quoted where its decision is recorded.
 
 **Every recommendation is the production answer,** or says plainly that it is a stopgap and what replaces it.
 
@@ -122,6 +138,10 @@ the design doc it settles before building on it.
   - **Step 5.5's first part, required components and the module `static` refusal** (2026-11-09, `dc785f3`): the
     tool alone, on a new `requires` fixture and refusals in `components` and `processors`, so its tests are 117 cases
     with the wasm legs. Its four questions were answered the same session (components § Decided, 2026-11-09).
+  - **Step 5.5's last part, the loader** (2026-11-09, `482e6b5` and the commit after it), on the `0.9.899` pin:
+    `kyoten::content` in the engine, 41 cases, so the engine's tests are 155. The tool generates the loader's game-shaped
+    half and checks the first scene's zones; its tests are 158 cases with the wasm legs, on a new `zones` fixture
+    and `nopreload`. Its four questions were answered on 2026-11-09, and the third again after `std::asset` was probed.
   - **KYR-66, the content delivery tool** (2026-11-08, `dea3db1`): its row and doc, twelve questions. Its name was
     question 1, answered the same day; the other eleven wait for KYR-66's turn, and nothing in the first slice needs
     them.
@@ -161,7 +181,7 @@ the design doc it settles before building on it.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
 - **Green on the pin, `0.9.899+gf32373ea` (2026-11-09, the fourth session),** as before on `0.9.886+g2159ce21`,
   `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
-  - kyoten's `tools/test.sh`: the engine and its 114 tests, the frame guard, the `kyoten` tool's 126 cases,
+  - kyoten's `tools/test.sh`: the engine and its 155 tests, the frame guard, the `kyoten` tool's 158 cases,
     `examples/games/fps` (it prints `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
   - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.

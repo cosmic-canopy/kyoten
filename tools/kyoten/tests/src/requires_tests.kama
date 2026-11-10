@@ -31,6 +31,11 @@ unsafe fn void requiresTests(ref Tally t, ref Setup s) {
     Ran ran = s.kyoten(command: "run", game: "requires", more: none());
     ranAs(t: t, name: "requires: on a fresh clone, `kyoten run`, whose main names every field", r: ran, want: 0,
           says: "requires: oiled is a cart true, carter's player 1, pair's right 2");
+    // The loader's question 1, of 2026-11-09: a requirement adds, never overwrites, so `mill`'s listed `Axle` keeps its 9
+    // turns, `oiled`'s its 5, and `cart`'s, added by `Wheel`'s requirement, starts from its default.
+    check(t: t, name: "requires: loaded, a required component a prefab lists keeps the prefab's values",
+          ok: ran.says(what: "requires loaded: mill's axle turns 9, oiled's 5, cart's 0, mill's hub teeth 12, carter's player 1"),
+          why: ran.said());
     string prefabs = read(path: s.fixture(at: "requires/src/generated/prefabs.kama"));
 
     string cart = typeText(text: prefabs, name: "CartPrefab");

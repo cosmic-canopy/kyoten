@@ -3,4 +3,5 @@
     "rock":     { "from": "pebble" },
     "loopA":    { "from": "loopB" },
     "loopB":    { "from": "loopA" },
-    "equals":   { "A": {} } } }
+    "equals":   { "A": {} },
+    "high":     { "A": {}, "layer": "sky" } } }

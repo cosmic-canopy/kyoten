@@ -15,7 +15,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Store, Records, PrefabDecl,
          CodeFile, Index, Refusals, fieldCase, isReserved, inModule, lastOf, moduleOfPath };
 
-export { Component, Family, resolveFamilies };
+export { Component, Family, resolveFamilies, spellingsOf, shownName };
 
 // A component as a prefab type holds it: its full path, its bare name, its field, and the component whose
 // requirement added it ("" when the prefab lists it).
@@ -313,4 +313,29 @@ unsafe fn DynamicArray<Family> resolveFamilies(const ref Records r, const ref In
         families.add(item: Family.make(origin: copy root, members: copy membersOf.getRef(key: root), parts: give parts));
     }
     return families;
+}
+
+// Whether a bare name reads as one component: exactly one exported `type value` has it, as `resolveKey` reads a key.
+fn bool bareResolves(const ref Index idx, const ref string name) {
+    DynamicArray<string> paths = idx.named(name: name);
+    int32 n = 0;
+    foreach (const ref string p in paths.iterConst()) {
+        if (idx.kindAt(path: p) == "value" && idx.exportedAt(path: p)) { n = n + 1; }
+    }
+    return n == 1;
+}
+
+// The keys a record may name a component by, as the loader matches them: its bare name while it reads as one
+// component, and its full path always.
+fn DynamicArray<string> spellingsOf(const ref Component c, const ref Index idx) {
+    DynamicArray<string> keys = DynamicArray.empty();
+    if (bareResolves(idx: idx, name: c.name())) { keys.add(item: copy c.name()); }
+    keys.add(item: copy c.path());
+    return keys;
+}
+
+// A component as a refusal names it: its bare name while that reads as one component, else its full path.
+fn string shownName(const ref Component c, const ref Index idx) {
+    if (bareResolves(idx: idx, name: c.name())) { return copy c.name(); }
+    return copy c.path();
 }

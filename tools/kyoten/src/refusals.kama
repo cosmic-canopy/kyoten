@@ -12,6 +12,9 @@ type resource Refusals {
 
     public fn void add(const ref string where, const ref string what) { this.lines.add(item: "${where}: ${what}"); }
 
+    // A refusal already written as `<file>: <what>`, as kyoten::content's `LoadRefusals` holds them.
+    public fn void addLine(const ref string line) { this.lines.add(item: copy line); }
+
     public const fn bool any() { return this.lines.length() > 0; }
 
     public fn void print() {

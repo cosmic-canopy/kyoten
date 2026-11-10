@@ -2355,3 +2355,73 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     - `readWhole` with nothing to read (it panics, so the suite fails).
   - **Fixed on the way:** `tools/test.sh`'s failure path ran `tail -20` over two files, which the shell refuses; it is
     `tail -n 20` throughout.
+- **2026-11-09, built: the loader's game-shaped half, and the first scene's zones checked at build** (step 5.5's last
+  part, which ends step 5's build of KYR-7; the import check is step 6), on kama `0.9.899+gf32373ea`, test-first.
+  - **The engine gained:**
+    - `readScene`, the scene half of `readContent`, given the prefab names and the app's first scene;
+    - `notMainLayer`, the one wording of a layer refusal;
+    - `LoadRefusals` as an `Error` whose message is every line, so a load returns it in a `Result`.
+    - A prefab or placement written twice in one layer is refused in the tool's existing words.
+  - **The tool writes `src/<game>.generated.kama`,** in the game's root module, under the header rule:
+    - `contentFolder()`, which returns `folderFor(game:, native:)`: `/<game>/content` on the web, and natively the
+      content folder made absolute. The engine makes the choice per target, so the game's generated code names no
+      target. A first version wrote the choice as `@compileFor` in the generated file, which made `kama check` analyze
+      the game twice, in two configurations, so the choice moved into the engine.
+    - `openContent()`: the stack, its one layer the content folder; a game with no `content/` gets an empty stack.
+    - `loadPrefabs(content:)`, a `Result<Prefabs, LoadRefusals>`, built from `prefab_<family>`, one per member in the
+      `PrefabId` order:
+      - it runs `checkPrefab`;
+      - each component with a `default ctor` starts from `T.default()` and is laid by `layOver`;
+      - each without one is read by `readWhole`. Every component is read before any result is unwrapped, so one load
+        names every refusal.
+      - A prefab the build does not know, and a built prefab that no content file writes, are refused.
+    - `placeFirstScene(world:, prefabs:, content:)`, a `Result<isize, LoadRefusals>`, built from `place_<family>`:
+      - it runs `checkValues`;
+      - it starts from its prefab's value and lays the placement's subtrees;
+      - it calls `create_<family>`, and a full table is refused.
+    - Each component's keys, `keys_<family>_<field>()`: its bare name while exactly one exported `type value` has
+      it, and its full path. This is the rule the tool reads a record's key by (`spellingsOf`, beside `resolveKey`).
+  - **`Prefabs` is built whole:** `Prefabs.of(<family>: …)` replaces its empty `make()`.
+  - **The tool reads content files as kyoten::content's `ContentFile`**, its own copy gone. It keeps `app.firstScene`
+    and refuses a prefab's layer other than `main` in the loader's words. After the families resolve, it checks the
+    first scene's zone files with `readScene` and each placement's `checkValues`, so a typo there is a build error:
+    ``content/scenes/hello/zone.0.0.records.json: placement `d` sets `Mesh`, which is no component of prefab `cube`'s
+    family: `Spin` ``.
+  - **Tested** natively (debug and release) and under node, run from the web build's own folder:
+    - **`spin` loads** `cube` at rate 2 with player 1, `fastCube` at 4 over its base, and `bigCube` at 2 with size 2.
+    - **It places** three rows, which its Output shows: `cube` at 2, `fast` at 5 over `fastCube`'s values, and `quick`,
+      with no values of its own, at `fastCube`'s 4.
+    - **A mod held in memory is refused at load,** each refusal naming its file, prefab and component: a misspelt
+      field, a misspelt component, `Actions` without its `player`, and a prefab the build does not know.
+    - **`requires`, the loader's question 1's own test:** `mill`'s listed `Axle` keeps its 9 turns, `oiled`'s its 5,
+      and `cart`'s, added by `Wheel`'s requirement, starts at 0.
+    - **`names`:** a prefab's layer is refused.
+    - **`zones`, a new fixture:** six zone refusals in the loader's words. A clean placement, and a scene that is not
+      the first, are left alone.
+  - **Mutations caught,** each turning a case red:
+    - the `preloadFiles` refusal off;
+    - the zone check off, and `values` not checked at build;
+    - a prefab's layer kept;
+    - a prefab's subtrees, or a placement's, not laid;
+    - a placement started from its family's base, not its own prefab;
+    - the not-in-the-build refusal off;
+    - `checkPrefab` not called at load.
+    - The zone case first failed under an unrelated mutation, because a loader file left by an earlier mutation
+      stayed on disk. The case now erases it first, and still catches a refusal that writes.
+  - **Measured** on `spin`, warm, back to back against the commit before (`482e6b5`, in a worktree). This machine ran
+    slower all day than at step 5.4: a program importing nothing took 2.4 s to check, on either pin.
+    - Before the loader, `kyoten generate` took 2.7 to 3.0 s and `kama check` 2.9 to 3.3 s, over 28 units.
+    - With it, `generate` takes 7.7 to 8.1 s and `check` 7.6 to 7.9 s, over 56 units in one configuration. With the
+      first version's `@compileFor`, `check` analyzed two configurations and took 13 to 14 s.
+    - **The growth is the content code, analyzed as part of the game:** std's JSON reader and file system, and the
+      loader's generic lays per component. Importing std's JSON alone adds 1.4 s to a one-line program.
+    - The game's check would pay this anyway once step 7's `run` calls the loader. But the tool's one query also
+      pays it on every `generate`, for code it never reads, and it grows with what the root module imports. That is
+      the owner's to weigh.
+  - **Left to later rows:**
+    - placed names mapped to handles, for entity references;
+    - `scene.records.json`;
+    - more zones, layers and groups (KYR-61);
+    - `engine/content/`'s first records, and the generated `run` (step 7);
+    - a mod's new prefab without a build;
+    - KY-48's re-serialize, when kama reads a `JsonValue`.

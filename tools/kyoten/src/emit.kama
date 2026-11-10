@@ -130,13 +130,18 @@ fn string prefabsKama(const ref string game, const ref DynamicArray<Family> fami
         }
         t = t + "}\n";
     }
-    t = t + "\n// The prefabs' values, a list per family in its members' order, filled by the loader (step 5.5).\n";
+    t = t + "\n// The prefabs' values, a list per family in its members' order, built whole by the loader from the content records\n";
+    t = t + "// (components § Decided, the loader's four questions of 2026-11-09).\n";
     t = t + "type resource Prefabs {\n";
+    string ofParams = "";
+    string ofBody = "";
     foreach (const ref Family f in families.iterConst()) {
         string ty = typeCase(s: f.root());
         t = t + "    DynamicArray<" + ty + "Prefab> of_" + f.root() + " = DynamicArray.empty();\n";
+        ofParams = ofParams + (ofParams.isEmpty() ? "" : ", ") + "DynamicArray<" + ty + "Prefab> " + f.root();
+        ofBody = ofBody + " this.of_" + f.root() + " = give " + f.root() + ";";
     }
-    t = t + "\n    public ctor make() { }\n";
+    t = t + "\n    public ctor of(" + ofParams + ") {" + ofBody + " }\n";
     foreach (const ref Family f in families.iterConst()) {
         string ty = typeCase(s: f.root());
         t = t + "\n    // A prefab of `" + f.root() + "`'s family, to start a new entity from.\n";

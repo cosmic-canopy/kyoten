@@ -1,0 +1,236 @@
+// The loader's game-shaped half, written into the game's root module as `src/<game>.generated.kama` (components
+// § Decided, the loader's four questions of 2026-11-09): where the game's content is, each family's prefabs laid from
+// it through kyoten::content, and the first scene's placements made rows. The root module sits outside the
+// simulation's fence, where reading files belongs; the generated `run` (step 7) will call it, and tests call it now.
+//
+// - **A component with a `default ctor` starts from it;** one without is read whole from its first subtree. Each is
+//   laid in kyoten::content's order: its prefab chain's base first, each prefab's layers lowest first. A prefab's value
+//   is made only when every component without a default was read, so a refused one leaves no half-made value.
+// - **A component is matched by its spellings,** its bare name while that reads as one component and its full path
+//   (`spellingsOf`), so a record may write either, as the tool reads it.
+// - **What the build does not know is refused at load,** as a mod's would be: a prefab no family holds, and a
+//   placement naming one. Every refusal names its file, and one load names them all.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, headerLine, typeCase, Family, Component, Index,
+         ImportSet, spellingsOf, shownName };
+
+export { loaderKama, loaderFile };
+
+// The file the loader's half is written to, from the game's root.
+fn string loaderFile(const ref string game) { return "src/" + game + ".generated.kama"; }
+
+// A string written as a kama literal: the path the generator found, `/`-separated.
+fn string literal(const ref string s) { return "\"" + s.replace(old: "\\", with: "/").replace(old: "\"", with: "\\\"") + "\""; }
+
+// A list of keys as a function's body.
+fn string keysBody(const ref DynamicArray<string> keys) {
+    string t = "    DynamicArray<string> k = DynamicArray.empty();\n";
+    foreach (const ref string key in keys.iterConst()) { t = t + "    k.add(item: " + literal(s: key) + ");\n"; }
+    return t + "    return k;\n";
+}
+
+fn string keysName(const ref Family f, const ref Component c) { return "keys_" + f.root() + "_" + c.field(); }
+fn string familyKeysName(const ref Family f) { return "keys_" + f.root(); }
+fn string prefabFn(const ref Family f) { return "prefab_" + f.root(); }
+fn string placeFn(const ref Family f) { return "place_" + f.root(); }
+
+// `contentDir` is the game's content folder, made absolute, or "" when the game has none.
+fn string loaderKama(const ref string game, const ref DynamicArray<Family> families, const ref Index idx,
+                     const ref string contentDir) {
+    ImportSet names = ImportSet.make(module: copy game);
+    names.declare(name: "contentFolder");
+    names.declare(name: "openContent");
+    names.declare(name: "loadPrefabs");
+    names.declare(name: "placeFirstScene");
+    names.add(path: "std::collections::DynamicArray");
+    names.add(path: "kyoten::content::LayerStack");
+    names.add(path: "kyoten::content::Content");
+    names.add(path: "kyoten::content::LoadRefusals");
+    if (!contentDir.isEmpty()) {
+        names.add(path: "std::io::IoError");
+        names.add(path: "std::memory::Owned");
+        names.add(path: "kyoten::content::RecordSource");
+        names.add(path: "kyoten::content::FolderSource");
+        names.add(path: "kyoten::content::folderFor");
+    }
+    names.add(path: game + "::generated::Prefabs");
+    names.add(path: game + "::generated::GameWorld");
+    if (families.length() > 0) {
+        names.add(path: "kyoten::content::Placement");
+        names.add(path: "kyoten::content::layOver");
+        names.add(path: "kyoten::world::Handle");
+    }
+    bool anyWhole = false;
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = typeCase(s: f.root());
+        names.add(path: game + "::generated::" + ty + "Prefab");
+        names.add(path: game + "::generated::" + ty + "PrefabId");
+        foreach (const ref Component c in f.components().iterConst()) {
+            names.add(path: c.path());
+            if (!idx.defaultAt(path: c.path())) { anyWhole = true; }
+        }
+    }
+    if (anyWhole) { names.add(path: "kyoten::content::readWhole"); }
+
+    string t = headerLine() + "\n";
+    t = t + "// The loader's game-shaped half (components § Decided, the loader's four questions of 2026-11-09): where the\n";
+    t = t + "// game's content is, each family's prefabs laid from it through kyoten::content, and the first scene's placements\n";
+    t = t + "// made rows. The generated `run` (step 7) calls it.\n\n";
+    t = t + names.block();
+    t = t + "export { contentFolder, openContent, loadPrefabs, placeFirstScene };\n\n";
+
+    // Where the content is.
+    t = t + "// The game's content: natively the folder the generator found, on the web where `preloadFiles` packed it.\n";
+    if (contentDir.isEmpty()) {
+        t = t + "// This game has no `content/`.\n";
+        t = t + "fn string contentFolder() { return \"\"; }\n\n";
+        t = t + "// The game's content as a stack: none, since it has no `content/`.\n";
+        t = t + "fn Result<LayerStack, LoadRefusals> openContent() { return Result::Ok(value: LayerStack.make()); }\n\n";
+    } else {
+        // The choice per target is the engine's (`folderFor`), so this file names no target and a check analyzes the game
+        // once.
+        t = t + "fn string contentFolder() { return folderFor(game: " + literal(s: game) + ", native: " + literal(s: contentDir) + "); }\n\n";
+        t = t + "// The game's content as a stack: its folder, the one layer until the engine's content joins below it.\n";
+        t = t + "fn Result<LayerStack, LoadRefusals> openContent() {\n";
+        t = t + "    LayerStack stack = LayerStack.make();\n";
+        t = t + "    Result<FolderSource, IoError> opened = FolderSource.open(root: contentFolder(), label: \"content\");\n";
+        t = t + "    match (give opened) {\n";
+        t = t + "        case Ok(value: folder): { Owned<RecordSource> boxed = give folder; stack.push(source: give boxed); }\n";
+        t = t + "        case Err(error: e): {\n";
+        t = t + "            LoadRefusals no = LoadRefusals.make();\n";
+        t = t + "            string why = e.message();\n";
+        t = t + "            no.add(where: contentFolder(), what: \"cannot be opened: \" + why);\n";
+        t = t + "            return Result::Err(error: give no);\n";
+        t = t + "        }\n";
+        t = t + "    };\n";
+        t = t + "    return Result::Ok(value: give stack);\n";
+        t = t + "}\n\n";
+    }
+
+    // The keys each component is matched by.
+    foreach (const ref Family f in families.iterConst()) {
+        DynamicArray<string> all = DynamicArray.empty();
+        foreach (const ref Component c in f.components().iterConst()) {
+            DynamicArray<string> keys = spellingsOf(c: c, idx: idx);
+            t = t + "fn DynamicArray<string> " + keysName(f: f, c: c) + "() {\n" + keysBody(keys: keys) + "}\n";
+            foreach (const ref string k in keys.iterConst()) { all.add(item: copy k); }
+        }
+        t = t + "fn DynamicArray<string> " + familyKeysName(f: f) + "() {\n" + keysBody(keys: all) + "}\n\n";
+    }
+
+    // Each family's prefab, laid from the content.
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = names.nameOf(path: game + "::generated::" + typeCase(s: f.root()) + "Prefab");
+        t = t + "// A prefab of `" + f.root() + "`'s family, each component laid in layer order.\n";
+        t = t + "fn Optional<" + ty + "> " + prefabFn(f: f) + "(const ref Content content, const ref string name, ref LoadRefusals no) {\n";
+        t = t + "    content.checkPrefab(prefab: name, spellings: " + familyKeysName(f: f) + "(), no: no);\n";
+        string args = "";
+        foreach (const ref Component c in f.components().iterConst()) {
+            string cty = names.nameOf(path: c.path());
+            string local = "v_" + c.field();
+            string shown = shownName(c: c, idx: idx);
+            string trees = "content.subtreesOf(prefab: name, spellings: " + keysName(f: f, c: c) + "(), no: no)";
+            if (idx.defaultAt(path: c.path())) {
+                t = t + "    " + cty + " " + local + " = " + cty + ".default();\n";
+                t = t + "    layOver::<" + cty + ">(into: " + local + ", trees: " + trees + ", component: " + literal(s: shown) + ", no: no);\n";
+                args = args + (args.isEmpty() ? "" : ", ") + c.field() + ": " + local;
+            } else {
+                t = t + "    Optional<" + cty + "> read_" + c.field() + " = readWhole::<" + cty + ">(trees: " + trees + ", component: "
+                    + literal(s: shown) + ", prefab: name, file: content.fileOf(prefab: name), no: no);\n";
+                args = args + (args.isEmpty() ? "" : ", ") + c.field() + ": " + local;
+            }
+        }
+        foreach (const ref Component c in f.components().iterConst()) {
+            if (idx.defaultAt(path: c.path())) { continue; }
+            string cty = names.nameOf(path: c.path());
+            t = t + "    " + cty + " v_" + c.field() + " = match (read_" + c.field()
+                + ") { case Some(value: v): v; case None: { return Optional::None; } };\n";
+        }
+        t = t + "    return Optional::Some(value: " + ty + ".of(" + args + "));\n";
+        t = t + "}\n\n";
+    }
+
+    // Every family's prefabs.
+    t = t + "// Each family's prefabs, in its members' order, read from `content`: every refusal named, and none when one is.\n";
+    t = t + "fn Result<Prefabs, LoadRefusals> loadPrefabs(const ref Content content) {\n";
+    t = t + "    LoadRefusals no = LoadRefusals.make();\n";
+    t = t + "    DynamicArray<string> built = DynamicArray.empty();\n";
+    foreach (const ref Family f in families.iterConst()) {
+        foreach (const ref string m in f.members().iterConst()) { t = t + "    built.add(item: " + literal(s: m) + ");\n"; }
+    }
+    t = t + "    DynamicArray<string> written = content.prefabNames();\n";
+    t = t + "    foreach (const ref string p in written.iterConst()) {\n";
+    t = t + "        if (!built.contains(item: p)) {\n";
+    t = t + "            no.add(where: content.fileOf(prefab: p), what: \"prefab `\" + p + \"` is not in this build: its components decide its family and its table, which `kyoten generate` writes\");\n";
+    t = t + "        }\n";
+    t = t + "    }\n";
+    t = t + "    foreach (const ref string p in built.iterConst()) {\n";
+    t = t + "        if (!content.hasPrefab(prefab: p)) { no.add(where: \"content\", what: \"prefab `\" + p + \"` is in this build and in no content file\"); }\n";
+    t = t + "    }\n";
+    string fill = "";
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = names.nameOf(path: game + "::generated::" + typeCase(s: f.root()) + "Prefab");
+        t = t + "    DynamicArray<" + ty + "> of_" + f.root() + " = DynamicArray.empty();\n";
+        isize i = 0;
+        foreach (const ref string m in f.members().iterConst()) {
+            string made = "made_" + f.root() + "_${i}";
+            t = t + "    Optional<" + ty + "> " + made + " = " + prefabFn(f: f) + "(content: content, name: " + literal(s: m) + ", no: no);\n";
+            t = t + "    match (" + made + ") { case Some(value: v): { of_" + f.root() + ".add(item: v); } case None: { } };\n";
+            i = i + 1;
+        }
+        fill = fill + (fill.isEmpty() ? "" : ", ") + f.root() + ": give of_" + f.root();
+    }
+    t = t + "    if (no.any()) { return Result::Err(error: give no); }\n";
+    t = t + "    return Result::Ok(value: Prefabs.of(" + fill + "));\n";
+    t = t + "}\n\n";
+
+    // Each family's placement.
+    foreach (const ref Family f in families.iterConst()) {
+        string ty = names.nameOf(path: game + "::generated::" + typeCase(s: f.root()) + "Prefab");
+        t = t + "// A placement of `" + f.root() + "`'s family: its prefab's values with its own laid over them, made a row.\n";
+        t = t + "fn bool " + placeFn(f: f) + "(ref GameWorld world, " + ty + " start, const ref Placement p, ref LoadRefusals no) {\n";
+        t = t + "    p.checkValues(spellings: " + familyKeysName(f: f) + "(), no: no);\n";
+        t = t + "    " + ty + " row = start;\n";
+        foreach (const ref Component c in f.components().iterConst()) {
+            string cty = names.nameOf(path: c.path());
+            t = t + "    layOver::<" + cty + ">(into: row." + c.field() + ", trees: p.subtreesOf(spellings: " + keysName(f: f, c: c)
+                + "()), component: " + literal(s: shownName(c: c, idx: idx)) + ", no: no);\n";
+        }
+        t = t + "    Optional<Handle> made = world.create_" + f.root() + "(prefab: row);\n";
+        t = t + "    match (made) {\n";
+        t = t + "        case Some(value: h): { return true; }\n";
+        t = t + "        case None: {\n";
+        t = t + "            string placed = copy p.placed();\n";
+        t = t + "            no.add(where: p.file(), what: \"placement `\" + placed + \"`: the table of `" + f.root()
+            + "`'s family is full: its budget is one chunk (components § Decided, question 7)\");\n";
+        t = t + "            return false;\n";
+        t = t + "        }\n";
+        t = t + "    };\n";
+        t = t + "}\n\n";
+    }
+
+    // The first scene's placements.
+    t = t + "// The first scene's placements as rows, in placed-name order: how many were made, or every refusal.\n";
+    t = t + "fn Result<isize, LoadRefusals> placeFirstScene(ref GameWorld world, const ref Prefabs prefabs, const ref Content content) {\n";
+    t = t + "    LoadRefusals no = LoadRefusals.make();\n";
+    t = t + "    isize placed = 0;\n";
+    t = t + "    foreach (const ref Placement p in content.placements().iterConst()) {\n";
+    t = t + "        bool made = false;\n";
+    string chain = "        ";
+    foreach (const ref Family f in families.iterConst()) {
+        string idTy = names.nameOf(path: game + "::generated::" + typeCase(s: f.root()) + "PrefabId");
+        foreach (const ref string m in f.members().iterConst()) {
+            t = t + chain + "if (p.prefab() == " + literal(s: m) + ") { made = " + placeFn(f: f) + "(world: world, start: prefabs."
+                + f.root() + "(id: " + idTy + "." + m + "()), p: p, no: no); }\n";
+            chain = "        else ";
+        }
+    }
+    string notBuilt = "{ no.add(where: p.file(), what: \"placement `\" + p.placed() + \"` names prefab `\" + p.prefab() + \"`, which is not in this build\"); }\n";
+    if (families.length() == 0) { t = t + "        " + notBuilt; } else { t = t + "        else " + notBuilt; }
+    t = t + "        if (made) { placed = placed + 1; }\n";
+    t = t + "    }\n";
+    t = t + "    if (no.any()) { return Result::Err(error: give no); }\n";
+    t = t + "    return Result::Ok(value: placed);\n";
+    t = t + "}\n";
+    return t;
+}

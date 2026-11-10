@@ -18,11 +18,12 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::io::I
          std::serialization::text::json::JsonValue, RecordSource, ContentFile, ZoneFile, PlacementRecord,
          subtreeText, mergeText, readNew };
 
-export { LoadRefusals, LayerStack, Subtree, Placement, Content, readContent, componentList, listed };
+export { LoadRefusals, LayerStack, Subtree, Placement, Content, readContent, readScene, notMainLayer, componentList,
+         listed };
 
 // What a read refused, each as `<file>: <what>`. A line already there is not added again, so a refusal met once per
-// component is named once.
-type resource LoadRefusals {
+// component is named once. It is an `Error`, so a load returns it in a `Result`; its message is every line.
+type resource LoadRefusals implements Error {
     DynamicArray<string> lineList = DynamicArray.empty();
 
     public ctor make() { }
@@ -36,6 +37,13 @@ type resource LoadRefusals {
     public const fn isize count() { return this.lineList.length(); }
     public const fn const ref DynamicArray<string> lines() { return this.lineList; }
     public const fn bool says(const ref string what) { return this.lineList.contains(item: what); }
+
+    public const fn string message() {
+        string all = "";
+        foreach (const ref string l in this.lineList.iterConst()) { all = all.isEmpty() ? copy l : all + "
+" + l; }
+        return all;
+    }
 }
 
 // The sources, lowest first. Each is handed in already open.
@@ -77,7 +85,7 @@ type resource Placement {
     string prefabName = "";
     SortedMap<string, DynamicArray<Subtree>> valueTrees = SortedMap.empty();
 
-    friend readContent[fileName, prefabName, valueTrees];
+    friend fillScene[fileName, prefabName, valueTrees];
 
     public ctor of(string file, string placed, string prefab) {
         this.fileName = give file;
@@ -121,7 +129,8 @@ type resource Content {
     string sceneName = "";
     DynamicArray<Placement> placementList = DynamicArray.empty();
 
-    friend readContent[prefabTrees, sceneName, placementList];
+    friend readContent[prefabTrees];
+    friend fillScene[sceneName, placementList];
 
     public ctor make() { }
 
@@ -225,7 +234,7 @@ type resource Content {
                         if (k == "layer") {
                             string named = match (value) { case String(value: s): copy s; case _: subtreeText(of: value); };
                             if (named != "main") {
-                                no.add(where: layer.file(), what: "prefab `${prefab}` names layer `${named}`, and only `main` is built yet: more layers come with their row (KYR-61)");
+                                no.add(where: layer.file(), what: notMainLayer(subject: "prefab `" + prefab + "`", layer: named));
                             }
                             continue;
                         }
@@ -299,26 +308,24 @@ fn string fileNameOf(const ref string path) {
     return copy path;
 }
 
+// What a refusal says of a layer other than `main`, for a prefab or a placement: the loader and the tool say it alike.
+fn string notMainLayer(const ref string subject, const ref string layer) {
+    return subject + " names layer `" + layer + "`, and only `main` is built yet: more layers come with their row (KYR-61)";
+}
+
 // Every content file of every layer, lowest first, and the first scene's placements.
 fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
     Content c = Content.make();
     string firstScene = "";
     string firstSceneFile = "";
-    SortedMap<string, bool> scenes = SortedMap.empty();
-    string topLabel = "";
     isize i = 0;
     while (i < stack.count()) {
         string label = stack.layers()[i].name();
-        topLabel = copy label;
         DynamicArray<string> files = stack.layers()[i].files();
         SortedMap<string, string> writtenHere = SortedMap.empty();
         foreach (const ref string path in files.iterConst()) {
+            if (path.startsWith(prefix: "scenes/")) { continue; }
             string file = label + "/" + path;
-            if (path.startsWith(prefix: "scenes/")) {
-                string scene = sceneOf(path: path);
-                if (!scene.isEmpty()) { scenes.put(key: copy scene, value: true); }
-                continue;
-            }
             Result<string, IoError> text = stack.layers()[i].text(path: path);
             string body = "";
             bool read = false;
@@ -340,7 +347,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
             foreach (const ref string p in names.iterConst()) {
                 if (writtenHere.contains(key: p)) {
                     string other = copy writtenHere.getRef(key: p);
-                    no.add(where: file, what: "prefab `${p}` is written twice in one layer, also in ${other}: keep one");
+                    no.add(where: file, what: "prefab `${p}` is in ${other} too: one content layer holds a key once");
                     continue;
                 }
                 writtenHere.put(key: copy p, value: copy file);
@@ -351,8 +358,37 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
         }
         i = i + 1;
     }
+    DynamicArray<string> prefabs = c.prefabTrees.keys();
+    fillScene(stack: stack, c: c, prefabs: prefabs, firstScene: firstScene, firstSceneFile: firstSceneFile, no: no);
+    return c;
+}
 
-    // The first scene.
+// The first scene and its placements alone, given the prefabs the content declares and the app's first scene ("" for
+// none, with the file that names it). The `kyoten` tool checks a game's zones with it at build, having read the
+// prefabs and the app record itself, so the loader and the tool refuse a zone in the same words.
+fn Content readScene(const ref LayerStack stack, const ref DynamicArray<string> prefabs, const ref string firstScene,
+                     const ref string firstSceneFile, ref LoadRefusals no) {
+    Content c = Content.make();
+    fillScene(stack: stack, c: c, prefabs: prefabs, firstScene: firstScene, firstSceneFile: firstSceneFile, no: no);
+    return c;
+}
+
+// The first scene: the one `firstScene` names, else the only folder under `scenes/`; then its zone files, lowest layer
+// first, each placement merged over its lower layers' by placed name.
+fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicArray<string> prefabs,
+                  const ref string firstScene, const ref string firstSceneFile, ref LoadRefusals no) {
+    SortedMap<string, bool> scenes = SortedMap.empty();
+    string topLabel = "";
+    isize i = 0;
+    while (i < stack.count()) {
+        topLabel = stack.layers()[i].name();
+        DynamicArray<string> files = stack.layers()[i].files();
+        foreach (const ref string path in files.iterConst()) {
+            string scene = sceneOf(path: path);
+            if (!scene.isEmpty()) { scenes.put(key: copy scene, value: true); }
+        }
+        i = i + 1;
+    }
     if (!firstScene.isEmpty()) {
         if (scenes.contains(key: firstScene)) { c.sceneName = copy firstScene; }
         else { no.add(where: firstSceneFile, what: "`app.firstScene` names `${firstScene}`, which is no folder under `scenes/`"); }
@@ -364,9 +400,8 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
         string named = listed(items: all);
         no.add(where: topLabel, what: "the scenes ${named} are there, and no `app.firstScene` names the first: name it in the app record");
     }
-    if (c.sceneName.isEmpty()) { return c; }
+    if (c.sceneName.isEmpty()) { return; }
 
-    // Its zone files, lowest layer first; each placement merged over its lower layers' by placed name.
     string under = "scenes/" + c.sceneName + "/";
     SortedMap<string, Placement> placed = SortedMap.empty();
     i = 0;
@@ -398,7 +433,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
             foreach (const ref string k in keys.iterConst()) {
                 if (placedHere.contains(key: k)) {
                     string other = copy placedHere.getRef(key: k);
-                    no.add(where: file, what: "placement `${k}` is written twice in one layer, also in ${other}: keep one");
+                    no.add(where: file, what: "placement `${k}` is in ${other} too: one content layer holds a key once");
                     continue;
                 }
                 placedHere.put(key: copy k, value: copy file);
@@ -409,7 +444,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
                 if (!recWhy.isEmpty()) { no.add(where: file, what: "placement `${k}`: ${recWhy}"); continue; }
                 bool ok = true;
                 string prefab = copy rec.prefab();
-                if (!c.prefabTrees.contains(key: prefab)) {
+                if (!prefabs.contains(item: prefab)) {
                     no.add(where: file, what: "placement `${k}` names prefab `${prefab}`, which no content file declares");
                     ok = false;
                 }
@@ -419,8 +454,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
                     ok = false;
                 }
                 if (!rec.layer().isEmpty() && rec.layer() != "main") {
-                    string layerName = copy rec.layer();
-                    no.add(where: file, what: "placement `${k}` names layer `${layerName}`, and only `main` is built yet: more layers come with their row (KYR-61)");
+                    no.add(where: file, what: notMainLayer(subject: "placement `" + k + "`", layer: rec.layer()));
                     ok = false;
                 }
                 if (!ok) { continue; }
@@ -444,5 +478,4 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
         Optional<Placement> taken = placed.remove(key: k);
         match (give taken) { case Some(value: p): { c.placementList.add(item: give p); } case None: { } };
     }
-    return c;
 }
