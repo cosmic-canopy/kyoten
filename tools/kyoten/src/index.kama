@@ -1,9 +1,12 @@
 // Which types the game and its dependencies declare, asked of kama (components § Decided, 2026-11-09, question 1).
 //
-// - The game: one `kama query <kama.json> <file> --search "" --json`, which lists every symbol with its kind and file.
-//   It runs after the first pass has written the generated names, since on a fresh clone no query answers until the
-//   generated module exists, and it answers through the type errors those stubs leave in processor bodies. The
-//   generated files are left out of the answer.
+// - The game: one `kama query <kama.json> <file> --modules <every module but the root> --search "" --json`, which lists
+//   every symbol of those modules with its kind and file. The root holds `main` and the generated code, outside the
+//   simulation, and imports the most (the loader, and from step 7 the platform), so it is left out: the query costs
+//   what the code it reads costs (KY-49, kama KR-365; components § Decided, 2026-11-10). It runs after the first pass
+//   has written the generated names, since on a fresh clone no query answers until the generated module exists, and it
+//   answers through the type errors those stubs leave in processor bodies. The generated files are left out of the
+//   answer.
 // - Each dependency: the same query rooted at its own kama.json, since `--search` answers only for the package it is
 //   pointed at (KY-45), and that re-checks the whole dependency. Its answer is cached in the game's
 //   `out/kyoten/components/`, keyed by a hash of the kama that answered and of the dependency's kama.json and sources,
@@ -242,15 +245,43 @@ fn bool isGenerated(const ref string rel) {
     return rel.startsWith(prefix: "generated/") || rel.endsWith(suffix: ".generated.kama");
 }
 
+// The modules a game's query names: every module its manifest lists but the root, as kama.json spells them, and a
+// file in one of them to start from ("" when none holds a file). The root holds `main` and the generated code, outside
+// the simulation, and imports the most, so asking about it would cost what the whole app costs (components § Decided,
+// 2026-11-10, KY-49).
+unsafe fn string scopeOf(const ref Manifest game, ref DynamicArray<string> modules) {
+    foreach (const ref string f in game.moduleFolders().iterConst()) {
+        if (f != ".") { modules.add(item: copy f); }
+    }
+    DynamicArray<string> files = filesUnder(dir: game.sourceDir());
+    foreach (const ref string rel in files.iterConst()) {
+        if (!rel.endsWith(suffix: ".kama")) { continue; }
+        if (game.moduleOf(folder: dirOf(path: rel)) != game.name()) { return game.sourceDir() + "/" + rel; }
+    }
+    return "";
+}
+
 // The types one package declares, by kama's answer, with its free functions into `functions` and its module statics
-// into `statics`; `skipGenerated` leaves out the generated files' own.
-unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated,
+// into `statics`; `skipGenerated` leaves out the generated files' own. `scoped` asks about the modules `scopeOf`
+// names, a game's; a dependency's whole package is asked, and its answer cached.
+unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifest m, bool skipGenerated, bool scoped,
                                                 ref DynamicArray<FunctionEntry> functions,
                                                 ref DynamicArray<StaticEntry> statics, ref string why) {
     DynamicArray<string> argv = DynamicArray.empty();
     argv.add(item: "query");
     argv.add(item: m.manifestPath());
-    argv.add(item: m.startFile());
+    if (scoped) {
+        DynamicArray<string> modules = DynamicArray.empty();
+        string start = scopeOf(game: m, modules: modules);
+        if (start.isEmpty()) { return Optional::Some(value: DynamicArray.empty()); }
+        string names = "";
+        foreach (const ref string n in modules.iterConst()) { names = names.isEmpty() ? copy n : names + "," + n; }
+        argv.add(item: give start);
+        argv.add(item: "--modules");
+        argv.add(item: give names);
+    } else {
+        argv.add(item: m.startFile());
+    }
     argv.add(item: "--search");
     argv.add(item: "");
     argv.add(item: "--json");
@@ -419,7 +450,7 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
     Manifest depManifest = match (give dm) { case Some(value: m): give m; case None: { return Optional::None; } };
     DynamicArray<FunctionEntry> theirFunctions = DynamicArray.empty();
     DynamicArray<StaticEntry> theirStatics = DynamicArray.empty();
-    Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, functions: theirFunctions,
+    Optional<DynamicArray<TypeEntry>> asked = ask(kama: kama, m: depManifest, skipGenerated: false, scoped: false, functions: theirFunctions,
                                                   statics: theirStatics, why: why);
     DynamicArray<TypeEntry> types = match (give asked) {
         case Some(value: ts): give ts;
@@ -448,7 +479,7 @@ unsafe fn Index buildIndex(ref Kama kama, const ref Manifest game, ref Refusals 
     string why = "";
     DynamicArray<FunctionEntry> functions = DynamicArray.empty();
     DynamicArray<StaticEntry> statics = DynamicArray.empty();
-    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, functions: functions,
+    Optional<DynamicArray<TypeEntry>> own = ask(kama: kama, m: game, skipGenerated: true, scoped: true, functions: functions,
                                                 statics: statics, why: why);
     match (give own) {
         case Some(value: ts): { idx.addAll(es: give ts); }

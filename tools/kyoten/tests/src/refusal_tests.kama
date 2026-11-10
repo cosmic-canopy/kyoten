@@ -183,6 +183,15 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`Ghost`", b: "`processors::bad`", c: ""));
     says(t: t, name: "processors: a module `static` is refused, naming its line and pointing to a world component", r: p,
          words: allOf(a: "`hits`", b: "src/bad/counter.kama:2", c: "world component"));
+    // The root module holds `main`, outside the simulation, and the tool asks kama about the game's other modules alone
+    // (components § Decided, 2026-11-10, KY-49).
+    // Counted only when the run reached the statics, which `hits` shows: a run refused earlier says nothing of either.
+    bool reached = p.says(what: "`hits`");
+    bool rootStatic = p.says(what: "rootTally");
+    t.verdict(name: "processors: a module `static` in the root module is not refused: the root holds `main`, outside the simulation",
+              why: !reached ? "the run did not reach the statics: " + p.said() : rootStatic ? "refused: " + p.said() : "");
+    says(t: t, name: "processors: a prefab naming a component only the root module declares is refused, pointing to a module folder",
+         r: p, words: allOf(a: "prefab `rootish`", b: "`Rooted`", c: "module folder"));
     says(t: t, name: "processors: a base clock above 1,000 Hz is warned of, with the nearest rates that fit", r: p,
          words: allOf(a: "4620 Hz", b: "7 Hz as 6 Hz", c: "11 Hz as 10 Hz"));
     bool wroteWorld = has(path: s.fixture(at: "processors/src/processors.world.generated.kama"))

@@ -72,7 +72,7 @@ unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref
     if (key.contains(substring: "::")) {
         string kind = idx.kindAt(path: key);
         if (kind.isEmpty()) {
-            no.add(where: file, what: "${subject} names `${key}`, which is no type the game or its dependencies declare");
+            no.add(where: file, what: "${subject} names `${key}`, which is no type the game's modules or its dependencies declare: a component is an exported `type value` in a module folder, never the game's root module");
             return "";
         }
         if (kind != "value") {
@@ -113,7 +113,7 @@ unsafe fn string resolveKey(const ref Index idx, const ref string key, const ref
         no.add(where: file, what: "${subject} names `${key}`, a ${otherKind}, and a component is a `type value`");
         return "";
     }
-    no.add(where: file, what: "${subject} names `${key}`, which is no type the game or its dependencies declare: a component is an exported `type value`");
+    no.add(where: file, what: "${subject} names `${key}`, which is no type the game's modules or its dependencies declare: a component is an exported `type value` in a module folder, never the game's root module");
     return "";
 }
 

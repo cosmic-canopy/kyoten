@@ -213,6 +213,24 @@ unsafe fn PrefabDecl declare(const ref string name, const ref JsonValue value, c
     return PrefabDecl.make(file: copy file, origin: give origin, keys: give keys, nulls: give nulls);
 }
 
+// A game's root module holds `main` and the generated code, outside the simulation, and the tool asks kama about the
+// game's other modules alone (components § Decided, 2026-11-10), so a processor or a component record in a records
+// file there is refused, pointing to a module folder. True when one was.
+fn bool refusedInRoot(const ref ModuleRecord record, const ref string file, ref Refusals no) {
+    bool any = false;
+    DynamicArray<string> ps = record.processors().keys();
+    foreach (const ref string p in ps.iterConst()) {
+        no.add(where: file, what: "processor `${p}` is in the root module, which holds `main` and the generated code, outside the simulation: move it, with its code, to a module folder (`src/<module>/`)");
+        any = true;
+    }
+    DynamicArray<string> cs = record.components().keys();
+    foreach (const ref string c in cs.iterConst()) {
+        no.add(where: file, what: "component `${c}` is in the root module, which holds `main` and the generated code, outside the simulation: move it, with its type, to a module folder (`src/<module>/`)");
+        any = true;
+    }
+    return any;
+}
+
 // Read every module's records and every content file of the game, refusing what the records alone show is wrong.
 unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
     Records r = Records.make();
@@ -233,6 +251,7 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
                 case _: { no.add(where: file, what: "action `${a}`: only `Digital` actions are built so far; the other kinds come with KYR-54 (step 8)"); }
             };
         }
+        if (!game.isLibrary() && module == game.name() && refusedInRoot(record: m, file: file, no: no)) { continue; }
         r.codeFiles.add(item: CodeFile.of(module: copy module, file: copy file, record: give m));
     }
     string content = game.root() + "/content";

@@ -2498,3 +2498,50 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
   - **Mutations caught (10):** each reader made lenient; `mergeTree` swallowing its refusal; `readTree` dropping its
     words; `layOver` laying nothing; `readWhole` dropping the first refusal's words, skipping the later subtrees, or
     dropping a later refusal; a placement not read at all.
+- **2026-11-10, the owner: the tool's query leaves out the game's root module** (KY-49's answer, kama KR-365's
+  `--modules`, which the decision of 2026-11-09 above said the tool would switch to). The owner: "if you recommend
+  option 1 as the production answer I'm fine with that". Recommended and chosen, of four.
+  - **The question:** the same answer that finds components and processors also feeds the module `static` refusal,
+    which step 5.5 applied to the root module too. Any question kama answers about the root costs what the whole app
+    costs, since the root imports the most: the loader now, and from step 7 `run` and the platform.
+  - **Measured on `spin`,** relative only, since kama's own tests ran on this machine, alternated over 6 rounds:
+    - `--modules cube,view,generated`: 0.09 times the whole package's query;
+    - the root alone (`--modules .`): 1.03 times;
+    - one root file's outline (`--symbols`): 0.97 times, since kama analyzes what a file imports even for an outline.
+
+    The scoped query's answers for every module but the root are the same as the whole package's.
+  - **Decided:**
+    - the game's query names every module its manifest lists but the root;
+    - the `static` refusal covers those modules, Update's and Output's alike. A `static` in the root is the app's own:
+      no fenced module imports the root, so it cannot reach the world, and a `std::app` program may need one (an exit
+      status `main` returns after `run`);
+    - a processor or a component record in a game's root records file is refused, pointing to a module folder, even
+      when the root's `importsOnly` holds the fence. A prefab naming a type only the root declares is refused the same
+      way. This enforces step 5's layout: simulation code in module folders;
+    - a library's root is its API (the `glow` fixture's components), so a library is not held to it, and a dependency's
+      query stays whole and cached.
+  - **Considered:**
+    - a second query on the root, which costs what the whole app costs;
+    - scanning the root's source for `static`, which reads source instead of asking the compiler (step 5.3's
+      question 1), and misreads comments and strings without kama's lexer;
+    - asking kama for an outline that analyzes no imports, and paying today's cost until it lands.
+- **2026-11-10, built: the tool's query leaves out the game's root module** (the decision above, KY-49's answer),
+  test-first on kyoten's pin, `0.9.909+g64f011de`.
+  - `tools/kyoten/src/index.kama`'s `scopeOf` names every module the game's manifest lists but the root, and a file in
+    one of them to start from. The game's query is `kama query <kama.json> <file> --modules <them> --search "" --json`.
+    A dependency's stays whole, and cached.
+  - `records.kama`'s `refusedInRoot` refuses a processor or a component record in a game's root records file, pointing
+    to a module folder, and leaves that file's code out, so the fence and the schedule do not refuse it again with
+    advice that no longer fits. A library is exempt: its root is its API.
+  - The "no type" refusal now says where a component lives: "an exported `type value` in a module folder, never the
+    game's root module".
+  - **Tested** on the fixtures:
+    - `processors`: its root holds a `static` and a component. The `static` is not refused, counted only when the run
+      reached the statics, since `hits` was refused. A prefab naming the root's component is refused, pointing to a
+      module folder.
+    - `fence`: its root now has an `importsOnly` that holds the fence, so only the new rule can refuse its processor `z`
+      and the component record `Zed`. This case replaced "a processor in the root module, which has no list, is
+      refused", whose advice, a list, no longer fits. The refusal stays, and it is stricter.
+    - `tiers`: a component record in a library's root is not refused.
+  - **Mutations caught (5):** the game's query unscoped; the scope naming the root too; no root refusal for a game; the
+    library guard dropped; a root component record missed.

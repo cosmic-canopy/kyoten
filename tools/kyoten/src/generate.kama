@@ -103,9 +103,10 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     return true;
 }
 
-// Each module `static` in the game's package, its root module included, is refused: it sits outside the world, so a
-// save, a rollback or a replay does not restore it, and kama gives each isolate its own copy (components § Decided,
-// 2026-11-07). A dependency's are not the game's to refuse.
+// Each module `static` in the game's modules is refused: it sits outside the world, so a save, a rollback or a replay
+// does not restore it, and kama gives each isolate its own copy (components § Decided, 2026-11-07). The root module's
+// are the app's own: it holds `main` and the generated code, outside the simulation, which no fenced module imports,
+// and the query leaves it out (2026-11-10). A dependency's are not the game's to refuse.
 fn void refuseStatics(const ref Index idx, ref Refusals no) {
     foreach (const ref StaticEntry s in idx.statics().iterConst()) {
         string name = copy s.name();

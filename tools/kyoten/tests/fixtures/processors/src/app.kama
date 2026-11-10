@@ -1,1 +1,11 @@
+// The root module holds `main`, outside the simulation (components § Decided, 2026-11-10): the tool asks kama about the
+// game's other modules alone, so a module `static` here is the app's own and is not refused, and a component declared
+// here is no component a prefab can list, since simulation code lives in a module folder.
+
+export { Rooted };
+
+static int32 rootTally = 0;
+
+type value Rooted { public int32 n = 0; public default ctor make() { } }
+
 fn uint8 main() { return 0; }

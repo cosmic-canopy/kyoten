@@ -1,1 +1,2 @@
-{ "prefabs": { "unit": { "Hp": {}, "Armor": {}, "Score": {}, "note": "lists a world component, which is refused" } } }
+{ "prefabs": { "unit": { "Hp": {}, "Armor": {}, "Score": {}, "note": "lists a world component, which is refused" },
+               "rootish": { "Rooted": {}, "note": "lists a component only the root module declares, which is refused" } } }

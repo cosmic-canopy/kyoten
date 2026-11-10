@@ -203,6 +203,8 @@
        - **The layout:**
          - **The root module is the app's.** It holds `main` and has no `importsOnly`, since nothing in it runs in a
            simulation phase. The check refuses a processor in a module without one, so a processor cannot hide there.
+           *(Since 2026-11-10 a processor or a component record in a game's root is refused even with a list, since
+           the tool's query leaves the root out: components § Decided, KY-49's answer.)*
          - **The generated `run` is written beside `main`,** as `src/<game>.generated.kama`, by the naming rule (a
            module's generated names go into that module), so `main` reads `import { run };`. `run` is built at step 7.
          - **Simulation code lives in module folders,** as REFERENCE's towers layout already had it. The hello cube's
@@ -308,7 +310,7 @@
            - `std::time` reached through a module of its own;
            - `core::env`;
            - `std::random` in a Constraints group;
-           - a processor in the root module.
+           - a processor in the root module (since 2026-11-10 by the records check, even with a list).
          - Not refused:
            - an Output module that reads the clock;
            - a module with no processors;

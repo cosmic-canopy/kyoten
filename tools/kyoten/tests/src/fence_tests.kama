@@ -30,8 +30,13 @@ unsafe fn void fenceTests(ref Tally t, ref Setup s) {
          words: allOf(a: "module \"env\" holds the Input processor `f`", b: "names `core::env`", c: ""));
     says(t: t, name: "fence: a processor's phase is its group's", r: f,
          words: allOf(a: "module \"grouped\" holds the Constraints processor `p`", b: "names `std::random`", c: ""));
-    says(t: t, name: "fence: a processor in the root module, which has no list, is refused", r: f,
-         words: allOf(a: "module \".\" holds the Update processor `z`", b: "", c: ""));
+    // A game's root module holds `main` and the generated code, and the tool asks kama about its other modules alone, so a
+    // processor or a component there is refused even when the root's list holds the fence (components § Decided,
+    // 2026-11-10). It replaced the fence's own refusal of a root with no list, whose advice, a list, no longer fits.
+    says(t: t, name: "fence: a processor in a game's root module is refused, even with a list, pointing to a module folder", r: f,
+         words: allOf(a: "src/fence.records.json", b: "processor `z`", c: "module folder"));
+    says(t: t, name: "fence: a component record in a game's root module is refused, pointing to a module folder", r: f,
+         words: allOf(a: "src/fence.records.json", b: "component `Zed`", c: "module folder"));
     check(t: t, name: "fence: an Output module may reach outside, and a module with no processors is not refused itself",
           ok: f.code() == 1 && !f.says(what: "module \"screen\"") && !f.says(what: "module \"hud\"")
               && !f.says(what: "module \"helper\""),
@@ -68,6 +73,10 @@ unsafe fn void fenceTests(ref Tally t, ref Setup s) {
          words: allOf(a: "module \"d\" has no `importsOnly`", b: "", c: ""));
     says(t: t, name: "tiers: a platform flag in a module of the library is refused", r: l,
          words: allOf(a: "src/a/a.kama:3:", b: "`OS_LINUX`", c: ""));
+    // A library's root module is its API, so a component record there is not refused, as a game's root's is
+    // (components § Decided, 2026-11-10). Counted only when the run reached the records, which its tiers show.
+    check(t: t, name: "tiers: a component record in a library's root module is not refused: a library's root is its API",
+          ok: l.says(what: "module \"c\" states no tier") && !l.says(what: "is in the root module"), why: l.said());
     check(t: t, name: "tiers: modules naming only tiers above their own are not refused",
           ok: l.code() == 1 && !l.says(what: "module \"a\", tier") && !l.says(what: "module \"mid\"")
               && !l.says(what: "module \"top\""),

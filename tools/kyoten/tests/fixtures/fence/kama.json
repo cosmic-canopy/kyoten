@@ -16,7 +16,8 @@
   },
   "modules": {
     ".": {
-      "visibility": "internal"
+      "visibility": "internal",
+      "importsOnly": []
     },
     "generated": {
       "visibility": "internal",
