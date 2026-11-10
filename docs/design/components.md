@@ -2483,3 +2483,18 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     holding only `actions.kama` and `prefabs.kama`), and `kyoten clean` removing the root files. The bit-for-bit
     runs hold natively, in release and under node.
   - **Mutation caught:** the world written back into `src/generated/`.
+- **2026-11-10, built: each subtree is read in place, and KY-48's re-serialize is gone** (the loader's question 2's
+  stopgap), test-first on kyoten's pin, `0.9.909+g64f011de`, which has kama's KR-364 reader.
+  - `kyoten::content`'s `mergeTree` and `readTree` read a subtree through the parsed tree's own strict reader,
+    `JsonValue.reader(strict: true)`, with nothing written back to text or parsed twice. `layOver`, `readWhole` and a
+    zone file's placements use them. The generated half's calls are unchanged.
+  - `mergeText` stays, for a whole file read from its text. `readNew` is gone. `subtreeText` stays only to quote a
+    value in a refusal (a prefab's `layer` that is not a string), never on the read path.
+  - **Tested:** 6 cases. `mergeTree` on a nested subtree keeps what it does not name, and refuses a misspelt field by
+    name, leaving the value as it was. `readTree` reads a value with no default, and names a missing field and an
+    unknown key. `readWhole` lays a variant's later subtree over the first, and names a refused later one while
+    keeping what came before. The last two closed a gap the mutations found: no case laid a second subtree over a
+    component read whole. The engine's tests are 164 cases.
+  - **Mutations caught (10):** each reader made lenient; `mergeTree` swallowing its refusal; `readTree` dropping its
+    words; `layOver` laying nothing; `readWhole` dropping the first refusal's words, skipping the later subtrees, or
+    dropping a later refusal; a placement not read at all.

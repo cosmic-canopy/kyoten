@@ -1,36 +1,41 @@
-// Laying a record over a value (components § Decided, the loader's question 2 of 2026-11-09): each subtree is read
-// through kama's strict JSON reader with `mergeFrom`, which writes only what the data carries and leaves the value as
-// it was when the data is wrong anywhere. A component with defaults starts from its `default ctor`; one without is
-// read whole from its first subtree, and the rest are laid over it.
-//
-// **KY-48's stopgap is `subtreeText`:** kama has no reader over a parsed `JsonValue`, so each subtree is written back
-// to text and read again. It costs a second parse at load, never in a step, and goes when kama reads a `JsonValue`.
+// Laying a record over a value (components § Decided, the loader's question 2 of 2026-11-09): each subtree is read in
+// place, through the parsed tree's own strict reader (kama KR-364, `JsonValue.reader(strict: true)`), with `mergeFrom`,
+// which writes only what the data carries and leaves the value as it was when the data is wrong anywhere. Nothing is
+// written back to text or parsed twice (KY-48, closed by the reader). A component with defaults starts from its
+// `default ctor`; one without is read whole from its first subtree, and the rest are laid over it. A whole file is read
+// from its text with `mergeText`.
 
 import { std::memory::Owned, std::collections::DynamicArray, std::serialization::text::json::JsonValue,
          std::serialization::text::json::JsonDeserializer, std::serialization::text::json::serializeJsonBuffer,
          Subtree, LoadRefusals };
 
-export { layOver, readWhole, subtreeText, mergeText, readNew };
+export { layOver, readWhole, mergeTree, readTree, mergeText, subtreeText };
 
-// A subtree written back to JSON text (KY-48's stopgap).
+// A value written as JSON text, to quote it in a refusal. Never on the read path.
 fn string subtreeText(const ref JsonValue of) {
     Result<string, Owned<Error>> s = serializeJsonBuffer(v: of);
     return match (give s) { case Ok(value: t): give t; case Err(error: e): "null"; };
 }
 
 // `text` laid over `into` through the strict reader: "" when it merged, else the reader's words, its path relative
-// to the text (``unknown field `rat` ``).
+// to the text. For a whole file.
 fn string mergeText<T: MergeDeserializable<T>>(const ref string text, ref T into) {
     JsonDeserializer r = JsonDeserializer.make(src: copy text, strict: true);
     Result<Unit, Owned<Error>> m = into.mergeFrom(r: r);
     return match (m) { case Ok(value: u): ""; case Err(error: e): e.message(); };
 }
 
-// `text` read whole as a new `T` through the strict reader, so a field with no default is required: None with the
+// `tree` laid over `into` through the tree's own strict reader: "" when it merged, else the reader's words, its path
+// relative to `tree` (``unknown field `rat` ``).
+fn string mergeTree<T: MergeDeserializable<T>>(const ref JsonValue tree, ref T into) {
+    Result<Unit, Owned<Error>> m = into.mergeFrom(r: tree.reader(strict: true));
+    return match (m) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+}
+
+// `tree` read whole as a new `T` through its strict reader, so a field with no default is required: None with the
 // reader's words in `why` when it is refused.
-fn Optional<T> readNew<T: MergeDeserializable<T>>(const ref string text, ref string why) {
-    JsonDeserializer r = JsonDeserializer.make(src: copy text, strict: true);
-    Result<T, Owned<Error>> got = T.deserialize(r: r);
+fn Optional<T> readTree<T: MergeDeserializable<T>>(const ref JsonValue tree, ref string why) {
+    Result<T, Owned<Error>> got = T.deserialize(r: tree.reader(strict: true));
     match (give got) {
         case Ok(value: v): { return Optional::Some(value: give v); }
         case Err(error: e): { why = e.message(); return Optional::None; }
@@ -42,7 +47,7 @@ fn Optional<T> readNew<T: MergeDeserializable<T>>(const ref string text, ref str
 fn void layOver<T: MergeDeserializable<T>>(ref T into, const ref DynamicArray<Subtree> trees, const ref string component,
                                             ref LoadRefusals no) {
     foreach (const ref Subtree s in trees.iterConst()) {
-        string why = mergeText::<T>(text: subtreeText(of: s.tree()), into: into);
+        string why = mergeTree::<T>(tree: s.tree(), into: into);
         if (!why.isEmpty()) { no.add(where: s.file(), what: s.subject() + ", `" + component + "`: " + why); }
     }
 }
@@ -56,19 +61,18 @@ fn Optional<T> readWhole<T: MergeDeserializable<T>>(const ref DynamicArray<Subtr
         no.add(where: file, what: "prefab `${prefab}` lacks `${component}`, which elects no `default ctor`: list it, with its values");
         return Optional::None;
     }
-    JsonDeserializer r = JsonDeserializer.make(src: subtreeText(of: trees[0].tree()), strict: true);
-    Result<T, Owned<Error>> first = T.deserialize(r: r);
+    string firstWhy = "";
+    Optional<T> first = readTree::<T>(tree: trees[0].tree(), why: firstWhy);
     T value = match (give first) {
-        case Ok(value: v): give v;
-        case Err(error: e): {
-            string why = e.message();
-            no.add(where: trees[0].file(), what: trees[0].subject() + ", `" + component + "`: " + why);
+        case Some(value: v): give v;
+        case None: {
+            no.add(where: trees[0].file(), what: trees[0].subject() + ", `" + component + "`: " + firstWhy);
             return Optional::None;
         }
     };
     isize i = 1;
     while (i < trees.length()) {
-        string why = mergeText::<T>(text: subtreeText(of: trees[i].tree()), into: value);
+        string why = mergeTree::<T>(tree: trees[i].tree(), into: value);
         if (!why.isEmpty()) { no.add(where: trees[i].file(), what: trees[i].subject() + ", `" + component + "`: " + why); }
         i = i + 1;
     }

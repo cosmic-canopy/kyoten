@@ -16,7 +16,7 @@
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
          std::serialization::text::json::JsonValue, RecordSource, ContentFile, ZoneFile, PlacementRecord,
-         subtreeText, mergeText, readNew };
+         subtreeText, mergeText, readTree };
 
 export { LoadRefusals, LayerStack, Subtree, Placement, Content, readContent, readScene, notMainLayer, componentList,
          listed };
@@ -439,7 +439,7 @@ fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicAr
                 placedHere.put(key: copy k, value: copy file);
                 // A placement is read whole, not merged, so a missing `prefab` is named.
                 string recWhy = "";
-                Optional<PlacementRecord> got = readNew::<PlacementRecord>(text: subtreeText(of: zone.place().getRef(key: k)), why: recWhy);
+                Optional<PlacementRecord> got = readTree::<PlacementRecord>(tree: zone.place().getRef(key: k), why: recWhy);
                 PlacementRecord rec = match (give got) { case Some(value: r): give r; case None: PlacementRecord.make(); };
                 if (!recWhy.isEmpty()) { no.add(where: file, what: "placement `${k}`: ${recWhy}"); continue; }
                 bool ok = true;

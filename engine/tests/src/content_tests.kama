@@ -6,7 +6,8 @@
 import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, kyoten::content::LayerStack,
          kyoten::content::Content, kyoten::content::Placement, kyoten::content::Subtree,
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
-         kyoten::content::readWhole, kyoten::content::subtreeText, kyoten::content::folderFor, kyoten::world::Transform,
+         kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree, kyoten::content::folderFor,
+         kyoten::world::Transform,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
          std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
@@ -186,7 +187,7 @@ fn void spelling(ref Tally t) {
 // What the reader refuses is named with its file, its prefab and its component.
 fn void refusals(ref Tally t) {
     MemorySource game = MemorySource.make(label: "content");
-    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"typo\": { \"Spin\": { \"rat\": 3 } }, \"seated\": { \"Seat\": { \"player\": 2 } }, \"short\": { \"Seat\": { } }, \"bare\": { \"Spin\": {} } } }");
+    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"typo\": { \"Spin\": { \"rat\": 3 } }, \"seated\": { \"Seat\": { \"player\": 2 } }, \"short\": { \"Seat\": { } }, \"bare\": { \"Spin\": {} }, \"later\": { \"from\": \"seated\", \"Seat\": { \"player\": 3 } }, \"wrong\": { \"from\": \"seated\", \"Seat\": { \"plyer\": 1 } } } }");
     LayerStack stack = stackOf(low: give game, high: Optional::None);
     LoadRefusals no = LoadRefusals.make();
     Content c = readContent(stack: stack, no: no);
@@ -210,6 +211,16 @@ fn void refusals(ref Tally t) {
     bool empty = match (none) { case Some(value: s): false; case None: true; };
     t.verdict(name: "readWhole: a prefab that does not list it is refused, since it has no default to start from",
               why: empty ? said(no: no, line: "content/cube.records.json: prefab `bare` lacks `Seat`, which elects no `default ctor`: list it, with its values") : "read one");
+    Optional<Seat> later = readWhole::<Seat>(trees: c.subtreesOf(prefab: "later", spellings: seat, no: no), component: "Seat",
+                                             prefab: "later", file: c.fileOf(prefab: "later"), no: no);
+    int32 laterPlayer = match (later) { case Some(value: s): s.player; case None: -1; };
+    t.verdict(name: "readWhole: a later subtree is laid over the first (a variant's player 3 over its base's 2)",
+              why: laterPlayer == 3 ? "" : "player ${laterPlayer}");
+    Optional<Seat> wrong = readWhole::<Seat>(trees: c.subtreesOf(prefab: "wrong", spellings: seat, no: no), component: "Seat",
+                                             prefab: "wrong", file: c.fileOf(prefab: "wrong"), no: no);
+    int32 wrongPlayer = match (wrong) { case Some(value: s): s.player; case None: -1; };
+    t.verdict(name: "readWhole: a refused later subtree is named, and the value keeps what came before it",
+              why: wrongPlayer == 2 ? said(no: no, line: "content/cube.records.json: prefab `wrong`, `Seat`: unknown field `plyer`") : "player ${wrongPlayer}");
 }
 
 // Within one layer a prefab is written once; a higher layer merges over it by key.
@@ -334,21 +345,42 @@ fn void sceneRefusals(ref Tally t) {
               why: said(no: d, line: "content/scenes/hello/zone.0.0.records.json: placement `a` sets `Mesh`, which is no component of prefab `cube`'s family: `Spin`"));
 }
 
-// KY-48's stopgap: a subtree written back to text is read as the same value.
+fn JsonValue parsed(const ref string text) {
+    Result<JsonValue, Owned<Error>> p = deserializeJsonBuffer::<JsonValue>(src: copy text, strict: true);
+    return match (give p) { case Ok(value: v): give v; case Err(error: e): JsonValue::Null; };
+}
+
+// KY-48's answer (kama KR-364): a subtree of a parsed tree is read in place, through the tree's own strict reader, with
+// nothing written back to text.
 fn void subtrees(ref Tally t) {
-    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: "{\"position\": {\"x\": -20, \"y\": 0.5}, \"scale\": {\"x\": 2}}", strict: false);
-    JsonValue tree = match (give parsed) { case Ok(value: v): give v; case Err(error: e): JsonValue::Null; };
-    string text = subtreeText(of: tree);
-    MemorySource game = MemorySource.make(label: "content");
-    game.put(path: "a.records.json", text: "{ \"prefabs\": { \"p\": { \"Transform\": " + text + " } } }");
-    LoadRefusals no = LoadRefusals.make();
-    Content c = readContent(stack: stackOf(low: give game, high: Optional::None), no: no);
+    JsonValue doc = parsed(text: "{\"p\": {\"Transform\": {\"position\": {\"x\": -20, \"y\": 0.5}, \"scale\": {\"x\": 2}}}}");
     Transform tr = Transform.identity();
-    layOver::<Transform>(into: tr, trees: c.subtreesOf(prefab: "p", spellings: spellings(a: "Transform", b: ""), no: no),
-                         component: "Transform", no: no);
+    string why = mergeTree::<Transform>(tree: doc.getRef(key: "p").getRef(key: "Transform"), into: tr);
     bool same = tr.position.x == -20 && tr.position.y == 0.5 && tr.scale.x == 2 && tr.scale.y == 1 && tr.rotation.w == 1;
-    t.verdict(name: "subtreeText: a nested subtree laid over Transform.identity() sets what it names and keeps the rest",
-              why: same && !no.any() ? "" : "position.x ${tr.position.x}, scale.y ${tr.scale.y}\n" + all(no: no));
+    t.verdict(name: "mergeTree: a nested subtree of a parsed tree, laid over Transform.identity(), sets what it names and keeps the rest",
+              why: why.isEmpty() && same ? "" : "said `${why}`; position.x ${tr.position.x}, scale.y ${tr.scale.y}");
+
+    JsonValue typo = parsed(text: "{\"position\": {\"x\": -20}, \"positon\": {\"y\": 3}}");
+    Transform kept = Transform.identity();
+    string refused = mergeTree::<Transform>(tree: typo, into: kept);
+    t.verdict(name: "mergeTree: a misspelt field is refused by name, and the value is left as it was",
+              why: refused == "unknown field `positon`" && kept.position.x == 0 ? "" : "said `${refused}`; position.x ${kept.position.x}");
+
+    string whyNot = "";
+    Optional<Seat> seated = readTree::<Seat>(tree: parsed(text: "{\"player\": 2}"), why: whyNot);
+    int32 player = match (seated) { case Some(value: s): s.player; case None: -1; };
+    t.verdict(name: "readTree: a value with no default is read whole from a subtree",
+              why: player == 2 && whyNot.isEmpty() ? "" : "player ${player}; said `${whyNot}`");
+    string lacks = "";
+    Optional<Seat> none = readTree::<Seat>(tree: parsed(text: "{}"), why: lacks);
+    bool empty = match (none) { case Some(value: s): false; case None: true; };
+    t.verdict(name: "readTree: a field it requires and lacks is refused, named",
+              why: empty && lacks == "missing field `player`" ? "" : "said `${lacks}`");
+    string unknown = "";
+    Optional<Seat> extra = readTree::<Seat>(tree: parsed(text: "{\"player\": 2, \"playr\": 3}"), why: unknown);
+    bool refusedExtra = match (extra) { case Some(value: s): false; case None: true; };
+    t.verdict(name: "readTree: a key no field claims is refused, named",
+              why: refusedExtra && unknown == "unknown field `playr`" ? "" : "said `${unknown}`");
 }
 
 // Where a game's content folder is in this build: `/<game>/content` on the web, where its manifest's `preloadFiles`
