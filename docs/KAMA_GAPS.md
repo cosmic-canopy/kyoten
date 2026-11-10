@@ -201,6 +201,10 @@ game's modules but its root with `--modules`, at 0.09 times the whole package's 
 removed** (2026-11-10): the loader reads each subtree through `JsonValue.reader(strict: true)`, with nothing written
 back to text (components § Decided, 2026-11-10).
 
+**Re-checked on 0.9.911** (2026-11-10, `0.9.911+ge76900bf`, kyoten's pin, the KR-367 bump): KY-40 and KY-45 are
+unchanged. `lib/std/math` still holds no integer vector, and KY-45's repro (`.scratch/step5-tool/hello`) still answers
+`--search Transform` with the game's own `transform` field alone, never the engine's type.
+
 Ids are `KY-<n>` and are permanent. **Next id: KY-50**
 
 | Id | Kind | Status | Summary |

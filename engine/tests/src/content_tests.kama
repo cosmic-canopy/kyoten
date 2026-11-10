@@ -32,7 +32,7 @@ type resource MemorySource implements RecordSource {
     public const fn string name() { return copy this.label; }
     public const fn DynamicArray<string> files() { return this.texts.keys(); }
     public const fn Result<string, IoError> text(const ref string path) {
-        if (!this.texts.contains(key: path)) { return Result::Err(error: IoError.of(kind: IoErrorKind::NotFound)); }
+        if (!this.texts.contains(key: path)) { return Result::Err(error: IoError.make(kind: IoErrorKind::NotFound)); }
         return Result::Ok(value: copy this.texts.getRef(key: path));
     }
 }

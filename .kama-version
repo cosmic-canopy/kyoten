@@ -35,5 +35,19 @@
 #   native debug, release and wasm; the frame guard; the tool's 188; `kyoten check engine/kama.json`; fps native and
 #   wasm; vr checked), @kama/window's (36 native, 20 under node) and @kama/gpu's (3 cases, the clear example's 60
 #   frames, the xfail, the wasm build).
-KAMA_VERSION=0.9.909
-KAMA_BUILD=g64f011de
+#
+# 2026-11-10: 0.9.909 -> 0.9.911 (e76900bf), kama's dev HEAD with a clean tree; 64f011de is still on its history, and
+# the 0.9.909 binary is kept in .scratch/kama-pin-0.9.909. What moved, for kyoten:
+#   0.9.911 KR-367, BREAKING: std's constructors are named by how they make the value (SPEC § Construction: `make` from
+#           parts, `of` only memberwise, `empty`/`with<Setting>`, `from<Input>`, `parse(text:)`, an OS verb or a noun;
+#           never `new`, `create`, `init`, `of<Input>` or `fromStr`). The bump carries the port, the one change
+#           "nothing else changed" could not hold off: 2 `IoError.of(kind:)` calls became `IoError.make(kind:)` (the
+#           engine's content tests and the tool's `spin` fixture), and in @kama/gpu's examples/clear
+#           `parse::<int32>(s: v)` became `int32.parse(text: v)`. Behavior is unchanged.
+#   Also 0.9.910 (a diagnostic for a `spawn` refused inside its scope) and a KR-3 test fixture, neither of which kyoten
+#   uses. Green on it with the port alone, the same counts as on 0.9.909 the same morning: tools/test.sh (engine 164
+#   cases native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native
+#   and wasm; vr checked), @kama/window's (36 native, 20 under node) and @kama/gpu's (45 cases, the clear example's 60
+#   frames, the xfail, the wasm build).
+KAMA_VERSION=0.9.911
+KAMA_BUILD=ge76900bf
