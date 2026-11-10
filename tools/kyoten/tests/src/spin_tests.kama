@@ -95,6 +95,9 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     string actions = gen + "/actions.kama";
     string prefabs = gen + "/prefabs.kama";
     string moduleFile = s.fixture(at: "spin/src/cube/cube.generated.kama");
+    string tablesFile = s.fixture(at: "spin/src/spin.tables.generated.kama");
+    string passesFile = s.fixture(at: "spin/src/spin.passes.generated.kama");
+    string worldFile = s.fixture(at: "spin/src/spin.world.generated.kama");
     string mine = s.fixture(at: "spin/src/cube/notes.generated.kama");
     DynamicArray<string> install = DynamicArray.empty();
     install.add(item: "pkg");
@@ -159,12 +162,19 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
           says: "spin: player 1, faster held false, cube spin 1, big cube size 1 glow 1, ids true true");
     sameTurns(t: t, leg: "native", r: ran);
     loaded(t: t, leg: "native", r: ran);
-    string tables = read(path: gen + "/tables.kama");
-    string passes = read(path: gen + "/passes.kama");
-    string world = read(path: gen + "/world.kama");
-    check(t: t, name: "spin: tables.kama, passes.kama and world.kama open with the header",
+    // The world, its tables and its passes drive the simulation, so they sit outside its fence, in the app's root module
+    // beside `main` (components § Decided, step 6's question 1 of 2026-11-09). The fenced `generated` keeps what
+    // processors import: `Actions` and the prefab types.
+    string tables = read(path: tablesFile);
+    string passes = read(path: passesFile);
+    string world = read(path: worldFile);
+    check(t: t, name: "spin: the world, its tables and its passes are in the root module, each with the header",
           ok: tables.startsWith(prefix: header) && passes.startsWith(prefix: header) && world.startsWith(prefix: header),
-          why: "a file is missing or has no header");
+          why: "a file is missing or has no header: ${tablesFile}, ${passesFile}, ${worldFile}");
+    check(t: t, name: "spin: src/generated/ holds only actions.kama and prefabs.kama",
+          ok: has(path: actions) && has(path: prefabs) && !has(path: gen + "/tables.kama")
+              && !has(path: gen + "/passes.kama") && !has(path: gen + "/world.kama"),
+          why: "src/generated/ holds the world, its tables or its passes, or lacks actions.kama or prefabs.kama");
     // The naming rule's rule 5: a column may not share a processor's name in one file, so only passes.kama imports
     // processors.
     check(t: t, name: "spin: only passes.kama imports the processors",
@@ -237,7 +247,7 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     Ran cleaned = s.kyoten(command: "clean", game: "spin", more: none());
     check(t: t, name: "spin: `kyoten clean` removes every generated file",
           ok: regenerated.code() == 0 && cleaned.code() == 0 && !has(path: actions) && !has(path: prefabs)
-              && !has(path: moduleFile),
+              && !has(path: moduleFile) && !has(path: tablesFile) && !has(path: passesFile) && !has(path: worldFile),
           why: cleaned.said());
     check(t: t, name: "spin: ...and nothing else",
           ok: has(path: s.fixture(at: "spin/src/app.kama")) && has(path: s.fixture(at: "spin/src/cube/cube.kama"))

@@ -15,7 +15,7 @@
     "parts": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world"] },
     "generated": {
       "visibility": "internal",
-      "importsOnly": ["kyoten::frame", "kyoten::world", "kyoten::input", "std::collections", "parts"]
+      "importsOnly": ["kyoten::world", "kyoten::input", "std::collections", "parts"]
     }
   }
 }

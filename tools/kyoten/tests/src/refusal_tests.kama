@@ -185,7 +185,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`hits`", b: "src/bad/counter.kama:2", c: "world component"));
     says(t: t, name: "processors: a base clock above 1,000 Hz is warned of, with the nearest rates that fit", r: p,
          words: allOf(a: "4620 Hz", b: "7 Hz as 6 Hz", c: "11 Hz as 10 Hz"));
-    bool wroteWorld = has(path: s.fixture(at: "processors/src/generated/world.kama"))
+    bool wroteWorld = has(path: s.fixture(at: "processors/src/processors.world.generated.kama"))
+                      || has(path: s.fixture(at: "processors/src/generated/world.kama"))
                       || has(path: s.fixture(at: "processors/src/generated/actions.kama"));
     if (wroteWorld) { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: "it left generated files"); }
     else { t.verdict(name: "processors: a refusal of the second pass leaves nothing written", why: ""); }

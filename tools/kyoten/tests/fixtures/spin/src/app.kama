@@ -9,7 +9,7 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow,
          spin::cube::Spin, spin::cube::Size, spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
-         spin::generated::Prefabs, spin::generated::GameWorld, openContent, loadPrefabs, placeFirstScene };
+         spin::generated::Prefabs, GameWorld, openContent, loadPrefabs, placeFirstScene };
 
 // A mod's content, held in memory: a source the loader is handed like the game's folder (dependencies are injected).
 type resource MemorySource implements RecordSource {

@@ -16,7 +16,7 @@ import { core::println, core::eprintln, std::collections::DynamicArray, std::io:
          std::fs::exists, std::fs::canonicalPath, std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index,
          StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
-         worldKama, generatedFiles, checkHeaders, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
+         worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
 
 export { generate, clean };
 
@@ -71,15 +71,17 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     written.add(item: copy actionsFile);
     written.add(item: copy prefabsFile);
     writeIfChanged(path: prefabsPath, text: prefabsKama(game: gameName, families: families));
-    string tablesFile = "src/generated/tables.kama";
-    string passesFile = "src/generated/passes.kama";
-    string worldFile = "src/generated/world.kama";
-    writeIfChanged(path: game.root() + "/" + tablesFile, text: tablesKama(game: gameName, families: families));
-    writeIfChanged(path: game.root() + "/" + passesFile, text: passesKama(game: gameName, families: families, s: schedule));
-    writeIfChanged(path: game.root() + "/" + worldFile, text: worldKama(game: gameName, families: families, s: schedule));
-    written.add(item: give tablesFile);
-    written.add(item: give passesFile);
-    written.add(item: give worldFile);
+    // The world, its tables and its passes, in the root module outside the simulation's fence, since the world runs
+    // Output too (components § Decided, step 6's question 1 of 2026-11-09).
+    string tables = tablesFile(game: gameName);
+    string passes = passesFile(game: gameName);
+    string world = worldFile(game: gameName);
+    writeIfChanged(path: game.root() + "/" + tables, text: tablesKama(game: gameName, families: families));
+    writeIfChanged(path: game.root() + "/" + passes, text: passesKama(game: gameName, families: families, s: schedule));
+    writeIfChanged(path: game.root() + "/" + world, text: worldKama(game: gameName, families: families, s: schedule));
+    written.add(item: give tables);
+    written.add(item: give passes);
+    written.add(item: give world);
     // The loader's game-shaped half, in the root module (components § Decided, the loader's question 1 of 2026-11-09).
     string loader = loaderFile(game: gameName);
     string contentDir = "";
@@ -93,8 +95,8 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     foreach (const ref string f in before.iterConst()) {
         if (!written.contains(item: f)) { removeFile(path: game.root() + "/" + f); }
     }
-    println(s: "kyoten: generated src/generated/: actions, prefabs, tables, passes and world; and the loader, src/${gameName}"
-             + ".generated.kama");
+    println(s: "kyoten: generated src/generated/: actions and prefabs; and in the root module, src/${gameName}.generated.kama "
+             + "(the loader) and its tables, passes and world");
     return true;
 }
 

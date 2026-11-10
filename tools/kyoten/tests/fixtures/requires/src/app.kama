@@ -6,7 +6,7 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          requires::parts::Wheel, requires::parts::Axle, requires::parts::Hub, requires::parts::Driver,
          requires::parts::Left, requires::parts::Right, requires::generated::Actions, requires::generated::CartPrefab,
          requires::generated::CartPrefabId, requires::generated::MillPrefab, requires::generated::CarterPrefab,
-         requires::generated::PairPrefab, requires::generated::GameWorld, requires::generated::MillPrefabId,
+         requires::generated::PairPrefab, GameWorld, requires::generated::MillPrefabId,
          requires::generated::CarterPrefabId,
          requires::generated::Prefabs, kyoten::content::LayerStack, kyoten::content::Content,
          kyoten::content::LoadRefusals, kyoten::content::readContent, openContent, loadPrefabs };

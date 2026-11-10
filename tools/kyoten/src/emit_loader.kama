@@ -54,7 +54,7 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
         names.add(path: "kyoten::content::folderFor");
     }
     names.add(path: game + "::generated::Prefabs");
-    names.add(path: game + "::generated::GameWorld");
+    names.add(path: game + "::GameWorld");
     if (families.length() > 0) {
         names.add(path: "kyoten::content::Placement");
         names.add(path: "kyoten::content::layOver");

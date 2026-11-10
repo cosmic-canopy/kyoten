@@ -1,13 +1,14 @@
-// The kama the second pass writes into the game's `src/generated/` (components § Decided: the naming rule of
-// 2026-11-07, rule 5, and step 5.4), each file under the header:
+// The kama the second pass writes into the game's root module, beside `main` and the loader (components § Decided: the
+// naming rule of 2026-11-07, rule 5, step 5.4, and step 6's question 1 of 2026-11-09, which moved them out of the
+// simulation's fence, since the world runs Output too), each file under the header:
 //
-// - `tables.kama`: per prefab family, a chunk (a column per component and one of handles, up to its row count, rows
+// - `src/<game>.tables.generated.kama`: per prefab family, a chunk (a column per component and one of handles, up to its row count, rows
 //   packed at the front) and a table (its chunks in one block, allocated once). It imports no processor, since a
 //   column may not share a processor's name in one file.
-// - `passes.kama`: one function a phase, calling each processor in the phase's order, at its rate on the base clock and
+// - `src/<game>.passes.generated.kama`: one function a phase, calling each processor in the phase's order, at its rate on the base clock and
 //   its iterations, over every table whose family has the components it names. Only this file imports processors,
 //   each under an alias of the generator's own.
-// - `world.kama`: the world, implementing `kyoten::frame::World`: the lookup, each table, each world component, the
+// - `src/<game>.world.generated.kama`: the world, implementing `kyoten::frame::World`: the lookup, each table, each world component, the
 //   base rate, and a `create_<family>` that the loader (step 5.5) and later `Create<P>` call.
 //
 // Every name here is the generator's own and may change in any release (rule 5): a game writes none of them. A name
@@ -17,10 +18,20 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Phase, Family, Component,
          Schedule, Processor, Group, Param, Access, headerLine, typeCase };
 
-export { tablesKama, passesKama, worldKama, worldTypeName, ImportSet };
+export { tablesKama, passesKama, worldKama, worldTypeName, ImportSet, tablesFile, passesFile, worldFile };
 
 // The world type's name, which the fixtures and, at step 7, the generated `run` name.
 fn string worldTypeName() { return "GameWorld"; }
+
+// Where each name lives: the world, its tables and its passes in the game's root module, and the prefab types in the
+// fenced `<game>::generated`, which processors import.
+fn string inRoot(const ref string game, const ref string name) { return game + "::" + name; }
+fn string inFenced(const ref string game, const ref string name) { return game + "::generated::" + name; }
+
+// The three files' paths from the game's root.
+fn string tablesFile(const ref string game) { return "src/" + game + ".tables.generated.kama"; }
+fn string passesFile(const ref string game) { return "src/" + game + ".passes.generated.kama"; }
+fn string worldFile(const ref string game) { return "src/" + game + ".world.generated.kama"; }
 
 fn string lastSegment(const ref string path) {
     isize i = path.length();
@@ -129,12 +140,11 @@ fn string tableField(const ref Family f) { return "table_" + f.root(); }
 fn string handleColumn() { return "entity_handle"; }
 
 fn string tablesKama(const ref string game, const ref DynamicArray<Family> families) {
-    string own = game + "::generated";
-    ImportSet imports = ImportSet.make(module: copy own);
+    ImportSet imports = ImportSet.make(module: copy game);
     foreach (const ref Family f in families.iterConst()) {
         imports.declare(name: chunkType(f: f));
         imports.declare(name: tableType(f: f));
-        imports.add(path: own + "::" + prefabType(f: f));
+        imports.add(path: inFenced(game: game, name: prefabType(f: f)));
         foreach (const ref Component c in f.components().iterConst()) { imports.add(path: c.path()); }
     }
     imports.add(path: "kyoten::world::Handle");
@@ -144,7 +154,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
     imports.add(path: "std::collections::InlineDynamicArray");
     imports.add(path: "std::collections::FixedArray");
     imports.add(path: "std::collections::CapacityFull");
-    foreach (Phase p in phases()) { imports.add(path: own + "::" + passName(phase: p)); }
+    foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
     string handle = imports.nameOf(path: "kyoten::world::Handle");
     string chunkSize = imports.nameOf(path: "kyoten::world::ChunkSize");
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
@@ -307,19 +317,18 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
 }
 
 fn string passesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
-    string own = game + "::generated";
     string worldType = worldTypeName();
-    ImportSet imports = ImportSet.make(module: copy own);
+    ImportSet imports = ImportSet.make(module: copy game);
     foreach (Phase p in phases()) { imports.declare(name: passName(phase: p)); }
     imports.add(path: "kyoten::frame::Rate");
     imports.add(path: "kyoten::frame::Time");
-    imports.add(path: own + "::" + worldType);
-    foreach (const ref Family f in families.iterConst()) { imports.add(path: own + "::" + chunkType(f: f)); }
+    imports.add(path: inRoot(game: game, name: worldType));
+    foreach (const ref Family f in families.iterConst()) { imports.add(path: inRoot(game: game, name: chunkType(f: f))); }
     foreach (const ref Processor p in s.processors().iterConst()) { imports.addAs(path: p.path(), alias: runName(path: p.path())); }
     ImportSet worldNames = worldImports(game: game, families: families, s: s);
     string rateType = imports.nameOf(path: "kyoten::frame::Rate");
     string timeType = imports.nameOf(path: "kyoten::frame::Time");
-    string world = imports.nameOf(path: own + "::" + worldType);
+    string world = imports.nameOf(path: inRoot(game: game, name: worldType));
 
     string t = headerLine() + "\n";
     t = t + "// The passes (components § Decided; frame-phases § Decided, questions 1, 2 and 5): one function a phase, calling\n";
@@ -370,17 +379,16 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
 
 // The names world.kama gives each world component, which passes.kama uses to reach its field.
 fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
-    string own = game + "::generated";
-    ImportSet imports = ImportSet.make(module: copy own);
+    ImportSet imports = ImportSet.make(module: copy game);
     imports.declare(name: worldTypeName());
-    foreach (Phase p in phases()) { imports.add(path: own + "::" + passName(phase: p)); }
+    foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
     imports.add(path: "kyoten::frame::Time");
     imports.add(path: "kyoten::frame::World");
     imports.add(path: "kyoten::world::Handle");
     imports.add(path: "kyoten::world::Lookup");
     foreach (const ref Family f in families.iterConst()) {
-        imports.add(path: own + "::" + prefabType(f: f));
-        imports.add(path: own + "::" + tableType(f: f));
+        imports.add(path: inFenced(game: game, name: prefabType(f: f)));
+        imports.add(path: inRoot(game: game, name: tableType(f: f)));
     }
     foreach (const ref string w in s.worldComponents().iterConst()) { imports.add(path: w); }
     return imports;
@@ -435,7 +443,7 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     }
     isize k = 0;
     foreach (const ref Family f in families.iterConst()) {
-        string prefab = imports.nameOf(path: game + "::generated::" + prefabType(f: f));
+        string prefab = imports.nameOf(path: inFenced(game: game, name: prefabType(f: f)));
         t = t + "\n    // A new entity of `" + f.root() + "`'s family from a prefab's values, or none when its table is full: what the\n";
         t = t + "    // loader (step 5.5) and `Create<" + prefabType(f: f) + ">` call.\n";
         t = t + "    public fn Optional<" + handle + "> create_" + f.root() + "(" + prefab + " prefab) {\n";

@@ -3,7 +3,7 @@
 
 import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
          schedule::sim::Fast, schedule::sim::Slow, schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Bulk,
-         schedule::generated::TickerPrefab, schedule::generated::CratePrefab, schedule::generated::GameWorld };
+         schedule::generated::TickerPrefab, schedule::generated::CratePrefab, GameWorld };
 
 fn uint8 main() {
     GameWorld world = GameWorld.make();
