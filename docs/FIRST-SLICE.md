@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-10, end of the ninth session)
+## Where it stands (2026-11-10, end of the tenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -19,8 +19,9 @@ the design doc it settles before building on it.
 - `@kama/gpu` has a `SPEC.md`, a `ROADMAP.md` (rows `GPU-<n>`), its detail, and `COVERAGE.md`: 55 of webgpu.h's 206
   functions called;
 - `@kama/window` has the same three documents (rows `WIN-<n>`);
-- GPU-1 is built (errors per device, and error scopes; the ninth session, below), and the next rows are WIN-1 then
-  GPU-2, and WIN-2.
+- GPU-1 is built (errors per device, and error scopes; the ninth session, below);
+- WIN-1 and GPU-2 are built (a window's native record counted, and a surface holding its window; the tenth session,
+  below). The next row is WIN-2, the last stopgap, then the web leg.
 
 **The join waits on Track 1. The next session starts here:**
 
@@ -28,38 +29,47 @@ the design doc it settles before building on it.
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet (the owner,
      2026-11-10).
-   - **Read `../kama`'s log since `c0b6887d`,** its HEAD at this session's end, with a clean tree. First check that the
-     pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`. kama rebased its `dev`
-     again on 2026-11-10: the first 0.9.911 pin, `e76900bf`, left its history within hours. Its twin `238198b3`
-     differed only in `docs/grammar.bnf` and a tools script, so the pin was rebuilt at the twin (`.kama-version`).
+   - **Read `../kama`'s log since `c0b6887d`,** its HEAD at the ninth and tenth sessions' ends, with a clean tree.
+     First check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`. kama
+     rebased its `dev` again on 2026-11-10: the first 0.9.911 pin, `e76900bf`, left its history within hours. Its twin
+     `238198b3` differed only in `docs/grammar.bnf` and a tools script, so the pin was rebuilt at the twin
+     (`.kama-version`).
    - **kama is two versions past the pin, and the next bump carries a port.** 0.9.912 (`c065dcea`) fixes a lost
      cross-isolate wake on Linux. **0.9.913 (`f19742f6`) refuses `int32.parse(text: t)` again** and brings back
      `parse::<int32>(text: t)` (`std::fmt::parse`), since a primitive's constructor reached any adapter in the program
      with no scope. The one use on this side is `../kama-gpu`'s `examples/clear`, ported to `int32.parse` at the 0.9.911
-     bump, so a bump to 0.9.913 or later ports it back. Neither version is needed for WIN-1, so bump only when one is.
+     bump, so a bump to 0.9.913 or later ports it back. Neither version is needed for WIN-2, so bump only when one is.
    - **Still open with kama:** KY-45 (KR-361, not started) and KY-40 (no integer vectors), both re-run on 0.9.911.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, with
    its questions asked in full before code.
-   1. **The other stopgaps, starting with `@kama/window`'s WIN-1: a window counts references to its native record**
-      (`../kama-window/AGENTS.window.md` item 6), so that GPU-2 can make a surface hold its window.
-      - **Open it by asking its questions in full**, a probe first where a fact is unknown, as GPU-1's were. The
-        production answer is written; its shape is not. Ask:
-        - what holds the count: the `Window` itself made `Copyable`, or a handle a surface takes;
-        - what a closed window does to a surface that still holds it;
-        - how a headless window and the web's canvas take part;
-        - Android's `SurfaceLost`, where the OS takes the window whatever is counted.
-      - Then build it, then `@kama/gpu`'s GPU-2 (a surface holds its window, item 9), then WIN-2 (held keys released on
-        a focus change).
-   2. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
+   1. **First, two questions the tenth session found,** each put to the owner at its end and recorded where it
+      settles:
+      - **A window that opens without taking the focus** (`../kama-window/AGENTS.window.md` item 6, the tests'
+        stopgap). A test run took the keyboard from the owner while they typed ("it fights for focus"), so the tests
+        set GLFW's hints themselves. The production answer is an open-time setting, focused by default, as winit's
+        `with_active` is: a new row, and its shape (a setting on `Window.open`, or an options value) is the question.
+      - **An acquire on a surface never configured aborts the process** (`../kama-gpu/AGENTS.gpu.md` item 9, measured 3
+        of 3). The production answer refuses it in the acquire's `Result`, as item 8's `ConfigureError` refuses what
+        wgpu-native would abort on; which variant, a new `SurfaceError` one or `Outdated`, is the question.
+   2. **Then the last stopgap, `@kama/window`'s WIN-2: held keys and buttons released on a focus change**
+      (`../kama-window/AGENTS.window.md` item 5). Open it by asking its questions in full, a probe first where a fact
+      is unknown. The production answer is written; these details are not:
+      - what modifier bits a released key carries;
+      - what happens when the ring is full at the focus change, since a release counted into `Dropped(n)` leaves the
+        consumer a stuck key;
+      - whether a `post`ed event moves the held set, so a headless window can test it;
+      - how GLFW's own releases, which follow the focus callback, are dropped as already released, measured rather
+        than read.
+   3. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
       GPU-3 (a canvas surface, and the tests run in Edge, where the web is measured for the first time). GPU-3 also runs
       GPU-1's web half, whose error cases run natively only so far, and measures two facts read and not run (its
       ROADMAP_DETAIL § GPU-3).
-   3. **Alongside 1 and 2, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
+   4. **Alongside 2 and 3, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
       2026-11-10): `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code.
       Three.js is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and
       Godot reach it. The owner held it for a session of its own (2026-11-10).
-   4. **Then the rest of the libraries' share of the cube:** gamepads (WIN-4), `@kama/gpu`'s render pipeline set
+   5. **Then the rest of the libraries' share of the cube:** gamepads (WIN-4), `@kama/gpu`'s render pipeline set
       (GPU-4, shaped by the design pass), and `@kama/graphics`' first slice, on both legs.
 
    A page served from localhost to headless Edge prints its console to stderr
@@ -70,6 +80,32 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The tenth session** (2026-11-10). Each part was test-first, with its suites green and mutations caught before its
+commit:
+
+- **Every suite was green on the pin at the start,** with the ninth session's counts. `../kama` had not moved
+  (`c0b6887d`, a clean tree, the pin on its history), so the pin stayed.
+- **WIN-1's four questions were decided, each as recommended** (the owner, 2026-11-10, approving the session's plan;
+  `../kama-window/AGENTS.window.md` item 6), after a probe overturned none of them:
+  - `NativeWindow` holds the count, not a `Copyable` `Window`, since a `Window` is its event queue;
+  - dropping the `Window` closes it at once (hidden, no more events), the HWND goes with its last holder, and a
+    surface on a closed window refuses with `Closed`;
+  - one record and one count for the headless window and the canvas;
+  - Android's `SurfaceLost` closes the window's current record, built with WIN-13.
+
+  The probe (`.scratch/win1-window/`, wgpu-native over GLFW) measured a configure on a surface whose window was
+  destroyed aborting the process, and a hidden window's surface working as a shown one's.
+- **WIN-1 built** (kama-window `0aa6497`): 18 new cases (56 natively, 33 under node), 8 of 9 mutations caught, and the
+  ninth equivalent. The stopgap's own behaviour turns two cases red.
+- **GPU-2 built** (kama-gpu `435f184`): a surface, adapter options made with one, and a frame each hold the window.
+  9 new cases (78), 6 of 7 mutations caught, and the seventh equivalent natively. The mutations corrected the record:
+  with the window held, a closed window is hidden and valid, so `Closed` is the package's rule, not an abort guard.
+- **Both packages' tests open their windows unfocused** (the owner, 2026-11-10: "it fights for focus"), through GLFW's
+  hints in `tests/` alone, a stopgap until a window can open so through the API. The probe's exit 127 at process end
+  came in 9 of 50 runs while its windows took the focus, and in none of 50 unfocused; the cause was not found.
+- **Found on the way:** an acquire on a surface never configured aborts wgpu-native, measured 3 of 3.
+- **Nothing in kyoten uses the packages yet,** so kyoten's suite did not change.
 
 **The ninth session** (2026-11-10). Each part was test-first, with its suites green and mutations caught before its
 commit:
