@@ -21,9 +21,10 @@ the design doc it settles before building on it.
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
    - **When kama's own session is running its tests on this machine,** run nothing heavy and time nothing. When both
      run at once, only relative timings hold, taken back to back.
-   - **Read `../kama`'s log since `1d89a7f4`,** its HEAD at this session's end (0.9.904), when it also had work
+   - **Read `../kama`'s log since `b112fb33`,** its HEAD at this session's end (0.9.905), when it also had work
      uncommitted. Since the pin it gained:
      - 0.9.900 to 0.9.903: fibers on Windows, which kyoten does not use;
+     - 0.9.905: a `match` subject reached through a raw pointer is borrowed in place, which kyoten does not use;
      - KR-364, kama's answer to KY-48, ruled. 0.9.904 shipped its first half:
        - `JsonDeserializer.strict(src:)` becomes `JsonDeserializer.make(src:, strict: true)`. kyoten calls it in
          `engine/src/content/lay.kama`, the engine's tests and the tool's `index.kama`;
