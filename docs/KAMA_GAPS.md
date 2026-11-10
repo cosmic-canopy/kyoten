@@ -180,6 +180,18 @@ KY-45 (kama KR-361, not started), KY-40 and KY-48 stay open.
 query analyzes the whole game, its root module's content loader included. The owner accepted the cost for now and
 relays the ask.
 
+**kama took KY-48 and KY-49 the same evening** (read in `../kama`'s log at `1d89a7f4`, 2026-11-09; not on kyoten's pin):
+- **KY-48 is kama's KR-364, ruled.** Every keyed reader takes one required `strict:`, and a `JsonValue` mints its
+  reader with the same argument: `c.mergeFrom(r: tree.getRef(key: "Spin").reader(strict: true))`.
+  - The first half shipped in 0.9.904 (`1d89a7f4`): `JsonDeserializer.make(src:, strict:)` replaces `make(src:)` and
+    `strict(src:)`, and the one-liners take `strict:`. This is a breaking rename. kyoten calls `JsonDeserializer.strict`
+    in `engine/src/content/lay.kama`, the engine's tests and the tool's `index.kama`, and the compiler names each site.
+  - The tree's reader was not committed yet; kama's working tree held changes to `json.kama`.
+- **KY-49 is kama's KR-365, ruled, not built:** with a manifest, `kama query --modules sim,cube` roots the analysis at
+  those modules' files.
+
+Both stay open here until a pin that has them passes the suite.
+
 Ids are `KY-<n>` and are permanent. **Next id: KY-50**
 
 | Id | Kind | Status | Summary |

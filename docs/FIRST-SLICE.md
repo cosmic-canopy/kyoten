@@ -21,17 +21,27 @@ the design doc it settles before building on it.
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
    - **When kama's own session is running its tests on this machine,** run nothing heavy and time nothing. When both
      run at once, only relative timings hold, taken back to back.
-   - **Read `../kama`'s log since `6c5c130f`,** its HEAD at this session's end. It was 0.9.900 and 0.9.901 past the
-     pin, fibers on Windows (overlapped pipes and `TransmitFile`), which kyoten does not use, so the pin stayed.
-   - **Bump the pin only as a commit of its own,** with every suite green on the new one.
-   - **Still open with kama:**
-     - KY-49: a `--search` scoped to modules. When it lands, the tool's query costs only the simulation code it reads,
-       and the tool moves to it test-first (components § Decided, the owner, 2026-11-09).
-     - KY-45 (KR-361, not started): one query answers for the dependencies, and the tool's per-dependency cache goes.
-     - KY-48 (no reader over a parsed `JsonValue`): the loader's `subtreeText` goes when kama has one.
-     - KY-40 (no integer vectors).
+   - **Read `../kama`'s log since `1d89a7f4`,** its HEAD at this session's end (0.9.904), when it also had work
+     uncommitted. Since the pin it gained:
+     - 0.9.900 to 0.9.903: fibers on Windows, which kyoten does not use;
+     - KR-364, kama's answer to KY-48, ruled. 0.9.904 shipped its first half:
+       - `JsonDeserializer.strict(src:)` becomes `JsonDeserializer.make(src:, strict: true)`. kyoten calls it in
+         `engine/src/content/lay.kama`, the engine's tests and the tool's `index.kama`;
+       - the tree's `reader(strict:)`, which retires `subtreeText`, was not committed yet;
+     - KR-365, kama's answer to KY-49, ruled but not built: `kama query --modules sim,cube`.
 
-     The owner relays KY-48 and KY-49.
+     `docs/KAMA_GAPS.md` has the details.
+   - **Bump the pin as a commit of its own,** with every suite green on the new one.
+     - Once KR-364's reader is committed, the bump carries the rename's port, since kyoten does not build on 0.9.904
+       without it. Say so to the owner when bumping, because the rule's "no other change" cannot hold for a breaking
+       rename.
+     - `subtreeText`'s replacement by the tree's reader is a commit of its own after the bump, test-first.
+   - **Still open with kama:**
+     - KY-49 (KR-365, ruled): when `--modules` lands, the tool's query costs only the simulation code it reads, and the
+       tool moves to it test-first (components § Decided, the owner, 2026-11-09).
+     - KY-45 (KR-361, not started): one query answers for the dependencies, and the tool's per-dependency cache goes.
+     - KY-48 (KR-364, ruled, half shipped): the loader's `subtreeText` goes when the tree's reader is committed.
+     - KY-40 (no integer vectors).
 2. **Then the join, which waits on Track 1.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
