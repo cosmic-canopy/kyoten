@@ -1,0 +1,15 @@
+{
+  "name": "nopreload",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.899",
+  "description": "a fixture: a game with content/ whose manifest preloads something else, but not its content",
+  "entry": "src/app.kama",
+  "preloadFiles": ["assets@/nopreload/assets"],
+  "dependencies": { "kyoten": { "path": "../../../../../engine" } },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "generated": { "visibility": "internal", "importsOnly": [] }
+  }
+}

@@ -6,6 +6,7 @@
   "kama": ">=0.9.886",
   "description": "a fixture: the hello cube without Mesh, generated, built and stepped, with an Output processor in render's place",
   "entry": "src/app.kama",
+  "preloadFiles": ["content@/spin/content"],
   "dependencies": {
     "kyoten": { "path": "../../../../../engine" },
     "glow": { "path": "../glow" }

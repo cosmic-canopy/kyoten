@@ -1,0 +1,4 @@
+out/
+.kama/
+src/generated/
+*.generated.kama

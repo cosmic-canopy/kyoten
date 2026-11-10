@@ -1,0 +1,2 @@
+// The nopreload fixture: refused before anything is generated, since its content would not reach a web build.
+fn uint8 main() { return 0; }

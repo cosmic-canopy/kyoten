@@ -57,7 +57,7 @@ for mode in debug release; do
     if "$KAMA" build "$TESTS/kama.json" $flag -o "$exe" > "$OUT/build-$mode.log" 2>&1; then
         "$exe" || failed=1
     else
-        tail -20 "$OUT/build-$mode.log"
+        tail -n 20 "$OUT/build-$mode.log"
         failed=1
     fi
 done
@@ -67,7 +67,7 @@ if [ "$wasm" = 1 ]; then
     if "$KAMA" build "$TESTS/kama.json" --target WASM -o "$OUT/wasm/kyotentests.js" > "$OUT/build-wasm.log" 2>&1; then
         node "$OUT/wasm/kyotentests.js" || failed=1
     else
-        tail -20 "$OUT/build-wasm.log"
+        tail -n 20 "$OUT/build-wasm.log"
         failed=1
     fi
 else
@@ -88,7 +88,7 @@ guard_build() {
     elif [ "$want" = refused ] && grep -q "frame-larger-than" "$log"; then
         echo "ok   frame guard, $label: a 40 KB frame is refused"
     else
-        tail -20 "$log"
+        tail -n 20 "$log"
         echo "FAIL frame guard, $label: the build failed, but not by the guard"
         failed=1
     fi
@@ -122,7 +122,7 @@ if "$KAMA" build "$TOOL/kama.json" -o "$tool_exe" > "$OUT/build-tool.log" 2>&1 &
     if [ "$wasm" = 1 ]; then web="--wasm"; else echo "skip the spin fixture on wasm: no emcc or node on PATH"; fi
     "$tool_tests" "$tool_exe" "$KAMA" "$TOOL/tests/fixtures" $web || failed=1
 else
-    tail -20 "$OUT/build-tool.log" "$OUT/build-tool-tests.log"
+    tail -n 20 "$OUT/build-tool.log" "$OUT/build-tool-tests.log"
     failed=1
 fi
 
@@ -142,7 +142,7 @@ run_example() {
             failed=1
         fi
     else
-        tail -20 "$log"
+        tail -n 20 "$log"
         failed=1
     fi
 }

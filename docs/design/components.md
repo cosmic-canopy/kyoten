@@ -2301,3 +2301,57 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     1.24 s, against step 5.4's 0.75 s and 0.67 s. Neither the compiler nor the tool explains it: both pins check the
     tool's own package in the same 7.7 to 8.0 s, and the tool asks kama nothing new. KYR-24's load-time work should
     measure on a quiet, fixed machine.
+- **2026-11-09, built: `kyoten::content`, the loader's engine half, and the `preloadFiles` rule** (step 5.5's last
+  part, with the loader's four questions above), on kama `0.9.899+gf32373ea`, test-first.
+  - **The module,** `engine/src/content/`, outside the simulation's fence. Its `importsOnly` lists `std::fs`,
+    `std::io`, `std::memory`, `std::collections`, `std::serialization::text::json` and `records`; a module of the
+    engine's own package is named bare. It holds:
+    - `RecordSource`, a contract of three `const fn`s: `name()`, the label a refusal names its files by; `files()`, every
+      `*.records.json` under it, `/`-separated and sorted, as found when it was opened; and `text(path:)`. The loader is
+      handed sources already open, so a pack fetched on the web fits behind it later.
+    - `FolderSource.open(root:, label:)`: it walks the folder with `std::fs`, leaving out hidden names as kama's asset
+      record does, and a missing root is `NotFound`.
+    - `LayerStack`: owned sources, lowest first, each `push` the highest.
+    - `ContentFile`, `ZoneFile` and `PlacementRecord`: the file shapes the loader and the tool both read strictly, with
+      component values kept as JSON.
+    - `readContent(stack:, no:)`, which gives a `Content`: each prefab's tree in every layer that writes it, the first
+      scene, and its placements.
+    - `layOver` and `readWhole`, generic over `MergeDeserializable`, which the generated half calls per component.
+    - `subtreeText`, KY-48's stopgap, the one function that writes a subtree back to text.
+    - `LoadRefusals`, every refusal as `<file>: <what>`.
+  - **Settled while building it:**
+    - **The merge order:** a component starts from its `default ctor`. Then come its prefab chain's subtrees, base
+      first, each prefab's layers lowest first, so a prefab is merged across layers before its variant applies. A
+      placement's `values` go last. With one layer, the game's, this is the decided list, and it says what a second
+      layer means.
+    - **A component is spelled by its bare name or its full path,** both accepted. The generated half hands the loader
+      each component's spellings.
+    - **A placement is read whole, not merged,** so a missing `prefab` is named. A zone file's placements are read one
+      by one, so one refusal keeps the rest:
+      ``content/scenes/hello/zone.0.0.records.json: placement `e`: missing field `prefab` ``.
+    - **Only what is built is accepted:** the zone at the origin (`zone.0.0`), the layer `main`, and no layer groups;
+      the rest is refused, naming KYR-61. `scene.records.json` is not read yet; its layers and limits come with that
+      row.
+    - **Within one layer a prefab or a placement is written once,** and the refusal names both files.
+    - **A refusal is named once,** however many components meet it (a variant whose base no layer writes).
+  - **The `preloadFiles` rule:** a game with `content/` whose manifest does not list
+    `"content@/<game>/content"` is refused at `kama.json`, showing the line to add. Every tool fixture with content
+    preloads it, and the test harness runs node from a web build's own folder, where emscripten looks for the `.data`
+    file.
+  - **Tested:**
+    - The engine's tests are 153 cases, 39 new, natively debug and release and on wasm under node. The folder source's
+      cases write their own folder: beside the test binary natively, and in emscripten's memory file system on wasm,
+      so the engine's tests need no `preloadFiles`. The rest run on a `RecordSource` held in memory, handed in.
+    - The tool's tests are 128 cases with the wasm legs.
+  - **Mutations caught,** each turning an engine case red:
+    - layers laid highest first, and a variant before its base;
+    - hidden or non-records files listed;
+    - a prefab written twice in one layer kept;
+    - a `null` on a family's component, and a key naming none of its components, kept;
+    - a placement's group or layer, and a zone other than the origin, taken;
+    - `app.firstScene` ignored;
+    - refusals not deduplicated;
+    - a placement merged rather than read whole;
+    - `readWhole` with nothing to read (it panics, so the suite fails).
+  - **Fixed on the way:** `tools/test.sh`'s failure path ran `tail -20` over two files, which the shell refuses; it is
+    `tail -n 20` throughout.

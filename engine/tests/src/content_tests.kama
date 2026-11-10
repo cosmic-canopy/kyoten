@@ -1,0 +1,348 @@
+// kyoten::content (components § Decided, the loader's four questions of 2026-11-09; project-database § Decided,
+// 2026-11-08 and 2026-11-09): the `RecordSource` contract, the folder source and the layer stack, and the generic half
+// of the loader: each prefab read as a tree, each component's subtree laid over its default in layer order, and the
+// first scene's placements. The game-shaped half is generated (tools/kyoten), and calls these.
+
+import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, kyoten::content::LayerStack,
+         kyoten::content::Content, kyoten::content::Placement, kyoten::content::Subtree,
+         kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::layOver,
+         kyoten::content::readWhole, kyoten::content::subtreeText, kyoten::world::Transform,
+         core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
+         std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
+         std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
+         std::serialization::text::json::deserializeJsonBuffer };
+
+export { contentTests };
+
+// A component with defaults, and one without, which a prefab lists whole.
+@generate(Serializable, Deserializable)
+type value Spin { @field public float32 rate = 1; @field public float32 limit = 9; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Seat { @field public int32 player; public ctor forPlayer(int32 player) { this.player = player; } }
+
+// A source held in memory: what a test hands the stack in place of a folder (dependencies are injected).
+type resource MemorySource implements RecordSource {
+    string label = "";
+    SortedMap<string, string> texts = SortedMap.empty();
+
+    public ctor make(string label) { this.label = give label; }
+    public fn void put(const ref string path, const ref string text) { this.texts.put(key: copy path, value: copy text); }
+
+    public const fn string name() { return copy this.label; }
+    public const fn DynamicArray<string> files() { return this.texts.keys(); }
+    public const fn Result<string, IoError> text(const ref string path) {
+        if (!this.texts.contains(key: path)) { return Result::Err(error: IoError.of(kind: IoErrorKind::NotFound)); }
+        return Result::Ok(value: copy this.texts.getRef(key: path));
+    }
+}
+
+fn DynamicArray<string> spellings(const ref string a, const ref string b) {
+    DynamicArray<string> s = DynamicArray.empty();
+    s.add(item: copy a);
+    if (!b.isEmpty()) { s.add(item: copy b); }
+    return s;
+}
+
+// Every refusal, one a line, for a failed case's message.
+fn string all(const ref LoadRefusals no) {
+    string made = "";
+    foreach (const ref string l in no.lines().iterConst()) { made = made + l + "\n"; }
+    return made;
+}
+
+fn string said(const ref LoadRefusals no, const ref string line) {
+    if (no.says(what: line)) { return ""; }
+    string got = all(no: no);
+    return "no `${line}` in:\n${got}";
+}
+
+// A stack of one or two memory sources.
+fn LayerStack stackOf(MemorySource low, Optional<MemorySource> high) {
+    LayerStack stack = LayerStack.make();
+    Owned<RecordSource> first = give low;
+    stack.push(source: give first);
+    match (give high) {
+        case Some(value: h): { Owned<RecordSource> second = give h; stack.push(source: give second); }
+        case None: { }
+    };
+    return stack;
+}
+
+// The folder source on a folder the test writes: natively beside the test's binary, in its git-ignored `out/`; on
+// wasm in emscripten's memory file system, so the tests need no `preloadFiles`.
+@compileFor(ARCH_WASM32)
+fn string scratchRoot() { return "/tmp/kyotentests-content"; }
+@compileFor(!ARCH_WASM32)
+fn string scratchRoot() {
+    Optional<string> exe = programPath();
+    string path = match (give exe) { case Some(value: p): give p; case None: "."; };
+    Optional<string> dir = parent(path: path);
+    string at = match (give dir) { case Some(value: d): give d; case None: "."; };
+    return at.replace(old: "\\", with: "/") + "/content-fixture";
+}
+
+unsafe fn void writeFolder(const ref string root) {
+    Result<Unit, IoError> gone = removeDirAll(path: root);
+    Result<Unit, IoError> made = createDirAll(path: root + "/scenes/hello");
+    Result<isize, IoError> a = writeText(path: root + "/cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": { \"rate\": 2 } } } }");
+    Result<isize, IoError> b = writeText(path: root + "/scenes/hello/zone.0.0.records.json", text: "{ \"place\": { \"cube\": { \"prefab\": \"cube\" } } }");
+    Result<isize, IoError> c = writeText(path: root + "/readme.txt", text: "not a record");
+    Result<isize, IoError> d = writeText(path: root + "/.hidden.records.json", text: "{}");
+}
+
+unsafe fn void folderSource(ref Tally t) {
+    string root = scratchRoot();
+    writeFolder(root: root);
+    Result<FolderSource, IoError> opened = FolderSource.open(root: root, label: "content");
+    match (give opened) {
+        case Ok(value: f): {
+            DynamicArray<string> files = f.files();
+            bool listed = files.length() == 2 && files[0] == "cube.records.json"
+                && files[1] == "scenes/hello/zone.0.0.records.json";
+            string first = files.length() > 0 ? copy files[0] : "";
+            isize n = files.length();
+            t.verdict(name: "FolderSource: lists each records file under its root, nested, sorted, `/`-separated, and nothing else",
+                      why: listed ? "" : "${n} files, the first `${first}`");
+            string label = f.name();
+            t.verdict(name: "FolderSource: its name is the label a refusal names its files by",
+                      why: label == "content" ? "" : "named `${label}`");
+            Result<string, IoError> text = f.text(path: "cube.records.json");
+            bool read = match (text) { case Ok(value: s): s.contains(substring: "\"rate\": 2"); case Err(error: e): false; };
+            t.verdict(name: "FolderSource: reads a file's text by its path", why: read ? "" : "not read");
+            Result<string, IoError> missing = f.text(path: "nowhere.records.json");
+            bool refused = match (missing) { case Ok(value: s): false; case Err(error: e): e.kind() == IoErrorKind::NotFound; };
+            t.verdict(name: "FolderSource: a file it does not hold is NotFound", why: refused ? "" : "read");
+        }
+        case Err(error: e): {
+            string m = e.message();
+            t.verdict(name: "FolderSource: lists each records file under its root, nested, sorted, `/`-separated, and nothing else",
+                      why: "not opened: ${m}");
+        }
+    };
+    Result<FolderSource, IoError> none = FolderSource.open(root: root + "/absent", label: "content");
+    bool absent = match (none) { case Ok(value: f): false; case Err(error: e): e.kind() == IoErrorKind::NotFound; };
+    t.verdict(name: "FolderSource: a root that is not there is NotFound", why: absent ? "" : "opened");
+    Result<Unit, IoError> gone = removeDirAll(path: root);
+}
+
+// Two layers, the engine's and the game's, and a variant: the order a component's subtrees are laid in.
+fn void layers(ref Tally t) {
+    MemorySource engine = MemorySource.make(label: "kyoten");
+    engine.put(path: "defaults.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": { \"rate\": 2, \"limit\": 3 } } } }");
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": { \"limit\": 5 } }, \"fast\": { \"from\": \"cube\", \"Spin\": { \"rate\": 4 } } } }");
+    LayerStack stack = stackOf(low: give engine, high: Optional::Some(value: give game));
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    t.verdict(name: "readContent: two layers read with nothing refused", why: no.any() ? all(no: no) : "");
+
+    DynamicArray<Subtree> cubeTrees = c.subtreesOf(prefab: "cube", spellings: spellings(a: "Spin", b: "hello::cube::Spin"), no: no);
+    Spin cube = Spin.default();
+    layOver::<Spin>(into: cube, trees: cubeTrees, component: "Spin", no: no);
+    t.verdict(name: "layOver: a prefab's layers merge lowest first, each keeping what the next leaves out (rate 2, limit 5)",
+              why: cube.rate == 2 && cube.limit == 5 ? "" : "rate ${cube.rate}, limit ${cube.limit}");
+
+    DynamicArray<Subtree> fastTrees = c.subtreesOf(prefab: "fast", spellings: spellings(a: "Spin", b: ""), no: no);
+    Spin fast = Spin.default();
+    layOver::<Spin>(into: fast, trees: fastTrees, component: "Spin", no: no);
+    isize n = fastTrees.length();
+    t.verdict(name: "subtreesOf: a variant's chain is its base's layers, then its own (three subtrees)",
+              why: n == 3 ? "" : "${n} subtrees");
+    t.verdict(name: "layOver: a variant's value goes over its base's merged one (rate 4, limit 5)",
+              why: fast.rate == 4 && fast.limit == 5 ? "" : "rate ${fast.rate}, limit ${fast.limit}");
+    string firstFile = n > 0 ? copy fastTrees[0].file() : "";
+    t.verdict(name: "Subtree: names the file it came from, by its source's label",
+              why: firstFile == "kyoten/defaults.records.json" ? "" : "named `${firstFile}`");
+}
+
+// A full path spells a component as well as its bare name; a key spelled neither way is no component of the family.
+fn void spelling(ref Tally t) {
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"hello::cube::Spin\": { \"rate\": 6 }, \"layer\": \"main\", \"note\": \"its layer named\" }, \"typo\": { \"Spinn\": {} }, \"high\": { \"Spin\": {}, \"layer\": \"sky\" }, \"drop\": { \"Spin\": null } } }");
+    LayerStack stack = stackOf(low: give game, high: Optional::None);
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    DynamicArray<string> spin = spellings(a: "Spin", b: "hello::cube::Spin");
+    DynamicArray<Subtree> trees = c.subtreesOf(prefab: "cube", spellings: spin, no: no);
+    Spin s = Spin.default();
+    layOver::<Spin>(into: s, trees: trees, component: "Spin", no: no);
+    t.verdict(name: "subtreesOf: a component's full path spells it as its bare name does", why: s.rate == 6 ? "" : "rate ${s.rate}");
+    LoadRefusals fine = LoadRefusals.make();
+    c.checkPrefab(prefab: "cube", spellings: spin, no: fine);
+    t.verdict(name: "checkPrefab: `from`, `layer` `main` and `note` are a prefab's own keys", why: fine.any() ? all(no: fine) : "");
+    c.checkPrefab(prefab: "typo", spellings: spin, no: no);
+    t.verdict(name: "checkPrefab: a key naming no component of its family is refused, naming the prefab and the key",
+              why: said(no: no, line: "content/cube.records.json: prefab `typo` names `Spinn`, which is no component of its family: `Spin`"));
+    c.checkPrefab(prefab: "high", spellings: spin, no: no);
+    t.verdict(name: "checkPrefab: a layer other than `main` is refused, as not built yet",
+              why: said(no: no, line: "content/cube.records.json: prefab `high` names layer `sky`, and only `main` is built yet: more layers come with their row (KYR-61)"));
+    c.checkPrefab(prefab: "drop", spellings: spin, no: no);
+    t.verdict(name: "checkPrefab: a `null` on a component its family has is refused, since a build decides a family",
+              why: said(no: no, line: "content/cube.records.json: prefab `drop` drops `Spin` with `null`, which its family has: a variant that drops a component is a family of its own, which a build decides"));
+}
+
+// What the reader refuses is named with its file, its prefab and its component.
+fn void refusals(ref Tally t) {
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"typo\": { \"Spin\": { \"rat\": 3 } }, \"seated\": { \"Seat\": { \"player\": 2 } }, \"short\": { \"Seat\": { } }, \"bare\": { \"Spin\": {} } } }");
+    LayerStack stack = stackOf(low: give game, high: Optional::None);
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    Spin typo = Spin.default();
+    layOver::<Spin>(into: typo, trees: c.subtreesOf(prefab: "typo", spellings: spellings(a: "Spin", b: ""), no: no), component: "Spin", no: no);
+    t.verdict(name: "layOver: a misspelt field is named with its file, prefab and component",
+              why: said(no: no, line: "content/cube.records.json: prefab `typo`, `Spin`: unknown field `rat`"));
+    t.verdict(name: "layOver: a refused subtree leaves the value as it was", why: typo.rate == 1 ? "" : "rate ${typo.rate}");
+
+    DynamicArray<string> seat = spellings(a: "Seat", b: "");
+    Optional<Seat> seated = readWhole::<Seat>(trees: c.subtreesOf(prefab: "seated", spellings: seat, no: no), component: "Seat",
+                                              prefab: "seated", file: c.fileOf(prefab: "seated"), no: no);
+    int32 player = match (seated) { case Some(value: s): s.player; case None: -1; };
+    t.verdict(name: "readWhole: a component with no default is read whole from its first subtree", why: player == 2 ? "" : "player ${player}");
+    Optional<Seat> lacking = readWhole::<Seat>(trees: c.subtreesOf(prefab: "short", spellings: seat, no: no), component: "Seat",
+                                             prefab: "short", file: c.fileOf(prefab: "short"), no: no);
+    t.verdict(name: "readWhole: a field it requires and lacks is refused, named",
+              why: said(no: no, line: "content/cube.records.json: prefab `short`, `Seat`: missing field `player`"));
+    Optional<Seat> none = readWhole::<Seat>(trees: c.subtreesOf(prefab: "bare", spellings: seat, no: no), component: "Seat",
+                                            prefab: "bare", file: c.fileOf(prefab: "bare"), no: no);
+    bool empty = match (none) { case Some(value: s): false; case None: true; };
+    t.verdict(name: "readWhole: a prefab that does not list it is refused, since it has no default to start from",
+              why: empty ? said(no: no, line: "content/cube.records.json: prefab `bare` lacks `Seat`, which elects no `default ctor`: list it, with its values") : "read one");
+}
+
+// Within one layer a prefab is written once; a higher layer merges over it by key.
+fn void keys(ref Tally t) {
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "a.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": {} } } }");
+    game.put(path: "b.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": {} } } }");
+    game.put(path: "c.records.json", text: "{ \"prefabz\": {} }");
+    LayerStack stack = stackOf(low: give game, high: Optional::None);
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    t.verdict(name: "readContent: a prefab written in two files of one layer is refused, naming both",
+              why: said(no: no, line: "content/b.records.json: prefab `cube` is written twice in one layer, also in content/a.records.json: keep one"));
+    t.verdict(name: "readContent: a content file is read strictly, its misspelt section named",
+              why: said(no: no, line: "content/c.records.json: unknown field `prefabz`"));
+
+    // A variant whose base no layer writes: each component's chain meets it, and it is named once.
+    MemorySource orphan = MemorySource.make(label: "content");
+    orphan.put(path: "a.records.json", text: "{ \"prefabs\": { \"lost\": { \"from\": \"nowhere\", \"Spin\": {} } } }");
+    LoadRefusals once = LoadRefusals.make();
+    Content oc = readContent(stack: stackOf(low: give orphan, high: Optional::None), no: once);
+    DynamicArray<Subtree> spin = oc.subtreesOf(prefab: "lost", spellings: spellings(a: "Spin", b: ""), no: once);
+    DynamicArray<Subtree> seat = oc.subtreesOf(prefab: "lost", spellings: spellings(a: "Seat", b: ""), no: once);
+    isize n = once.count();
+    t.verdict(name: "subtreesOf: a base no layer writes is refused once, however many components meet it",
+              why: n == 1 ? said(no: once, line: "content/a.records.json: prefab `lost` starts `from` `nowhere`, which no content file declares") : all(no: once));
+}
+
+// The first scene: the one `app.firstScene` names, else the only one; its one zone's placements.
+fn void scenes(ref Tally t) {
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": { \"rate\": 2 } } } }");
+    game.put(path: "scenes/hello/zone.0.0.records.json", text: "{ \"place\": { \"left\": { \"prefab\": \"cube\", \"values\": { \"Spin\": { \"rate\": 7 } } }, \"right\": { \"prefab\": \"cube\" } } }");
+    LayerStack stack = stackOf(low: give game, high: Optional::None);
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    string scene = copy c.scene();
+    t.verdict(name: "readContent: the only scene is the first", why: scene == "hello" ? "" : "scene `${scene}`");
+    isize n = c.placements().length();
+    t.verdict(name: "readContent: the first scene's zone gives its placements, by placed name", why: n == 2 && c.placements()[0].placed() == "left" ? "" : "${n} placements");
+    if (n == 2) {
+        Spin left = Spin.default();
+        layOver::<Spin>(into: left, trees: c.subtreesOf(prefab: "cube", spellings: spellings(a: "Spin", b: ""), no: no), component: "Spin", no: no);
+        layOver::<Spin>(into: left, trees: c.placements()[0].subtreesOf(spellings: spellings(a: "Spin", b: "")), component: "Spin", no: no);
+        t.verdict(name: "Placement: its values are laid over its prefab's (rate 7 over 2)", why: left.rate == 7 ? "" : "rate ${left.rate}");
+        string file = copy c.placements()[0].file();
+        t.verdict(name: "Placement: names its zone file", why: file == "content/scenes/hello/zone.0.0.records.json" ? "" : "named `${file}`");
+    }
+    t.verdict(name: "readContent: one scene and its zone read with nothing refused", why: no.any() ? all(no: no) : "");
+
+    MemorySource named = MemorySource.make(label: "content");
+    named.put(path: "app.records.json", text: "{ \"app\": { \"firstScene\": \"two\" } }");
+    named.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { } } }");
+    named.put(path: "scenes/one/zone.0.0.records.json", text: "{ \"place\": { \"a\": { \"prefab\": \"cube\" } } }");
+    named.put(path: "scenes/two/zone.0.0.records.json", text: "{ \"place\": { \"b\": { \"prefab\": \"cube\" } } }");
+    LayerStack namedStack = stackOf(low: give named, high: Optional::None);
+    LoadRefusals none = LoadRefusals.make();
+    Content n2 = readContent(stack: namedStack, no: none);
+    string chosen = copy n2.scene();
+    bool placedB = n2.placements().length() == 1 && n2.placements()[0].placed() == "b";
+    t.verdict(name: "readContent: `app.firstScene` names the first scene among several",
+              why: chosen == "two" && placedB && !none.any() ? "" : "scene `${chosen}`");
+}
+
+fn void sceneRefusals(ref Tally t) {
+    MemorySource several = MemorySource.make(label: "content");
+    several.put(path: "scenes/one/zone.0.0.records.json", text: "{ \"place\": {} }");
+    several.put(path: "scenes/two/zone.0.0.records.json", text: "{ \"place\": {} }");
+    LoadRefusals a = LoadRefusals.make();
+    Content ca = readContent(stack: stackOf(low: give several, high: Optional::None), no: a);
+    t.verdict(name: "readContent: several scenes and no `app.firstScene` is refused, naming them",
+              why: said(no: a, line: "content: the scenes `one` and `two` are there, and no `app.firstScene` names the first: name it in the app record"));
+
+    MemorySource missing = MemorySource.make(label: "content");
+    missing.put(path: "app.records.json", text: "{ \"app\": { \"firstScene\": \"nowhere\" } }");
+    missing.put(path: "scenes/one/zone.0.0.records.json", text: "{ \"place\": {} }");
+    LoadRefusals b = LoadRefusals.make();
+    Content cb = readContent(stack: stackOf(low: give missing, high: Optional::None), no: b);
+    t.verdict(name: "readContent: an `app.firstScene` naming no scene is refused",
+              why: said(no: b, line: "content/app.records.json: `app.firstScene` names `nowhere`, which is no folder under `scenes/`"));
+
+    MemorySource zones = MemorySource.make(label: "content");
+    zones.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { } } }");
+    zones.put(path: "scenes/hello/zone.0.0.records.json", text: "{ \"place\": { \"a\": { \"prefab\": \"nope\" }, \"b\": { \"prefab\": \"cube\", \"group\": \"boss\" }, \"c\": { \"prefab\": \"cube\", \"layer\": \"fx\" }, \"d\": { \"prefab\": \"cube\", \"layer\": \"main\" }, \"e\": { } } }");
+    zones.put(path: "scenes/hello/far/zone.1.0.records.json", text: "{ \"place\": {} }");
+    LoadRefusals c = LoadRefusals.make();
+    Content cc = readContent(stack: stackOf(low: give zones, high: Optional::None), no: c);
+    t.verdict(name: "readContent: a placement naming no prefab is refused",
+              why: said(no: c, line: "content/scenes/hello/zone.0.0.records.json: placement `a` names prefab `nope`, which no content file declares"));
+    t.verdict(name: "readContent: a placement's `group` is refused, as not built yet",
+              why: said(no: c, line: "content/scenes/hello/zone.0.0.records.json: placement `b` names group `boss`, and layer groups are not built yet: they come with their row (KYR-61)"));
+    t.verdict(name: "readContent: a placement's layer other than `main` is refused, as not built yet",
+              why: said(no: c, line: "content/scenes/hello/zone.0.0.records.json: placement `c` names layer `fx`, and only `main` is built yet: more layers come with their row (KYR-61)"));
+    t.verdict(name: "readContent: a placement with no `prefab` is refused by the reader",
+              why: said(no: c, line: "content/scenes/hello/zone.0.0.records.json: placement `e`: missing field `prefab`"));
+    t.verdict(name: "readContent: a zone other than the origin is refused, as not built yet",
+              why: said(no: c, line: "content/scenes/hello/far/zone.1.0.records.json: only the zone at the origin, `zone.0.0`, is built yet: more zones come with KYR-61"));
+    bool kept = cc.placements().length() == 1 && cc.placements()[0].placed() == "d";
+    t.verdict(name: "readContent: only the placements nothing refused are kept", why: kept ? "" : all(no: c));
+
+    // A placement's values name components of its prefab's family, which the generated half knows.
+    MemorySource values = MemorySource.make(label: "content");
+    values.put(path: "cube.records.json", text: "{ \"prefabs\": { \"cube\": { \"Spin\": {} } } }");
+    values.put(path: "scenes/hello/zone.0.0.records.json", text: "{ \"place\": { \"a\": { \"prefab\": \"cube\", \"values\": { \"Mesh\": {} } } } }");
+    LoadRefusals d = LoadRefusals.make();
+    Content cd = readContent(stack: stackOf(low: give values, high: Optional::None), no: d);
+    if (cd.placements().length() == 1) { cd.placements()[0].checkValues(spellings: spellings(a: "Spin", b: "hello::cube::Spin"), no: d); }
+    t.verdict(name: "Placement: a `values` key naming no component of its prefab's family is refused",
+              why: said(no: d, line: "content/scenes/hello/zone.0.0.records.json: placement `a` sets `Mesh`, which is no component of prefab `cube`'s family: `Spin`"));
+}
+
+// KY-48's stopgap: a subtree written back to text is read as the same value.
+fn void subtrees(ref Tally t) {
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: "{\"position\": {\"x\": -20, \"y\": 0.5}, \"scale\": {\"x\": 2}}");
+    JsonValue tree = match (give parsed) { case Ok(value: v): give v; case Err(error: e): JsonValue::Null; };
+    string text = subtreeText(of: tree);
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "a.records.json", text: "{ \"prefabs\": { \"p\": { \"Transform\": " + text + " } } }");
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stackOf(low: give game, high: Optional::None), no: no);
+    Transform tr = Transform.identity();
+    layOver::<Transform>(into: tr, trees: c.subtreesOf(prefab: "p", spellings: spellings(a: "Transform", b: ""), no: no),
+                         component: "Transform", no: no);
+    bool same = tr.position.x == -20 && tr.position.y == 0.5 && tr.scale.x == 2 && tr.scale.y == 1 && tr.rotation.w == 1;
+    t.verdict(name: "subtreeText: a nested subtree laid over Transform.identity() sets what it names and keeps the rest",
+              why: same && !no.any() ? "" : "position.x ${tr.position.x}, scale.y ${tr.scale.y}\n" + all(no: no));
+}
+
+unsafe fn void contentTests(ref Tally t) {
+    folderSource(t: t);
+    layers(t: t);
+    spelling(t: t);
+    refusals(t: t);
+    keys(t: t);
+    scenes(t: t);
+    sceneRefusals(t: t);
+    subtrees(t: t);
+}

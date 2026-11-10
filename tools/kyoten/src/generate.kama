@@ -12,7 +12,7 @@
 //
 // A refusal at any step leaves every file as it was.
 
-import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir,
+import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir, std::fs::exists,
          std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index, StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
          worldKama, generatedFiles, checkHeaders, writeIfChanged, removeFile };
@@ -23,6 +23,14 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     Refusals no = Refusals.make();
     if (!game.lists(folder: "generated")) {
         no.add(where: "kama.json", what: "its `modules` list no \"generated\", the folder kyoten writes the game's generated kama to: add \"generated\": { \"visibility\": \"internal\", \"importsOnly\": [ … ] }, listing the modules its prefabs' components come from");
+        no.print();
+        return false;
+    }
+    // A web build sees only what `preloadFiles` packs, so a game's content must be listed there (components § Decided,
+    // the loader's question 3 of 2026-11-09, kept after std::asset was probed: project-database § Decided).
+    string preload = "content@/" + game.name() + "/content";
+    if (exists(path: game.root() + "/content") && !game.preloads(entry: preload)) {
+        no.add(where: "kama.json", what: "its `content/` reaches a web build only through `preloadFiles`, and none lists it: add \"preloadFiles\": [\"${preload}\"], or the entry to the list there");
         no.print();
         return false;
     }

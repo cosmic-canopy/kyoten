@@ -193,4 +193,11 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
     Ran g = s.kyoten(command: "generate", game: "nogen", more: none());
     ranAs(t: t, name: "nogen: a manifest that does not list `generated` is refused, naming the fix", r: g, want: 1,
           says: "\"generated\"");
+
+    // A game with `content/` must preload it, or a web build never sees it (components § Decided, the loader's
+    // question 3 of 2026-11-09, kept after std::asset was probed). Preloading something else is not enough.
+    install(t: t, s: s, game: "nopreload");
+    Ran pre = s.kyoten(command: "generate", game: "nopreload", more: none());
+    ranAs(t: t, name: "nopreload: a game whose manifest does not preload its content is refused, naming the line to add",
+          r: pre, want: 1, says: "add \"preloadFiles\": [\"content@/nopreload/content\"]");
 }

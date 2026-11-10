@@ -1,5 +1,6 @@
-// A package's `kama.json`, as far as the tool reads it: its name, its entry, the folders its `modules` list, and its
-// dependencies. A file's module is its folder's, or the nearest listed folder's above it, as kama has it.
+// A package's `kama.json`, as far as the tool reads it: its name, its entry, the folders its `modules` list, its
+// dependencies, and its `preloadFiles`, which must carry the game's `content/` to a web build. A file's module is its
+// folder's, or the nearest listed folder's above it, as kama has it.
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
          std::fs::readText, std::fs::readDir, std::fs::stat, std::fs::Metadata, std::path::parent,
@@ -24,15 +25,20 @@ type resource Manifest {
     string entryFile = "";
     DynamicArray<string> folders = DynamicArray.empty();
     DynamicArray<Dependency> dependencies = DynamicArray.empty();
+    DynamicArray<string> preloadList = DynamicArray.empty();
 
     public ctor make(string root, string name, string entry, DynamicArray<string> folders,
-                     DynamicArray<Dependency> dependencies) {
+                     DynamicArray<Dependency> dependencies, DynamicArray<string> preloads) {
         this.rootDir = give root;
         this.packageName = give name;
         this.entryFile = give entry;
         this.folders = give folders;
         this.dependencies = give dependencies;
+        this.preloadList = give preloads;
     }
+
+    // Whether `preloadFiles` lists this entry, as written (`content@/spin/content`).
+    public const fn bool preloads(const ref string entry) { return this.preloadList.contains(item: entry); }
 
     // The folder holding kama.json, as it was named.
     public const fn const ref string root() { return this.rootDir; }
@@ -132,8 +138,23 @@ unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why)
         }
         case None: { }
     };
+    DynamicArray<string> preloads = DynamicArray.empty();
+    Optional<JsonValue> preloaded = doc.get(key: "preloadFiles");
+    match (preloaded) {
+        case Some(value: ps): {
+            match (ps) {
+                case Array(items: xs): {
+                    foreach (const ref JsonValue x in xs.iterConst()) {
+                        match (x) { case String(value: s): { preloads.add(item: copy s); } case _: { } };
+                    }
+                }
+                case _: { }
+            };
+        }
+        case None: { }
+    };
     return Optional::Some(value: Manifest.make(root: give root, name: give name, entry: give entry, folders: give folders,
-                                           dependencies: give deps));
+                                           dependencies: give deps, preloads: give preloads));
 }
 
 // Every file under `dir`, as `/`-separated paths relative to it, sorted; none when `dir` is missing.

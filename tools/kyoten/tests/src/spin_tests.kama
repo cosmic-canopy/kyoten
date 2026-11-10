@@ -145,8 +145,8 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
         Ran built = s.kyoten(command: "build", game: "spin", more: web);
         ranAs(t: t, name: "spin: `kyoten build --target WASM`", r: built, want: 0, says: "");
         DynamicArray<string> node = DynamicArray.empty();
-        node.add(item: copy js);
-        Ran underNode = s.runProgram(program: "node", argv: node);
+        node.add(item: "spin.js");
+        Ran underNode = s.runProgramIn(program: "node", argv: node, dir: s.fixture(at: "spin/out/web"));
         ranAs(t: t, name: "spin: the web build runs under node", r: underNode, want: 0,
               says: "spin: player 1, faster held false");
         sameTurns(t: t, leg: "wasm under node", r: underNode);

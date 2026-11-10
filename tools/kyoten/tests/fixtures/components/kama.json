@@ -6,6 +6,7 @@
   "kama": ">=0.9.886",
   "description": "a fixture: component names the generator refuses once kama has answered",
   "entry": "src/app.kama",
+  "preloadFiles": ["content@/components/content"],
   "dependencies": { "kyoten": { "path": "../../../../../engine" } },
   "modules": {
     ".": { "visibility": "internal" },

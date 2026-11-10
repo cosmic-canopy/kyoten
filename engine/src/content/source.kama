@@ -1,0 +1,79 @@
+// kyoten::content's sources (project-database § Decided, 2026-11-08 and 2026-11-09; components § Decided, the loader's
+// four questions of 2026-11-09). The loader reads records through a `RecordSource`, whatever satisfies it: a folder in
+// development, read with std::fs, and later a pack, which on the web is fetched before it is read. A source is handed
+// to the loader already open, so the loader itself never waits: its files are listed when it is opened, and reading
+// one is synchronous.
+//
+// The folder source is the development one: natively it reads the game's folders where the generator found them, and
+// on the web where `preloadFiles` put them. A shipped game reads packs, and on Android and the Quest through
+// `std::asset`, since an asset there is not a file.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::fs::readDir,
+         std::fs::readText, std::fs::stat, std::fs::Metadata };
+
+export { RecordSource, FolderSource };
+
+// Where records come from: one layer of the stack.
+type contract RecordSource for resource {
+    // The name a refusal gives the source's files: `content/cube.records.json` for a game's `content` folder.
+    const fn string name();
+    // Every records file the source holds (`*.records.json`), by its path under the source, `/`-separated and sorted,
+    // as it was when the source was opened.
+    const fn DynamicArray<string> files();
+    // A file's text, by its path under the source.
+    const fn Result<string, IoError> text(const ref string path);
+}
+
+// A folder on the file system: natively a game's `content/`, on the web the folder `preloadFiles` packed.
+type resource FolderSource implements RecordSource {
+    string rootDir = "";
+    string label = "";
+    DynamicArray<string> fileList = DynamicArray.empty();
+
+    ctor of(string root, string label, DynamicArray<string> files) {
+        this.rootDir = give root;
+        this.label = give label;
+        this.fileList = give files;
+    }
+
+    // The folder at `root`, named `label` in refusals, with every records file under it listed. A hidden name (a
+    // leading `.`) is left out, as kama's own asset record leaves it. The root's own error when it cannot be listed,
+    // `NotFound` when it is not there.
+    public unsafe ctor Result<FolderSource, IoError> open(const ref string root, const ref string label) {
+        Result<DynamicArray<string>, IoError> top = readDir(path: root);
+        match (top) {
+            case Ok(value: names): { }
+            case Err(error: e): { return Result::Err(error: e); }
+        };
+        SortedMap<string, bool> found = SortedMap.empty();
+        walk(root: root, rel: "", found: found);
+        return Result::Ok(value: FolderSource.of(root: copy root, label: copy label, files: found.keys()));
+    }
+
+    public const fn string name() { return copy this.label; }
+    public const fn DynamicArray<string> files() { return copy this.fileList; }
+    public const fn Result<string, IoError> text(const ref string path) { return readUnder(root: this.rootDir, path: path); }
+}
+
+unsafe fn Result<string, IoError> readUnder(const ref string root, const ref string path) {
+    return readText(path: root + "/" + path);
+}
+
+// Every records file under `root/rel`, into `found` by its path under `root`.
+unsafe fn void walk(const ref string root, const ref string rel, ref SortedMap<string, bool> found) {
+    string here = rel.isEmpty() ? copy root : root + "/" + rel;
+    Result<DynamicArray<string>, IoError> names = readDir(path: here);
+    match (names) {
+        case Ok(value: ns): {
+            foreach (const ref string n in ns.iterConst()) {
+                if (n.startsWith(prefix: ".")) { continue; }
+                string relN = rel.isEmpty() ? copy n : rel + "/" + n;
+                Result<Metadata, IoError> md = stat(path: root + "/" + relN);
+                bool isDir = match (md) { case Ok(value: m): m.isDir(); case Err(error: e): false; };
+                if (isDir) { walk(root: root, rel: relN, found: found); }
+                else if (n.endsWith(suffix: ".records.json")) { found.put(key: copy relN, value: true); }
+            }
+        }
+        case Err(error: e): { }
+    };
+}

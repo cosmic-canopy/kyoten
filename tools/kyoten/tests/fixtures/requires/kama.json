@@ -6,6 +6,7 @@
   "kama": ">=0.9.886",
   "description": "a fixture for required components: a chain, a listed one, a variant in its base's family, one without a default ctor listed, and a circle",
   "entry": "src/app.kama",
+  "preloadFiles": ["content@/requires/content"],
   "dependencies": {
     "kyoten": { "path": "../../../../../engine" }
   },

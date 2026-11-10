@@ -46,23 +46,34 @@ type resource Setup {
         argv.add(item: "--kama");
         argv.add(item: copy this.kamaPath);
         foreach (const ref string m in more.iterConst()) { argv.add(item: copy m); }
-        return run(program: this.kyotenPath, argv: argv);
+        return run(program: this.kyotenPath, argv: argv, dir: "");
     }
 
     // kama itself, for `pkg install`.
-    public fn Ran kamaRun(const ref DynamicArray<string> argv) { return run(program: this.kamaPath, argv: argv); }
+    public fn Ran kamaRun(const ref DynamicArray<string> argv) {
+        return run(program: this.kamaPath, argv: argv, dir: "");
+    }
 
     // The tool with exactly these arguments, for a case that names its own `--kama`.
-    public fn Ran kyotenWith(const ref DynamicArray<string> argv) { return run(program: this.kyotenPath, argv: argv); }
+    public fn Ran kyotenWith(const ref DynamicArray<string> argv) {
+        return run(program: this.kyotenPath, argv: argv, dir: "");
+    }
 
     // Any other program: `node`, for a web build.
     public fn Ran runProgram(const ref string program, const ref DynamicArray<string> argv) {
-        return run(program: program, argv: argv);
+        return run(program: program, argv: argv, dir: "");
+    }
+
+    // The same, started in `dir`: a wasm build runs under node from its own folder, where emscripten looks for the
+    // `.data` file `preloadFiles` packed (project-database § Decided, 2026-11-08).
+    public fn Ran runProgramIn(const ref string program, const ref DynamicArray<string> argv, const ref string dir) {
+        return run(program: program, argv: argv, dir: dir);
     }
 }
 
-unsafe fn Ran run(const ref string program, const ref DynamicArray<string> argv) {
+unsafe fn Ran run(const ref string program, const ref DynamicArray<string> argv, const ref string dir) {
     Command c = Command.make(program: copy program);
+    if (!dir.isEmpty()) { c.cwd(dir: copy dir); }
     foreach (const ref string a in argv.iterConst()) { c.arg(a: copy a); }
     Result<Output, IoError> r = c.run();
     match (r) {

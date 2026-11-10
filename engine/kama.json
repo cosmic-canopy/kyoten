@@ -14,6 +14,9 @@
     "frame": { "visibility": "public", "importsOnly": [] },
     "world": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
     "records": { "visibility": "public", "importsOnly": ["std::collections"] },
-    "input": { "visibility": "public", "importsOnly": [] }
+    "input": { "visibility": "public", "importsOnly": [] },
+    "content": { "visibility": "public",
+                 "importsOnly": ["std::fs", "std::io", "std::memory", "std::collections", "std::serialization::text::json",
+                                 "records"] }
   }
 }

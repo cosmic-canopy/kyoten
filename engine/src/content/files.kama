@@ -1,0 +1,53 @@
+// The shapes of a game's content files, which the loader and the `kyoten` tool both read strictly (REFERENCE.md
+// § Records and their files). A prefab's and a placement's component values are the game's own types, so here they
+// are kept as JSON: the tool reads only their keys, and the loader lays each component's subtree over its default
+// (components § Decided, the loader's question 2 of 2026-11-09).
+
+import { kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::SortedMap,
+         std::serialization::text::json::JsonValue };
+
+export { ContentFile, ZoneFile, PlacementRecord };
+
+// A content file outside `scenes/`: its app record, its bindings, and its prefabs, each kept as its JSON object.
+@generate(Deserializable)
+type resource ContentFile {
+    @field(name: "app") Optional<AppRecord> appField = Optional::None;
+    @field(name: "bindings", default) SortedMap<string, BindingRecord> bindingsField = SortedMap.empty();
+    @field(name: "prefabs", default) SortedMap<string, JsonValue> prefabsField = SortedMap.empty();
+
+    public default ctor make() { }
+
+    public const fn const ref Optional<AppRecord> app() { return this.appField; }
+    public const fn bool hasApp() { return match (this.appField) { case Some(value: a): true; case None: false; }; }
+    public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
+    public const fn const ref SortedMap<string, JsonValue> prefabs() { return this.prefabsField; }
+}
+
+// A zone file under `scenes/<scene>/`: its placements by placed name, each kept as JSON so that one placement's
+// refusal names it and keeps the others.
+@generate(Deserializable)
+type resource ZoneFile {
+    @field(name: "place", default) SortedMap<string, JsonValue> placeField = SortedMap.empty();
+
+    public default ctor make() { }
+
+    public const fn const ref SortedMap<string, JsonValue> place() { return this.placeField; }
+}
+
+// One placement: its prefab, its layer (its prefab's, else `main`), its layer group (none), and its values, laid over
+// its prefab's, by component.
+@generate(Deserializable)
+type resource PlacementRecord {
+    @field(name: "prefab") string prefabField = "";
+    @field(name: "layer", default) string layerField = "";
+    @field(name: "group", default) string groupField = "";
+    @field(name: "values", default) SortedMap<string, JsonValue> valuesField = SortedMap.empty();
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn const ref string prefab() { return this.prefabField; }
+    public const fn const ref string layer() { return this.layerField; }
+    public const fn const ref string group() { return this.groupField; }
+    public const fn const ref SortedMap<string, JsonValue> values() { return this.valuesField; }
+}
