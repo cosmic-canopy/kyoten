@@ -351,6 +351,23 @@ The tension between their lesson and that purpose is the first thing to settle.
         - **Considered:**
           - a table in the `kyoten` tool's source, which is smaller but puts the engine's map outside the engine;
           - deferring the tier half of the check until the agent surface (KYR-25).
+        - **2026-11-09, built** (step 6, KYR-53; `tools/kyoten/src/fence.kama`, with the fence in ai-first-api
+          § Decided), test-first on kyoten's pin, `0.9.899+gf32373ea`.
+          - **In the engine:**
+            - `kyoten::records` gained `Tier` and `ModuleRecord`'s `tier`, with 3 cases, so the engine's tests are 158.
+              A tier spelled any other way is refused: ``` `module` is not a `Tier` (at `tier`) ```.
+            - Six records files state the tiers above.
+            - The root module's `importsOnly` is `[]`.
+          - **In the tool:** the `kyoten check engine/kama.json` leg in `tools/test.sh` passes. The tool's `tiers`
+            fixture, a library shaped like the engine, is refused for:
+            - a `Module` naming a `Module`;
+            - a `World` naming a `Module`;
+            - a module that states no tier;
+            - a module with no `importsOnly`.
+
+            Modules naming only tiers above their own are not refused, and `kyoten generate` on a library says that
+            nothing is generated for one.
+          - **Mutations caught:** a same-tier entry accepted, and a missing tier accepted.
   - *Renamed 2026-11-07 ([components.md](components.md) question 8 part b): these layers are the engine's **tiers**,
     since a bare "layer" now means a scene's layer. This entry keeps its words.*
   - **The layer names: decided 2026-11-05 at [components.md](components.md) question 3, choice 6.** The four layers

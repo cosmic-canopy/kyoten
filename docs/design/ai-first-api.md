@@ -280,3 +280,44 @@
        - **Considered:**
          - a longer deny-list, adding `asset`, `archive`, `path`, `app` and `encoding`. It fails open when std grows;
          - the rule as decided, with both leaks recorded.
+     - **2026-11-09, built: the check** (the first slice's step 6, KYR-53; `tools/kyoten/src/fence.kama`), test-first on
+       kyoten's pin, `0.9.899+gf32373ea`, together with the tiers (architecture § Decided) and the platform flags
+       (target-platforms § Decided).
+       - **Where it runs:**
+         - `kyoten generate`, which `check`, `build` and `run` begin with, holds a game's lists after its records are
+           read and before kama is asked anything, so a refusal writes nothing.
+         - `kyoten check <library kama.json>` holds the engine's lists, then runs `kama check`. The tool's other
+           commands refuse a library by name.
+         - `tools/test.sh` runs it on the engine.
+       - **How:**
+         - The tool reads each package's `kama.json`: the game's, and each dependency's through every level.
+         - It keeps the largest set of modules whose every entry is allowed, so modules that import each other, as a
+           game's `cube` and `generated` do, are fenced together.
+         - A processor's phase is its own or its group's. A processor whose group is not found counts as the
+           simulation's.
+         - A refusal names the module as `modules` spells it, the processor that makes it the simulation's, and the
+           entry, followed along the chain when it is indirect: *module "deep" holds the Update processor `e`, so it
+           is fenced from the outside world, and it names `helper`, which is not fenced: `fence::helper` names
+           `std::time`, which is not one of std's pure modules*.
+       - **Tested** by the tool's `fence` fixture.
+         - Refused in one run:
+           - `std::asset`;
+           - `kyoten::content`, whose list names `std::fs`;
+           - a module of its own with no list;
+           - a simulation module with no list;
+           - `std::time` reached through a module of its own;
+           - `core::env`;
+           - `std::random` in a Constraints group;
+           - a processor in the root module.
+         - Not refused:
+           - an Output module that reads the clock;
+           - a module with no processors;
+           - two simulation modules that name each other and `std::math`, `std::num`, `std::collections`, `core`,
+             `kyoten::frame`, `kyoten::world`, `glow` and `generated`.
+       - **Mutations caught:**
+         - `std::asset` admitted to the pure list;
+         - another package's module taken as fenced;
+         - one pass instead of the fixed point;
+         - a module with no list kept in the fence;
+         - a processor's group ignored.
+       - **Not done:** the row's `--json` is KYR-67, for every refusal the tool makes.

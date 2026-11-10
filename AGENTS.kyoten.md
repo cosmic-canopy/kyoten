@@ -54,6 +54,7 @@ tools/kama pkg install examples/games/fps/kama.json # an example, when kyoten-ex
 tools/kama run examples/games/fps/kama.json         # prints "fps example, on kyoten"
 tools/kama build tools/kyoten/kama.json -o tools/kyoten/out/kyoten   # the kyoten tool
 tools/kyoten/out/kyoten check <game>/kama.json --kama "$(tools/kama --which)"   # generate, then kama check
+tools/kyoten/out/kyoten check engine/kama.json --kama "$(tools/kama --which)"   # the engine's fence, tiers and flags
 tools/test.sh                                       # the whole suite: the gate before every commit
 ```
 
@@ -85,8 +86,9 @@ or rebuilt from here.
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
 engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, and the 32 KiB
 frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows), and the `kyoten`
-tool's tests (`tools/kyoten/tests/`, on its fixture games, natively and with one built for wasm). Then each cloned
-example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
+tool's tests (`tools/kyoten/tests/`, on its fixture games, natively and with one built for wasm), and `kyoten check`
+on the engine, which holds its modules to the simulation's fence, the tiers and the platform flags (KYR-53). Then each
+cloned example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
 no `emcc` or `node`, or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell
 (`bash -lic`) so the wasm legs run.
 

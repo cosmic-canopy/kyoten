@@ -2472,3 +2472,14 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
       root module runs Output. This changes the frame tier's contract to reach the same result.
   - **Withdrawn:** the step 5.4 entry's later-rows item, checking that the generated module's `importsOnly` lists each
     module with processors, since that list no longer names them.
+- **2026-11-09, built: the generated world, its tables and its passes in the root module** (`fa9c2ff`, step 6, with
+  the decision above), test-first on kyoten's pin, `0.9.899+gf32373ea`.
+  - The second pass writes `src/<game>.tables.generated.kama`, `src/<game>.passes.generated.kama` and
+    `src/<game>.world.generated.kama`. They import each other as siblings, and the prefab types from
+    `<game>::generated`. The loader imports `GameWorld` beside it.
+  - The fixtures' `generated` lists dropped their Output modules (`spin`'s `view`, `schedule`'s `show`) and
+    `kyoten::frame`, which only the moved files used. Their `main` imports `GameWorld` as a sibling.
+  - **Tested:** `spin`'s cases on the layout (the three files in the root module with the header, and `src/generated/`
+    holding only `actions.kama` and `prefabs.kama`), and `kyoten clean` removing the root files. The bit-for-bit
+    runs hold natively, in release and under node.
+  - **Mutation caught:** the world written back into `src/generated/`.

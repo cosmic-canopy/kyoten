@@ -8,50 +8,71 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-09, end of the day's fourth session)
+## Where it stands (2026-11-09, end of the day's fifth session)
 
-**Step 5's build is done** (KYR-7, the component model and the generator). Records generate the world, the
-loader reads content into it, and the tool checks both at build. **The next session starts here:**
+**Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
+- records generate the world, and the loader reads content into it;
+- the tool checks both at build;
+- the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
+
+**The join waits on Track 1. The next session starts here:**
 
 1. **Run the suites on kyoten's pin, `0.9.899+gf32373ea`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
-   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Run nothing heavy, and
-   time nothing, while kama's own session is running its tests on this machine. When both run at once, only relative
-   timings hold, taken back to back. Read `../kama`'s log since `f32373ea`, and bump the pin only as a commit of its
-   own, with every suite green on the new one.
+   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
+   - **When kama's own session is running its tests on this machine,** run nothing heavy and time nothing. When both
+     run at once, only relative timings hold, taken back to back.
+   - **Read `../kama`'s log since `6c5c130f`,** its HEAD at this session's end. It was 0.9.900 and 0.9.901 past the
+     pin, fibers on Windows (overlapped pipes and `TransmitFile`), which kyoten does not use, so the pin stayed.
+   - **Bump the pin only as a commit of its own,** with every suite green on the new one.
    - **Still open with kama:**
-     - KY-49 (filed this session): a `--search` scoped to modules. When it lands, the tool's query costs only the
-       simulation code it reads, and the tool moves to it test-first (components § Decided, the owner, 2026-11-09).
+     - KY-49: a `--search` scoped to modules. When it lands, the tool's query costs only the simulation code it reads,
+       and the tool moves to it test-first (components § Decided, the owner, 2026-11-09).
      - KY-45 (KR-361, not started): one query answers for the dependencies, and the tool's per-dependency cache goes.
      - KY-48 (no reader over a parsed `JsonValue`): the loader's `subtreeText` goes when kama has one.
      - KY-40 (no integer vectors).
 
      The owner relays KY-48 and KY-49.
-2. **First, a test fix that may surface a hidden failure.**
-   - The tool's tests' `check` (`tools/kyoten/tests/src/spin_tests.kama`) passes a failing case whose reason is empty,
-     since `verdict` reads an empty `why` as a pass. So does the engine's content tests' `all()`, which gives "" when
-     nothing was refused.
-   - Several cases give the run's output as their reason (`why: said`, `why: placed`), which is empty when the output
-     went missing. Such a case passes when it should fail.
-   - **The fix:** `check` gives "failed, and nothing was said" for an empty reason, and `all()` gives "no refusals".
-   - **Verify it as a mutation:** remove `spin`'s `spin: placed world` line, and its placed-rows case must turn red.
-     It was written and reverted on 2026-11-09 because kama's tests were running.
-   - Then run the whole suite. Any case that turns red was hiding a failure: fix the code it names, never the case.
-3. **Step 6, KYR-53's import check** (§ The order of work, step 6). It was decided on 2026-11-08: the simulation rule
-   is a module fence in `importsOnly`, with `core::env` on its list (ai-first-api § Decided, question 3, item 5). The
-   check reads the manifests and the code records, covers games too, and reads source only for the OS-flag refusal.
-   Bring any question its build meets to the owner first, then build it test-first.
-4. **Then the join waits on Track 1.** Step 7, the platform seam, builds the generated `run` on the `Platform` contract
-   and `@kama/window`. `run` calls `openContent`, `readContent`, `loadPrefabs` and `placeFirstScene`, and step 7 is also
-   where `engine/content/` gets its first records. Track 1, in a session of its own:
+2. **Then the join, which waits on Track 1.** Step 7, the platform seam, builds:
+   - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
+     `loadPrefabs` and `placeFirstScene`;
+   - `engine/content/`'s first records;
+   - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
+     check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+   Track 1 comes first, in a session of its own:
    - first the stopgaps each package's `AGENTS.*.md` lists, since they change the API, each fix test-first;
    - in `@kama/gpu`, WebGPU's two steps first (an adapter, then a device from it), since the format choice and the
      request methods follow from them;
-   - then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with
-     Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6), gamepads (W3), and the triangle's pipeline
-     set.
+   - then:
+     - `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
+       Events);
+     - `@kama/gpu`'s canvas surface, and a run in Edge (G6);
+     - gamepads (W3);
+     - the triangle's pipeline set.
 
    A page served from localhost to headless Edge prints its console to stderr
    (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
+
+**The fifth session** (2026-11-09). Each part was built test-first, with `tools/test.sh` green and mutations caught
+before its commit:
+
+- **The suites ran green on the pin, and the harness fix landed** (`db6c785`).
+  - The tool's tests' `check` gives "failed, and nothing was said" for an empty reason, and the engine's content
+    tests' `all()` gives "no refusals".
+  - Both were verified as mutations that passed before the fix and fail after it.
+  - No case was hiding a failure.
+- **Step 6's four questions were answered** (`d549947`; the owner, 2026-11-09; § Questions, below). They were
+  explained in full in the chat, each with an example, after the first asking was hard to read.
+- **The generated world, its tables and its passes moved into the root module** (`fa9c2ff`). `src/generated/` keeps
+  `Actions` and the prefab types.
+- **KYR-53's check** (`eaaf802`, `tools/kyoten/src/fence.kama`):
+  - the simulation's fence, as an allow-list across packages;
+  - the engine's tiers, from a `tier` in each module's records file, `kyoten::records`' new `Tier`;
+  - the platform flags, with `folderFor` the one stopgap exception.
+
+  `kyoten generate` holds a game's lists and source. `kyoten check engine/kama.json` holds the engine's, and
+  `tools/test.sh` runs it. Its `--json` became KYR-67. Each part's details are in its design doc's *Built* entry of
+  2026-11-09: ai-first-api, target-platforms, architecture and components.
 
 **The fourth session** (2026-11-09), each part test-first, `tools/test.sh` green and mutations caught before its
 commit:
@@ -97,7 +118,7 @@ commit:
    tool's `tables.kama`, `passes.kama` and `world.kama`.
 5. **Required components and the module `static` refusal** (2026-11-09, `dc785f3`).
 6. **The loader** (2026-11-09, `482e6b5` and `4b718d6`): `kyoten::content`, the generated half, and the zone checks.
-7. **Step 6, KYR-53's check,** next.
+7. **Step 6, KYR-53's check,** built in the fifth session (above), on step 5's code records.
 
 - **In scope, and built:** what the hello cube touches.
   - Parameters `ref C` and `const ref C`, `ref W` and `const ref W`, `Handle`, and `const ref Time`, with every other
@@ -149,6 +170,14 @@ commit:
     `kyoten::content` in the engine, 41 cases, so the engine's tests are 155. The tool generates the loader's game-shaped
     half and checks the first scene's zones; its tests are 158 cases with the wasm legs, on a new `zones` fixture
     and `nopreload`. Its four questions were answered on 2026-11-09, and the third again after `std::asset` was probed.
+  - **Step 6, KYR-53's check** (2026-11-09, `fa9c2ff` and `eaaf802`), on the `0.9.899` pin:
+    - the simulation's fence, the engine's tiers and the platform flags, in `tools/kyoten/src/fence.kama`;
+    - the generated world moved out of the fence;
+    - `kyoten::records`' `Tier`, with 3 cases, so the engine's tests are 158;
+    - the engine's first code records.
+
+    The tool's tests are 188 cases with the wasm legs, on the new `fence`, `flags` and `tiers` fixtures and the
+    engine itself. Its four questions were answered the same day.
   - **KYR-66, the content delivery tool** (2026-11-08, `dea3db1`): its row and doc, twelve questions. Its name was
     question 1, answered the same day; the other eleven wait for KYR-66's turn, and nothing in the first slice needs
     them.
@@ -186,10 +215,15 @@ commit:
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.899+gf32373ea` (2026-11-09, the fourth session),** as before on `0.9.886+g2159ce21`,
+- **Green on the pin, `0.9.899+gf32373ea` (2026-11-09, the fifth session),** as before on `0.9.886+g2159ce21`,
   `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
-  - kyoten's `tools/test.sh`: the engine and its 155 tests, the frame guard, the `kyoten` tool's 158 cases,
-    `examples/games/fps` (it prints `fps example, on kyoten` natively and on wasm), and `examples/games/vr`;
+  - kyoten's `tools/test.sh`:
+    - the engine and its 158 tests;
+    - the frame guard;
+    - the `kyoten` tool's 188 cases;
+    - `kyoten check engine/kama.json`;
+    - `examples/games/fps`, which prints `fps example, on kyoten` natively and on wasm;
+    - `examples/games/vr`;
   - `@kama/window`'s gate, 36 cases natively and 20 under node;
   - `@kama/gpu`'s gate: its 3 cases, the clear example's 60 frames, the xfail, and the wasm build.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s

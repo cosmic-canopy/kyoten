@@ -180,6 +180,22 @@ stay outside the spike, with their roadmap rows.
            free to name a platform;
          - building the refusal at step 7 with the platform types, so that it needs no exception. Until then, nothing
            would stop a second flag from arriving.
+     - **2026-11-09, built** (step 6, KYR-53; `tools/kyoten/src/fence.kama`, with the fence in ai-first-api § Decided),
+       test-first on kyoten's pin, `0.9.899+gf32373ea`.
+       - **What is read:** every `.kama` file under a package's `src/`, with each `//` comment removed and every line
+         kept, so a refusal names `file:line`. A `//` inside a string is not a comment.
+       - **What is refused:** an `@compileFor` or `file @compileFor` whose expression names `OS_*`, `ARCH_*` or
+         `ABI_*`, or `HOSTED`. kama derives `HOSTED` from the target as it does the others (its docs/SPEC.md
+         § Conditional compilation, read on the pin), so it is the same kind of flag.
+       - **Where it runs:** `kyoten generate` holds a game's source, and `kyoten check` the engine's.
+       - **The exception:** package `kyoten`, `src/content/source.kama`, the declarations of `folderFor`.
+       - **Tested** by the tool's `flags` fixture.
+         - Refused: `ARCH_WASM32` in the app's root module, `OS_WINDOWS` in an Output module, a file gated on
+           `ABI_GNU`, and `HOSTED`.
+         - Not refused: `RELEASE`, a declared `PARALLEL`, and a comment naming `OS_WINDOWS`.
+         - The `tiers` library's `OS_LINUX` is refused, and the engine passes with its one exception.
+       - **Mutations caught:** the exception dropped (the engine's check turns red), comments read as code, and
+         `ABI_` not matched.
   9. **Question 4: features are packages too:** an interface kyoten defines, with backends in packages a game opts
      into. XR (OpenXR and WebXR, KYR-31); store services (achievements, leaderboards, cloud saves, presence), with a
      backend per store (Steam's is KYR-19; the consoles', Meta's and the web platform's); later, voice. A game that uses
