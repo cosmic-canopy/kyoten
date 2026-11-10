@@ -49,5 +49,12 @@
 #   cases native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native
 #   and wasm; vr checked), @kama/window's (36 native, 20 under node) and @kama/gpu's (45 cases, the clear example's 60
 #   frames, the xfail, the wasm build).
+#
+# 2026-11-10, the same evening: rebuilt at 238198b3. kama rebased its dev within hours, so e76900bf is on no branch of
+# ../kama any more and a clean clone could not rebuild it. Its twin, 238198b3 (0.9.911, the same author date), differs
+# only in docs/grammar.bnf and tools/check-reserved-hint.sh, neither of which the compiler is built from, and the two
+# builds' lib/ and prelude/ are identical. The e76900bf binary is kept in .scratch/kama-pin-0.9.911-e76900bf. Green
+# on the rebuild with nothing else changed: tools/test.sh, @kama/window's (38 native, 22 under node, after its new
+# case) and @kama/gpu's (45 cases, 60 frames, the xfail, the wasm build, COVERAGE.md).
 KAMA_VERSION=0.9.911
-KAMA_BUILD=ge76900bf
+KAMA_BUILD=g238198b3
