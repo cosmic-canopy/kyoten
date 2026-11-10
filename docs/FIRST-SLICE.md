@@ -43,9 +43,9 @@ the design doc it settles before building on it.
       - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
       - `@kama/window` item 5: held keys and buttons released on a focus change.
    3. **The web leg, brought forward:**
-      - `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
+      - `@kama/window`'s web half (WIN-3: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
         Events);
-      - then `@kama/gpu`'s canvas surface and a run in Edge (G6). It also runs the two steps' web leg, holds
+      - then `@kama/gpu`'s canvas surface and a run in Edge (GPU-3). It also runs the two steps' web leg, holds
         `maxBindGroupsPlusVertexBuffers` and `CoreFeaturesAndLimits` there, and measures the web's surface capabilities
         for the first time.
    4. **Alongside 1 to 3, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
@@ -53,7 +53,7 @@ the design doc it settles before building on it.
       is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and Godot
       reach it.
    5. **Then the rest of the libraries' share of the cube:**
-      - gamepads (W3);
+      - gamepads (WIN-4);
       - `@kama/gpu`'s render pipeline set, shaped by the design pass;
       - `@kama/graphics`' first slice, on both legs.
 
@@ -372,7 +372,7 @@ here), committed with what it measured.
 
 **Within Track 1, the order the owner decided on 2026-11-10** ([design/architecture.md](design/architecture.md)
 § Decided, how the libraries grow): each package's spec and roadmap, then the stopgaps that change an API, then the
-web leg brought forward (W2 and G6), with the graphics design pass alongside. Then gamepads, `@kama/gpu`'s render
+web leg brought forward (`@kama/window`'s WIN-3 and `@kama/gpu`'s GPU-3), with the graphics design pass alongside. Then gamepads, `@kama/gpu`'s render
 pipeline set, and `@kama/graphics`' first slice. Each library's whole architecture is decided first, then built
 depth-first through the cube.
 

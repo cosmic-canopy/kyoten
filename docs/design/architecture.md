@@ -432,7 +432,8 @@ The tension between their lesson and that purpose is the first thing to settle.
   5. **The order to the cube** ("Sounds good"; [../FIRST-SLICE.md](../FIRST-SLICE.md) § The order of work):
      1. the stopgaps that change an API: `@kama/gpu` item 2; `@kama/window` item 6, then `@kama/gpu` item 9;
         `@kama/window` item 5;
-     2. the web leg, brought forward: the window's web half (W2), then a canvas surface in Edge (G6). Nothing has run in
+     2. the web leg, brought forward: the window's web half (W2, now `@kama/window`'s WIN-3), then a canvas surface in
+        Edge (G6, now `@kama/gpu`'s GPU-3). Nothing has run in
         a browser yet, and the seventh session found wgpu-native unlike its own docs, so the browser's surprises are
         found before graphics is built on assumptions;
      3. the graphics design pass (KYR-68), alongside 1 and 2, since it needs no code from them;
@@ -447,7 +448,7 @@ The tension between their lesson and that purpose is the first thing to settle.
      kyoten's `KYR-` are: `GPU-<n>` in `@kama/gpu`, `WIN-<n>` in `@kama/window`, and `GFX-<n>` in `@kama/graphics`
      when its design pass writes one. The owner: "Yes each repo has it's own." The gap files keep `KGPU-` and `KWIN-`.
      The step labels the briefs used before (W2 for the window's web half, W3 for gamepads, G6 for a canvas surface run
-     in Edge) were defined nowhere, so they give way to the rows' ids.
+     in Edge) were defined nowhere, so they give way to the rows' ids: WIN-3, WIN-4 and GPU-3.
   2. **Each document keeps to one purpose,** as kama's and friendly-fire-department's do. The owner: "we shouldn't be
      polluting these foundational documents. Each serves a specific purpose and we have several peer repos to reference
      for patterns."
@@ -463,7 +464,9 @@ The tension between their lesson and that purpose is the first thing to settle.
   4. **`@kama/gpu`'s coverage report counts a webgpu.h function as covered when the safe API calls it:** a call site of
      its binding outside the bindings, as `kama query --refs` answers, or a call in a seam function the safe API calls.
      The owner: "I think this sounds good from what I can tell."
-     - **1.0 is all of webgpu.h:** the functions both legs declare, and those only wgpu-native's webgpu.h has yet.
+     - **1.0 is all of webgpu.h:** the functions both legs declare, and those only one leg's webgpu.h has yet. Built
+       the same day, the report counted 206: 199 on both legs, 3 only in wgpu-native's (`SetImmediates`), and 4 only in
+       emdawnwebgpu's, which wgpu-native declares in `wgpu.h` instead. The question named 204, missing those 4.
        wgpu-native's own extensions (`wgpu.h`) are reported apart, and whether any belongs in 1.0 is the graphics design
        pass's question of what goes beyond WebGPU (KYR-68).
      - **A `Destroy` stays uncovered until its row decides a safe form.** No raw destroy in the safe API
