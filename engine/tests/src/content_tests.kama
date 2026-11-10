@@ -336,7 +336,7 @@ fn void sceneRefusals(ref Tally t) {
 
 // KY-48's stopgap: a subtree written back to text is read as the same value.
 fn void subtrees(ref Tally t) {
-    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: "{\"position\": {\"x\": -20, \"y\": 0.5}, \"scale\": {\"x\": 2}}");
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: "{\"position\": {\"x\": -20, \"y\": 0.5}, \"scale\": {\"x\": 2}}", strict: false);
     JsonValue tree = match (give parsed) { case Ok(value: v): give v; case Err(error: e): JsonValue::Null; };
     string text = subtreeText(of: tree);
     MemorySource game = MemorySource.make(label: "content");

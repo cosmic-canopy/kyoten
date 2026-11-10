@@ -192,6 +192,12 @@ relays the ask.
 
 Both stay open here until a pin that has them passes the suite.
 
+**Both are on kyoten's pin since 2026-11-10** (`0.9.909+g64f011de`, `.kama-version`). kama rebased its `dev` overnight,
+so the hashes above left its history: the rename is `9cc68e6d` (0.9.905), the tree's reader `32001182` (0.9.907) and
+`--modules` `2f6bdd47` (0.9.909). The bump carried the rename's port alone, with every suite green. Each gap is removed
+with the commit that takes what it frees: KY-48 when `subtreeText`'s re-parse goes, KY-49 when the tool's query moves
+to `--modules`.
+
 Ids are `KY-<n>` and are permanent. **Next id: KY-50**
 
 | Id | Kind | Status | Summary |

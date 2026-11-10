@@ -21,7 +21,7 @@ fn string subtreeText(const ref JsonValue of) {
 // `text` laid over `into` through the strict reader: "" when it merged, else the reader's words, its path relative
 // to the text (``unknown field `rat` ``).
 fn string mergeText<T: MergeDeserializable<T>>(const ref string text, ref T into) {
-    JsonDeserializer r = JsonDeserializer.strict(src: copy text);
+    JsonDeserializer r = JsonDeserializer.make(src: copy text, strict: true);
     Result<Unit, Owned<Error>> m = into.mergeFrom(r: r);
     return match (m) { case Ok(value: u): ""; case Err(error: e): e.message(); };
 }
@@ -29,7 +29,7 @@ fn string mergeText<T: MergeDeserializable<T>>(const ref string text, ref T into
 // `text` read whole as a new `T` through the strict reader, so a field with no default is required: None with the
 // reader's words in `why` when it is refused.
 fn Optional<T> readNew<T: MergeDeserializable<T>>(const ref string text, ref string why) {
-    JsonDeserializer r = JsonDeserializer.strict(src: copy text);
+    JsonDeserializer r = JsonDeserializer.make(src: copy text, strict: true);
     Result<T, Owned<Error>> got = T.deserialize(r: r);
     match (give got) {
         case Ok(value: v): { return Optional::Some(value: give v); }
@@ -56,7 +56,7 @@ fn Optional<T> readWhole<T: MergeDeserializable<T>>(const ref DynamicArray<Subtr
         no.add(where: file, what: "prefab `${prefab}` lacks `${component}`, which elects no `default ctor`: list it, with its values");
         return Optional::None;
     }
-    JsonDeserializer r = JsonDeserializer.strict(src: subtreeText(of: trees[0].tree()));
+    JsonDeserializer r = JsonDeserializer.make(src: subtreeText(of: trees[0].tree()), strict: true);
     Result<T, Owned<Error>> first = T.deserialize(r: r);
     T value = match (give first) {
         case Ok(value: v): give v;

@@ -27,19 +27,19 @@ type resource ContentFile {
 
 // The error a merge gave, or "" when it read.
 fn string mergeModule(ref ModuleRecord m, string src) {
-    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    JsonDeserializer r = JsonDeserializer.make(src: give src, strict: true);
     Result<Unit, Owned<Error>> res = m.mergeFrom(r: r);
     return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
 }
 
 fn string mergeScene(ref SceneRecord s, string src) {
-    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    JsonDeserializer r = JsonDeserializer.make(src: give src, strict: true);
     Result<Unit, Owned<Error>> res = s.mergeFrom(r: r);
     return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
 }
 
 fn string mergeContent(ref ContentFile c, string src) {
-    JsonDeserializer r = JsonDeserializer.strict(src: give src);
+    JsonDeserializer r = JsonDeserializer.make(src: give src, strict: true);
     Result<Unit, Owned<Error>> res = c.mergeFrom(r: r);
     return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
 }

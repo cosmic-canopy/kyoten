@@ -98,7 +98,7 @@ fn void rotateYStaysUnit(ref Tally t) {
 
 fn void recordForm(ref Tally t) {
     Transform tr = Transform.identity();
-    JsonDeserializer r = JsonDeserializer.strict(src: "{\"position\": {\"x\": -20}, \"zone\": {\"x\": 1}}");
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"position\": {\"x\": -20}, \"zone\": {\"x\": 1}}", strict: true);
     Result<Unit, Owned<Error>> m = tr.mergeFrom(r: r);
     string why = match (m) {
         case Ok(value: u): "";
@@ -115,7 +115,7 @@ fn void recordForm(ref Tally t) {
 
 fn void recordMisspelt(ref Tally t) {
     Transform tr = Transform.identity();
-    JsonDeserializer r = JsonDeserializer.strict(src: "{\"positon\": {\"x\": -20}}");
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"positon\": {\"x\": -20}}", strict: true);
     Result<Unit, Owned<Error>> m = tr.mergeFrom(r: r);
     string why = match (m) {
         case Ok(value: u): "accepted";
@@ -181,7 +181,7 @@ fn void zoneCoord(ref Tally t) {
     t.verdict(name: "ZoneCoord: equal by its three coordinates, and origin() is (0,0,0)", why: ok ? "" : "unequal");
 
     ZoneCoord z = ZoneCoord.origin();
-    JsonDeserializer r = JsonDeserializer.strict(src: "{\"z\": -7}");
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"z\": -7}", strict: true);
     Result<Unit, Owned<Error>> m = z.mergeFrom(r: r);
     string why = match (m) {
         case Ok(value: u): z.equals(other: ZoneCoord.of(x: 0, y: 0, z: -7)) ? "" : "wrong coordinates";

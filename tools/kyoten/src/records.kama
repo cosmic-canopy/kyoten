@@ -253,7 +253,7 @@ unsafe fn string mergeFile(const ref string path, ref ModuleRecord into) {
     Result<string, IoError> text = readText(path: path);
     match (give text) {
         case Ok(value: t): {
-            JsonDeserializer reader = JsonDeserializer.strict(src: give t);
+            JsonDeserializer reader = JsonDeserializer.make(src: give t, strict: true);
             Result<Unit, Owned<Error>> res = into.mergeFrom(r: reader);
             return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
         }
@@ -265,7 +265,7 @@ unsafe fn string mergeContent(const ref string path, ref ContentFile into) {
     Result<string, IoError> text = readText(path: path);
     match (give text) {
         case Ok(value: t): {
-            JsonDeserializer reader = JsonDeserializer.strict(src: give t);
+            JsonDeserializer reader = JsonDeserializer.make(src: give t, strict: true);
             Result<Unit, Owned<Error>> res = into.mergeFrom(r: reader);
             return match (res) { case Ok(value: u): ""; case Err(error: e): e.message(); };
         }

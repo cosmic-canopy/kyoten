@@ -19,5 +19,21 @@
 #   Windows), none of which kyoten uses. Green on it with no other change: tools/test.sh (engine 114 cases native debug,
 #   release and wasm; the frame guard; the tool's 117; fps native and wasm; vr checked), @kama/window's (36 native,
 #   20 under node) and @kama/gpu's (3 cases, the clear example's 60 frames, the xfail, the wasm build).
-KAMA_VERSION=0.9.899
-KAMA_BUILD=gf32373ea
+#
+# 2026-11-10: 0.9.899 -> 0.9.909 (64f011de), kama's dev HEAD with a clean tree. kama had rebased dev twice since the
+# last pin, so f32373ea is on no branch of ../kama any more (its rebased 0.9.899 twin, e3d58e7f, has another tree) and a
+# clean clone could not rebuild it; the old binary is kept in .scratch/kama-pin-0.9.899. What moved, for kyoten:
+#   0.9.905 KR-364 (KY-48), first half, BREAKING: `JsonDeserializer.make(src:, strict:)` replaces `strict(src:)`, and
+#           `deserializeJsonBuffer` takes `strict:`. The bump carries the port, the one change "nothing else changed"
+#           could not hold off: 12 `.strict(src: x)` calls became `make(src: x, strict: true)`, and 3
+#           `deserializeJsonBuffer` calls, which were lenient, state `strict: false`. Behavior is unchanged.
+#   0.9.907 KR-364 (KY-48), second half: `JsonValue.reader(strict:)`, a reader over a parsed tree.
+#   0.9.909 KR-365 (KY-49): `kama query --modules a,b` roots a project's query at those modules.
+#   Also 0.9.900-0.9.903 (fibers on Windows), 0.9.904 (a job pool hang), 0.9.906 (a `match` subject through a raw
+#   pointer) and 0.9.908 (KR-366: `PriorityQueue` and `Descriptor` constructors), none of which kyoten uses.
+#   Green on it with the port alone, the same counts as on 0.9.899 the same morning: tools/test.sh (engine 158 cases
+#   native debug, release and wasm; the frame guard; the tool's 188; `kyoten check engine/kama.json`; fps native and
+#   wasm; vr checked), @kama/window's (36 native, 20 under node) and @kama/gpu's (3 cases, the clear example's 60
+#   frames, the xfail, the wasm build).
+KAMA_VERSION=0.9.909
+KAMA_BUILD=g64f011de

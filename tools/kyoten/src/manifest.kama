@@ -110,7 +110,7 @@ unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why)
         case Ok(value: t): give t;
         case Err(error: e): { why = "`${path}` cannot be read"; return Optional::None; }
     };
-    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give src);
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give src, strict: false);
     JsonValue doc = match (give parsed) {
         case Ok(value: d): give d;
         case Err(error: e): { string m = e.message(); why = "`${path}` is not JSON: ${m}"; return Optional::None; }

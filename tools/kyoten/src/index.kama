@@ -260,7 +260,7 @@ unsafe fn Optional<DynamicArray<TypeEntry>> ask(ref Kama kama, const ref Manifes
         case Some(value: t): give t;
         case None: { string name = copy m.name(); why = "kama could not answer for `${name}`:\n${kamaSaid}"; return Optional::None; }
     };
-    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give text);
+    Result<JsonValue, Owned<Error>> parsed = deserializeJsonBuffer::<JsonValue>(src: give text, strict: false);
     JsonValue doc = match (give parsed) {
         case Ok(value: d): give d;
         case Err(error: e): { string m2 = e.message(); why = "kama's answer is not JSON: ${m2}"; return Optional::None; }
@@ -398,7 +398,7 @@ unsafe fn Optional<DynamicArray<TypeEntry>> dependencyTypes(ref Kama kama, const
         Result<string, IoError> text = readText(path: cacheFile);
         match (give text) {
             case Ok(value: t): {
-                JsonDeserializer r = JsonDeserializer.strict(src: give t);
+                JsonDeserializer r = JsonDeserializer.make(src: give t, strict: true);
                 Result<CachedAnswer, Owned<Error>> read = CachedAnswer.deserialize(r: r);
                 match (give read) {
                     case Ok(value: c): {
