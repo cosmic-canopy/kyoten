@@ -441,3 +441,32 @@ The tension between their lesson and that purpose is the first thing to settle.
      6. the join: the platform seam, input and the render module;
      7. the cube, with its four checks in CI;
      8. then breadth, slice by slice, with non-game examples beside the games.
+- **2026-11-10 (the eighth session), the owner: each package's documents, ids, names and coverage.** Four questions,
+  each answered as recommended, before either package's `SPEC.md` or `ROADMAP.md` was written.
+  1. **Each package numbers its own roadmap rows,** with permanent ids and a "Next id" counter, as kama's `KR-` and
+     kyoten's `KYR-` are: `GPU-<n>` in `@kama/gpu`, `WIN-<n>` in `@kama/window`, and `GFX-<n>` in `@kama/graphics`
+     when its design pass writes one. The owner: "Yes each repo has it's own." The gap files keep `KGPU-` and `KWIN-`.
+     The step labels the briefs used before (W2 for the window's web half, W3 for gamepads, G6 for a canvas surface run
+     in Edge) were defined nowhere, so they give way to the rows' ids.
+  2. **Each document keeps to one purpose,** as kama's and friendly-fire-department's do. The owner: "we shouldn't be
+     polluting these foundational documents. Each serves a specific purpose and we have several peer repos to reference
+     for patterns."
+     - `SPEC.md` is what the package is, and never what it will be: each type's ctors and methods with their parameter
+       names, what each refuses and why, each leg's measured behaviour, and the invariants.
+     - `ROADMAP.md` is the order of work and nothing else, each row linking to its reasoning.
+     - `AGENTS.*.md` is the agent's brief: the rules, the build, where the truth is, and the departures from kama's
+       design with their reasons, which is the record kama reads.
+  3. **The packages' public names follow kama's constructor rule** (KR-367, kama 0.9.911, its SPEC § Construction),
+     renamed before either is published, since a rename after that breaks every consumer. The owner: "We should be
+     consistent yes." `Window.headless` keeps its name: kama's own design names it, and `Window.make` beside
+     `Window.open` would hide that nothing is behind it.
+  4. **`@kama/gpu`'s coverage report counts a webgpu.h function as covered when the safe API calls it:** a call site of
+     its binding outside the bindings, as `kama query --refs` answers, or a call in a seam function the safe API calls.
+     The owner: "I think this sounds good from what I can tell."
+     - **1.0 is all of webgpu.h:** the functions both legs declare, and those only wgpu-native's webgpu.h has yet.
+       wgpu-native's own extensions (`wgpu.h`) are reported apart, and whether any belongs in 1.0 is the graphics design
+       pass's question of what goes beyond WebGPU (KYR-68).
+     - **A `Destroy` stays uncovered until its row decides a safe form.** No raw destroy in the safe API
+       (ai-first-api question 3) rules out a raw one, not every one.
+     - It is grouped by the spec's sections, written by `tools/wgpugen` as a committed `COVERAGE.md`, and held as the
+       bindings are: the gate regenerates and compares it, and the covered count is a ratchet.
