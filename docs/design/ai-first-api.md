@@ -183,7 +183,9 @@
            are not. This matches frame-phases question 1: work runs at any time, and reaches the simulation only at
            its phase's hand-off.
          - **The generated code splits too:** what the simulation imports (the world, `Actions`) goes in a fenced
-           module, and `run` goes outside (step 5).
+           module, and `run` goes outside (step 5). *(Corrected on 2026-11-09, below: the world, its tables and
+           passes run Output too, so they go outside with `run`. The fenced module holds `Actions` and the prefab
+           types.)*
        - **kyoten's check (KYR-53) reads manifests and code records, not source:**
          - every module holding an Input, Update or Constraints processor has an `importsOnly`;
          - that list names none of the refused modules;
@@ -207,7 +209,8 @@
            `cube.kama` and `cube.records.json` move to `src/cube/`, module `hello::cube`, and the cube's line count
            stays 15.
          - **`<game>::generated` (`src/generated/`) is fenced:** the world, the tables, the passes, `Actions` and
-           `Prefabs`, which the simulation imports.
+           `Prefabs`, which the simulation imports. *(Since 2026-11-09 it holds `Actions`, the prefab types and
+           `Prefabs`. The world, the tables and the passes are in the root module: components § Decided.)*
        - **Why it is the production answer:** the compiler holds the fence in every build and in the editor, and the
          check holds the rest. Nothing a processor can reach imports the clock, and the app's code, which must reach
          the outside world to run a loop, is in the one place the fence does not cover and no processor may sit.
@@ -229,3 +232,51 @@
            code before the loop, and the manifest's `entry` never names a git-ignored file. kyoten still
            controls everything behind `run`. Revisiting it changes no step 5 code, since `run` comes at step 7.
          - `run` in a second generated module (`src/generated/app/`): a longer import, and another manifest entry.
+     - **2026-11-09, the owner: kyoten's check judges each entry of a simulation module's list by what may be used,
+       across packages** (the first slice's step 6, KYR-53, question 2 of 4; the other three are in components,
+       target-platforms and architecture § Decided). The owner: "'may not use these' is not correct... 'may use only
+       these' is more explicit."
+       - **What was wrong:** kama's `importsOnly` is an allow-list, and kama holds each module to the list its author
+         wrote, which is right. What a simulation module's list may contain is kyoten's rule. As decided on 2026-11-08,
+         the check refused only the nine named modules, so anything else on a list passed it, and kama then honoured
+         the list as written:
+         - **std's other outside modules:** `std::asset` reads files and the environment, `std::archive` reads files
+           and the clock, and `std::app` runs the host's loop. None of them was among the nine.
+         - **another package's outside module:** `kyoten::content`, the loader, lists `std::fs`, and a game's
+           simulation module could list `kyoten::content`. kama's fence governs a module's own imports only, so it
+           never looks at what `kyoten::content` imports.
+         - **How it arose:** the rule was first written per file, on 0.9.873, when `importsOnly` did not reach std
+           (KY-37), so the check had to name what to refuse. The move into `importsOnly` on 2026-11-08 kept that
+           wording.
+       - **The rule now: a module is *fenced*** when it has an `importsOnly` and every entry is one of these:
+         - one of std's pure modules (below), or a module under one;
+         - `core`, but not `core::env`;
+         - a fenced module of its own package;
+         - a fenced module of another package, judged from that package's `kama.json`.
+
+         Every module holding an Input, Update or Constraints processor is fenced. Fenced modules that import each
+         other (`cube` and `generated`) are fine, because the check takes the largest set that holds. The rule fails
+         closed: a module std adds later is refused until the list names it.
+       - **std's pure modules,** each one's import blocks and C functions read on the pin (`0.9.899+gf32373ea`):
+         - **Allowed:** `math`, `num`, `collections`, `memory`, `ascii`, `unicode`, `fmt`, `digest` and `encoding`.
+           Each computes from its arguments. Their C functions are libm's (musl's, through `reproducible-float`),
+           `memcpy`, the reference counts, Unicode normalization, number formatting and parsing, UTF-8 validation,
+           and a constant-time compare.
+         - **Left out:**
+           - `time`, the clock;
+           - `fs`, `net`, `process` and `io`, which are files, sockets, processes and streams to the outside;
+           - `concurrent`, which is threads and the clock;
+           - `uuid` and `random`, which use entropy (random keys are the one way);
+           - `app`, the host's loop;
+           - `asset`, which is files and `core::env`;
+           - `archive`, which is files and the clock;
+           - `path`, the host's path conventions;
+           - `compress` and `serialization`, which are built on io's streams;
+           - `ptr`, raw memory, which is FFI's tool;
+           - `log`: its calls only write, as `core`'s `println` does, but its exported `logEnabled` reads the level
+             that `--log` and `KAMA_LOG` set, so a processor could branch on the environment.
+       - **Why it is kyoten's fix, not kama's:** kama's fence does what it says. std carries no `importsOnly` of its
+         own, which is why kyoten keeps the pure list. Nothing was asked of kama.
+       - **Considered:**
+         - a longer deny-list, adding `asset`, `archive`, `path`, `app` and `encoding`. It fails open when std grows;
+         - the rule as decided, with both leaks recorded.

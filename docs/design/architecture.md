@@ -329,6 +329,28 @@ The tension between their lesson and that purpose is the first thing to settle.
           processors; it holds those modules' lists; and it covers games, not only `engine/`.
         - **It still reads source for one thing:** target-platforms question 3's refusal of an OS flag
           (`@compileFor(OS_WINDOWS)`) in an engine module or a game's processors (ROADMAP KYR-53).
+      - **2026-11-09, the owner: the tier table is data, a `tier` in each engine module's records file** (the first
+        slice's step 6, KYR-53, question 4 of 4; the other three are in components, ai-first-api and target-platforms
+        § Decided). The owner: "AH yes this sounds good".
+        - **Why it was asked:** kama holds whatever each `importsOnly` says. If `content`'s list named `input`, kama
+          would let `content` import `input`, and the rule would break with nothing to say so. The check holds the
+          lists against the tier table, which until now was REFERENCE's diagram: prose that a program cannot read.
+        - **The table:** `kyoten::records`'s `ModuleRecord` gains `tier`: `Frame`, `World`, `Module` or `Agent`, spelled
+          as a phase is. Each engine module's records file states its tier:
+          - the root module, which keeps `version()`, and `frame` are `Frame`;
+          - `world`, and `records` beside it, are `World`;
+          - `input` and `content` are `Module`.
+
+          These are the engine's first code records. The engine's root module gains `"importsOnly": []`.
+        - **The check** (`kyoten check engine/kama.json`): every engine module has a tier and an `importsOnly`, and
+          each entry that names a module of its own package names one of a tier above its own, so no engine module
+          names another. It reads no source for this.
+        - **Why there:** the tier is a fact about the module, so it sits beside the module's code. That is where an
+          agent learning where code goes reads it, and it is the records file that will declare render's processors
+          at step 9.
+        - **Considered:**
+          - a table in the `kyoten` tool's source, which is smaller but puts the engine's map outside the engine;
+          - deferring the tier half of the check until the agent surface (KYR-25).
   - *Renamed 2026-11-07 ([components.md](components.md) question 8 part b): these layers are the engine's **tiers**,
     since a bare "layer" now means a scene's layer. This entry keeps its words.*
   - **The layer names: decided 2026-11-05 at [components.md](components.md) question 3, choice 6.** The four layers

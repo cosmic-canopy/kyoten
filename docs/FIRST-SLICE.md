@@ -368,6 +368,18 @@ here), committed with what it measured.
      is KY-48's stopgap, one function.
   3. **A game whose manifest does not preload its `content/` is refused,** naming the line.
   4. **The tool checks the first scene's zone files at build time too,** and the loader refuses the same later.
+- **Answered on 2026-11-09, step 6's four questions** (KYR-53), each as recommended. They were explained in full, each
+  with an example, after the owner found the first asking hard to read ("can you give more context here as well in
+  full"):
+  1. **The generated world, its tables and its passes leave the fence** for the app's root module, one set per game.
+     `src/generated/` keeps `Actions` and the prefab types ([design/components.md](design/components.md) § Decided).
+  2. **The check accepts an entry on a simulation module's list only when it is known safe:** one of std's pure
+     modules, `core`, or a fenced module of any package. The owner asked whether kama had `importsOnly` wrong: it does
+     not, and the fix is kyoten's ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5).
+  3. **The platform-flag refusal covers all engine and game source,** with `folderFor` the one stopgap exception, which
+     step 7 removes ([design/target-platforms.md](design/target-platforms.md) § Decided, question 3, item 8).
+  4. **The tier table is a `tier` in each engine module's records file**
+     ([design/architecture.md](design/architecture.md) § Decided, question 2).
 - **Answered on 2026-11-08, KYR-66's name:** the asset manager is the **content delivery tool**, for now. The owner:
   "Content Delivery Tool is probably fine for now?" ([design/content-delivery-tool.md](design/content-delivery-tool.md)
   § Decided).

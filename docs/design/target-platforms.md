@@ -159,6 +159,27 @@ stay outside the spike, with their roadmap rows.
   8. **Question 3: OS and target flags stay in the libraries and the platform types.** A check refuses
      `@compileFor(OS_WINDOWS)` and its kind in an engine module and in a game's processors (KYR-53's), so a new platform
      slots in by declaring its capabilities, and nothing else changes.
+     - **2026-11-09, the owner: the check covers all engine and game source, and `folderFor` is its one stopgap
+       exception** (the first slice's step 6, KYR-53, question 3 of 4; the others are in components, ai-first-api and
+       architecture § Decided). The owner, once it was clear this is kyoten's rule and not kama's (kama allows
+       `@compileFor` anywhere): "Keeping platform specifics isolated is kyoten's rule... yes that is a good rule. So
+       basically we just need a stopgap for now until Step 7 and then we are back on design?"
+       - **What is refused:** an `@compileFor`, or a file-level `file @compileFor`, whose expression names one of
+         kama's platform flags: `OS_*`, `ARCH_*` or `ABI_*`. `BUILD_TYPE` and the flags a package declares (a
+         `PARALLEL`, a console's select group) are not platform flags and stay allowed. Comments are not read.
+       - **Where:** every source file of a game, generated files included, and every source file of the engine.
+         "A game's processors" became the whole game, so the hello cube's check, "the same game code on web and native,
+         with no platform flag in it", is held by the check rather than by review.
+       - **The one exception, a stopgap:** `kyoten::content`'s `folderFor` chooses the web's preloaded `/<game>/content`
+         or the native folder with `@compileFor(ARCH_WASM32)`. Where the files are is a platform fact: the `Platform`
+         contract's "files and paths" (question 1, above). Step 7 (KYR-8) builds the contract, the platform supplies the
+         content folder, and `folderFor` and its exception are removed. Step 7's test is that the exception list is
+         empty.
+       - **Considered:**
+         - the refusal over a game's processor modules only, as first worded, which leaves a game's Output and app code
+           free to name a platform;
+         - building the refusal at step 7 with the platform types, so that it needs no exception. Until then, nothing
+           would stop a second flag from arriving.
   9. **Question 4: features are packages too:** an interface kyoten defines, with backends in packages a game opts
      into. XR (OpenXR and WebXR, KYR-31); store services (achievements, leaderboards, cloud saves, presence), with a
      backend per store (Steam's is KYR-19; the consoles', Meta's and the web platform's); later, voice. A game that uses

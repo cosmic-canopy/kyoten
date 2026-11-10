@@ -50,7 +50,9 @@ tiers above it.
 **Each tier is a kama module** (*decided* 2026-11-08, [design/frame-phases.md](design/frame-phases.md) § Decided, step 4
 question 1): `kyoten::frame`, `kyoten::world`, one module per engine module (`kyoten::render`…), and later the agent
 surface. Each module's `importsOnly` holds the rule, so `kama check` refuses an edge that breaks it. kama has no
-re-exports, so a game names the tier in its imports: `kyoten::frame::Time`, `kyoten::world::Transform`.
+re-exports, so a game names the tier in its imports: `kyoten::frame::Time`, `kyoten::world::Transform`. Each engine
+module states its tier in its records file (`"tier": "World"`), and the `kyoten` tool checks each list against it
+(*decided* 2026-11-09, [design/architecture.md](design/architecture.md) § Decided, question 2).
 
 **The record types are one module beside the world tier,** `kyoten::records` (*decided* 2026-11-08,
 [design/components.md](design/components.md) § Decided, step 5's questions): every record kind whose shape is the
@@ -484,12 +486,12 @@ that compiles in CI.
 - **The table is a ratchet:** a second way to do a row is a decision, made with its reason.
 - **A mistake is stopped by a mechanism, not by review.** Each has one, listed in
   [design/ai-first-api.md](design/ai-first-api.md) § Decided. Among them, **the simulation cannot reach the outside
-  world:** a simulation module, one that holds Input, Update or Constraints processors, leaves out of its
-  `importsOnly` std's `time`, `fs`, `net`, `process`, `io`, `concurrent`, `uuid` and `random`, and `core::env`.
-  Output processors and outside work sit in modules of their own, and so does a game's `main`, in the app's root
-  module (2026-11-08). The compiler holds this in every build, and
-  kyoten's check holds the lists (KYR-53, decided 2026-11-08). Outside data enters only through Input's recorded
-  hand-off.
+  world:** a simulation module, one that holds Input, Update or Constraints processors, is fenced. Its `importsOnly`
+  names only std's pure modules (`math`, `num`, `collections`, `memory`, `ascii`, `unicode`, `fmt`, `digest`,
+  `encoding`), `core` but not `core::env`, and other fenced modules of any package (2026-11-09). Output processors and
+  outside work sit in modules of their own. So do a game's `main`, the generated world and its passes, which sit in
+  the app's root module (2026-11-08 and 2026-11-09). The compiler holds this in every build, and kyoten's check holds
+  the lists (KYR-53, decided 2026-11-08 and 2026-11-09). Outside data enters only through Input's recorded hand-off.
 
 ## The vocabulary
 

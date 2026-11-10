@@ -2442,3 +2442,33 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     - moving what the loader imports out of the root module, which the loader's question 1 decided against, and which
       `run` will import anyway;
     - the tool reading kama source itself, against "ask the compiler" (step 5.3's question 1).
+- **2026-11-09, the owner: the generated world leaves the simulation's fence** (the first slice's step 6, KYR-53,
+  question 1 of 4, asked before the check was built, with the other three in ai-first-api, target-platforms and
+  architecture § Decided). The owner asked whether every processor would get files of its own: there is one set per
+  game. "Assuming it is the one world, tables, phase then I think I agree with you."
+  - **What was wrong:** `GameWorld` implements all four phases, so its `output()` calls the Output passes. The fenced
+    `src/generated/` therefore imported the game's Output modules: `spin`'s manifest listed `view`, and `schedule`'s
+    `show`.
+    - A processor imports `generated` for `Actions`, so it could reach Output code, for example
+      `GameWorld.make().output(…)` from inside Update. The fence no longer held through every module the simulation can
+      reach.
+    - The check as decided (ai-first-api § Decided, question 3, item 5) refuses a fenced module that names an outside
+      one, so it would have refused every game with an Output processor.
+  - **The naming rule's rule 1 is revised:**
+    - The second pass writes `src/<game>.tables.generated.kama`, `src/<game>.passes.generated.kama` and
+      `src/<game>.world.generated.kama` into the app's root module. They sit beside the loader's
+      `src/<game>.generated.kama` and step 7's `run`.
+    - `src/generated/` keeps `actions.kama` and `prefabs.kama`: `Actions`, the prefab types and their ids, and
+      `Prefabs`, which processors import. Its `importsOnly` names only fenced modules.
+    - Rule 5 holds: only the passes file imports processors. The three move together, because a pass reaches the
+      tables and the world through `friend` grants, which name functions of the same module.
+    - `main` imports `GameWorld` from beside it, as it will import `run`. A game writes none of these names.
+  - **Why it is the production answer:** the world and its passes drive the simulation, and the simulation never calls
+    them. So they sit with the app's code, as the loader does. The fence holds only what a processor uses.
+  - **Considered:**
+    - exempting `<game>::generated` from the check because the tool writes it. This keeps the layout, but leaves a
+      processor a way into Output code;
+    - splitting `kyoten::frame`'s `World` contract, so that the world runs three phases and a generated driver in the
+      root module runs Output. This changes the frame tier's contract to reach the same result.
+  - **Withdrawn:** the step 5.4 entry's later-rows item, checking that the generated module's `importsOnly` lists each
+    module with processors, since that list no longer names them.
