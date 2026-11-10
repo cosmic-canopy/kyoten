@@ -212,3 +212,40 @@
   - **The production features grow as the examples ask,** with the-mallow-man's measured techniques as the reference:
     shadows, instancing, a post-processing stack (tone mapping, bloom, anti-aliasing), many lights, then global
     illumination and the rest. Their order is not decided here.
+
+- **2026-11-10, the owner: Three.js is a reference for ease of use, never a limit; the bar is the state of the art.**
+  "I only reference Three.js as I noticed it is being used very successfully by AI today. I DO NOT want us to be
+  limited by any decisions Three.js has made or anything it can not do. We need to be able to do what Unreal and Unity
+  and Godot can do graphics wise as well. AKA we need to be able to do the state of the art in graphics." Of the
+  library: "a fully featured and easy to use library for general graphics applications much like how Three.js has
+  become that for the web." Decided with how the libraries grow ([architecture.md](architecture.md) § Decided,
+  2026-11-10).
+  - **The bar, restated:** ease of use like Three.js's (a lit mesh in a few lines, in any browser and natively), and
+    capability at the state of the art as Unreal, Unity and Godot reach it.
+    - Where Three.js and the state of the art differ, the state of the art wins, and the ease of use is kept on top.
+    - This sharpens the 2026-11-07 bar: Three.js is a reference for how easy the library is to start with, never for
+      what it can do.
+  - **A design pass before any graphics code** (KYR-68), its questions asked in full like the spike's:
+    - **the object model in kama's terms:** no garbage collector, no inheritance, and RAII, so nothing is disposed by
+      hand, as Three.js's `dispose()` asks;
+    - how close its names sit to Three.js's;
+    - **the renderer's core:** the decided fixed pass list, pipeline and bind group caches, the per-object buffer, the
+      node-material compiler with WESL, and a linear-light workflow with HDR and tone mapping;
+    - **beyond WebGPU:** where the state of the art needs what WebGPU does not have yet (hardware ray tracing, mesh
+      shaders), and wgpu-native's native extensions (its `wgpu.h` lists ray queries), how a feature beyond the web is
+      offered without breaking "web first, native at parity";
+    - **the feature map:** every feature of Three.js and of the engines, each with its status, the example that needs
+      it, and its test and budget. Among them:
+      - geometry, materials and PBR with image-based lighting, lights, shadows and cameras;
+      - textures and loaders, and animation;
+      - post-processing, instancing, picking, helpers and text;
+      - 2D, XR multiview, and the state of the art beyond Three.js (global illumination among it).
+
+    The pass writes the package's `SPEC.md` and `ROADMAP.md`.
+  - **Every example is a test:** a headless readback and a golden image with a tolerance, on web and native.
+  - **Pay for what you use:** a feature a program does not use drops out at link time, measured from the first slice,
+    since the cube's web budget is 150 KB.
+  - **Non-game examples** come after the cube, beside the games, to keep the library general: an editor viewport, a
+    product viewer and a data visualization.
+  - **The decided path stands, and the pass builds on it:** cosmic-forge's `render` as the start, the-mallow-man's
+    techniques one at a time, the three tiers, the fixed pass list, and WGSL with WESL and node materials.

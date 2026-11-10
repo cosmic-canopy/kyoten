@@ -408,3 +408,36 @@ The tension between their lesson and that purpose is the first thing to settle.
     ([version-manager.md](version-manager.md)).
   - **Probed on kama `0.9.876+g7ce86d36`** (`.scratch/step5-cli`): `@kyoten/cli`, depending on another package by
     path, built as `out/x86_64-windows-gnu/debug/cli.exe`, and with `-o out/kyoten.exe` as `kyoten.exe`, which ran.
+- **2026-11-10, the owner: how the libraries grow toward complete.** Asked after the owner asked what remains for the
+  hello cube: "I don't want to rush anything... Ideally kama graphics and the other packages will be as comprehensive
+  as possible... but we can work our way there and I would like your recommendation on all of that." The hello cube
+  is "Kyoten's proof of concept and first vertical slice". Each answer was as recommended.
+  1. **Each library's whole architecture is decided first, then built depth-first** ("this sounds good to me"). The
+     hello cube (KYR-14) is the first vertical slice through every tier, and each later example widens one library.
+     - **Why:** a subset built on an architecture that cannot grow is rebuilt later. Three.js's `WebGPURenderer`
+       replaced its WebGL-era material path (`ShaderMaterial`, `onBeforeCompile`) with TSL ([rendering.md](rendering.md)
+       § Decided, 2026-11-07).
+  2. **Each package repository has its own spec and roadmap** ("Yes each repo deserves it's own spec and roadmap,
+     etc."): a `SPEC.md` and a `ROADMAP.md` beside its `AGENTS.*.md`.
+     - `@kama/graphics`'s come from its design pass ([rendering.md](rendering.md) § Decided, 2026-11-10; KYR-68).
+     - `@kama/gpu`'s and `@kama/window`'s come from their departures lists and the checklists in items 3 and 4.
+  3. **`@kama/gpu`: every call in webgpu.h before 1.0** ("Sounds good").
+     - It is tracked by a coverage report `tools/wgpugen` prints: which of the header's functions the safe API wraps.
+     - It grows by the spec's sections, in the order graphics pulls them: the render pipeline's set first, then compute,
+       queries and timestamps, and indirect draws.
+  4. **`@kama/window`: the browser's platform APIs are its checklist** ("Sounds good so far"), with native at parity.
+     - Beyond what the cube needs (a window or canvas, physical keys, a gamepad and a headless window): pointer and
+       touch, text input with IME composition, the clipboard, cursor shapes, fullscreen and pointer lock, DPI changes,
+       several windows natively, and file drop.
+  5. **The order to the cube** ("Sounds good"; [../FIRST-SLICE.md](../FIRST-SLICE.md) § The order of work):
+     1. the stopgaps that change an API: `@kama/gpu` item 2; `@kama/window` item 6, then `@kama/gpu` item 9;
+        `@kama/window` item 5;
+     2. the web leg, brought forward: the window's web half (W2), then a canvas surface in Edge (G6). Nothing has run in
+        a browser yet, and the seventh session found wgpu-native unlike its own docs, so the browser's surprises are
+        found before graphics is built on assumptions;
+     3. the graphics design pass (KYR-68), alongside 1 and 2, since it needs no code from them;
+     4. `@kama/gpu`'s render pipeline set, shaped by that design;
+     5. `@kama/graphics`' first slice on both legs;
+     6. the join: the platform seam, input and the render module;
+     7. the cube, with its four checks in CI;
+     8. then breadth, slice by slice, with non-game examples beside the games.

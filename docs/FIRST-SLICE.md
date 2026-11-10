@@ -30,17 +30,32 @@ the design doc it settles before building on it.
      clean clone could no longer rebuild it (its binary is kept in `.scratch/kama-pin-0.9.899`).
    - **Still open with kama:** KY-45 (KR-361, not started: one query for the dependencies, and the tool's
      per-dependency cache goes) and KY-40 (no integer vectors).
-2. **Track 1 continues,** each stopgap that changes an API first, test-first, its questions asked in full before code:
-   - `@kama/gpu` item 2: errors per device, and error scopes. Its production answer is sketched in
-     `../kama-gpu/AGENTS.gpu.md` item 2. Measure first what each leg does with a device's uncaptured error and its loss
-     (wgpu-native aborted on a bad surface configure rather than reporting it, so do not assume the callback is
-     reached), then draft its questions in full and put them to the owner;
-   - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
-   - `@kama/window` item 5: held keys and buttons released on a focus change;
-   - then `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with
-     Pointer Events), `@kama/gpu`'s canvas surface and a run in Edge (G6, which also runs the two steps' web leg, holds
-     `maxBindGroupsPlusVertexBuffers` and `CoreFeaturesAndLimits` there, and measures the web's surface capabilities
-     for the first time), gamepads (W3), and the triangle's pipeline set.
+2. **Track 1 continues, in the order the owner decided on 2026-11-10** ([design/architecture.md](design/architecture.md)
+   § Decided, how the libraries grow). Each step is test-first, with its questions asked in full before code:
+   1. **`@kama/gpu`'s and `@kama/window`'s own `SPEC.md` and `ROADMAP.md`,** from each `AGENTS.*.md`'s departures and
+      that day's checklists: every call in webgpu.h before 1.0, with a coverage report `tools/wgpugen` prints; and the
+      browser's platform APIs for the window, native at parity.
+   2. **The stopgaps that change an API:**
+      - `@kama/gpu` item 2: errors per device, and error scopes. Its production answer is sketched in
+        `../kama-gpu/AGENTS.gpu.md` item 2. Measure first what each leg does with a device's uncaptured error and its
+        loss (wgpu-native aborted on a bad surface configure rather than reporting it, so do not assume the callback
+        is reached), then draft its questions in full and put them to the owner;
+      - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
+      - `@kama/window` item 5: held keys and buttons released on a focus change.
+   3. **The web leg, brought forward:**
+      - `@kama/window`'s web half (W2: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
+        Events);
+      - then `@kama/gpu`'s canvas surface and a run in Edge (G6). It also runs the two steps' web leg, holds
+        `maxBindGroupsPlusVertexBuffers` and `CoreFeaturesAndLimits` there, and measures the web's surface capabilities
+        for the first time.
+   4. **Alongside 1 to 3, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
+      2026-11-10): `@kama/graphics`' `SPEC.md` and `ROADMAP.md`, with its feature map, before any of its code. Three.js
+      is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and Godot
+      reach it.
+   5. **Then the rest of the libraries' share of the cube:**
+      - gamepads (W3);
+      - `@kama/gpu`'s render pipeline set, shaped by the design pass;
+      - `@kama/graphics`' first slice, on both legs.
 
    A page served from localhost to headless Edge prints its console to stderr
    (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
@@ -349,10 +364,17 @@ here), committed with what it measured.
    production grade. Start from FFD's web
    platform header and the-mallow-man's native one (harvest § 3). **A1 needs** one window or canvas, physical keys, a
    gamepad, and a headless window for tests.
-3. **`@kama/graphics`** (KYR-9, `../kama-graphics`). Start from cosmic-forge's `render` (rendering question 1), with
-   Three.js as the API's reference (SPIKE's standing direction, 2026-11-07). **A1 needs** a box mesh, the standard lit
-   material, a camera, and a directional light with ambient light, drawn into the window. Shaders are WGSL, with WESL
-   for imports (rendering, how shaders are written).
+3. **`@kama/graphics`** (KYR-9, `../kama-graphics`). Start from cosmic-forge's `render` (rendering question 1). Its
+   design pass (KYR-68) writes its spec and roadmap before any code. Three.js is the reference for ease of use only,
+   never a limit: the bar is the state of the art (the owner, 2026-11-10, rendering § Decided). **A1 needs** a box mesh,
+   the standard lit material, a camera, and a directional light with ambient light, drawn into the window. Shaders are
+   WGSL, with WESL for imports (rendering, how shaders are written).
+
+**Within Track 1, the order the owner decided on 2026-11-10** ([design/architecture.md](design/architecture.md)
+§ Decided, how the libraries grow): each package's spec and roadmap, then the stopgaps that change an API, then the
+web leg brought forward (W2 and G6), with the graphics design pass alongside. Then gamepads, `@kama/gpu`'s render
+pipeline set, and `@kama/graphics`' first slice. Each library's whole architecture is decided first, then built
+depth-first through the cube.
 
 **Track 2, the engine's core** (`engine/`, the `kyoten` package).
 
@@ -499,6 +521,17 @@ here), committed with what it measured.
     reason, in its `AGENTS.*.md`, and the owner relays it to kama.
   - Each stays general: it names no engine, and serves a tool or an editor as well as a game.
   - A compiler or std gap still goes in the package's own gap file, with its repro.
+- **Answered on 2026-11-10, how the libraries grow toward complete** (five, each as recommended), after the owner asked
+  what remains for the hello cube ([design/architecture.md](design/architecture.md) § Decided):
+  1. each library's whole architecture is decided first, then built depth-first through the cube;
+  2. `@kama/graphics` gets a design pass, with a feature map, before any code (KYR-68), and each package repository has
+     its own `SPEC.md` and `ROADMAP.md`. The owner made the bar plain: "I DO NOT want us to be limited by any decisions
+     Three.js has made or anything it can not do... we need to be able to do the state of the art in graphics."
+     Three.js is a reference for ease of use only ([design/rendering.md](design/rendering.md) § Decided);
+  3. `@kama/gpu` covers every call in webgpu.h before 1.0, tracked by a coverage report `tools/wgpugen` prints;
+  4. the browser's platform APIs are `@kama/window`'s checklist, native at parity;
+  5. the order: the stopgaps, then the web leg brought forward, with the graphics design pass alongside (§ Where it
+     stands).
 
 ## kama gaps that touch the first slice
 
