@@ -1,0 +1,4 @@
+// An engine module that names an OS: the platform rule holds a library checked as the engine.
+
+@compileFor(OS_LINUX)
+fn int32 linux() { return 1; }

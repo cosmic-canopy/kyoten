@@ -7,7 +7,7 @@
 // (a group's `phase`, an action's `kind`) is required, and refused by name when missing. The rules across fields and
 // records (a processor names a phase or a group, not both) are `kyoten check`'s.
 
-import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind };
+import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind, Tier };
 
 export { ModuleRecord, ProcessorGroupRecord, ProcessorRecord, ComponentRecord, ActionRecord };
 
@@ -106,10 +106,11 @@ type resource ActionRecord {
 }
 
 // A module's records file: the module's own record at the top, and its groups, processors, components and actions
-// keyed by name.
+// keyed by name. An engine module states its tier there too.
 @generate(Serializable, Deserializable)
 type resource ModuleRecord {
     @field(name: "rate") Optional<int32> rateField = Optional::None;
+    @field(name: "tier") Optional<Tier> tierField = Optional::None;
     @field(name: "groups", default) SortedMap<string, ProcessorGroupRecord> groupsField = SortedMap.empty();
     @field(name: "processors", default) SortedMap<string, ProcessorRecord> processorsField = SortedMap.empty();
     @field(name: "components", default) SortedMap<string, ComponentRecord> componentsField = SortedMap.empty();
@@ -120,6 +121,8 @@ type resource ModuleRecord {
 
     // In whole hertz; none is the engine's default for each phase.
     public const fn Optional<int32> rate() { return this.rateField; }
+    // The engine's tier this module is in; none for a game's module (architecture § Decided, question 2, 2026-11-09).
+    public const fn Optional<Tier> tier() { return this.tierField; }
     public const fn const ref SortedMap<string, ProcessorGroupRecord> groups() { return this.groupsField; }
     public const fn const ref SortedMap<string, ProcessorRecord> processors() { return this.processorsField; }
     public const fn const ref SortedMap<string, ComponentRecord> components() { return this.componentsField; }

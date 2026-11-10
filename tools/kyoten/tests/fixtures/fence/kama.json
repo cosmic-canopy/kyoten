@@ -1,0 +1,107 @@
+{
+  "name": "fence",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.899",
+  "description": "a fixture: simulation modules whose importsOnly break the fence, refused by kyoten generate in one run, beside modules whose lists hold it",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": {
+      "path": "../../../../../engine"
+    },
+    "glow": {
+      "path": "../glow"
+    }
+  },
+  "modules": {
+    ".": {
+      "visibility": "internal"
+    },
+    "generated": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::input",
+        "std::collections"
+      ]
+    },
+    "assets": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::frame",
+        "std::asset"
+      ]
+    },
+    "loads": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::frame",
+        "kyoten::content"
+      ]
+    },
+    "drawn": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::frame",
+        "hud"
+      ]
+    },
+    "hud": {
+      "visibility": "internal"
+    },
+    "loose": {
+      "visibility": "internal"
+    },
+    "deep": {
+      "visibility": "internal",
+      "importsOnly": [
+        "helper"
+      ]
+    },
+    "helper": {
+      "visibility": "internal",
+      "importsOnly": [
+        "std::time"
+      ]
+    },
+    "env": {
+      "visibility": "internal",
+      "importsOnly": [
+        "core::env"
+      ]
+    },
+    "grouped": {
+      "visibility": "internal",
+      "importsOnly": [
+        "std::random"
+      ]
+    },
+    "screen": {
+      "visibility": "internal",
+      "importsOnly": [
+        "core",
+        "std::time"
+      ]
+    },
+    "fine": {
+      "visibility": "internal",
+      "importsOnly": [
+        "std::math",
+        "std::collections",
+        "core",
+        "kyoten::frame",
+        "kyoten::world",
+        "glow",
+        "generated",
+        "pure"
+      ]
+    },
+    "pure": {
+      "visibility": "internal",
+      "importsOnly": [
+        "std::num",
+        "fine"
+      ]
+    }
+  }
+}

@@ -1,0 +1,4 @@
+// A whole file gated on an ABI.
+file @compileFor(ABI_GNU);
+
+fn int32 gnu() { return 3; }

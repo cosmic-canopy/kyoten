@@ -1,0 +1,4 @@
+// An Output module: the platform rule covers all of a game's code, not only its simulation.
+
+@compileFor(OS_WINDOWS)
+fn void draw() { }

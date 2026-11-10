@@ -12,6 +12,8 @@
 #     Windows (natively off Windows, and on wasm), and built natively on Windows, where the guard is off;
 #   - the kyoten tool (tools/kyoten/, built as `kyoten`) and its tests, one program that runs it on the fixture games
 #     in tools/kyoten/tests/fixtures/, natively, with the spin fixture's web build run under node;
+#   - `kyoten check engine/kama.json`: the engine held to the simulation's fence, its tiers and the platform flags
+#     (KYR-53), then `kama check`;
 #   - each example game that is cloned under examples/games/: `examples/games/fps` checked, then run natively and on
 #     wasm, its output held to "fps example, on kyoten"; `examples/games/vr` checked. A game that is not cloned is
 #     skipped, and says so.
@@ -121,6 +123,9 @@ if "$KAMA" build "$TOOL/kama.json" -o "$tool_exe" > "$OUT/build-tool.log" 2>&1 &
     web=""
     if [ "$wasm" = 1 ]; then web="--wasm"; else echo "skip the spin fixture on wasm: no emcc or node on PATH"; fi
     "$tool_tests" "$tool_exe" "$KAMA" "$TOOL/tests/fixtures" $web || failed=1
+    # The engine held to its own rules (KYR-53): the simulation's fence, the tiers and the platform flags, then kama.
+    step "kyoten check engine/kama.json"
+    "$tool_exe" check engine/kama.json --kama "$KAMA" || failed=1
 else
     tail -n 20 "$OUT/build-tool.log" "$OUT/build-tool-tests.log"
     failed=1

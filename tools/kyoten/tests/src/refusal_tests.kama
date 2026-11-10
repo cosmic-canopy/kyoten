@@ -3,7 +3,7 @@
 
 import { Tally, Setup, Ran, has, erase, eraseDir, ranAs, none, check, std::collections::DynamicArray };
 
-export { refusalTests };
+export { refusalTests, says, allOf, install };
 
 fn void says(ref Tally t, const ref string name, const ref Ran r, const ref DynamicArray<string> words) {
     foreach (const ref string w in words.iterConst()) {

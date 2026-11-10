@@ -1,0 +1,44 @@
+{
+  "name": "flags",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.899",
+  "description": "a fixture: platform flags in a game's source, each refused by kyoten generate, beside a build type, a declared flag and a comment, which are not",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": {
+      "path": "../../../../../engine"
+    }
+  },
+  "flags": {
+    "PARALLEL": {}
+  },
+  "modules": {
+    ".": {
+      "visibility": "internal"
+    },
+    "generated": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::input",
+        "std::collections"
+      ]
+    },
+    "sim": {
+      "visibility": "internal",
+      "importsOnly": [
+        "kyoten::frame",
+        "generated"
+      ]
+    },
+    "show": {
+      "visibility": "internal",
+      "importsOnly": [
+        "core",
+        "kyoten::frame",
+        "sim"
+      ]
+    }
+  }
+}

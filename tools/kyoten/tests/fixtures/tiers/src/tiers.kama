@@ -1,0 +1,5 @@
+// The tiers fixture's root module.
+
+export { version };
+
+fn int32 version() { return 1; }

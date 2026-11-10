@@ -2,7 +2,8 @@
 // two passes of 2026-11-08, step 5.3's questions and step 5.4's, of 2026-11-09).
 //
 // 1. From the records alone: the manifest lists `generated`; every name a record makes into kama is an identifier,
-//    and unique; every variant's base is a prefab; every generated name there now carries the header.
+//    and unique; every variant's base is a prefab; every generated name there now carries the header. And KYR-53's
+//    checks: each simulation module is fenced, and no source names a platform flag (fence.kama).
 // 2. The first pass writes `Actions` whole and the prefab types' names, so the game's imports resolve.
 // 3. kama is asked which types and functions the game and its dependencies declare; a module `static` in the game is
 //    refused; each prefab's components resolve, and each processor record meets its function, whose parameters are
@@ -16,7 +17,7 @@ import { core::println, core::eprintln, std::collections::DynamicArray, std::io:
          std::fs::exists, std::fs::canonicalPath, std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index,
          StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
-         worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
+         worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, checkFence, checkFlags, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
 
 export { generate, clean };
 
@@ -38,6 +39,8 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     Records records = readRecords(game: game, no: no);
     DynamicArray<string> before = generatedFiles(game: game);
     checkHeaders(game: game, files: before, no: no);
+    checkFence(game: game, r: records, no: no);
+    checkFlags(pkg: game, no: no);
     if (no.any()) { no.print(); return false; }
 
     string actionsFile = "src/generated/actions.kama";

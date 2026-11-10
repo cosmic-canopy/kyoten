@@ -1,6 +1,6 @@
-// A package's `kama.json`, as far as the tool reads it: its name, its entry, the folders its `modules` list, its
-// dependencies, and its `preloadFiles`, which must carry the game's `content/` to a web build. A file's module is its
-// folder's, or the nearest listed folder's above it, as kama has it.
+// A package's `kama.json`, as far as the tool reads it: its name, its kind, its entry, the folders its `modules` list
+// and each one's `importsOnly`, its dependencies, and its `preloadFiles`, which must carry the game's `content/` to a
+// web build. A file's module is its folder's, or the nearest listed folder's above it, as kama has it.
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
          std::fs::readText, std::fs::readDir, std::fs::stat, std::fs::Metadata, std::path::parent,
@@ -23,16 +23,21 @@ type resource Manifest {
     string rootDir = "";
     string packageName = "";
     string entryFile = "";
+    string packageKind = "";
     DynamicArray<string> folders = DynamicArray.empty();
+    SortedMap<string, DynamicArray<string>> moduleLists = SortedMap.empty();
     DynamicArray<Dependency> dependencies = DynamicArray.empty();
     DynamicArray<string> preloadList = DynamicArray.empty();
 
-    public ctor make(string root, string name, string entry, DynamicArray<string> folders,
-                     DynamicArray<Dependency> dependencies, DynamicArray<string> preloads) {
+    public ctor make(string root, string name, string kind, string entry, DynamicArray<string> folders,
+                     SortedMap<string, DynamicArray<string>> lists, DynamicArray<Dependency> dependencies,
+                     DynamicArray<string> preloads) {
         this.rootDir = give root;
         this.packageName = give name;
+        this.packageKind = give kind;
         this.entryFile = give entry;
         this.folders = give folders;
+        this.moduleLists = give lists;
         this.dependencies = give dependencies;
         this.preloadList = give preloads;
     }
@@ -51,6 +56,16 @@ type resource Manifest {
         return this.rootDir + "/src/" + this.packageName + ".kama";
     }
     public const fn const ref DynamicArray<Dependency> deps() { return this.dependencies; }
+
+    // Whether the package is a library, which `kyoten check` holds to the engine's rules, rather than a game.
+    public const fn bool isLibrary() { return this.packageKind == "library"; }
+
+    // The folders `modules` lists, as it spells them ("." for the root).
+    public const fn const ref DynamicArray<string> moduleFolders() { return this.folders; }
+
+    // Whether a listed module writes an `importsOnly`, which is not the same as writing an empty one; and the list.
+    public const fn bool hasList(const ref string folder) { return this.moduleLists.contains(key: folder); }
+    public const fn const ref DynamicArray<string> listOf(const ref string folder) { return this.moduleLists.getRef(key: folder); }
 
     // Whether `modules` lists this folder (relative to src/, "." for the root).
     public const fn bool lists(const ref string folder) {
@@ -110,12 +125,34 @@ unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why)
         case None: { }
     };
     string entry = textAt(doc: doc, key: "entry");
+    string kind = textAt(doc: doc, key: "kind");
     DynamicArray<string> folders = DynamicArray.empty();
+    SortedMap<string, DynamicArray<string>> lists = SortedMap.empty();
     Optional<JsonValue> modules = doc.get(key: "modules");
     match (modules) {
         case Some(value: ms): {
             match (ms) {
-                case Object(members: m): { foreach (string k in m) { folders.add(item: copy k); } }
+                case Object(members: m): {
+                    foreach (string k in m) {
+                        folders.add(item: copy k);
+                        Optional<JsonValue> only = m.getRef(key: k).get(key: "importsOnly");
+                        match (only) {
+                            case Some(value: o): {
+                                match (o) {
+                                    case Array(items: xs): {
+                                        DynamicArray<string> entries = DynamicArray.empty();
+                                        foreach (const ref JsonValue x in xs.iterConst()) {
+                                            match (x) { case String(value: s): { entries.add(item: copy s); } case _: { } };
+                                        }
+                                        lists.put(key: copy k, value: give entries);
+                                    }
+                                    case _: { }
+                                };
+                            }
+                            case None: { }
+                        };
+                    }
+                }
                 case _: { }
             };
         }
@@ -153,8 +190,9 @@ unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why)
         }
         case None: { }
     };
-    return Optional::Some(value: Manifest.make(root: give root, name: give name, entry: give entry, folders: give folders,
-                                           dependencies: give deps, preloads: give preloads));
+    return Optional::Some(value: Manifest.make(root: give root, name: give name, kind: give kind, entry: give entry,
+                                           folders: give folders, lists: give lists, dependencies: give deps,
+                                           preloads: give preloads));
 }
 
 // Every file under `dir`, as `/`-separated paths relative to it, sorted; none when `dir` is missing.

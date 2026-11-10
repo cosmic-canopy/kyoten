@@ -1,0 +1,453 @@
+// KYR-53's checks (the first slice's step 6; ai-first-api, target-platforms and architecture § Decided, step 6's four
+// questions of 2026-11-09). kama holds each module to the `importsOnly` its author wrote; these hold the lists, and the
+// source's platform flags, to kyoten's rules:
+//
+// - **The simulation's fence:** every module holding an Input, Update or Constraints processor is fenced. A module is
+//   fenced when it has an `importsOnly` and each entry is one of std's pure modules, `core`, or a fenced module of any
+//   package, read from that package's `kama.json`. Modules that import each other are fenced together.
+// - **The tiers,** for a library (the engine): each module states its tier in its records file, has an `importsOnly`,
+//   and names only modules of its package in a tier above its own, so no engine module names another.
+// - **The platform flags:** no `@compileFor` names `OS_*`, `ARCH_*`, `ABI_*` or `HOSTED`, which kama derives from the
+//   target. They belong in the libraries and the platform types, and the engine and games ask for capabilities. One
+//   stopgap is excepted until step 7.
+//
+// `kyoten generate` runs the fence and the flags on a game; `kyoten check` on a library runs all three.
+
+import { core::println, std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError,
+         std::fs::readText, kyoten::records::Phase, kyoten::records::Tier, Manifest, Dependency, readManifest,
+         filesUnder, Records, CodeFile, Refusals, readRecords, inModule };
+
+export { checkFence, checkFlags, checkLibrary };
+
+// std's modules a fenced module may name: each computes from its arguments alone. Read on kyoten's pin,
+// `0.9.899+gf32373ea`, each one's import blocks and C functions; ai-first-api § Decided (2026-11-09) says why each other
+// module is left out. A module std adds is refused until it is read and listed here.
+fn DynamicArray<string> pureStd() {
+    DynamicArray<string> p = DynamicArray.empty();
+    p.add(item: "math");
+    p.add(item: "num");
+    p.add(item: "collections");
+    p.add(item: "memory");
+    p.add(item: "ascii");
+    p.add(item: "unicode");
+    p.add(item: "fmt");
+    p.add(item: "digest");
+    p.add(item: "encoding");
+    return p;
+}
+
+fn string pureNames() {
+    string made = "";
+    DynamicArray<string> p = pureStd();
+    foreach (const ref string m in p.iterConst()) { made = made.isEmpty() ? "`std::" + m + "`" : made + ", `std::" + m + "`"; }
+    return made;
+}
+
+// The part of a path before its first `::`, or all of it.
+fn string firstSegment(const ref string path) {
+    match (path.find(substring: "::")) { case Some(value: at): { return path.substring(start: 0, end: at); } case None: { return copy path; } };
+}
+
+// A package's name as its modules spell it: a scoped one (`@kama/gpu`) is the part after the slash.
+fn string bareName(const ref string name) {
+    match (name.find(substring: "/")) { case Some(value: at): { return name.substring(start: at + 1, end: name.length()); } case None: { return copy name; } };
+}
+
+// A module's full name: the package's own for its root, else the package and the folder, `::`-separated.
+fn string fullName(const ref string package, const ref string folder) {
+    if (folder == "." || folder.isEmpty()) { return copy package; }
+    return package + "::" + folder.replace(old: "/", with: "::");
+}
+
+// A module's folder as `kama.json`'s `modules` spells it, from its full name.
+fn string folderOf(const ref string package, const ref string full) {
+    if (full == package) { return "."; }
+    return full.substring(start: package.length() + 2, end: full.length()).replace(old: "::", with: "/");
+}
+
+fn bool isStd(const ref string entry) { return entry == "std" || entry.startsWith(prefix: "std::"); }
+fn bool isCore(const ref string entry) { return entry == "core" || entry.startsWith(prefix: "core::"); }
+
+// The checked package and every package it depends on, read once each, as one graph of modules.
+type resource Graph {
+    SortedMap<string, DynamicArray<string>> lists = SortedMap.empty();
+    SortedMap<string, string> packageOf = SortedMap.empty();
+    SortedMap<string, bool> depends = SortedMap.empty();
+    SortedMap<string, string> unread = SortedMap.empty();
+
+    public ctor make() { }
+
+    // A package's modules: each one's full name, its package and its `importsOnly`, and the packages it depends on.
+    public fn void absorb(const ref Manifest m) {
+        string pkg = bareName(name: m.name());
+        foreach (const ref string folder in m.moduleFolders().iterConst()) {
+            string full = fullName(package: pkg, folder: folder);
+            this.packageOf.put(key: copy full, value: copy pkg);
+            if (m.hasList(folder: folder)) {
+                DynamicArray<string> entries = DynamicArray.empty();
+                foreach (const ref string e in m.listOf(folder: folder).iterConst()) { entries.add(item: copy e); }
+                this.lists.put(key: copy full, value: give entries);
+            }
+        }
+        foreach (const ref Dependency d in m.deps().iterConst()) {
+            string dep = bareName(name: d.name());
+            this.depends.put(key: pkg + "|" + dep, value: true);
+        }
+    }
+
+    public fn void unreadable(const ref string package, const ref string why) {
+        this.unread.put(key: bareName(name: package), value: copy why);
+    }
+
+    // What an entry of a module of `package` names: a module of a package it depends on by that package's name, else
+    // one of its own, as `modules` spells it ("." for the root).
+    public const fn string targetOf(const ref string package, const ref string entry) {
+        string first = firstSegment(path: entry);
+        if (this.depends.contains(key: package + "|" + first)) { return entry.replace(old: "/", with: "::"); }
+        return fullName(package: package, folder: entry);
+    }
+
+    // Whether an entry is the package's own module, rather than std's, core's or a dependency's.
+    public const fn bool namesOwn(const ref string package, const ref string entry) {
+        if (isStd(entry: entry) || isCore(entry: entry)) { return false; }
+        return !this.depends.contains(key: package + "|" + firstSegment(path: entry));
+    }
+
+    // Why an entry breaks the fence, or "" when it does not. A module it names must be in `kept`.
+    public const fn string judge(const ref string package, const ref string entry, const ref SortedMap<string, bool> kept,
+                                 const ref SortedMap<string, string> why) {
+        if (entry == "core") { return ""; }
+        if (isCore(entry: entry)) {
+            return "names `${entry}`, the environment and the command line, which reach the simulation only as records or through Input's hand-off";
+        }
+        if (isStd(entry: entry)) {
+            string rest = entry == "std" ? "" : entry.substring(start: 5, end: entry.length());
+            if (!rest.isEmpty() && pureStd().contains(item: firstSegment(path: rest))) { return ""; }
+            return "names `${entry}`, which is not one of std's pure modules";
+        }
+        string target = this.targetOf(package: package, entry: entry);
+        if (!this.packageOf.contains(key: target)) {
+            string first = firstSegment(path: entry);
+            if (this.unread.contains(key: first)) {
+                string w = copy this.unread.getRef(key: first);
+                return "names `${entry}`, whose package cannot be read: ${w}";
+            }
+            return "names `${entry}`, which is no module kyoten can find";
+        }
+        if (kept.contains(key: target) && kept.getRef(key: target)) { return ""; }
+        string w = why.contains(key: target) ? copy why.getRef(key: target) : "is not fenced";
+        return "names `${entry}`, which is not fenced: `${target}` " + w;
+    }
+
+    // The fenced modules: the largest set of modules with an `importsOnly` whose every entry is allowed, where a module
+    // it names must be in the set too, so modules that import each other stay in together. `why` says, for each
+    // module out of it, the reason, which names the next module of a chain.
+    public const fn SortedMap<string, bool> fenced(ref SortedMap<string, string> why) {
+        SortedMap<string, bool> kept = SortedMap.empty();
+        DynamicArray<string> listed = this.lists.keys();
+        foreach (const ref string m in listed.iterConst()) { kept.put(key: copy m, value: true); }
+        DynamicArray<string> every = this.packageOf.keys();
+        foreach (const ref string m in every.iterConst()) {
+            if (!this.lists.contains(key: m)) { why.put(key: copy m, value: "has no `importsOnly`"); }
+        }
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            foreach (const ref string m in listed.iterConst()) {
+                if (!kept.getRef(key: m)) { continue; }
+                string pkg = copy this.packageOf.getRef(key: m);
+                foreach (const ref string e in this.lists.getRef(key: m).iterConst()) {
+                    string bad = this.judge(package: pkg, entry: e, kept: kept, why: why);
+                    if (!bad.isEmpty()) {
+                        kept.put(key: copy m, value: false);
+                        why.put(key: copy m, value: give bad);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return kept;
+    }
+}
+
+// The checked package and each package it depends on, through every level.
+unsafe fn Graph graphOf(const ref Manifest game) {
+    Graph g = Graph.make();
+    g.absorb(m: game);
+    SortedMap<string, bool> seen = SortedMap.empty();
+    seen.put(key: bareName(name: game.name()), value: true);
+    DynamicArray<string> names = DynamicArray.empty();
+    DynamicArray<string> roots = DynamicArray.empty();
+    foreach (const ref Dependency d in game.deps().iterConst()) {
+        names.add(item: copy d.name());
+        roots.add(item: copy d.root());
+    }
+    isize i = 0;
+    while (i < names.length()) {
+        string name = bareName(name: names[i]);
+        string root = copy roots[i];
+        i = i + 1;
+        if (seen.contains(key: name)) { continue; }
+        seen.put(key: copy name, value: true);
+        string why = "";
+        Optional<Manifest> read = readManifest(path: root + "/kama.json", why: why);
+        match (give read) {
+            case Some(value: m): {
+                g.absorb(m: m);
+                foreach (const ref Dependency d in m.deps().iterConst()) {
+                    names.add(item: copy d.name());
+                    roots.add(item: copy d.root());
+                }
+            }
+            case None: { g.unreadable(package: name, why: why); }
+        };
+    }
+    return g;
+}
+
+fn string phaseWord(Phase p) {
+    return match (p) { case Input: "Input"; case Update: "Update"; case Constraints: "Constraints"; case Output: ""; };
+}
+
+// Each module holding an Input, Update or Constraints processor, with what the refusal says it holds. A processor's
+// phase is its own, or its group's; one whose group no module declares counts as the simulation's.
+fn SortedMap<string, string> simulationModules(const ref Records r) {
+    SortedMap<string, Phase> groups = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        DynamicArray<string> gs = f.record().groups().keys();
+        foreach (const ref string g in gs.iterConst()) {
+            groups.put(key: f.module() + "::" + g, value: f.record().groups().getRef(key: g).phase());
+        }
+    }
+    SortedMap<string, string> sims = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        DynamicArray<string> ps = f.record().processors().keys();
+        foreach (const ref string p in ps.iterConst()) {
+            string word = "";
+            match (f.record().processors().getRef(key: p).phase()) {
+                case Some(value: ph): { word = phaseWord(p: ph); }
+                case None: {
+                    match (f.record().processors().getRef(key: p).group()) {
+                        case Some(value: g): {
+                            string path = inModule(module: f.module(), name: g);
+                            word = groups.contains(key: path) ? phaseWord(p: groups.getRef(key: path)) : "simulation";
+                        }
+                        case None: { word = "simulation"; }
+                    };
+                }
+            };
+            if (!word.isEmpty() && !sims.contains(key: f.module())) {
+                sims.put(key: copy f.module(), value: "holds the ${word} processor `${p}`");
+            }
+        }
+    }
+    return sims;
+}
+
+// The simulation's fence, on the checked package's modules (ai-first-api § Decided, question 3, item 5).
+unsafe fn void checkFence(const ref Manifest game, const ref Records r, ref Refusals no) {
+    SortedMap<string, string> sims = simulationModules(r: r);
+    if (sims.length() == 0) { return; }
+    Graph g = graphOf(game: game);
+    SortedMap<string, string> why = SortedMap.empty();
+    SortedMap<string, bool> kept = g.fenced(why: why);
+    string pkg = bareName(name: game.name());
+    string pure = pureNames();
+    DynamicArray<string> modules = sims.keys();
+    foreach (const ref string m in modules.iterConst()) {
+        if (kept.contains(key: m) && kept.getRef(key: m)) { continue; }
+        string folder = folderOf(package: pkg, full: m);
+        string holds = copy sims.getRef(key: m);
+        string w = why.contains(key: m) ? copy why.getRef(key: m) : "is not fenced";
+        no.add(where: "kama.json", what: "module \"${folder}\" ${holds}, so it is fenced from the outside world, and it ${w}: a fenced module's `importsOnly` names only std's pure modules (${pure}), `core`, and fenced modules of any package (ai-first-api § Decided)");
+    }
+}
+
+fn int32 rank(Tier t) { return match (t) { case Frame: 0; case World: 1; case Module: 2; case Agent: 3; }; }
+fn string tierWord(int32 r) {
+    if (r == 0) { return "Frame"; }
+    if (r == 1) { return "World"; }
+    if (r == 2) { return "Module"; }
+    return "Agent";
+}
+
+// The tiers, on a library (architecture § Decided, question 2): each module states one, has an `importsOnly`, and names
+// only modules of its own package in a tier above its own.
+unsafe fn void checkTiers(const ref Manifest lib, const ref Records r, ref Refusals no) {
+    string pkg = bareName(name: lib.name());
+    SortedMap<string, int32> tiers = SortedMap.empty();
+    SortedMap<string, string> stated = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        match (f.record().tier()) {
+            case Some(value: t): {
+                int32 k = rank(t: t);
+                if (tiers.contains(key: f.module()) && tiers.getRef(key: f.module()) != k) {
+                    string other = copy stated.getRef(key: f.module());
+                    string word = tierWord(r: k);
+                    string before = tierWord(r: tiers.getRef(key: f.module()));
+                    no.add(where: f.file(), what: "the tier `${word}`, where ${other} states `${before}`: a module has one tier");
+                } else {
+                    tiers.put(key: copy f.module(), value: k);
+                    stated.put(key: copy f.module(), value: copy f.file());
+                }
+            }
+            case None: { }
+        };
+    }
+    Graph g = Graph.make();
+    g.absorb(m: lib);
+    foreach (const ref string folder in lib.moduleFolders().iterConst()) {
+        string full = fullName(package: pkg, folder: folder);
+        bool tiered = tiers.contains(key: full);
+        if (!tiered) {
+            string dir = folder == "." ? "src" : "src/" + folder;
+            no.add(where: dir, what: "module \"${folder}\" states no tier: give its records file a `\"tier\"`, one of `Frame`, `World`, `Module` and `Agent` (architecture § Decided, question 2)");
+        }
+        if (!lib.hasList(folder: folder)) {
+            no.add(where: "kama.json", what: "module \"${folder}\" has no `importsOnly`: each module lists what it imports, so `kama check` holds its tier");
+            continue;
+        }
+        if (!tiered) { continue; }
+        int32 own = tiers.getRef(key: full);
+        foreach (const ref string e in lib.listOf(folder: folder).iterConst()) {
+            if (!g.namesOwn(package: pkg, entry: e)) { continue; }
+            string target = fullName(package: pkg, folder: e);
+            if (!tiers.contains(key: target)) { continue; }
+            int32 theirs = tiers.getRef(key: target);
+            if (theirs >= own) {
+                string mine = tierWord(r: own);
+                string other = tierWord(r: theirs);
+                no.add(where: "kama.json", what: "module \"${folder}\", tier `${mine}`, names \"${e}\", tier `${other}`: a tier imports only the tiers above it, so no engine module names another; it reads what the other publishes instead (architecture § Decided, question 2)");
+            }
+        }
+    }
+}
+
+// The text with each `//` comment removed and every line kept, so a refusal's line number holds. A `//` inside a
+// string is not a comment.
+fn string uncommented(const ref string text) {
+    string made = "";
+    isize start = 0;
+    isize n = text.length();
+    while (start <= n) {
+        isize end = match (text.findFrom(substring: "\n", start: start)) { case Some(value: v): v; case None: n; };
+        isize cut = end;
+        bool quoted = false;
+        isize i = start;
+        while (i < end) {
+            uint8 b = text[i];
+            if (quoted) {
+                if (b == 92ui8) { i = i + 1; }
+                else if (b == 34ui8) { quoted = false; }
+            } else if (b == 34ui8) {
+                quoted = true;
+            } else if (b == 47ui8 && i + 1 < end && text[i + 1] == 47ui8) {
+                cut = i;
+                break;
+            }
+            i = i + 1;
+        }
+        made = made + text.substring(start: start, end: cut);
+        if (end < n) { made = made + "\n"; }
+        start = end + 1;
+    }
+    return made;
+}
+
+fn bool isNameByte(uint8 b) {
+    return (b >= 65ui8 && b <= 90ui8) || (b >= 97ui8 && b <= 122ui8) || (b >= 48ui8 && b <= 57ui8) || b == 95ui8;
+}
+
+// The platform flags an `@compileFor` expression names: kama derives `OS_*`, `ARCH_*`, `ABI_*` and `HOSTED` from the
+// target. A build type, an output kind, a flag a package declares and a select group's value are not platform flags.
+fn DynamicArray<string> platformFlags(const ref string expr) {
+    DynamicArray<string> found = DynamicArray.empty();
+    isize i = 0;
+    isize n = expr.length();
+    while (i < n) {
+        if (!isNameByte(b: expr[i])) { i = i + 1; continue; }
+        isize start = i;
+        while (i < n && isNameByte(b: expr[i])) { i = i + 1; }
+        string word = expr.substring(start: start, end: i);
+        if (word.startsWith(prefix: "OS_") || word.startsWith(prefix: "ARCH_") || word.startsWith(prefix: "ABI_")
+            || word == "HOSTED") {
+            found.add(item: copy word);
+        }
+    }
+    return found;
+}
+
+fn int64 lineAt(const ref string text, isize at) {
+    int64 line = 1;
+    isize i = 0;
+    while (i < at) {
+        if (text[i] == 10ui8) { line = line + 1; }
+        i = i + 1;
+    }
+    return line;
+}
+
+// The one exception, a stopgap (target-platforms § Decided, question 3, item 8): `kyoten::content`'s `folderFor`
+// chooses the web's preloaded content folder or the native one. Where the files are is the `Platform`'s to say, and
+// step 7 (KYR-8) builds it; then `folderFor` and this exception are removed, and this list is empty.
+fn bool excepted(const ref string package, const ref string file, const ref string text, isize after) {
+    if (package != "kyoten" || file != "src/content/source.kama") { return false; }
+    isize end = match (text.findFrom(substring: "{", start: after)) { case Some(value: v): v; case None: text.length(); };
+    string declared = text.substring(start: after, end: end);
+    return declared.contains(substring: "fn string folderFor(");
+}
+
+fn void flagsIn(const ref string package, const ref string file, const ref string text, ref Refusals no) {
+    string marker = "@compileFor(";
+    isize at = 0;
+    while (at < text.length()) {
+        isize start = match (text.findFrom(substring: marker, start: at)) { case Some(value: v): v; case None: -1; };
+        if (start < 0) { break; }
+        isize open = start + marker.length();
+        isize depth = 1;
+        isize i = open;
+        while (i < text.length() && depth > 0) {
+            if (text[i] == 40ui8) { depth = depth + 1; }
+            else if (text[i] == 41ui8) { depth = depth - 1; }
+            i = i + 1;
+        }
+        isize close = depth == 0 ? i - 1 : i;
+        string expr = text.substring(start: open, end: close);
+        DynamicArray<string> flags = platformFlags(expr: expr);
+        if (flags.length() > 0 && !excepted(package: package, file: file, text: text, after: i)) {
+            int64 line = lineAt(text: text, at: start);
+            string first = copy flags[0];
+            no.add(where: file + ":${line}", what: "`@compileFor(${expr})` names `${first}`, a platform flag: platform code lives in the libraries and the platform types, and the engine and games ask for capabilities instead (target-platforms § Decided, question 3)");
+        }
+        at = i;
+    }
+}
+
+// The platform flags, in every source file of the package, generated ones included.
+unsafe fn void checkFlags(const ref Manifest pkg, ref Refusals no) {
+    string name = bareName(name: pkg.name());
+    DynamicArray<string> files = filesUnder(dir: pkg.sourceDir());
+    foreach (const ref string rel in files.iterConst()) {
+        if (!rel.endsWith(suffix: ".kama")) { continue; }
+        string file = "src/" + rel;
+        Result<string, IoError> text = readText(path: pkg.root() + "/" + file);
+        match (give text) {
+            case Ok(value: t): { flagsIn(package: name, file: file, text: uncommented(text: t), no: no); }
+            case Err(error: e): { no.add(where: file, what: "cannot be read, so its platform flags cannot be checked"); }
+        };
+    }
+}
+
+// `kyoten check` on a library, the engine: the fence, the tiers and the flags. Nothing is generated.
+unsafe fn bool checkLibrary(const ref Manifest lib) {
+    Refusals no = Refusals.make();
+    Records r = readRecords(game: lib, no: no);
+    checkFence(game: lib, r: r, no: no);
+    checkTiers(lib: lib, r: r, no: no);
+    checkFlags(pkg: lib, no: no);
+    if (no.any()) { no.print(); return false; }
+    string name = copy lib.name();
+    println(s: "kyoten: ${name}'s modules hold the simulation's fence, the tiers and the platform rule");
+    return true;
+}

@@ -1,0 +1,3 @@
+// The fence fixture's main. The tool refuses its lists before kama is asked anything.
+
+fn uint8 main() { return 0; }

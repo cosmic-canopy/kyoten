@@ -10,7 +10,7 @@
     { "flag": "-Werror=frame-larger-than", "compileFor": ["!OS_WINDOWS"] }
   ],
   "modules": {
-    ".": { "visibility": "public" },
+    ".": { "visibility": "public", "importsOnly": [] },
     "frame": { "visibility": "public", "importsOnly": [] },
     "world": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
     "records": { "visibility": "public", "importsOnly": ["std::collections"] },

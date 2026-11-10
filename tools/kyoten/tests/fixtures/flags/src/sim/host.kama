@@ -1,0 +1,4 @@
+// HOSTED, which kama derives from the target as it does the others.
+
+@compileFor(HOSTED)
+fn int32 hosted() { return 4; }

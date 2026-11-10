@@ -1,11 +1,17 @@
 // kyoten::records — the enums the engine's records hold. A record writes a case by its kama name (`"Update"`), and
 // any other word is refused with the cases that are allowed (REFERENCE.md § Records and their files).
 
-export { Phase, Store, Blend, Combine, ZoneShape, LayerStart, WhenFull, LimitScope, ActionKind };
+export { Phase, Store, Blend, Combine, ZoneShape, LayerStart, WhenFull, LimitScope, ActionKind, Tier };
 
 // The frame's four phases (frame-phases § Decided).
 @generate(Serializable, Deserializable)
 type enum Phase { Input, Update, Constraints, Output }
+
+// The engine's tiers, each importing only the tiers above it (architecture § Decided, question 2): the frame; the world,
+// with `kyoten::records` beside it; the engine modules, none of which imports another; and the agent surface. An engine
+// module states its own in its records file, and the `kyoten` tool holds its `importsOnly` against it (2026-11-09).
+@generate(Serializable, Deserializable)
+type enum Tier { Frame, World, Module, Agent }
 
 // Where a component's values live: in its prefab's table, in a side store for one gained at run time (components
 // question 1), or once, held by the world: a world component (components § Decided, 2026-11-09). `Zone`, one held by

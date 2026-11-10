@@ -1,0 +1,7 @@
+// Not platform flags: a build type and a flag the package declares. A comment that writes
+// @compileFor(OS_WINDOWS) is not code.
+
+@compileFor(RELEASE)
+fn int32 fast() { return 1; } // @compileFor(ARCH_X86_64) after code is a comment too
+@compileFor(PARALLEL)
+fn int32 wide() { return 2; }

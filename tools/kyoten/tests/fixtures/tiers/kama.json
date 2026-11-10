@@ -1,0 +1,51 @@
+{
+  "name": "tiers",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "library",
+  "kama": ">=0.9.899",
+  "description": "a fixture: a library shaped like the engine, whose modules break the tier rule, refused by kyoten check",
+  "modules": {
+    ".": {
+      "visibility": "public",
+      "importsOnly": []
+    },
+    "top": {
+      "visibility": "public",
+      "importsOnly": []
+    },
+    "mid": {
+      "visibility": "public",
+      "importsOnly": [
+        "top"
+      ]
+    },
+    "a": {
+      "visibility": "public",
+      "importsOnly": [
+        "mid",
+        "top",
+        "std::collections"
+      ]
+    },
+    "b": {
+      "visibility": "public",
+      "importsOnly": [
+        "a"
+      ]
+    },
+    "c": {
+      "visibility": "public",
+      "importsOnly": []
+    },
+    "d": {
+      "visibility": "public"
+    },
+    "e": {
+      "visibility": "public",
+      "importsOnly": [
+        "a"
+      ]
+    }
+  }
+}

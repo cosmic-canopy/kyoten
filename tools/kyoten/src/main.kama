@@ -5,15 +5,18 @@
 //   kyoten build    <game kama.json> [flags…]   generate, then `kama build`
 //   kyoten run      <game kama.json> [flags…]   generate, then `kama run`
 //   kyoten clean    <game kama.json>            remove every generated file
+//   kyoten check    <library kama.json> [flags…] hold a library, the engine, to the simulation's fence, the tiers and
+//                                                the platform flags (KYR-53), then `kama check`; nothing is generated
 //
 // `--kama <path>` names the compiler; without it, `$KAMA`, then `kama` on PATH. Every other flag goes to kama as it is.
 // kama cannot run a generator before it analyzes a project (KY-28), so these commands run it first.
 
 import { core::eprintln, core::env::args, std::collections::DynamicArray, Kama, Manifest, findKama, readManifest,
-         generate, clean };
+         generate, clean, checkLibrary };
 
 fn void usage() {
     eprintln(s: "usage: kyoten <generate|check|build|run|clean> <game kama.json> [--kama <path>] [kama's flags…]");
+    eprintln(s: "       kyoten check <library kama.json> [--kama <path>] [kama's flags…]");
 }
 
 // A child's exit status as this program's: 0 stays 0, a small one passes through, and any other is 1.
@@ -51,14 +54,22 @@ unsafe fn uint8 go() {
         case Some(value: m): give m;
         case None: { eprintln(s: "kyoten: ${why}"); return 2; }
     };
+    if (game.isLibrary() && command != "check") {
+        eprintln(s: "kyoten ${command}: `${manifest}` is a library, which has nothing generated: `kyoten check` holds its modules to the simulation's fence, the tiers and the platform flags (KYR-53)");
+        return 2;
+    }
     if (command == "clean") { return clean(game: game) ? 0 : 1; }
     Optional<Kama> found = findKama(flag: kamaFlag, why: why);
     Kama kama = match (give found) {
         case Some(value: k): give k;
         case None: { eprintln(s: "kyoten: ${why}"); return 2; }
     };
-    if (!generate(kama: kama, game: game)) { return 1; }
-    if (command == "generate") { return 0; }
+    if (game.isLibrary()) {
+        if (!checkLibrary(lib: game)) { return 1; }
+    } else {
+        if (!generate(kama: kama, game: game)) { return 1; }
+        if (command == "generate") { return 0; }
+    }
     DynamicArray<string> argv = DynamicArray.empty();
     argv.add(item: copy command);
     argv.add(item: copy manifest);

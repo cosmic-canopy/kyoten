@@ -6,7 +6,7 @@
 // `--wasm` adds the spin fixture's web build, run under node (tools/test.sh passes it when emcc and node are there).
 
 import { core::println, core::eprintln, core::env::args, Tally, Setup, spinTests, scheduleTests, requiresTests,
-         refusalTests };
+         refusalTests, fenceTests };
 
 fn uint8 main() {
     Optional<string> kyoten = args().get(at: 0);
@@ -29,6 +29,7 @@ fn uint8 main() {
     scheduleTests(t: t, s: s);
     requiresTests(t: t, s: s);
     refusalTests(t: t, s: s);
+    fenceTests(t: t, s: s);
     int32 runs = t.count();
     int32 failed = t.failed();
     println(s: "kyoten tool tests: ${runs} cases, ${failed} failed");

@@ -1,0 +1,6 @@
+// The flags fixture's main, which names a target: the app's own code asks for capabilities too.
+
+@compileFor(ARCH_WASM32)
+fn uint8 main() { return 0; }
+@compileFor(!ARCH_WASM32)
+fn uint8 main() { return 1; }

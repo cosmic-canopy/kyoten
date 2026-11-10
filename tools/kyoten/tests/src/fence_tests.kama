@@ -1,0 +1,89 @@
+// KYR-53's checks (the first slice's step 6; ai-first-api, target-platforms and architecture § Decided, step 6's four
+// questions of 2026-11-09): the simulation's fence on a game's lists and the platform flags in its source, which
+// `kyoten generate` refuses before kama is asked anything; and on a library, the engine, its tiers too, which
+// `kyoten check` holds before kama checks it.
+
+import { Tally, Setup, Ran, has, eraseDir, ranAs, none, check, says, allOf, install, std::collections::DynamicArray };
+
+export { fenceTests };
+
+unsafe fn void fenceTests(ref Tally t, ref Setup s) {
+    // Simulation modules whose lists break the fence, each a different way, refused in one run; and modules whose lists
+    // hold it, which are not.
+    install(t: t, s: s, game: "fence");
+    eraseDir(path: s.fixture(at: "fence/src/generated"));
+    Ran f = s.kyoten(command: "generate", game: "fence", more: none());
+    ranAs(t: t, name: "fence: refused", r: f, want: 1, says: "");
+    says(t: t, name: "fence: a simulation module naming a std module that reaches outside is refused", r: f,
+         words: allOf(a: "module \"assets\" holds the Update processor `a`",
+                      b: "names `std::asset`, which is not one of std's pure modules", c: "`std::math`"));
+    says(t: t, name: "fence: another package's module that is not fenced is refused, naming what it imports", r: f,
+         words: allOf(a: "module \"loads\"",
+                      b: "names `kyoten::content`, which is not fenced: `kyoten::content` names `std::fs`", c: ""));
+    says(t: t, name: "fence: a module of its own with no list, named by a simulation module, is refused", r: f,
+         words: allOf(a: "module \"drawn\"", b: "names `hud`, which is not fenced: `fence::hud` has no `importsOnly`", c: ""));
+    says(t: t, name: "fence: a simulation module with no list is refused", r: f,
+         words: allOf(a: "module \"loose\" holds the Constraints processor `d`", b: "and it has no `importsOnly`", c: ""));
+    says(t: t, name: "fence: a breach through a module of its own is named along the chain", r: f,
+         words: allOf(a: "module \"deep\"", b: "names `helper`, which is not fenced: `fence::helper` names `std::time`", c: ""));
+    says(t: t, name: "fence: `core::env` is refused, as outside data", r: f,
+         words: allOf(a: "module \"env\" holds the Input processor `f`", b: "names `core::env`", c: ""));
+    says(t: t, name: "fence: a processor's phase is its group's", r: f,
+         words: allOf(a: "module \"grouped\" holds the Constraints processor `p`", b: "names `std::random`", c: ""));
+    says(t: t, name: "fence: a processor in the root module, which has no list, is refused", r: f,
+         words: allOf(a: "module \".\" holds the Update processor `z`", b: "", c: ""));
+    check(t: t, name: "fence: an Output module may reach outside, and a module with no processors is not refused itself",
+          ok: f.code() == 1 && !f.says(what: "module \"screen\"") && !f.says(what: "module \"hud\"")
+              && !f.says(what: "module \"helper\""),
+          why: f.said());
+    check(t: t, name: "fence: std's pure modules, core, the engine's fenced tiers, a fenced dependency and modules that import each other pass",
+          ok: f.code() == 1 && !f.says(what: "module \"fine\"") && !f.says(what: "module \"pure\""), why: f.said());
+    check(t: t, name: "fence: a refusal writes nothing", ok: !has(path: s.fixture(at: "fence/src/generated/actions.kama")),
+          why: "it wrote actions.kama");
+
+    // Platform flags in a game's source, in any of its modules; and flags that are not the platform's.
+    install(t: t, s: s, game: "flags");
+    Ran p = s.kyoten(command: "generate", game: "flags", more: none());
+    ranAs(t: t, name: "flags: refused", r: p, want: 1, says: "");
+    says(t: t, name: "flags: a target flag in the app's root module is refused, naming its line", r: p,
+         words: allOf(a: "src/app.kama:3:", b: "names `ARCH_WASM32`, a platform flag", c: "src/app.kama:5:"));
+    says(t: t, name: "flags: an OS flag in an Output module is refused, since the rule covers all of a game's code", r: p,
+         words: allOf(a: "src/show/show.kama:3:", b: "`OS_WINDOWS`", c: ""));
+    says(t: t, name: "flags: a file gated on an ABI is refused", r: p, words: allOf(a: "src/sim/arm.kama:2:", b: "`ABI_GNU`", c: ""));
+    says(t: t, name: "flags: `HOSTED`, which kama derives from the target, is refused", r: p,
+         words: allOf(a: "src/sim/host.kama:3:", b: "`HOSTED`", c: ""));
+    check(t: t, name: "flags: a build type, a declared flag and a comment are not refused",
+          ok: p.code() == 1 && !p.says(what: "src/sim/sim.kama"), why: p.said());
+
+    // A library shaped like the engine: `kyoten check` holds its tiers and its flags.
+    Ran l = s.kyoten(command: "check", game: "tiers", more: none());
+    ranAs(t: t, name: "tiers: refused", r: l, want: 1, says: "");
+    says(t: t, name: "tiers: a module naming another of its own tier is refused", r: l,
+         words: allOf(a: "module \"b\", tier `Module`, names \"a\", tier `Module`", b: "", c: ""));
+    says(t: t, name: "tiers: a module naming a tier below its own is refused", r: l,
+         words: allOf(a: "module \"e\", tier `World`, names \"a\", tier `Module`", b: "", c: ""));
+    says(t: t, name: "tiers: a module that states no tier is refused", r: l,
+         words: allOf(a: "src/c: module \"c\" states no tier", b: "", c: ""));
+    says(t: t, name: "tiers: a module with no `importsOnly` is refused", r: l,
+         words: allOf(a: "module \"d\" has no `importsOnly`", b: "", c: ""));
+    says(t: t, name: "tiers: a platform flag in a module of the library is refused", r: l,
+         words: allOf(a: "src/a/a.kama:3:", b: "`OS_LINUX`", c: ""));
+    check(t: t, name: "tiers: modules naming only tiers above their own are not refused",
+          ok: l.code() == 1 && !l.says(what: "module \"a\", tier") && !l.says(what: "module \"mid\"")
+              && !l.says(what: "module \"top\""),
+          why: l.said());
+    Ran gen = s.kyoten(command: "generate", game: "tiers", more: none());
+    ranAs(t: t, name: "tiers: a library has nothing generated, and `kyoten generate` on one says so", r: gen, want: 2,
+          says: "is a library");
+
+    // The engine itself: its lists hold the fence and the tiers, and its one platform flag is the stopgap step 7
+    // removes, so `kyoten check` passes it on to kama.
+    DynamicArray<string> argv = DynamicArray.empty();
+    argv.add(item: "check");
+    argv.add(item: s.fixture(at: "../../../../engine/kama.json"));
+    argv.add(item: "--kama");
+    argv.add(item: copy s.kama());
+    Ran e = s.kyotenWith(argv: argv);
+    ranAs(t: t, name: "the engine: `kyoten check` holds its fence, its tiers and its flags, then kama checks it", r: e,
+          want: 0, says: "kyoten's modules hold the simulation's fence, the tiers and the platform rule");
+}

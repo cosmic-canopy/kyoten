@@ -8,7 +8,7 @@ import { Tally, kyoten::records::ModuleRecord, kyoten::records::ProcessorGroupRe
          kyoten::records::LayerRecord, kyoten::records::LayerGroupRecord, kyoten::records::BudgetRecord,
          kyoten::records::LimitRecord, kyoten::records::RingRange, kyoten::records::Phase, kyoten::records::Store,
          kyoten::records::Blend, kyoten::records::Combine, kyoten::records::ZoneShape, kyoten::records::LayerStart,
-         kyoten::records::WhenFull, kyoten::records::LimitScope, kyoten::records::ActionKind,
+         kyoten::records::WhenFull, kyoten::records::LimitScope, kyoten::records::ActionKind, kyoten::records::Tier,
          std::collections::SortedMap, std::collections::DynamicArray, std::memory::Owned,
          std::serialization::text::json::JsonDeserializer };
 
@@ -309,6 +309,39 @@ fn void stores(ref Tally t) {
             want: "`Zone` is not a `Store` (at `components.Grid.store`)");
 }
 
+// A module states its tier, which the `kyoten` tool holds its `importsOnly` against (architecture § Decided, question 2,
+// 2026-11-09): one of the engine's four tiers, spelled as a phase is; a game's module states none.
+fn bool inTier(Optional<Tier> o, Tier want) { return match (o) { case Some(value: v): v == want; case None: false; }; }
+fn bool noTier(Optional<Tier> o) { return match (o) { case Some(value: v): false; case None: true; }; }
+
+fn void tiers(ref Tally t) {
+    ModuleRecord f = ModuleRecord.make();
+    ModuleRecord w = ModuleRecord.make();
+    ModuleRecord m = ModuleRecord.make();
+    ModuleRecord a = ModuleRecord.make();
+    string why = mergeModule(m: f, src: "{ \"tier\": \"Frame\" }");
+    if (why.isEmpty()) { why = mergeModule(m: w, src: "{ \"tier\": \"World\" }"); }
+    if (why.isEmpty()) { why = mergeModule(m: m, src: "{ \"tier\": \"Module\", \"processors\": { \"p\": { \"phase\": \"Update\" } } }"); }
+    if (why.isEmpty()) { why = mergeModule(m: a, src: "{ \"tier\": \"Agent\" }"); }
+    if (why.isEmpty()) {
+        bool ok = inTier(o: f.tier(), want: Tier::Frame) && inTier(o: w.tier(), want: Tier::World)
+            && inTier(o: m.tier(), want: Tier::Module) && inTier(o: a.tier(), want: Tier::Agent)
+            && m.processors().length() == 1;
+        if (!ok) { why = "a tier read wrong"; }
+    }
+    t.verdict(name: "records: a module states its tier, one of the engine's four", why: why);
+
+    ModuleRecord plain = ModuleRecord.make();
+    string empty = mergeModule(m: plain, src: "{ \"processors\": { \"p\": { \"phase\": \"Output\" } } }");
+    if (empty.isEmpty() && !noTier(o: plain.tier())) { empty = "a tier was read where the record states none"; }
+    t.verdict(name: "records: a module that states no tier has none", why: empty);
+
+    ModuleRecord bad = ModuleRecord.make();
+    string misspelt = mergeModule(m: bad, src: "{ \"tier\": \"module\" }");
+    refused(t: t, name: "records: a tier that is not one of the four is refused, naming the field", why: misspelt,
+            want: "`module` is not a `Tier` (at `tier`)");
+}
+
 fn void recordsTests(ref Tally t) {
     helloCube(t: t);
     moduleExample(t: t);
@@ -316,6 +349,7 @@ fn void recordsTests(ref Tally t) {
     stores(t: t);
     actionKinds(t: t);
     codeRefusals(t: t);
+    tiers(t: t);
     layering(t: t);
     sceneDefaults(t: t);
     sceneExample(t: t);
