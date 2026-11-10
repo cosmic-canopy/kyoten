@@ -8,54 +8,52 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-10, end of the seventh session)
+## Where it stands (2026-11-10, end of the eighth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
 - the tool checks both at build;
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
-**Track 1 is under way:** `@kama/gpu`'s two steps are built (an adapter, then a device from it), and so are items 8 and
-7: a surface configured from what it offers, checked before wgpu-native sees it, and drawn sRGB on every leg.
+**Track 1 is under way, and each package now keeps its own order:**
+- `@kama/gpu` has a `SPEC.md`, a `ROADMAP.md` (rows `GPU-<n>`), its detail, and `COVERAGE.md`: 53 of webgpu.h's 206
+  functions called;
+- `@kama/window` has the same three documents (rows `WIN-<n>`);
+- the next rows are GPU-1 (errors per device), WIN-1 then GPU-2, and WIN-2.
 
 **The join waits on Track 1. The next session starts here:**
 
-1. **Run the suites on kyoten's pin, `0.9.909+g64f011de`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
+1. **Run the suites on kyoten's pin, `0.9.911+g238198b3`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
-   - **When kama's own session is running its tests on this machine,** run nothing heavy and time nothing. When both
-     run at once, only relative timings hold, taken back to back.
-   - **Read `../kama`'s log since `25e16d16`,** its HEAD at this session's end (a docs commit past the pin, a clean
-     tree), and first check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 64f011de
-     HEAD`. kama rebased its `dev` twice between the fifth and sixth sessions, so the 0.9.899 pin's commit left it and a
-     clean clone could no longer rebuild it (its binary is kept in `.scratch/kama-pin-0.9.899`).
-   - **Still open with kama:** KY-45 (KR-361, not started: one query for the dependencies, and the tool's
-     per-dependency cache goes) and KY-40 (no integer vectors).
-2. **Track 1 continues, in the order the owner decided on 2026-11-10** ([design/architecture.md](design/architecture.md)
-   § Decided, how the libraries grow). Each step is test-first, with its questions asked in full before code:
-   1. **`@kama/gpu`'s and `@kama/window`'s own `SPEC.md` and `ROADMAP.md`,** from each `AGENTS.*.md`'s departures and
-      that day's checklists: every call in webgpu.h before 1.0, with a coverage report `tools/wgpugen` prints; and the
-      browser's platform APIs for the window, native at parity.
-   2. **The stopgaps that change an API:**
-      - `@kama/gpu` item 2: errors per device, and error scopes. Its production answer is sketched in
-        `../kama-gpu/AGENTS.gpu.md` item 2. Measure first what each leg does with a device's uncaptured error and its
-        loss (wgpu-native aborted on a bad surface configure rather than reporting it, so do not assume the callback
-        is reached), then draft its questions in full and put them to the owner;
-      - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
-      - `@kama/window` item 5: held keys and buttons released on a focus change.
-   3. **The web leg, brought forward:**
-      - `@kama/window`'s web half (WIN-3: html5 callbacks on `#canvas`, ported from FFD's `ffd_platform.h`, with Pointer
-        Events);
-      - then `@kama/gpu`'s canvas surface and a run in Edge (GPU-3). It also runs the two steps' web leg, holds
-        `maxBindGroupsPlusVertexBuffers` and `CoreFeaturesAndLimits` there, and measures the web's surface capabilities
-        for the first time.
+   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet (the owner,
+     2026-11-10).
+   - **Read `../kama`'s log since `d0835250`,** its HEAD at this session's end, with a clean tree. First check that the
+     pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`. kama rebased its `dev`
+     again on 2026-11-10: the first 0.9.911 pin, `e76900bf`, left its history within hours. Its twin `238198b3`
+     differed only in `docs/grammar.bnf` and a tools script, so the pin was rebuilt at the twin (`.kama-version`).
+   - **Still open with kama:** KY-45 (KR-361, not started) and KY-40 (no integer vectors), both re-run on 0.9.911.
+2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
+   ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, with
+   its questions asked in full before code.
+   1. **`@kama/gpu`'s GPU-1, errors per device and error scopes.** Its five questions were answered on 2026-11-10
+      (`../kama-gpu/AGENTS.gpu.md` item 2). **Open it by confirming the five details proposed there** before the build:
+      - the types (`DeviceErrors`, `GpuErrorReport`, `DeviceLoss`);
+      - a full ring keeping the oldest;
+      - a scope keeping its first error;
+      - an out-of-order pop refused, with the stack never jamming;
+      - a C test in the gate pinning wgpu-native's measured behaviour.
+
+      Then build it, that facts test first.
+   2. **The other stopgaps:** `@kama/window`'s WIN-1 (a window counts references), then `@kama/gpu`'s GPU-2 (a surface
+      holds its window), then WIN-2 (held keys released on a focus change).
+   3. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
+      GPU-3 (a canvas surface, and the tests run in Edge, where the web is measured for the first time).
    4. **Alongside 1 to 3, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
-      2026-11-10): `@kama/graphics`' `SPEC.md` and `ROADMAP.md`, with its feature map, before any of its code. Three.js
-      is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and Godot
-      reach it.
-   5. **Then the rest of the libraries' share of the cube:**
-      - gamepads (WIN-4);
-      - `@kama/gpu`'s render pipeline set, shaped by the design pass;
-      - `@kama/graphics`' first slice, on both legs.
+      2026-11-10): `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code.
+      Three.js is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and
+      Godot reach it. The owner held it for a session of its own (2026-11-10).
+   5. **Then the rest of the libraries' share of the cube:** gamepads (WIN-4), `@kama/gpu`'s render pipeline set
+      (GPU-4, shaped by the design pass), and `@kama/graphics`' first slice, on both legs.
 
    A page served from localhost to headless Edge prints its console to stderr
    (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
@@ -65,6 +63,33 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The eighth session** (2026-11-10). Each part was test-first, with its suites green and mutations caught before its
+commit:
+
+- **The pin moved to 0.9.911** (`cfd632a`), carrying KR-367, kama's constructor naming rule:
+  - the port was 2 `IoError.of` calls here and 1 `parse::<int32>` in `@kama/gpu`'s example;
+  - every suite was green on 0.9.909 that morning and on 0.9.911 with the port alone, with the same counts;
+  - kama then rebased, so the pin was rebuilt at the rebased twin, `238198b3`.
+- **Nine questions were answered,** each as recommended: four for step 1 (architecture.md § Decided, the eighth
+  session's entry) and five for `@kama/gpu` item 2. Its probe found five ways wgpu-native aborts the process where
+  webgpu.h promises an error, and a device that never reports its loss (`.scratch/item2-errors/`).
+- **`@kama/gpu`'s `COVERAGE.md`** (kama-gpu `0988fec`):
+  - `tools/wgpugen --coverage` writes it from kama's `--refs` answers, the seam's C and the three headers;
+  - `tools/check-bindings.sh` holds it, and its counts are a ratchet;
+  - the counting rules are held on a fixture package, with 9 of 9 mutations caught.
+- **Both packages' constructors follow kama's rule** (kama-gpu `2272999` and `085279e`, kama-window `948a65c`):
+  - `Instance.make()`, `Surface.make(…)`, `FeatureSet.empty()`, `SurfaceCapabilities.make(…)` and
+    `AdapterOptions.withSurface(…)`;
+  - `Color.of`, `Size.of` and `NativeWindow.of`, each by `@generate(of)`;
+  - `TextureFormat::fromValue(value:)`.
+- **Each package's `SPEC.md`, `ROADMAP.md` and `ROADMAP_DETAIL.md`, after kama's and FFD's pattern** (kama-gpu
+  `33198e1`, kama-window `d52472a`). Each package also has a `tools/check-roadmap.sh` in its gate, with 7 of 7 kinds of
+  damage caught.
+- **Counts on the pin:**
+  - kyoten: the engine's 164 cases and the tool's 192, unchanged;
+  - `@kama/window`: 38 cases natively and 22 under node (2 new);
+  - `@kama/gpu`: 45 cases, 60 frames, the xfail, and the wasm build.
 
 **The seventh session** (2026-11-10). Each part was built test-first, with its suites green and mutations caught before
 its commit:
@@ -247,7 +272,7 @@ commit:
   - **Step 6's question** is answered: the simulation rule is a module fence in `importsOnly`, with `core::env` on its
     list ([design/ai-first-api.md](design/ai-first-api.md) § Decided, question 3, item 5). Its check lands with step
     5's code records.
-- **kama:** kyoten's pin is `0.9.909+g64f011de` (`.kama-version`, 2026-11-10; `0.9.899+gf32373ea` and
+- **kama:** kyoten's pin is `0.9.911+g238198b3` (`.kama-version`, 2026-11-10; `0.9.909+g64f011de`, `0.9.899+gf32373ea` and
   `0.9.886+g2159ce21` before it), built from a clean clone; step 4 was built on `0.9.876+g1a969a1e`, and steps 5.1 and
   5.2 on `../kama`'s working binary, `0.9.881+g4267d2ec`.
   - **That binary was built at 09:59 on 2026-11-08** from kama's working tree, which held uncommitted changes to its
@@ -278,7 +303,7 @@ commit:
     `Resumed`, then `SurfaceReady`, before the first tick, so portable code opens its window and creates surfaces on
     `SurfaceReady`. kama's notes of 2026-11-08 (`../kama-notes-for-kyoten.md`) give each event per host.
     `../kama-gpu`'s tests run as an `App`, and step 7's platform seam is built on the same lifecycle.
-- **Green on the pin, `0.9.909+g64f011de` (2026-11-10, the sixth and seventh sessions),** as before on
+- **Green on the pin, `0.9.911+g238198b3` (2026-11-10, the eighth session),** as before on `0.9.909+g64f011de`,
   `0.9.899+gf32373ea`, `0.9.886+g2159ce21`, `0.9.881+g4267d2ec` and `0.9.884+g88a0054c`:
   - kyoten's `tools/test.sh`:
     - the engine and its 164 tests;
@@ -287,9 +312,9 @@ commit:
     - `kyoten check engine/kama.json`;
     - `examples/games/fps`, which prints `fps example, on kyoten` natively and on wasm;
     - `examples/games/vr`;
-  - `@kama/window`'s gate, 36 cases natively and 20 under node;
-  - `@kama/gpu`'s gate: the bindings and `TextureFormat`, its 45 cases (12 before items 8 and 7), the clear example's
-    60 frames, the xfail, and the wasm build.
+  - `@kama/window`'s gate: its roadmap, 38 cases natively and 22 under node (36 and 20 before the eighth session);
+  - `@kama/gpu`'s gate: its roadmap, the bindings, `TextureFormat` and `COVERAGE.md` with the coverage fixture, its 45
+    cases (12 before items 8 and 7), the clear example's 60 frames, the xfail, and the wasm build.
 - **kama reviewed the packages (2026-11-08),** in `../kama-notes-for-kyoten.md`. It found a real bug: `@kama/window`'s
   ring counted events into a trailing `Dropped` record after the reader had made room, so a key up could be lost.
   It was reproduced by a new test, fixed, and the test kept. Its other points are in each package's departures.
