@@ -14,24 +14,28 @@ the design doc it settles before building on it.
 loader reads content into it, and the tool checks both at build. **The next session starts here:**
 
 1. **Run the suites on kyoten's pin, `0.9.899+gf32373ea`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
-   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Read `../kama`'s log since
-   `f32373ea`, and bump the pin only as a commit of its own, with every suite green on the new one.
+   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Run nothing heavy, and
+   time nothing, while kama's own session is running its tests on this machine. When both run at once, only relative
+   timings hold, taken back to back. Read `../kama`'s log since `f32373ea`, and bump the pin only as a commit of its
+   own, with every suite green on the new one.
    - **Still open with kama:**
-     - KY-45 (KR-361, not started): when it lands, one query answers for the dependencies and the tool's
-       per-dependency cache goes.
-     - KY-48 (no reader over a parsed `JsonValue`): the loader's `subtreeText` goes when kama has one. The owner
-       relays it.
+     - KY-49 (filed this session): a `--search` scoped to modules. When it lands, the tool's query costs only the
+       simulation code it reads, and the tool moves to it test-first (components § Decided, the owner, 2026-11-09).
+     - KY-45 (KR-361, not started): one query answers for the dependencies, and the tool's per-dependency cache goes.
+     - KY-48 (no reader over a parsed `JsonValue`): the loader's `subtreeText` goes when kama has one.
      - KY-40 (no integer vectors).
-2. **A question for the owner first: the loader's analysis cost.** With the loader, `spin`'s `kyoten generate` went
-   from 2.9 s to 8 s, and its `kama check` from 3 s to 7.7 s, measured back to back. The game now analyzes std's JSON
-   reader and file system and the loader's generic lays (components § Decided, the loader's built entry).
-   - The game's check would pay that anyway once step 7's `run` calls the loader.
-   - The tool's one query also pays it on every `generate`, for code it never reads.
 
-   Bring the options with a recommendation:
-   - accept it;
-   - ask kama for a query that analyzes only the modules the tool reads, a new KY gap beside KY-45;
-   - or move what the loader imports.
+     The owner relays KY-48 and KY-49.
+2. **First, a test fix that may surface a hidden failure.**
+   - The tool's tests' `check` (`tools/kyoten/tests/src/spin_tests.kama`) passes a failing case whose reason is empty,
+     since `verdict` reads an empty `why` as a pass. So does the engine's content tests' `all()`, which gives "" when
+     nothing was refused.
+   - Several cases give the run's output as their reason (`why: said`, `why: placed`), which is empty when the output
+     went missing. Such a case passes when it should fail.
+   - **The fix:** `check` gives "failed, and nothing was said" for an empty reason, and `all()` gives "no refusals".
+   - **Verify it as a mutation:** remove `spin`'s `spin: placed world` line, and its placed-rows case must turn red.
+     It was written and reverted on 2026-11-09 because kama's tests were running.
+   - Then run the whole suite. Any case that turns red was hiding a failure: fix the code it names, never the case.
 3. **Step 6, KYR-53's import check** (§ The order of work, step 6). It was decided on 2026-11-08: the simulation rule
    is a module fence in `importsOnly`, with `core::env` on its list (ai-first-api § Decided, question 3, item 5). The
    check reads the manifests and the code records, covers games too, and reads source only for the OS-flag refusal.
@@ -70,10 +74,13 @@ commit:
   - `readContent`, `layOver`, `readWhole` and KY-48's `subtreeText`.
 
   A game whose manifest does not preload its `content/` is refused.
-- **The loader's game-shaped half** (this session's last commit): `src/<game>.generated.kama` with `openContent`,
+- **The loader's game-shaped half** (`4b718d6`): `src/<game>.generated.kama` with `openContent`,
   `loadPrefabs` and `placeFirstScene`, `Prefabs.of`, and the first scene's zones checked at build in the loader's
   words. The details of each are in [design/components.md](design/components.md) § Decided, the built entries of
   2026-11-09.
+- **The loader's analysis cost accepted for now, and KY-49 filed** (the owner, 2026-11-09; components § Decided). The
+  tool's one query takes about 2.8 times as long on `spin` with the loader, since it analyzes the whole game. kama is
+  asked for a `--search` scoped to modules.
 
 **Step 5's parts, each with its details in components § Decided:**
 
@@ -89,7 +96,7 @@ commit:
 4. **Signatures, passes and the world** (2026-11-09, `043f75a`, `72ce358`): `Store::World`, `Rate`, `Lookup`, and the
    tool's `tables.kama`, `passes.kama` and `world.kama`.
 5. **Required components and the module `static` refusal** (2026-11-09, `dc785f3`).
-6. **The loader** (2026-11-09, this session): `kyoten::content`, the generated half, and the zone checks.
+6. **The loader** (2026-11-09, `482e6b5` and `4b718d6`): `kyoten::content`, the generated half, and the zone checks.
 7. **Step 6, KYR-53's check,** next.
 
 - **In scope, and built:** what the hello cube touches.
@@ -138,7 +145,7 @@ commit:
   - **Step 5.5's first part, required components and the module `static` refusal** (2026-11-09, `dc785f3`): the
     tool alone, on a new `requires` fixture and refusals in `components` and `processors`, so its tests are 117 cases
     with the wasm legs. Its four questions were answered the same session (components § Decided, 2026-11-09).
-  - **Step 5.5's last part, the loader** (2026-11-09, `482e6b5` and the commit after it), on the `0.9.899` pin:
+  - **Step 5.5's last part, the loader** (2026-11-09, `482e6b5` and `4b718d6`), on the `0.9.899` pin:
     `kyoten::content` in the engine, 41 cases, so the engine's tests are 155. The tool generates the loader's game-shaped
     half and checks the first scene's zones; its tests are 158 cases with the wasm legs, on a new `zones` fixture
     and `nopreload`. Its four questions were answered on 2026-11-09, and the third again after `std::asset` was probed.

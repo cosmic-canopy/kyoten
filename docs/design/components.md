@@ -2408,11 +2408,13 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     - `checkPrefab` not called at load.
     - The zone case first failed under an unrelated mutation, because a loader file left by an earlier mutation
       stayed on disk. The case now erases it first, and still catches a refusal that writes.
-  - **Measured** on `spin`, warm, back to back against the commit before (`482e6b5`, in a worktree). This machine ran
-    slower all day than at step 5.4: a program importing nothing took 2.4 s to check, on either pin.
-    - Before the loader, `kyoten generate` took 2.7 to 3.0 s and `kama check` 2.9 to 3.3 s, over 28 units.
-    - With it, `generate` takes 7.7 to 8.1 s and `check` 7.6 to 7.9 s, over 56 units in one configuration. With the
-      first version's `@compileFor`, `check` analyzed two configurations and took 13 to 14 s.
+  - **Measured** on `spin`, warm, back to back against the commit before (`482e6b5`, in a worktree), in relative terms
+    only. kama's own session was running its tests on this machine, which ran slower all day than at step 5.4: a program
+    importing nothing took 2.4 s to check, on either pin.
+    - With the loader, `kyoten generate` takes about 2.8 times as long (2.7 to 3.0 s, then 7.7 to 8.1 s), and
+      `kama check` about 2.5 times (2.9 to 3.3 s, then 7.6 to 7.9 s). The units analyzed went from 28 to 56, in one
+      configuration. With the first version's `@compileFor`, `check` analyzed two configurations and took about 4.3
+      times as long.
     - **The growth is the content code, analyzed as part of the game:** std's JSON reader and file system, and the
       loader's generic lays per component. Importing std's JSON alone adds 1.4 s to a one-line program.
     - The game's check would pay this anyway once step 7's `run` calls the loader. But the tool's one query also
@@ -2425,3 +2427,18 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
     - `engine/content/`'s first records, and the generated `run` (step 7);
     - a mod's new prefab without a build;
     - KY-48's re-serialize, when kama reads a `JsonValue`.
+- **2026-11-09, the owner: the loader's analysis cost accepted for now, and a scoped query asked of kama (KY-49),** as
+  recommended ("sounds like we will go with your recommendation").
+  - **What was measured** (the built entry above): with the loader in the game's root module, the tool's one query
+    takes about 2.8 times as long on `spin`, and the game's check about 2.5 times. The units analyzed went from 28 to
+    56: std's JSON reader and file system, and the loader's generic lays per component.
+  - **Accepted:** the loader stays where the loader's question 1 put it. The game's check would pay the cost anyway
+    once step 7's `run` calls the loader.
+  - **Asked of kama, KY-49:** a `--search` scoped to modules, analyzing only what they import. The tool's query would
+    then cost what the simulation modules cost, not the whole app, whose root module grows with the platform and
+    runtime from step 7 on. With KR-361 (KY-45), one scoped query would answer for the game's modules and its
+    dependencies together. The tool switches to it, test-first, when it lands.
+  - **Considered:**
+    - moving what the loader imports out of the root module, which the loader's question 1 decided against, and which
+      `run` will import anyway;
+    - the tool reading kama source itself, against "ask the compiler" (step 5.3's question 1).
