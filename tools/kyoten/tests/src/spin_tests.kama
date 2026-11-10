@@ -18,8 +18,12 @@ fn void ranAs(ref Tally t, const ref string name, const ref Ran r, int64 want, c
     t.verdict(name: name, why: "");
 }
 
+// A case on a condition. A failing case's reason is often a run's output, which is empty when the output went missing,
+// and the tally reads an empty reason as a pass, so a failure is never given one.
 fn void check(ref Tally t, const ref string name, bool ok, const ref string why) {
-    if (ok) { t.verdict(name: name, why: ""); } else { t.verdict(name: name, why: why); }
+    if (ok) { t.verdict(name: name, why: ""); return; }
+    if (why.isEmpty()) { t.verdict(name: name, why: "failed, and nothing was said"); return; }
+    t.verdict(name: name, why: why);
 }
 
 // `main` loads the content after the turns by hand, and prints this line before the placed world's Output.

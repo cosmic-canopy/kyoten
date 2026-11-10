@@ -43,8 +43,10 @@ fn DynamicArray<string> spellings(const ref string a, const ref string b) {
     return s;
 }
 
-// Every refusal, one a line, for a failed case's message.
+// Every refusal, one a line, for a failed case's message; "no refusals" when there are none, since the tally reads an
+// empty reason as a pass, and a case that fails with nothing refused must still fail.
 fn string all(const ref LoadRefusals no) {
+    if (!no.any()) { return "no refusals"; }
     string made = "";
     foreach (const ref string l in no.lines().iterConst()) { made = made + l + "\n"; }
     return made;
