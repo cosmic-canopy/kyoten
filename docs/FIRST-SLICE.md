@@ -32,9 +32,10 @@ packages' stopgaps.
      per-dependency cache goes) and KY-40 (no integer vectors). KY-48 and KY-49 were closed this session.
 2. **Track 1 continues,** each stopgap that changes an API first, test-first, its questions asked in full before code:
    - `@kama/gpu` item 8: `surface.capabilities(adapter:)` (formats in order of preference, present modes, alpha
-     modes), and `configure` taking a choice among them. Its questions were not asked yet: the configuration's shape,
-     the present and alpha mode enums, which surface formats `TextureFormat` grows to hold, and sRGB through view
-     formats;
+     modes), and `configure` taking a choice among them. Its five questions are the session's first, with their
+     production answers drafted in `../kama-gpu/AGENTS.gpu.md` item 8 (the owner, 2026-11-10: "We can go over your
+     questions in the next session"): the capabilities' shape, a config made only from them with the size kept apart,
+     the present and alpha modes, sRGB through a view format by default, and the formats `TextureFormat` grows to;
    - `@kama/gpu` item 7: `SurfaceError::OutOfMemory` goes;
    - `@kama/gpu` item 2: errors per device, and error scopes;
    - `@kama/window` item 6, then `@kama/gpu` item 9: a window's record counts references, and a surface holds one;
