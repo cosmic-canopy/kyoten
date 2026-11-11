@@ -249,3 +249,17 @@
     product viewer and a data visualization.
   - **The decided path stands, and the pass builds on it:** cosmic-forge's `render` as the start, the-mallow-man's
     techniques one at a time, the three tiers, the fixed pass list, and WGSL with WESL and node materials.
+
+- **2026-11-11, the owner, during the graphics design pass (KYR-68): native reaches the state of the art, and the web is
+  the floor.** "recall we also want native state of the art... not just web. web is probably lowest common denominator
+  but output doesn't feed the simulation. so graphics fidelity can be better native if needed. or even on different
+  machines"
+  - This restates the 2026-11-04 rule for the library: output differs per platform over one simulation. Output never
+    writes the simulation, so a machine's fidelity is its own and determinism is untouched.
+  - **So a technique the web cannot run yet stays in scope natively:** hardware ray tracing, mesh shaders, 64-bit
+    atomics (Nanite-class geometry, virtual shadow maps), bindless resources and multi-draw indirect with a count.
+  - **Fidelity may differ by machine on one platform too**, as the render module's quality per machine already says.
+  - **How a technique beyond the web is offered**, and how the library reaches it natively where wgpu-native's C API
+    does not (its `wgpu.h` v29 can request ray queries but builds no acceleration structure, and has mesh shaders
+    commented out; [../research/graphics.md](../research/graphics.md) § 3), is the pass's question of what goes beyond
+    WebGPU.
