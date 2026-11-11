@@ -336,8 +336,8 @@
      - **Axes:** Y up, right-handed, metres, as kyoten already decided (components question 9).
 
 - **2026-11-11, the owner: the graphics design pass, area 3, the renderer's core** (KYR-68;
-  [../research/graphics.md](../research/graphics.md) § 2 and § 5). Four of its five questions were answered as
-  recommended. The second, the materials, is asked again with the survey the owner asked for.
+  [../research/graphics.md](../research/graphics.md) § 2 and § 5). Five questions, each answered as recommended. The
+  second, the materials, was asked again with the survey the owner asked for.
   1. **Clustered forward ("Forward+") is the one lighting path,** with a depth prepass and 4× MSAA by default. "Sounds
      good to me so far. Your research is likely more ahead than my recollection on what is state of the art."
      - **How it works:**
@@ -353,6 +353,30 @@
        the-mallow-man reference is forward with clustered lights.
      - **Later, natively:** a visibility buffer comes with Nanite-class geometry, in the area beyond WebGPU. Deferred
        comes only if a measurement asks for it.
+  2. **Three.js's mesh materials are typed presets over the one node-material system.** The owner first asked: "I
+     thought materials were programmable with shaders and such? What do the others do? I assume typing them has
+     advantages?" Then, with the survey (research § 5): "All of this sounds great so far."
+     - **The presets keep Three.js's names:** `MeshBasicMaterial` (unlit), `MeshLambertMaterial`, `MeshPhongMaterial`,
+       `MeshStandardMaterial` (glTF's metal-roughness), `MeshPhysicalMaterial`, `MeshToonMaterial`,
+       `MeshNormalMaterial`, `MeshMatcapMaterial`, `LineBasicMaterial`, `PointsMaterial`, `SpriteMaterial` and
+       `ShadowMaterial`. Each is a node graph over the standard slots, as three.js r187's `StandardNodeLibrary` maps
+       its 13 classic materials to node materials.
+     - **A preset's settings are values, so changing one never compiles a shader.** A thousand standard materials in a
+       thousand colors share one pipeline, and with item 4 they can be drawn together. This is what Unreal's Material
+       Instances give.
+     - **A preset stays programmable:** any slot can be replaced by a node expression or by WGSL, and the rest of the
+       preset (lighting, shadows, fog) is kept. three.js's `colorNode`, `roughnessNode` and the rest, and Bevy's
+       `ExtendedMaterial`, do the same. Each replaced slot is a new graph, and so one new pipeline, compiled off the
+       frame (item 3).
+     - **`MeshPhysicalMaterial`'s extras are glTF's extensions,** so a glTF file loads unconverted: clearcoat, sheen,
+       transmission, iridescence, anisotropy, dispersion, specular, IOR, volume and emissive strength.
+     - **Why typed:**
+       - the names and types are checked, where Unity's string property names fail silently (`_BaseColor` under URP,
+         `_Color` in the built-in shader);
+       - glTF maps onto the presets directly;
+       - a preset is the shortest way to start.
+     - **What it costs:** the list is fixed, so a material outside it is a slot override or WGSL. Layered materials like
+       Unreal's Substrate go on area 5's feature map.
   3. **Pipelines are compiled off the frame, never as a hitch.** "It sounds like this is the production answer and
      likely what we start with. We are a highly parallel system so hopefully kyoten can make this work well."
      - **How it works:**
