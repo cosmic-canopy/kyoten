@@ -329,3 +329,32 @@ measured.
   - Firefox 141 on Windows, and Firefox 145 on Apple-silicon macOS.
 - **In progress:** Firefox on Linux, Android and Intel Macs, and Chrome on Linux.
 - **Quest's browser:** WebGPU in WebXR is behind a flag ([xr.md](../design/xr.md)).
+
+## 7. The feature map: what area 5 rests on
+
+Read and probed 2026-11-11.
+
+**The reference machines are decided** ([examples.md](../design/examples.md) § Decided, 2026-11-07):
+- the Steam Deck, the low-end native gauge and the Linux leg;
+- the Windows mini PC with the Radeon 880M, which is this machine;
+- the Mac Mini;
+- a mid-range laptop's browsers;
+- Quest 3.
+
+Every measured number is a ratchet on them (KYR-13).
+
+**A software GPU for deterministic golden images** (`.scratch/kyr68-warp/`, wgpu-native v29.0.1.1):
+
+| Backend | `forceFallbackAdapter` | Adapter |
+|---|---|---|
+| DX12 | no | AMD Radeon 880M (integrated) |
+| DX12 | yes | **Microsoft Basic Render Driver, type CPU: WARP**, which every Windows has |
+| Vulkan | no | AMD Radeon 880M |
+| Vulkan | yes | none: "vulkan had no fallback adapters" (no lavapipe installed here) |
+
+- **Elsewhere:**
+  - Linux's software Vulkan is Mesa's lavapipe, where a distribution installs it;
+  - on the web, Chrome's fallback adapter is SwiftShader *(to verify in the pinned browsers)*;
+  - macOS has no software Metal.
+- **Whether WARP, lavapipe and SwiftShader run hardware-only methods** (ray queries, mesh shaders) was not checked.
+  Such a method's goldens come from hardware.
