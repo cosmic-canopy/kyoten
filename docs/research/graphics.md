@@ -89,8 +89,13 @@ The whole inventory is in the agent's report; what bears on the design:
 - **Multi-draw indirect** is behind Chrome's unsafe flag only.
 - **Ray tracing and mesh shaders are open issues in "Milestone 4+"** (*checked*, gpuweb #535 and #3015).
   - A #3015 comment of 2026-06-27: "I wouldn't expect it to arrive anytime soon".
-  - On 2026-11-11 ray queries and acceleration structures were split into new issues (#11055, #11053), each with a
-    proposal PR.
+  - **Ray tracing is moving.** Two issues were opened on 2026-10-13, both in Milestone 3:
+    - #11053, "Add ability to create acceleration structures", with proposal PR #11054;
+    - #11055, "Add support for rayQuery to WGSL": "some of the ray tracing capabilities without the requirement of the
+      full ray tracing pipelines". On 2026-10-27 the WGSL group resolved "document accepted to land as a proposal".
+
+    A comment on #535 of 2026-11-11 points to them. No browser implementation or flag was found (*checked*, the issues
+    and Chrome's blog).
 - **Firefox and Safari** trail on most optional features *(unchecked: MDN's compatibility data)*.
 
 **Natively, through wgpu-native v29's `wgpu.h`** (*checked*, read here):
@@ -107,8 +112,21 @@ The whole inventory is in the agent's report; what bears on the design:
     feature comments).
   - **Mesh shaders**, whose features are commented out ("TODO: requires wgpu.h api change").
 
-  Rust's wgpu 30 has both, experimental. So the native state of the art through wgpu-native waits on its C API
-  *(inferred)*.
+  - **Still missing on wgpu-native's development branch,** read 2026-11-11 (`trunk`'s `ffi/wgpu.h`, *checked*):
+    - no function that creates or builds an acceleration structure;
+    - no mesh-shader feature or draw call;
+    - only a ray-query feature, and acceleration-structure binding arrays.
+
+    Its open PRs include #632, which regenerates `wgpu.h` from a description file, and #630, "Expand wgpu 30 API
+    parity".
+  - **Rust's wgpu 30.0.1 has both, experimental and "native only"** (*checked*, docs.rs):
+    - `EXPERIMENTAL_RAY_QUERY` runs on Vulkan;
+    - `EXPERIMENTAL_RAY_TRACING_PIPELINES` exists;
+    - `EXPERIMENTAL_MESH_SHADER` runs on Vulkan, DX12 and Metal (its WGSL path on Vulkan only, passthrough shaders
+      elsewhere).
+
+    wgpu-native is the C binding of that same Rust wgpu, so the native state of the art through it waits on its C
+    header, not on a new renderer *(inferred)*.
 - **emdawnwebgpu, emsdk 6.0.13's pin,** lacks `SetImmediates` and `atomic-vec2u-min-max`. The latest release has both
   (*checked* for the pin, `grep`).
 
