@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-11, end of the eleventh session)
+## Where it stands (2026-11-11, end of the twelfth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -23,8 +23,11 @@ the design doc it settles before building on it.
 - WIN-1 and GPU-2 are built (a window's native record counted, and a surface holding its window; the tenth session,
   below), and so are the two rows its questions made: GPU-13 (an acquire before a configure refused) and WIN-16 (a
   window opened without taking the focus);
-- **WIN-2 is built, the last stopgap** (the eleventh session, below): the window keeps what is held, and releases it on
-  a focus change. The next rows are the web leg's.
+- WIN-2 is built, the last stopgap (the eleventh session, below): the window keeps what is held, and releases it on a
+  focus change;
+- **WIN-3 is built, the web leg's first row** (the twelfth session, below): a window on the page's canvas, W3C Pointer
+  Events for the mouse, touch and a pen on every backend, and `@kama/window`'s `tests/` run in headless Edge as well as
+  natively and under node. GPU-3 is next.
 
 **The join waits on Track 1. The next session starts here:**
 
@@ -32,10 +35,10 @@ the design doc it settles before building on it.
    § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet (the owner,
      2026-11-10).
-   - **Read `../kama`'s log since `f113270e`,** its HEAD at the eleventh session's end (0.9.917, a clean tree). First
+   - **Read `../kama`'s log since `9751c609`,** its HEAD at the twelfth session's end (0.9.921, a clean tree). First
      check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`. kama
      rebased its `dev` twice on 2026-11-10, and a pin is rebuilt from a clean clone at its commit.
-   - **kama is six versions past the pin, and the next bump carries a port.**
+   - **kama is ten versions past the pin, and the next bump carries a port.**
      - 0.9.912 (`c065dcea`) fixes a lost cross-isolate wake on Linux.
      - 0.9.913 (`f19742f6`) refuses `int32.parse(text: t)` again.
      - **0.9.915 (`637df517`, KR-370) retires `parse::<T>(text:)` as well:** an adapter's member is reached only where
@@ -43,37 +46,90 @@ the design doc it settles before building on it.
        `int32.parse(text: v)` to `Parseable::<int32>.parse(text: v)`.
      - 0.9.914 checks adapters onto a generic contract, 0.9.916 lets a fiber park switch straight to the next one, and
        0.9.917 makes `Instant` count only the time the system is awake on Apple.
+     - During the twelfth session: 0.9.918 (`d8fa2940`) does the same for `Instant` on Windows, and 0.9.919 to 0.9.921
+       are Android's (a debuggable debug app, an app's own resources and icon, an App Bundle for Google Play).
 
-     None is needed for the web leg's first row, so bump only when one is.
+     None was needed for WIN-3, and none is known to be for GPU-3, so bump only when one is.
    - **Still open with kama:** KY-45 (KR-361, not started) and KY-40 (no integer vectors), both re-run on 0.9.911.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first.
    **Its questions are asked in full in the chat, and answered there,** never folded into a plan's approval (the
    eleventh session, below).
-   1. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
-      GPU-3 (a canvas surface, and the tests run in Edge, where the web is measured for the first time).
-      - WIN-3's html5 callbacks reach the ring through WIN-2's `take()`. What a browser sends around a focus change is
-        measured there: a `keyup` for a key pressed before the page had the focus, and a held key's repeat after a
-        focus gain as `repeat: true`.
+   1. **The web leg, its second row: GPU-3** (a canvas surface, and `@kama/gpu`'s tests run in Edge, where WebGPU is
+      measured for the first time). WIN-3 has built what it starts from:
+      - a window on the page's canvas whose `nativeHandle()` is `NativeKind::Canvas` with its selector, which
+        `Surface.make` already takes; `Window.openIn(canvas:, …)` names another canvas;
+      - **the browser leg's shape:** `../kama-window/tools/webtest.mjs` (node, no npm packages) drives headless Edge over
+        the DevTools protocol, with the tests' own page as the root project's `shellFile`. `--dump-dom` cannot run a
+        test program (measured: it returns at the page's load, before `main`), and GPU-3's detail now says so
+        (kama-gpu `25baa47`);
       - GPU-3 also runs GPU-1's web half, whose error cases run natively only so far, and measures two facts read and
-        not run (its ROADMAP_DETAIL § GPU-3).
+        not run (its ROADMAP_DETAIL § GPU-3). Its questions are asked in the chat first, after a probe.
    2. **Alongside 1, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
       2026-11-10): `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code.
       Three.js is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and
       Godot reach it. The owner held it for a session of its own (2026-11-10).
    3. **Then the rest of the libraries' share of the cube:**
-      - gamepads (WIN-4), which now asks whether a program reads pads while unfocused (the owner, 2026-11-10);
+      - gamepads (WIN-4, now `@kama/window`'s NOW row), which asks whether a program reads pads while unfocused (the
+        owner, 2026-11-10);
       - `@kama/gpu`'s render pipeline set (GPU-4, shaped by the design pass);
       - `@kama/graphics`' first slice, on both legs.
 
-   A page served from localhost to headless Edge prints its console to stderr
-   (`msedge --headless=new --enable-logging=stderr --dump-dom <url>`), as step 5's content probe ran.
 3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twelfth session** (2026-11-11). Test-first, with every suite green and every mutation caught or explained before
+each commit:
+
+- **Every suite was green on the pin at the start,** with the eleventh session's counts. `../kama` had not moved
+  (0.9.917, `f113270e`), so the pin stayed. By the session's end kama was at 0.9.921 (`9751c609`).
+- **A probe came first** (`.scratch/win3-web/`, its `FINDINGS.md`): headless Edge 157 driven over the DevTools protocol
+  from node 24, with trusted input, on a plain page and on a kama program whose dependency ships a JS library. It
+  overturned none of the drafts, and found two things the roadmap had assumed: emsdk's `html5.h` has no Pointer
+  Events, ResizeObserver or pixel-ratio change, so the package ships a JS library; and `--dump-dom` cannot run a test
+  program.
+- **WIN-3's ten questions were answered by the owner in the chat, each as recommended,** and an eleventh was found on
+  the way (`../kama-window/AGENTS.window.md` item 8):
+  1. one JS library, its listeners queueing records that `pump()` pulls: no call into the program from outside, so
+     nothing can abort a page after `quit`. The owner asked whether this is like networking: it is kama's own
+     `std::net::web` model ("no callbacks into wasm");
+  2. Pointer Events replace `MouseMove` and `MouseButton` on every backend: a `Pointer` value, every button its own
+     down and up, a touch or pen contact cancelled at a focus change, moves coalescing per pointer, `PointerButton`
+     numbered as the W3C's, and every pointer sample later (WIN-19);
+  3. the canvas is the page's, refused rather than created, and `title` is the page's;
+  4. focus is the canvas's, not the page's;
+  5. the window takes the defaults of the keys it names, a pointer down, the context menu and the wheel, and sets
+     `touch-action: none`;
+  6. `open` sets the canvas's CSS size unless `WindowOptions.sizedByPage`, and the pixels follow the device's;
+  7. pointer lock waits for the next click, and the browser giving it back sets the mode to `Normal`;
+  8. no `CloseRequested` on the web;
+  9. `Scroll` carries its unit, `Lines` or `Pixels`;
+  10. the browser leg in headless Edge, and Firefox as a row before the first publish (WIN-18);
+  11. **found on the way:** a `type value` cannot hold a `string` in kama, so a canvas is named by a ctor of its own,
+      `Window.openIn(canvas:, title:, width:, height:, options:)`, as `std::net` spells an address; natively the
+      selector goes unused.
+- **WIN-3 built, in three parts** (kama-window `8997644` and `557b7f0`, the decisions; `0b531ca`, `251dd33` and
+  `e4fdf50`, the build):
+  - Pointer Events on both backends: 33 of 33 mutations caught;
+  - the browser leg, `tools/webtest.mjs`, proven on the headless cases before the web window existed, each of its red
+    paths run;
+  - the web window: 48 of 50 mutations caught, one more removing code the browser made redundant and one equivalent;
+  - `tests/` is 134 cases natively, 100 under node and 175 in headless Edge.
+- **Measured in the building:**
+  - a click focuses the canvas before its down;
+  - a drag released outside the canvas still ends in its up (pointer capture);
+  - a touch drag is the program's with `touch-action: none`;
+  - Escape gives the lock back unseen;
+  - a key pressed in the page's field and let go on the canvas has its up dropped, WIN-2's first open reading.
+
+  A change of the device pixel ratio could not be made headless, so what follows the browser's report is tested
+  in-process. The harness needed a larger window, focus with `preventScroll`, and a drag's held button named.
+- **`@kama/gpu`'s suite stayed green on each part** (83 cases, 60 frames, the wasm build), and its GPU-3 detail no
+  longer suggests `--dump-dom` (`25baa47`). Nothing in kyoten uses the packages yet, so kyoten's suite did not change.
 
 **The eleventh session** (2026-11-10 and 11). Test-first, with every suite green and every mutation caught before the
 commit:
