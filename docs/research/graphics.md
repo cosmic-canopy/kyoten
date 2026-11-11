@@ -1,10 +1,10 @@
-# Graphics: Three.js, the engines, beyond WebGPU, and object models without a garbage collector
+# Graphics: Three.js, the engines, beyond WebGPU, object models without a garbage collector, and the renderer's core
 
 KYR-68, the graphics design pass, read 2026-11-11 for [rendering.md](../design/rendering.md) § Decided (2026-11-10:
 the design pass's questions) and `../kama-graphics`. Four research agents read the sources below. Their key claims were
 then re-checked here: the local headers and Three.js's r187 source were read directly, and the engines' and WebGPU's
 pages were fetched again by a second agent, quoting each page. The *Checked* notes say what was checked and how;
-*(unchecked)* marks a claim taken from one reading only. The probe is in `.scratch/kyr68-objects/` (git-ignored).
+*(unchecked)* marks a claim taken from one reading only. The probes are in `.scratch/kyr68-*/` (git-ignored).
 
 | Source | Version, as of 2026-11-11 |
 |---|---|
@@ -194,3 +194,57 @@ cube.rotation.y += 0.01;` with a resource's private fields.
   `const fn` that reads it. `positionMut()` hands back a `ref Vec3` and marks its owner changed.
 - `cube.positionMut().x = 2.0;` and `cube.rotationMut().y += 0.01;` work through a `Shared<Mesh>`.
 - One upload follows the writes, and a read marks nothing. The program never sets a `needsUpdate` flag.
+
+## 5. The renderer's core: materials across the engines, and pipelines compiled off the frame
+
+Read and measured 2026-11-11 for the design pass's area 3, after the owner asked of its question 2: "I thought materials
+were programmable with shaders and such? What do the others do? I assume typing them has advantages?"
+
+**Every engine but Unreal pairs a typed, ready-made material with a programmable path, and lets the second reach into
+the first.**
+
+| | Ready-made, typed | Programmable | How the two meet |
+|---|---|---|---|
+| three.js r187 (`WebGPURenderer`) | 13 classic materials (`MeshStandardMaterial`…), each mapped to a node material by `StandardNodeLibrary` | TSL node expressions | **A preset's slot takes an expression.** `NodeMaterial` has `colorNode`, `normalNode`, `opacityNode`, `positionNode`, `outputNode`, `fragmentNode`, `vertexNode` and more; `MeshStandardNodeMaterial` adds `metalnessNode`, `roughnessNode` and `emissiveNode` (read in `src/materials/nodes/`) |
+| Godot 4 | `StandardMaterial3D`, `ORMMaterial3D` | `ShaderMaterial` (its shading language), `VisualShader` | The editor converts a `StandardMaterial3D` into a `ShaderMaterial`'s source, as a starting point. Editor only, never at run time ([docs](https://docs.godotengine.org/en/4.2/tutorials/shaders/shader_materials.html), [forum](https://forum.godotengine.org/t/convert-standard-material-to-shader-material-from-script/124377)) |
+| Bevy | `StandardMaterial` | the `Material` trait, with WGSL | **`ExtendedMaterial<StandardMaterial, MyExtension>`** replaces a stage and keeps the standard material's bindings, lighting and shadow passes ([example](https://bevy.org/examples/shaders/extended-material/)) |
+| Unity | the pipeline's Lit and Unlit shaders: a `Material` is a shader plus values | Shader Graph, HLSL | **Property names are strings:** URP's Lit is `_BaseColor`, the built-in Standard is `_Color`, so `SetColor("_Color", …)` silently does nothing under URP ([URP Lit](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@9.0/manual/lit-shader.html), [conversion guide](https://docs.unity3d.com/6000.6/Documentation/Manual/urp/urp-shaders/birp-urp-custom-shader-upgrade-guide.html)) |
+| Unreal | none: every material is a graph | the Material Editor, with a Custom HLSL node; **Substrate** layers material slabs (metal, clear coat, skin, cloth), production-ready since 5.7 ([5.7 release](https://www.unrealengine.com/news/unreal-engine-5-7-is-now-available)) | **Material Instances:** a parent graph's parameters are overridden without recompiling, so variants share one compiled shader |
+
+- **What a typed preset buys,** across them:
+  - its names and types are checked, where Unity's strings fail silently;
+  - its variants are data. A different color or roughness is a value in a buffer, never a new compiled shader, which is
+    what Unreal's Material Instances exist to give;
+  - glTF's material maps onto it unconverted;
+  - it is the shortest way in.
+- **What it costs:** a fixed list, so a material outside it is a slot override or WGSL.
+
+**wgpu-native cannot compile a pipeline asynchronously.** `wgpuDeviceCreateRenderPipelineAsync` and
+`wgpuDeviceCreateComputePipelineAsync` are `unimplemented!()` in `src/unimplemented.rs`, at v29.0.1.1 and at trunk
+(read 2026-11-11), so a call panics. On the web, `createRenderPipelineAsync` is the browser's, and compiles off the
+page's thread.
+
+**The probe** (`.scratch/kyr68-pipelines/`, C, wgpu-native v29.0.1.1 over Vulkan on the AMD Radeon 880M, 20 logical
+cores): can the program's own threads compile in parallel instead?
+- **What it builds:** 48 render pipelines, each from its own shader module, split over 1, 2, 4 and 8 threads, after one
+  warm-up pipeline.
+  - Each shader is about the size of a lit material: GGX over eight lights, fbm noise, fog and an AgX curve.
+  - Each targets `rgba16float` with 4× MSAA.
+  - Each carries the run's seed and its own index as constants, so neither naga nor the driver's disk cache returns an
+    earlier one.
+- **The runs:** three rounds, each thread count in a process of its own.
+
+| Threads | Wall time for 48 (three rounds) | Per pipeline | Speed-up |
+|---|---|---|---|
+| 1 | 1220, 1189, 1127 ms | 23.5–25.4 ms | 1× |
+| 2 | 637, 606, 610 ms | 12.6–13.3 ms | 1.9× |
+| 4 | 395, 366, 422 ms | 7.6–8.8 ms | 3.0× |
+| 8 | 256, 246, 256 ms | 5.1–5.3 ms | 4.7× |
+
+- **No errors, and no null pipelines.** wgpu-native takes concurrent `CreateShaderModule` and `CreateRenderPipeline`
+  calls on one device from many threads, and they compile in parallel.
+- **One pipeline costs about 24 ms on one thread:** a frame and a half at 60 Hz. Compiled mid-frame, it is a visible
+  hitch.
+- **So pipelines are compiled natively by the ordinary call on worker threads,** until wgpu-native implements its
+  asynchronous call. That answers `@kama/gpu`'s GPU-4 question of "whether pipelines are made asynchronously … or both
+  ways": both, the browser's asynchronous call on the web and the ordinary one on a worker natively.

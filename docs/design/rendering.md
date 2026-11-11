@@ -334,3 +334,60 @@
      - **Colors are written in sRGB** and converted to a linear working space, as Three.js's color management does.
      - **Lights use physical units:** lux for a directional light, candela for a point or spot, as glTF does.
      - **Axes:** Y up, right-handed, metres, as kyoten already decided (components question 9).
+
+- **2026-11-11, the owner: the graphics design pass, area 3, the renderer's core** (KYR-68;
+  [../research/graphics.md](../research/graphics.md) § 2 and § 5). Four of its five questions were answered as
+  recommended. The second, the materials, is asked again with the survey the owner asked for.
+  1. **Clustered forward ("Forward+") is the one lighting path,** with a depth prepass and 4× MSAA by default. "Sounds
+     good to me so far. Your research is likely more ahead than my recollection on what is state of the art."
+     - **How it works:**
+       - a compute pass sorts the lights into screen clusters, and runs on WebGPU;
+       - the depth prepass removes overdraw, and writes normals and motion vectors when an effect asks for them (SSAO,
+         SSR, TAA);
+       - 4× MSAA is on by default, the one multisample count WebGPU guarantees on every device;
+       - one path serves opaque, transparent, XR and mobile.
+     - **Why not deferred:** a G-buffer costs memory bandwidth, which mobile and Quest have least of. It cannot take
+       MSAA, and transparency needs a forward pass anyway.
+     - **The engines agree:** Godot's renderer is clustered forward, with no deferred path. Unity's URP offers Forward+
+       and Deferred+. Bevy is clustered forward, with deferred optional. Unreal uses forward for MSAA and VR. The
+       the-mallow-man reference is forward with clustered lights.
+     - **Later, natively:** a visibility buffer comes with Nanite-class geometry, in the area beyond WebGPU. Deferred
+       comes only if a measurement asks for it.
+  3. **Pipelines are compiled off the frame, never as a hitch.** "It sounds like this is the production answer and
+     likely what we start with. We are a highly parallel system so hopefully kyoten can make this work well."
+     - **How it works:**
+       - a pipeline is cached by a hash of what made it: the material's graph, the vertex layout, the pass, the target
+         formats and the multisample count;
+       - it is compiled when an object first appears, and the object draws a frame or two late, never by stalling the
+         frame;
+       - `renderer.compile(scene:)` compiles a whole scene ahead, as three.js's `compileAsync` and Unreal's precaching
+         do;
+       - a pipeline cache on disk comes later, natively.
+     - **Measured the same day** (research § 5): one lit-sized pipeline takes about 24 ms on one thread, a frame and a
+       half at 60 Hz.
+     - **Where the compiling runs:**
+       - on the web, in the browser's `createRenderPipelineAsync`;
+       - natively, by the ordinary call on worker threads, because wgpu-native's asynchronous call is
+         `unimplemented!()` (v29.0.1.1 and trunk). wgpu-native compiled 48 pipelines 4.7× faster on 8 threads than on
+         one, with no errors.
+       - So kyoten's parallelism serves this directly: natively, its workers compile.
+  4. **Per-object data and automatic instancing.** "So far I think this sounds good from what I can tell."
+     - **The per-object buffer:** the core's instances are one storage buffer of records: the world matrix, the
+       previous frame's matrix for motion vectors, the material and flags. A vertex shader reads its record by instance
+       index, as cosmic-forge's renderer already reads vertex data from storage buffers.
+     - **Draws are sorted** by pipeline, then material, then mesh.
+     - **Instancing is automatic:** objects that share a mesh and a material become one instanced draw, as Unity's GPU
+       Resident Drawer and Bevy do. three.js's explicit `InstancedMesh` stays, as a convenience.
+     - **Textures:** a bind group per material on the web, which has no bindless yet. Natively, one array of textures
+       where the device offers one, in the area beyond WebGPU.
+  5. **Linear HDR throughout, tone mapped at output, AgX by default.** "Sounds good so far."
+     - **The working space:** rendering is in linear HDR, in a 16-bit float target, and output is sRGB.
+     - **The default curve is AgX:** it is filmic and takes saturated highlights gracefully, and Blender, Godot, three.js
+       and the-mallow-man all offer it.
+     - **The other curves are options:**
+       - Neutral (Khronos PBR Neutral) for faithful colors, as a product viewer wants and cosmic-forge's viewer uses;
+       - ACES and Reinhard;
+       - none.
+     - **Why a default at all:** three.js defaults to no tone mapping (`NoToneMapping`, r187's `Renderer.js`), so a
+       bright light clips to flat white.
+     - Output to HDR displays comes later, in the feature map.
