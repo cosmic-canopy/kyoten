@@ -271,8 +271,36 @@ Read 2026-11-11, after § 3.
     all.
 - **Its review:** one reviewer comment, by Vipitis on 2026-10-01: "everything works in our test suites with a local
   build", with the new native-only features not tried. There is no maintainer approval.
-- **Not built or run here.** A build runs a third party's code, which waits on the owner (the auto-mode classifier
-  blocked it). The branch is cloned, unbuilt, in `.scratch/wgpu-native-630/`.
+- **Built and run here** once the owner gave the OK with the design pass's 4.2 ("OK to build and run").
+  - **The build:** `.scratch/wgpu-native-630/`, head `8322fe1`, `cargo build --release` in UCRT64 (Rust 1.99, LTO
+    off). It took 1 min 24 s, with no errors.
+  - **The probe:** `.scratch/kyr68-raytrace/rt.c`, C against the PR's own header, over Vulkan on the AMD Radeon 880M
+    (driver 25.20.42.14).
+  - **The adapter offers:** `RayQuery`, `ExperimentalRayTracingPipelines`, `ExperimentalMeshShader` and
+    `ExperimentalRayHitVertexReturn`.
+  - **Ray queries are correct.** One BLAS of one triangle, placed twice in a TLAS with different custom data. A
+    64 × 32 grid of rays from a compute shader (`enable wgpu_ray_query;`) matched the CPU on all 2048: which instance
+    was hit, and `t` exactly 1.0. There were no validation errors.
+  - **Ray queries are fast.** One BLAS of a heightfield; 1920 × 1080 coherent primary rays a dispatch, timed by wall
+    clock over 19 submissions, each waited on, so the GPU's own time is lower:
+
+    | Triangles | Build, BLAS and TLAS (wall) | Trace a 1080p grid | Rays a second |
+    |---|---|---|---|
+    | 131,072 | 12–42 ms | 1.42–1.46 ms | about 1.4 G |
+    | 524,288 | 63 ms | 1.94–2.06 ms | about 1.0 G |
+    | 2,097,152 | 192 ms | 4.9 ms | about 0.42 G |
+
+    Primary rays are the most coherent kind. The scattered rays of global illumination run far slower, and a
+    measurement of those belongs to the feature map's row.
+  - **Mesh shaders are correct.** A task stage (`enable wgpu_mesh_shader;`) launched four mesh workgroups through
+    `wgpuDeviceCreateMeshPipeline` and `wgpuRenderPassEncoderDrawMeshTasks`. Each drew one quadrant of a 64 × 64
+    target as two triangles, and the task's payload culled quadrant 2. All 4096 pixels read back as expected, with no
+    validation errors.
+  - **One thing a C user must know:** a device has to ask for the acceleration-structure and mesh limits, which
+    default to 0 as in Rust's wgpu (`using_minimum_supported_acceleration_structure_values`). With the defaults,
+    `CreateBlas` reports "Limit `max_blas_geometry_count` is 0". The probe asked for the adapter's limits, chaining
+    `WGPUNativeLimits`.
+  - **Nothing was posted to the PR.** That waits on the owner's go-ahead.
 
 **gpuweb's acceleration-structure proposal** (PR #11054, draft, by dj2, opened 2026-10-13; `proposals/acceleration_structure.md`, read here).
 - **Its API:**

@@ -447,8 +447,13 @@
        - gpuweb's proposal (#11054, 2026-10-13) shares wgpu's concepts with one object in place of two, so when
          browsers ship it the web gains the method with no change to the library's API.
        - A program that wants its own ray queries in WGSL uses `@kama/gpu` directly.
-     - **When:** the path is decided now, and the work comes when the feature map reaches ray tracing. The owner's OK
-       to build and run the PR came with this answer.
+     - **When:** the path is decided now, and the work comes when the feature map reaches ray tracing.
+     - **Probed the same day,** with the owner's OK to build and run the PR (research § 6), over Vulkan on the AMD Radeon
+       880M:
+       - ray queries matched the CPU on every ray of a grid;
+       - about 1 G coherent rays a second against half a million triangles (wall clock);
+       - a task and mesh pipeline drew its target pixel for pixel;
+       - there were no validation errors.
      - **Rejected:**
        - waiting without helping: slow, and uncertain;
        - a wrapper of kyoten's own over Rust's wgpu: it duplicates #630 and would share wgpu-native's internal
