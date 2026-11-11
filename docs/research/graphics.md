@@ -157,3 +157,13 @@ and a `Shared` material on two nodes.
   - `Weak.tryUpgrade()` is not a `const fn`, so a `const fn` upgrades a local copy;
   - `Shared` exclusivity is checked at run time (kama SPEC § Shared, Swift's model). A walk that holds a node's children
     while code changes them through another handle traps, which ordinary "change, then render" never does.
+
+**The second probe** (`.scratch/kyr68-objects2/`, kama 0.9.911): Three.js's typed node kinds behind one contract.
+- `Mesh` and `Group` each embed a `NodePart` (transform, children, weak parent) and implement a contract, `Placed`, by
+  forwarding to it.
+- The scene stores `Shared<Placed>`, and the program keeps a typed `Shared<Mesh>` to the same object. The handle widens
+  when it is added (kama SPEC § upcast: "both handles share one Circle").
+- The program calls a mesh's own method on its typed handle; the walk goes through the contract.
+- Everything is freed once, by its last holder. It built and ran on the first try.
+- **The cost:** a kama contract has no default methods, so each kind forwards about eight methods to its part. That code
+  is in the library, never in a program.
