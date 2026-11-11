@@ -185,3 +185,12 @@ and a `Shared` material on two nodes.
 - Everything is freed once, by its last holder. It built and ran on the first try.
 - **The cost:** a kama contract has no default methods, so each kind forwards about eight methods to its part. That code
   is in the library, never in a program.
+- **A clone:** `public const fn This clone()` on a material makes an independent one. Renaming the clone leaves the
+  original alone (`.scratch/kyr68-clone/` and probe 2, kama 0.9.911). kama's SPEC spells the self-type's copy so.
+
+**The third probe** (`.scratch/kyr68-props/`, kama 0.9.911): Three.js's `cube.position.x = 2;
+cube.rotation.y += 0.01;` with a resource's private fields.
+- A property is a pair, after kama's own `view()`/`viewMut()` and `dataPtr()`/`dataPtrMut()`. `position()` is a
+  `const fn` that reads it. `positionMut()` hands back a `ref Vec3` and marks its owner changed.
+- `cube.positionMut().x = 2.0;` and `cube.rotationMut().y += 0.01;` work through a `Shared<Mesh>`.
+- One upload follows the writes, and a read marks nothing. The program never sets a `needsUpdate` flag.
