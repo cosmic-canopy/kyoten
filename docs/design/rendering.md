@@ -263,3 +263,35 @@
     does not (its `wgpu.h` v29 can request ray queries but builds no acceleration structure, and has mesh shaders
     commented out; [../research/graphics.md](../research/graphics.md) § 3), is the pass's question of what goes beyond
     WebGPU.
+
+- **2026-11-11, the owner: the graphics design pass, area 1, the object model** (KYR-68;
+  [../research/graphics.md](../research/graphics.md) § 4 and its two probes). Four questions, each answered as
+  recommended.
+  1. **Two tiers in `@kama/graphics`.** "Sounds great to me."
+     - **A flat core** of packed instances, written into the per-object buffer once a frame (question 4's item 8).
+       kyoten's render module drives it, creating an instance per entity and dropping it with the entity.
+     - **A scene graph built on it,** for ease of use: a mesh node owns one core instance and pushes its world transform
+       when it changes.
+     - These are Godot's servers with its nodes over them, and Bevy's render world under its main world. A scene graph
+       alone would make kyoten copy its world into a second tree; a core of handles alone is hard to start with.
+  2. **Assets are shared handles:** geometry, materials, textures and render targets. "Sounds good."
+     - `copy` shares one object, as `@kama/gpu`'s handles do. The last drop frees it once the GPU has finished, so
+       nothing is disposed by hand.
+     - Editing a shared material changes every mesh that uses it, as in Three.js and Bevy.
+     - **A separate one is `clone()`** (the owner: "Can the explicit copy of settings be a 'clone' operation?"). It is
+       an instance method, `fn This clone()`, as kama's SPEC spells the self-type's copy. Measured on 0.9.911: the
+       clone is independent, and changing it leaves the original alone.
+     - A clone copies its own settings, and what it names stays shared: a material's clone keeps the same textures,
+       as Three.js's `clone()` does. A geometry's clone copies its vertex data.
+  3. **Scene nodes are held through `Shared` by both the program and the scene,** with a `Weak` link to the parent. A
+     node lives until its last holder drops it. "I think this sounds good so far."
+     - **Costs, accepted:** kama checks two `Shared` handles at run time, so a callback that changes the tree during
+       the renderer's walk traps. A forgotten handle keeps an object alive, so the renderer counts what is alive, as
+       Three.js's `renderer.info` does.
+  4. **Typed node kinds behind one node contract:** `Mesh`, `Group`, the lights and the cameras.
+     - Each kind embeds a shared node part (transform, children, parent). The scene holds the contract, and the program
+       holds a typed handle to the same object.
+     - The owner: "Kyoten uses the component model itself but the graphics model is probably better suited to the
+       typed model like Three.js as you recommended. Also as you stated kyoten uses the other interface anyway."
+     - **Cost:** kama contracts have no default methods, so each kind forwards to its node part. That boilerplate is in
+       the library, never in a program.
