@@ -295,3 +295,42 @@
        typed model like Three.js as you recommended. Also as you stated kyoten uses the other interface anyway."
      - **Cost:** kama contracts have no default methods, so each kind forwards to its node part. That boilerplate is in
        the library, never in a program.
+
+- **2026-11-11, the owner: the graphics design pass, area 2, the names** (KYR-68; [../research/graphics.md](../research/graphics.md)
+  § 4's third probe). Four questions, each answered as recommended.
+  1. **Three.js's type names where the concept is the same:** `Scene`, `Group`, `Mesh`, `PerspectiveCamera`,
+     `OrthographicCamera`, `AmbientLight`, `HemisphereLight`, `DirectionalLight`, `PointLight`, `SpotLight`,
+     `BoxGeometry`, `SphereGeometry`, `PlaneGeometry`, `Texture` and `RenderTarget`. "Yes."
+     - AI models know Three.js's vocabulary deeply, and someone coming from Three.js maps one to one.
+     - **Where the concept differs, the name is the library's own, with the reason recorded.** The renderer is
+       `Renderer`, not `WebGPURenderer`: it runs every backend, and ai-first-api names a capability, never a platform.
+       Material names follow area 3's material model.
+  2. **`make` takes, by name, what defines an object.** Every other setting starts at Three.js's default and is changed
+     afterwards through its property. A setting that can only be chosen at creation goes in an options value
+     (`openWith(…, options:)`, as `@kama/window` does).
+     - The owner: "Note that kama does have named ctors so you can create different ctors with different parameters and
+       such if needed. but for defaults yes we don't do default params."
+     - **So a common second way to make an object is a named ctor of its own,** under kama's rule (KR-367): a
+       `with<Setting>` such as `BoxGeometry.withSegments(…)`, or a `from<Input>` such as `Texture.fromImage(…)`.
+       Defaults are never parameters.
+  3. **Each property is a pair, after kama's own `view()`/`viewMut()`.** `position()` is a `const fn` that reads it.
+     `positionMut()` hands back a `ref` and marks its owner changed, so the renderer re-uploads only what changed and a
+     program never sets a `needsUpdate` flag. Three.js's helpers come under their names: `rotateY`, `translateX`,
+     `lookAt`. "Seems good so far."
+     - **The owner assumed "the access call is optimized away so it is like accessing a property directly". Measured
+       the same day, on kama 0.9.911's release flags:**
+       - The probe's kept C was compiled at `-O3 -DNDEBUG`, as kama's native release does, into an unstripped object.
+       - In the program's function, `cube.positionMut().x = 2.0` is two stores: the changed flag and the value
+         (`movb $0x1,0x18(%rsi)`, then `movl $0x40000000,(%rsi)`). `rotationMut().y += 0.01` is the flag and a load,
+         add and store. Neither accessor is called.
+       - **The one cost beyond a field access** is kama's exclusivity check on a `Shared` object: two compares against
+         the thread's open accesses before a write. Any `Shared` object pays it, with or without an accessor.
+       - kama emits a whole program as one C file, `std` included, so a library's accessors inline into a game's code
+         too.
+  4. **Units:** "Sounds good to me."
+     - **Angles are radians in every call,** and the parameter's label says so (`rad:`, `fovRad:`), as `std::math` does.
+       This departs from Three.js's `fov` in degrees on purpose: Three.js's habit of writing `fov: 75` must not compile
+       into 75 radians. kyoten's `Camera` record keeps its decided `fov` in degrees, and the render module converts.
+     - **Colors are written in sRGB** and converted to a linear working space, as Three.js's color management does.
+     - **Lights use physical units:** lux for a directional light, candela for a point or spot, as glTF does.
+     - **Axes:** Y up, right-handed, metres, as kyoten already decided (components question 9).
