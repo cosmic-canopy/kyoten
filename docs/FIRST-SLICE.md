@@ -21,7 +21,8 @@ the design doc it settles before building on it.
 - `@kama/window` has the same three documents (rows `WIN-<n>`);
 - GPU-1 is built (errors per device, and error scopes; the ninth session, below);
 - WIN-1 and GPU-2 are built (a window's native record counted, and a surface holding its window; the tenth session,
-  below). The next row is WIN-2, the last stopgap, then the web leg.
+  below), and so are the two rows its questions made: GPU-13 (an acquire before a configure refused) and WIN-16 (a
+  window opened without taking the focus). The next row is WIN-2, the last stopgap, then the web leg.
 
 **The join waits on Track 1. The next session starts here:**
 
@@ -43,16 +44,7 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, with
    its questions asked in full before code.
-   1. **First, two questions the tenth session found,** each put to the owner at its end and recorded where it
-      settles:
-      - **A window that opens without taking the focus** (`../kama-window/AGENTS.window.md` item 6, the tests'
-        stopgap). A test run took the keyboard from the owner while they typed ("it fights for focus"), so the tests
-        set GLFW's hints themselves. The production answer is an open-time setting, focused by default, as winit's
-        `with_active` is: a new row, and its shape (a setting on `Window.open`, or an options value) is the question.
-      - **An acquire on a surface never configured aborts the process** (`../kama-gpu/AGENTS.gpu.md` item 9, measured 3
-        of 3). The production answer refuses it in the acquire's `Result`, as item 8's `ConfigureError` refuses what
-        wgpu-native would abort on; which variant, a new `SurfaceError` one or `Outdated`, is the question.
-   2. **Then the last stopgap, `@kama/window`'s WIN-2: held keys and buttons released on a focus change**
+   1. **First, the last stopgap, `@kama/window`'s WIN-2: held keys and buttons released on a focus change**
       (`../kama-window/AGENTS.window.md` item 5). Open it by asking its questions in full, a probe first where a fact
       is unknown. The production answer is written; these details are not:
       - what modifier bits a released key carries;
@@ -61,15 +53,15 @@ the design doc it settles before building on it.
       - whether a `post`ed event moves the held set, so a headless window can test it;
       - how GLFW's own releases, which follow the focus callback, are dropped as already released, measured rather
         than read.
-   3. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
+   2. **The web leg, brought forward:** WIN-3 (the web half, from FFD's `ffd_platform.h`, with Pointer Events), then
       GPU-3 (a canvas surface, and the tests run in Edge, where the web is measured for the first time). GPU-3 also runs
       GPU-1's web half, whose error cases run natively only so far, and measures two facts read and not run (its
       ROADMAP_DETAIL § GPU-3).
-   4. **Alongside 2 and 3, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
+   3. **Alongside 1 and 2, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
       2026-11-10): `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code.
       Three.js is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and
       Godot reach it. The owner held it for a session of its own (2026-11-10).
-   5. **Then the rest of the libraries' share of the cube:** gamepads (WIN-4), `@kama/gpu`'s render pipeline set
+   4. **Then the rest of the libraries' share of the cube:** gamepads (WIN-4), `@kama/gpu`'s render pipeline set
       (GPU-4, shaped by the design pass), and `@kama/graphics`' first slice, on both legs.
 
    A page served from localhost to headless Edge prints its console to stderr
@@ -101,10 +93,25 @@ commit:
 - **GPU-2 built** (kama-gpu `435f184`): a surface, adapter options made with one, and a frame each hold the window.
   9 new cases (78), 6 of 7 mutations caught, and the seventh equivalent natively. The mutations corrected the record:
   with the window held, a closed window is hidden and valid, so `Closed` is the package's rule, not an abort guard.
-- **Both packages' tests open their windows unfocused** (the owner, 2026-11-10: "it fights for focus"), through GLFW's
-  hints in `tests/` alone, a stopgap until a window can open so through the API. The probe's exit 127 at process end
-  came in 9 of 50 runs while its windows took the focus, and in none of 50 unfocused; the cause was not found.
+- **Both packages' tests opened their windows unfocused** (the owner, 2026-11-10: "it fights for focus"), at first
+  through GLFW's hints in `tests/` alone. The probe's exit 127 at process end came in 9 of 50 runs while its windows
+  took the focus, and in none of 50 unfocused; the cause was not found. **A lead:** GPU-13's reproduction, a wgpu-native
+  panic, also ended with 127 under bash, and with Windows' fail-fast status (`0xC0000409`) under python, so the probe's
+  127s were likely aborts of that kind, not a command bash could not find.
 - **Found on the way:** an acquire on a surface never configured aborts wgpu-native, measured 3 of 3.
+- **The two questions those findings raised were decided at the session's end, and built** (the owner, 2026-11-10):
+  - **WIN-16, a window opened without taking the focus** ("yes b sounds better": an options value over a separate
+    `openUnfocused`; kama-window `e67878f` and `1fd9893`). kama's own rule names it (its SPEC § Construction, KR-367):
+    `Window.openWith(title:, width:, height:, options:)` beside an unchanged `open`, with `WindowOptions.make()` and
+    `focused`, true by default. Every open sets both GLFW hints, both ways, since GLFW keeps a hint until it
+    terminates. The tests open through it and never take the focus even when the package is wrong: the cases that need
+    a window that would take it read `FOCUS_ON_SHOW` on hidden windows, and a window is shown only after they pass.
+    5 new cases (61 natively, 36 under node), and 5 of 5 mutations caught with no window shown. `@kama/gpu`'s tests
+    use it too, and `examples/clear --frames` leaves the focus where it is (kama-gpu `3113d4d`).
+  - **GPU-13, an acquire before a configure refused** (as recommended: a new `SurfaceError::NotConfigured` over
+    `Outdated`; kama-gpu `a3908d4` and `c7d9968`). The surface answers it without asking WebGPU, from the state every
+    copy shares, and an adopted surface is taken as configured by its maker. 5 new cases (83), and 5 of 5 mutations
+    caught.
 - **Nothing in kyoten uses the packages yet,** so kyoten's suite did not change.
 
 **The ninth session** (2026-11-10). Each part was test-first, with its suites green and mutations caught before its
