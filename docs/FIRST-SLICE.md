@@ -88,14 +88,15 @@ each commit:
   4. running wasm in a browser is kama's (KY-50), each package's driver a stopgap;
   5. the browser legs on pinned browsers, every one present: **Chrome for Testing 157.0.8103.50 and Firefox 160.0 were
      downloaded and verified into `~/browsers`** (its `README.md`), with the owner's leave.
-- **Built** (kama-gpu `746b857` the decisions, then `4176e9a`, `ca77fc0`, `56fc5a6`, `fc7b789` and the error cases'
-  commit; kama-window `54bdf9f` the rows, then `ebeeb2f` WIN-20 and `37c92b1`, `89278da`):
+- **Built** (kama-gpu `746b857` the decisions, then `4176e9a`, `ca77fc0`, `56fc5a6`, `fc7b789` and `bed7022`;
+  kama-window `54bdf9f` the rows, then `ebeeb2f` WIN-20, `37c92b1`, `89278da` and `32b9797`):
   - `@kama/gpu`'s browser leg, one device per adapter, a configure sized by its window (`NoWindow` for an adopted
     surface, decided in the building), the surface cases and the clear example in a browser, and a device's errors on
     the web's timing; `tests/` is 96 cases natively and 74 in each browser;
   - `@kama/window`'s WIN-20, `NativeWindow.framebufferSize()`, and its browser leg in every browser present; its tests
     are 140 natively, 103 under node and 180 in each browser;
-  - the mutations: 7 of 8, 4 of 4, 4 of 5 and the web half's, each not caught explained in its package's record.
+  - the mutations: 7 of 8 (one device per adapter), 4 of 4 (WIN-20), 4 of 5 (a configure sized by its window) and 6
+    of 6 (the seam's web half), each not caught explained in its package's record.
 - **WIN-21 was investigated** (a survey of eight engines and libraries, verified against learn-wgpu and Unity's
   tracker, and a layout probe at two pixel ratios), and its question is asked.
 - **On the roadmap, from the owner:** KYR-69 (QA bug reports from a running build, with marker strokes over the frame),
