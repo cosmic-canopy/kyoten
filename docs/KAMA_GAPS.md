@@ -206,7 +206,9 @@ unchanged. `lib/std/math` still holds no integer vector, and KY-45's repro (`.sc
 `--search Transform` with the game's own `transform` field alone, never the engine's type.
 
 **KY-50 was filed on 0.9.911** (2026-11-11, `0.9.911+g238198b3`, kyoten's pin), at `@kama/gpu`'s GPU-3, decided by
-the owner as kama's ("It sounds like C is the production answer"); the owner relays it.
+the owner as kama's ("It sounds like C is the production answer"). **It is kama KR-377** (`db6147f8`, the same day,
+re-measured on 0.9.923: "scheduled, design first"), and stays open here until `kama run --target WASM` runs a
+package's tests in a browser.
 
 Ids are `KY-<n>` and are permanent. **Next id: KY-51**
 

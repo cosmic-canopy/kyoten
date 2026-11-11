@@ -23,9 +23,8 @@ the design doc it settles before building on it.
 - **GPU-3 is built, so both packages run in a browser** (the thirteenth session, below): `@kama/gpu`'s tests and its
   clear example run in headless Chrome for Testing and Edge on a canvas, where WebGPU ran here for the first time, and
   WIN-20, a window's size through its handle, was built for it;
-- **one question is open: WIN-21,** `sizedByPage` on a canvas the page does not size, asked in the chat on 2026-11-11
-  with its investigation (`.scratch/gpu3-web/FINDINGS.md`, its last section), recommending that `open` refuse a canvas
-  the page sizes on neither axis.
+- **WIN-21 is decided** (the owner, 2026-11-11, after its investigation): under `sizedByPage`, `open` refuses a canvas
+  the page sizes on neither axis (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas). No question is open.
 
 **The join waits on Track 1. The next session starts here:**
 
@@ -34,18 +33,21 @@ the design doc it settles before building on it.
    in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its `README.md`), and
    Edge.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `49089044`,** its HEAD at the thirteenth session's end (0.9.922, with uncommitted work
-     in `include/kama_os.h` and `lib/std/process/identity.kama`). First check that the pin is still on kama's history:
+   - **Read `../kama`'s log since `db6147f8`,** its HEAD at the thirteenth session's end (0.9.923, `std`'s per-user
+     directories). First check that the pin is still on kama's history:
      `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
-   - **kama is eleven versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
+   - **kama is twelve versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
      `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
      one Android package of several ABIs. Nothing GPU-3 needed had landed, so the pin stayed; bump only when a row needs
      one.
-   - **Still open with kama:** KY-45, KY-40, and **KY-50, new: `kama run` in a browser** (decided as kama's by the owner
-     on 2026-11-11; each package's `tools/webtest.mjs` is the stopgap until it lands).
-2. **WIN-21, once the owner answers** (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas): built test-first in
-   `@kama/window`, with a case at a pixel ratio other than 1. The rewriting `aspect-ratio` canvas seen in the
-   investigation is measured in isolation there before it is called a bug.
+   - **Still open with kama:** KY-45, KY-40, and **KY-50, `kama run` in a browser,** which kama filed the same day as
+     **KR-377** (`db6147f8`: "scheduled, design first", naming emscripten's `emrun` and `wasm-bindgen-test-runner`).
+     Each package's `tools/webtest.mjs` is the stopgap until it lands, and its trusted-input requests are the shape to
+     offer KR-377's design.
+2. **Build WIN-21 first** (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas, decided): `open` refuses, under
+   `sizedByPage`, a canvas the page sizes on neither axis, in words naming the fix; test-first, with cases at a pixel
+   ratio other than 1, in both browsers. The rewriting `aspect-ratio` canvas seen in the investigation is measured
+   alone there before it is called a bug.
 3. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -98,7 +100,10 @@ each commit:
   - the mutations: 7 of 8 (one device per adapter), 4 of 4 (WIN-20), 4 of 5 (a configure sized by its window) and 6
     of 6 (the seam's web half), each not caught explained in its package's record.
 - **WIN-21 was investigated** (a survey of eight engines and libraries, verified against learn-wgpu and Unity's
-  tracker, and a layout probe at two pixel ratios), and its question is asked.
+  tracker, and a layout probe at two pixel ratios), and **decided at the session's end, as recommended:** `open`
+  refuses a canvas the page sizes on neither axis. The owner asked first whether it is the production answer: yes, it
+  refuses at the mistake on every screen; it refuses CSS that arrives after `open` and `max-width` alone, and does not
+  catch a page that removes the size after `open`.
 - **On the roadmap, from the owner:** KYR-69 (QA bug reports from a running build, with marker strokes over the frame),
   KYR-70 (promo shots and videos from captures and replays), KYR-71 (animation, first version) and KYR-72 (NVIDIA
   MotionBricks on it).
