@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-11, end of the thirteenth session)
+## Where it stands (2026-11-11, the fourteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -23,48 +23,66 @@ the design doc it settles before building on it.
 - **GPU-3 is built, so both packages run in a browser** (the thirteenth session, below): `@kama/gpu`'s tests and its
   clear example run in headless Chrome for Testing and Edge on a canvas, where WebGPU ran here for the first time, and
   WIN-20, a window's size through its handle, was built for it;
-- **WIN-21 is decided** (the owner, 2026-11-11, after its investigation): under `sizedByPage`, `open` refuses a canvas
-  the page sizes on neither axis (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas). No question is open.
+- **WIN-21 is built** (the fourteenth session, below): under `sizedByPage`, `open` refuses a canvas the page sizes on
+  neither axis. No question is open in either package.
 
-**The join waits on Track 1. The next session starts here:**
+**The join waits on Track 1. Where the work is:**
 
-1. **Run the suites on kyoten's pin, `0.9.911+g238198b3`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
-   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their browser legs now run
-   in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its `README.md`), and
-   Edge.
+1. **At a session's start, run the suites on kyoten's pin, `0.9.911+g238198b3`** (`.kama-pin/`, through `tools/kama`;
+   AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
+   browser legs run in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its
+   `README.md`), and Edge.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `db6147f8`,** its HEAD at the thirteenth session's end (0.9.923, `std`'s per-user
-     directories). First check that the pin is still on kama's history:
+   - **Read `../kama`'s log since `db6147f8`** (0.9.923, `std`'s per-user directories), its HEAD at the thirteenth
+     session's end and still at the fourteenth's start. First check that the pin is still on kama's history:
      `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
    - **kama is twelve versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
      `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
-     one Android package of several ABIs. Nothing GPU-3 needed had landed, so the pin stayed; bump only when a row needs
+     one Android package of several ABIs. Nothing a row needed has landed, so the pin stays; bump only when a row needs
      one.
    - **Still open with kama:** KY-45, KY-40, and **KY-50, `kama run` in a browser,** which kama filed the same day as
      **KR-377** (`db6147f8`: "scheduled, design first", naming emscripten's `emrun` and `wasm-bindgen-test-runner`).
      Each package's `tools/webtest.mjs` is the stopgap until it lands, and its trusted-input requests are the shape to
      offer KR-377's design.
-2. **Build WIN-21 first** (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas, decided): `open` refuses, under
-   `sizedByPage`, a canvas the page sizes on neither axis, in words naming the fix; test-first, with cases at a pixel
-   ratio other than 1, in both browsers. The rewriting `aspect-ratio` canvas seen in the investigation is measured
-   alone there before it is called a bug.
-3. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
+2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **The graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided, 2026-11-10):
-      `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code. The owner held
-      it for a session of its own (2026-11-10). GPU-4, `@kama/gpu`'s render pipeline set, is shaped by it.
+   1. **The graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided, 2026-11-10),
+      **under way since the fourteenth session:** `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and
+      feature map, before any of its code, written only from the owner's answers. Its research came first (below), then
+      its questions in the chat, one area at a time: the object model, the names, the renderer's core, beyond WebGPU,
+      and the feature map. GPU-4, `@kama/gpu`'s render pipeline set, is shaped by it.
    2. **Gamepads (WIN-4),** which asks whether a program reads pads while unfocused (the owner, 2026-11-10).
    3. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
       Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
       and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
    4. Then `@kama/gpu`'s render pipeline set (GPU-4) and `@kama/graphics`' first slice, on both legs.
-4. **Then the join.** Step 7, the platform seam, builds:
+3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The fourteenth session** (2026-11-11). Test-first, with every suite green and every mutation caught before each
+commit:
+
+- **Every suite was green on the pin at the start,** with the thirteenth session's counts. `../kama` had not moved
+  (`db6147f8`, 0.9.923), with the pin still on its history, so the pin stayed.
+- **WIN-21 was measured before it was built** (`.scratch/win21-sizing/`, its `FINDINGS.md`):
+  - Edge 157 matches Chrome for Testing 157 on every shape the investigation measured;
+  - a canvas the page sizes by its height alone holds, as a width-only one does;
+  - **the `aspect-ratio` canvas seen rewritten 15 times in 30 frames is not a bug.** Alone it holds, 1 write in 60
+    frames, in 48 runs: both browsers, ratios 1.25 to 2, fractional offsets, both forms of the property, and 19 million
+    pixels down the page. On the investigation's page, the runaway above it moved it every frame.
+- **WIN-21 built** (kama-window `caba1f2`): under `sizedByPage`, `open` changes the canvas's pixels once, reads its
+  layout and puts them back, then refuses in words naming the fix when both axes followed, before anything of the
+  canvas is touched. 9 new cases in each browser (189), and 9 of 9 mutations caught. `@kama/gpu`'s suite stayed green on
+  it, its `#flat` canvas (not displayed) still opening (kama-gpu `8c1c5e1`, a docs touch).
+- **The graphics design pass (KYR-68) began:** research into Three.js's features, the engines' state of the art, what
+  lies beyond WebGPU (with wgpu-native's and Dawn's headers read locally), and how renderers without a garbage
+  collector hold their objects.
+- **kyoten's suite did not change:** nothing in kyoten uses the packages yet.
 
 **The thirteenth session** (2026-11-11). Test-first, with every suite green and every mutation caught or explained before
 each commit:
