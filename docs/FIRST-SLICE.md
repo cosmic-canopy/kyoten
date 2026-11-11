@@ -8,79 +8,100 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-11, end of the twelfth session)
+## Where it stands (2026-11-11, end of the thirteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
 - the tool checks both at build;
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
-**Track 1 is under way, and each package now keeps its own order:**
-- `@kama/gpu` has a `SPEC.md`, a `ROADMAP.md` (rows `GPU-<n>`), its detail, and `COVERAGE.md`: 55 of webgpu.h's 206
-  functions called;
-- `@kama/window` has the same three documents (rows `WIN-<n>`);
-- GPU-1 is built (errors per device, and error scopes; the ninth session, below);
-- WIN-1 and GPU-2 are built (a window's native record counted, and a surface holding its window; the tenth session,
-  below), and so are the two rows its questions made: GPU-13 (an acquire before a configure refused) and WIN-16 (a
-  window opened without taking the focus);
-- WIN-2 is built, the last stopgap (the eleventh session, below): the window keeps what is held, and releases it on a
-  focus change;
-- **WIN-3 is built, the web leg's first row** (the twelfth session, below): a window on the page's canvas, W3C Pointer
-  Events for the mouse, touch and a pen on every backend, and `@kama/window`'s `tests/` run in headless Edge as well as
-  natively and under node. GPU-3 is next.
+**Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
+`@kama/gpu` `COVERAGE.md`, 55 of webgpu.h's 206 functions called):
+- GPU-1, GPU-2 and GPU-13, WIN-1, WIN-2 and WIN-16 are built (the ninth to eleventh sessions, below);
+- WIN-3 is built, the web leg's first row: a window on the page's canvas, and Pointer Events on every backend (the
+  twelfth session, below);
+- **GPU-3 is built, so both packages run in a browser** (the thirteenth session, below): `@kama/gpu`'s tests and its
+  clear example run in headless Chrome for Testing and Edge on a canvas, where WebGPU ran here for the first time, and
+  WIN-20, a window's size through its handle, was built for it;
+- **one question is open: WIN-21,** `sizedByPage` on a canvas the page does not size, asked in the chat on 2026-11-11
+  with its investigation (`.scratch/gpu3-web/FINDINGS.md`, its last section), recommending that `open` refuse a canvas
+  the page sizes on neither axis.
 
 **The join waits on Track 1. The next session starts here:**
 
 1. **Run the suites on kyoten's pin, `0.9.911+g238198b3`** (`.kama-pin/`, through `tools/kama`; AGENTS.kyoten.md
-   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin.
-   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet (the owner,
-     2026-11-10).
-   - **Read `../kama`'s log since `9751c609`,** its HEAD at the twelfth session's end (0.9.921, a clean tree). First
-     check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`. kama
-     rebased its `dev` twice on 2026-11-10, and a pin is rebuilt from a clean clone at its commit.
-   - **kama is ten versions past the pin, and the next bump carries a port.**
-     - 0.9.912 (`c065dcea`) fixes a lost cross-isolate wake on Linux.
-     - 0.9.913 (`f19742f6`) refuses `int32.parse(text: t)` again.
-     - **0.9.915 (`637df517`, KR-370) retires `parse::<T>(text:)` as well:** an adapter's member is reached only where
-       its contract is named. So the one use on this side, `../kama-gpu`'s `examples/clear`, ports from
-       `int32.parse(text: v)` to `Parseable::<int32>.parse(text: v)`.
-     - 0.9.914 checks adapters onto a generic contract, 0.9.916 lets a fiber park switch straight to the next one, and
-       0.9.917 makes `Instant` count only the time the system is awake on Apple.
-     - During the twelfth session: 0.9.918 (`d8fa2940`) does the same for `Instant` on Windows, and 0.9.919 to 0.9.921
-       are Android's (a debuggable debug app, an app's own resources and icon, an App Bundle for Google Play).
-
-     None was needed for WIN-3, and none is known to be for GPU-3, so bump only when one is.
-   - **Still open with kama:** KY-45 (KR-361, not started) and KY-40 (no integer vectors), both re-run on 0.9.911.
-2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
-   ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first.
-   **Its questions are asked in full in the chat, and answered there,** never folded into a plan's approval (the
-   eleventh session, below).
-   1. **The web leg, its second row: GPU-3** (a canvas surface, and `@kama/gpu`'s tests run in Edge, where WebGPU is
-      measured for the first time). WIN-3 has built what it starts from:
-      - a window on the page's canvas whose `nativeHandle()` is `NativeKind::Canvas` with its selector, which
-        `Surface.make` already takes; `Window.openIn(canvas:, …)` names another canvas;
-      - **the browser leg's shape:** `../kama-window/tools/webtest.mjs` (node, no npm packages) drives headless Edge over
-        the DevTools protocol, with the tests' own page as the root project's `shellFile`. `--dump-dom` cannot run a
-        test program (measured: it returns at the page's load, before `main`), and GPU-3's detail now says so
-        (kama-gpu `25baa47`);
-      - GPU-3 also runs GPU-1's web half, whose error cases run natively only so far, and measures two facts read and
-        not run (its ROADMAP_DETAIL § GPU-3). Its questions are asked in the chat first, after a probe.
-   2. **Alongside 1, the graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided,
-      2026-11-10): `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code.
-      Three.js is a reference for ease of use, never a limit, and the bar is the state of the art, as Unreal, Unity and
-      Godot reach it. The owner held it for a session of its own (2026-11-10).
-   3. **Then the rest of the libraries' share of the cube:**
-      - gamepads (WIN-4, now `@kama/window`'s NOW row), which asks whether a program reads pads while unfocused (the
-        owner, 2026-11-10);
-      - `@kama/gpu`'s render pipeline set (GPU-4, shaped by the design pass);
-      - `@kama/graphics`' first slice, on both legs.
-
-3. **Then the join.** Step 7, the platform seam, builds:
+   § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their browser legs now run
+   in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its `README.md`), and
+   Edge.
+   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
+   - **Read `../kama`'s log since `49089044`,** its HEAD at the thirteenth session's end (0.9.922, with uncommitted work
+     in `include/kama_os.h` and `lib/std/process/identity.kama`). First check that the pin is still on kama's history:
+     `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
+   - **kama is eleven versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
+     `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
+     one Android package of several ABIs. Nothing GPU-3 needed had landed, so the pin stayed; bump only when a row needs
+     one.
+   - **Still open with kama:** KY-45, KY-40, and **KY-50, new: `kama run` in a browser** (decided as kama's by the owner
+     on 2026-11-11; each package's `tools/webtest.mjs` is the stopgap until it lands).
+2. **WIN-21, once the owner answers** (`../kama-window/ROADMAP_DETAIL.md` § page-sized-canvas): built test-first in
+   `@kama/window`, with a case at a pixel ratio other than 1. The rewriting `aspect-ratio` canvas seen in the
+   investigation is measured in isolation there before it is called a bug.
+3. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
+   ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
+   questions asked in full in the chat:
+   1. **The graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided, 2026-11-10):
+      `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and feature map, before any of its code. The owner held
+      it for a session of its own (2026-11-10). GPU-4, `@kama/gpu`'s render pipeline set, is shaped by it.
+   2. **Gamepads (WIN-4),** which asks whether a program reads pads while unfocused (the owner, 2026-11-10).
+   3. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
+      Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
+      and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
+   4. Then `@kama/gpu`'s render pipeline set (GPU-4) and `@kama/graphics`' first slice, on both legs.
+4. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirteenth session** (2026-11-11). Test-first, with every suite green and every mutation caught or explained before
+each commit:
+
+- **Every suite was green on the pin at the start,** with the twelfth session's counts. `../kama` had moved to 0.9.922
+  (`49089044`, Android ABIs) with the pin still on its history, so the pin stayed.
+- **A probe came first** (`.scratch/gpu3-web/`, its `FINDINGS.md`): plain WebGPU pages and a kama program on both
+  packages, in headless Edge 157, then Chrome for Testing and Brave, and natively.
+  - **Headless Chromium has WebGPU on this machine's GPU** (AMD RDNA 3, not a fallback adapter);
+  - **an adapter gives one device on the web**, where wgpu-native grants many;
+  - **an uncaptured error waits while nothing is queued,** and arrives a tick after any queue use;
+  - **two writers of a canvas's pixels:** emdawnwebgpu's configure wrote its size into the canvas behind the window;
+  - `maxImmediateSize`'s default is 64 (the spec), where the package said 0;
+  - `@kama/window`'s `sizedByPage` runs away on a canvas the page does not size (WIN-21);
+  - `examples/clear` could not run on the web: it waited in a loop inside `main`.
+- **Five questions were asked in the chat and answered by the owner,** each as recommended (`../kama-gpu/AGENTS.gpu.md`
+  item 10). The owner asked whether one device per adapter nerfs native (no: measured, two adapters give a device each),
+  whether a configure without a size touches offscreen rendering (no: only the frames presented), and whether the
+  browser runner is best in kama (yes: `kama run` on Android is the same job, and kama's own suite already needs one):
+  1. one device per adapter on every leg, `GpuError::Consumed`;
+  2. `surface.configure(device:, config:)` sized by its window, the window the one writer;
+  3. `sizedByPage` investigated first (WIN-21);
+  4. running wasm in a browser is kama's (KY-50), each package's driver a stopgap;
+  5. the browser legs on pinned browsers, every one present: **Chrome for Testing 157.0.8103.50 and Firefox 160.0 were
+     downloaded and verified into `~/browsers`** (its `README.md`), with the owner's leave.
+- **Built** (kama-gpu `746b857` the decisions, then `4176e9a`, `ca77fc0`, `56fc5a6`, `fc7b789` and the error cases'
+  commit; kama-window `54bdf9f` the rows, then `ebeeb2f` WIN-20 and `37c92b1`, `89278da`):
+  - `@kama/gpu`'s browser leg, one device per adapter, a configure sized by its window (`NoWindow` for an adopted
+    surface, decided in the building), the surface cases and the clear example in a browser, and a device's errors on
+    the web's timing; `tests/` is 96 cases natively and 74 in each browser;
+  - `@kama/window`'s WIN-20, `NativeWindow.framebufferSize()`, and its browser leg in every browser present; its tests
+    are 140 natively, 103 under node and 180 in each browser;
+  - the mutations: 7 of 8, 4 of 4, 4 of 5 and the web half's, each not caught explained in its package's record.
+- **WIN-21 was investigated** (a survey of eight engines and libraries, verified against learn-wgpu and Unity's
+  tracker, and a layout probe at two pixel ratios), and its question is asked.
+- **On the roadmap, from the owner:** KYR-69 (QA bug reports from a running build, with marker strokes over the frame),
+  KYR-70 (promo shots and videos from captures and replays), KYR-71 (animation, first version) and KYR-72 (NVIDIA
+  MotionBricks on it).
+- **kyoten's suite did not change:** nothing in kyoten uses the packages yet.
 
 **The twelfth session** (2026-11-11). Test-first, with every suite green and every mutation caught or explained before
 each commit:

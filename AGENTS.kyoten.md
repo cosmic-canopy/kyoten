@@ -101,6 +101,14 @@ Without it, `emcc.exe` reaches the Windows Store's python alias, and kama report
 shell does not inherit the Windows `PATH` unless `MSYS2_PATH_TYPE=inherit`, so `emsdk activate --permanent` does not
 reach it; set both in the shell's own profile.
 
+**A browser run** (the packages' browser legs, and later the examples') uses pinned browsers in `~/browsers`, beside
+emsdk (the owner, 2026-11-11): Chrome for Testing 157.0.8103.50 and Firefox 160.0, never auto-updated, so a red run
+can be reproduced. Its `README.md` says where each came from and how it was verified. Each package's
+`tools/webtest.mjs --list` names the browsers a leg runs in (the newest pinned Chrome for Testing, then Edge and Chrome
+as installed; `KAMA_BROWSER` names one), headless, with WebGPU on this machine's GPU. Chrome for Testing's headless
+shell has no WebGPU adapter, so the full browser runs. Firefox needs a WebDriver BiDi client first (`@kama/window`'s
+WIN-18). The drivers are a stopgap until kama runs a wasm program in a browser (KY-50).
+
 ## Rules
 
 - **The engine is the driver for games, never one game.** Nothing in `engine/` names or special-cases a game.
