@@ -415,3 +415,66 @@
      - **Why a default at all:** three.js defaults to no tone mapping (`NoToneMapping`, r187's `Renderer.js`), so a
        bright light clips to flat white.
      - Output to HDR displays comes later, in the feature map.
+
+- **2026-11-11, the owner: the graphics design pass, area 4, beyond WebGPU** (KYR-68;
+  [../research/graphics.md](../research/graphics.md) § 2, § 3 and § 6). Five questions, each answered as recommended.
+  1. **One API everywhere; each technique is a ladder of methods.** "4.1 sounds ideal to me."
+     - **The ladders,** each method naming the GPU features it needs, best first:
+       - global illumination: hardware ray traced, software traced, light probes, ambient;
+       - shadows: virtual shadow maps, cascaded with soft edges, plain cascaded;
+       - geometry: virtualized clusters, then LOD meshes;
+       - draws: GPU-driven with one multi-draw, GPU culling, CPU culling;
+       - textures: one bindless array, then a bind group per material.
+     - **The renderer reports the device's features,** as three.js's `hasFeature` does.
+     - **Quality presets** (low, medium, high, ultra) set every technique at once, as Unreal's scalability groups do,
+       and a program can set one technique directly.
+     - **A missing feature never stops a program:** the renderer takes the next method down and reports the one it
+       chose. Bevy's virtual geometry exits the process instead, and its Solari refuses to load.
+     - **kyoten's render module picks the preset per machine,** as its quality per machine already says (question 2).
+     - **Every method is tested:** each has a golden image of its own, run on the platforms that have it.
+  2. **Hardware ray tracing natively: help land wgpu-native's open PR #630.** "Option A sounds good. We have no control
+     of the maintainers choice obviously but it would be good to test the state of the art. OK to build and run."
+     - **PR #630 already declares the C API:** acceleration structures, built and compacted, and mesh pipelines and
+       draws (research § 6). So no library of kyoten's own, and no C API of its own, is written.
+     - **The work:**
+       - build the PR, test ray queries and mesh shaders on our hardware, and report or fix what is found, in the PR;
+       - until it merges, `@kama/gpu` pins a build of its branch for the native ray-tracing leg only. That pin is a
+         stopgap, replaced by wgpu-native's release once the PR merges.
+       - Anything posted to gfx-rs waits on the owner's go-ahead, since it is public.
+     - **`@kama/graphics` keeps acceleration structures out of a program's way.** A program asks for ray-traced
+       shadows, GI or reflections (item 1's top method), and the library keeps a bottom level per mesh and a top level
+       per scene.
+       - gpuweb's proposal (#11054, 2026-10-13) shares wgpu's concepts with one object in place of two, so when
+         browsers ship it the web gains the method with no change to the library's API.
+       - A program that wants its own ray queries in WGSL uses `@kama/gpu` directly.
+     - **When:** the path is decided now, and the work comes when the feature map reaches ray tracing. The owner's OK
+       to build and run the PR came with this answer.
+     - **Rejected:**
+       - waiting without helping: slow, and uncertain;
+       - a wrapper of kyoten's own over Rust's wgpu: it duplicates #630 and would share wgpu-native's internal
+         handles;
+       - Vulkan, D3D12 and Metal directly: a second GPU backend per platform, against the one WebGPU-shaped interface.
+  3. **Virtualized geometry natively first, on the 64-bit atomics wgpu-native v29 already has.** "yes"
+     - Bevy's virtual geometry runs without mesh shaders: it rasterizes small triangles in compute.
+     - **Mesh shaders come later,** as a faster method once a measurement shows they pay, by item 2's path. On the web
+       they are in gpuweb's Milestone 4+.
+     - **On the web, Chrome's `atomic-vec2u-min-max`** (a 64-bit min and max) is to be measured for the technique's
+       visibility buffer when the feature map reaches it.
+  4. **Our own temporal upscaler, in WGSL, on every platform.** "yes"
+     - **Vendor upscalers come later, natively, each an optional package of its own,** so a vendor SDK's license
+       stays out of the MIT/Apache library: NVIDIA's DLSS, Intel's XeSS and AMD's FSR.
+     - **They need a native handle wgpu-native does not expose:** the raw Vulkan or D3D12 device. Bevy's DLSS reaches
+       it through wgpu's `as_hal`. That is one more C API addition, by item 2's path.
+     - AMD's FSR 2 is published as open-source compute shaders, a possible start for our own; its license is checked
+       when the row comes up.
+  5. **WebGPU is the web's only backend, with no WebGL 2 fallback.** "yes. If we find a need in the future we can
+     always add that... but webgpu for now is best. We also will likely not target the browser for Meta quest
+     either... It is good to support it but native meta quest is more important up front anyway."
+     - **Why:** area 3's core needs what WebGL 2 lacks: compute for the light clusters and culling, and storage buffers
+       for the per-object records. A WebGL 2 backend would be a second, lesser renderer, with GLSL shaders and a doubled
+       test matrix.
+     - **The gap, as of the research:** Firefox on Linux, Android and Intel Macs, and Chrome on Linux. Safari, Chrome,
+       Edge and Firefox on Windows and Apple silicon all have WebGPU.
+     - **A page without WebGPU says what is missing** and which browsers work, and native builds cover those players.
+     - **The Quest:** the owner's note matches what is decided. Players reach Quest natively first, and the Quest
+       browser serves development ([web-and-native.md](web-and-native.md) question 8, item 7, 2026-11-07).
