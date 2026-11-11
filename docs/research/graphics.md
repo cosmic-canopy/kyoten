@@ -248,3 +248,56 @@ cores): can the program's own threads compile in parallel instead?
 - **So pipelines are compiled natively by the ordinary call on worker threads,** until wgpu-native implements its
   asynchronous call. That answers `@kama/gpu`'s GPU-4 question of "whether pipelines are made asynchronously … or both
   ways": both, the browser's asynchronous call on the web and the ordinary one on a worker natively.
+
+## 6. Beyond WebGPU: what the design pass's area 4 rests on
+
+Read 2026-11-11, after § 3.
+
+**wgpu-native's C API for ray tracing and mesh shaders exists, in an open pull request.**
+- **The PR:** wgpu-native #630, "Expand wgpu 30 API parity and fix native surface ownership".
+  - Open since 2026-09-12, last updated 2026-10-12, by matthargett.
+  - It continues #594, "Complete parity with wgpu", by inner-daemons, which closed unmerged on 2026-09-12. #594 called
+    itself "the sister PR to gfx-rs/wgpu#9570".
+  - Its changelog: "Expose additional wgpu 30 functionality, including ray tracing, mesh shaders, …". Its tests are a
+    separate PR, #631.
+- **What its `ffi/wgpu.h` declares** (head `8322fe1`, read here):
+  - **ray tracing:** `wgpuDeviceCreateBlas`, `wgpuDeviceCreateTlas`, `wgpuCommandEncoderBuildAccelerationStructures`,
+    `wgpuCommandEncoderMarkAccelerationStructuresBuilt`, and compaction (`wgpuBlasPrepareCompactAsync`,
+    `wgpuBlasReadyForCompaction`, `wgpuQueueCompactBlas`);
+  - **mesh shaders:** `wgpuDeviceCreateMeshPipeline`, `wgpuRenderPassEncoderDrawMeshTasks` with its indirect, multi and
+    count forms, and the `ExperimentalMeshShader` features;
+  - **native handles for Metal only:** `wgpuDeviceGetNativeMetalDevice`, `wgpuQueueGetNativeMetalCommandQueue` and
+    `wgpuTextureGetNativeMetalTexture`. There is nothing for Vulkan or D3D12, and v29's header has no native handle at
+    all.
+- **Its review:** one reviewer comment, by Vipitis on 2026-10-01: "everything works in our test suites with a local
+  build", with the new native-only features not tried. There is no maintainer approval.
+- **Not built or run here.** A build runs a third party's code, which waits on the owner (the auto-mode classifier
+  blocked it). The branch is cloned, unbuilt, in `.scratch/wgpu-native-630/`.
+
+**gpuweb's acceleration-structure proposal** (PR #11054, draft, by dj2, opened 2026-10-13; `proposals/acceleration_structure.md`, read here).
+- **Its API:**
+  - one object, `GPUAccelerationStructure`, either "bottom-level" or "top-level";
+  - `createAccelerationStructure`, and `createAndBuildAccelerationStructure` to do both in one call;
+  - compaction and refit;
+  - gated by the feature `acceleration-structure`, "used by both ray query and full ray tracing".
+- **Against wgpu's:** wgpu has two objects, `Blas` and `Tlas`. The concepts are the same in both:
+  - a bottom level of triangles or AABBs;
+  - a top level of instances, each with a transform;
+  - compaction, and refit (wgpu's update).
+
+**A vendor upscaler natively needs a native handle.**
+- **Bevy's DLSS:** it goes through `dlss_wgpu`, which works only on wgpu's Vulkan backend. It reaches the raw Vulkan
+  device through wgpu's `as_hal`, and the crate cannot redistribute the DLSS SDK (docs.rs, *unchecked* beyond a search).
+- **wgpu-native has no such handle:** its C API exposes no Vulkan or D3D12 handle, in v29 or in #630.
+
+**Chrome's `atomic-vec2u-min-max`.** Dawn lowers it to a 64-bit atomic, min and max only, on Vulkan, Metal and D3D12
+(Dawn's commits, found by a search). Whether it carries a software rasterizer's visibility buffer on the web is to be
+measured.
+
+**WebGPU's reach** (web.dev's announcement, late 2025, and later reports, by a search):
+- **Supported:**
+  - Chrome and Edge on Windows, macOS and ChromeOS, and Chrome on Android 12 and later;
+  - Safari on macOS, iOS, iPadOS and visionOS 26;
+  - Firefox 141 on Windows, and Firefox 145 on Apple-silicon macOS.
+- **In progress:** Firefox on Linux, Android and Intel Macs, and Chrome on Linux.
+- **Quest's browser:** WebGPU in WebXR is behind a flag ([xr.md](../design/xr.md)).
