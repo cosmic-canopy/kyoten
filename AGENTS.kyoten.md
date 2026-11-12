@@ -121,6 +121,10 @@ browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as
   from the outside.
 - **Web first, native at parity.** An engine interface is designed against the browser's own API (WebGPU,
   Web Audio, HTML/CSS, WebRTC/WebSocket); native implements the same interface.
+- **Lean on the web** (the owner, 2026-11-02, [design/web-and-native.md](docs/design/web-and-native.md): "each should be
+  as lean as possible on the web and rely on the best in class browser APIs for that purpose"). The web build uses the
+  browser's own API (the Gamepad API, WebGPU, Web Audio), and a native library (SDL3, GLFW, a mapping database) stays
+  native-only, adding nothing to the web build. A proposal for a native library says up front what the web uses instead.
 - **N platforms, extensible.** No engine code assumes a fixed list of platforms. Web, desktop, Steam Deck, XR
   (OpenXR natively, WebXR on the web) and, later, consoles each implement the engine's interfaces, and a console's
   implementation may be a private package under NDA (`docs/design/target-platforms.md`).
@@ -132,12 +136,38 @@ browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as
   creates work.
 - **Production grade, general solutions** (the owner, 2026-11-08). A recommendation is the production answer, or says
   plainly that it is a stopgap and names what replaces it.
+- **The bar is the state of the art, and nothing built is held to a budget** ([design/rendering.md](docs/design/rendering.md)
+  § Decided). Three.js is a reference for ease of use, never a limit: what Unreal, Unity and Godot can do, kyoten and its
+  packages must be able to do (the owner, 2026-11-10). A budget is a measurement, never a cap: a feature enters with
+  what it measures, a ratchet fails only on a regression in something built, raising one takes a written reason and is
+  never refused, and a method's cost decides a preset's default, never whether it exists (the owner, 2026-11-11).
+- **Each doc has one purpose** (the owner, 2026-11-10: "we shouldn't be polluting these foundational documents. Each
+  serves a specific purpose and we have several peer repos to reference for patterns"). A fact goes in the one doc
+  whose purpose it serves, as § Layout lists them; in a package, `SPEC.md` is the contract, `ROADMAP.md` the order of
+  work only, and `AGENTS.*.md` the agent's brief and the record of departures. A status line or a decision's story
+  never goes in a SPEC, and an API detail never in a ROADMAP. Before shaping a new doc, read how kama and the peer
+  games shape theirs.
+- **Code from the owner's games needs no credit line.** FFD, the-mallow-man and kyoten are all Cosmic Canopy projects
+  (the owner, 2026-11-08), so code taken from the games carries no attribution. Naming its source is still useful as
+  provenance ("from FFD's `PhaseClock`").
 - **Test-driven, with one full suite** (the owner, 2026-11-08: "We will need to use test driven development and use a
   full suite of tests as well so we keep kyoten on track and regression free").
   - A change starts with a test that fails without it. A bug is fixed only after a test reproduces it.
   - `tools/test.sh` at the root runs the whole suite: the engine's tests, the generator's, and every example's check
     and run, natively and on wasm. It passes before every commit, and CI (KYR-13) runs the same script.
   - A test that fails is never deleted or loosened to pass. A ratchet is loosened only as a decision, with its reason.
+  - **A case green on its first run is proved by mutation:** change the code under it, one mutation at a time, and see
+    a case turn red, then restore the code byte for byte. A mutation kama refuses to compile is not caught; a hang is.
+    One the tests cannot notice is shown equivalent and dropped, or the tests are sharpened. A switch that makes a
+    run skip cases needs a guard that fails the run if it skips one. The count goes in the row's Built record.
+  - **A fake or a virtual device covers what a test can,** such as a replaced system read, SDL's virtual pad or a
+    headless window. Real hardware answers only what nothing else can, in one short numbered block of the owner's time
+    at a session's start.
+- **A test or a probe never takes the focus** (the owner, 2026-11-10: "it fights for focus"). The owner works while
+  suites run. A window a test opens takes `quietly()`'s options (`tests/src/quiet.kama` in `@kama/window` and
+  `@kama/gpu`), and a C probe sets GLFW's `GLFW_FOCUSED` and `GLFW_FOCUS_ON_SHOW` hints to false. A run that needs no
+  real window sets `KAMA_WINDOW_NO_DISPLAY`. Anything that must take the focus, such as a visible browser, waits for
+  the owner and says so first.
 - **Dependencies are injected** (the owner, 2026-11-08: "best practices like dependency injection").
   - Code takes what it depends on as a parameter, or as an implementation of a `type contract` it is handed. The clock
     takes each frame's time, the frame driver takes the `World`, and `run` takes the `Platform`, so a test hands each
