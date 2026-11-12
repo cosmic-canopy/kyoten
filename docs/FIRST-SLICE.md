@@ -38,7 +38,7 @@ the design doc it settles before building on it.
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `0b7a2bb0`,** its HEAD at the sixteenth session's end. First check that the pin is
+   - **Read `../kama`'s log since `addd14cd`,** its HEAD at the sixteenth session's end. First check that the pin is
      still on kama's history: `git -C ../kama merge-base --is-ancestor 94b8025b HEAD`. The pin stays until a row needs
      a bump.
    - **For the owner to relay to kama:** KY-52 (`kama run` cannot set a device scale) and KY-53 (it waits silently for
@@ -99,7 +99,9 @@ each commit:
     for Testing and 18 in Firefox; kama-window's is 245 in Edge and Firefox, and 264 through the driver. Mutations:
     6 of 6 in each package, each caught in the browser it belongs to.
 - **Filed in kyoten:** KY-52 and KY-53; KY-50 and KY-51 were fixed and removed (`39c347d`, `f626a33`).
-- **kama moved three commits after the pin** (to `0b7a2bb0`): refinements of the browser runner that no row needs.
+- **kama moved nine commits after the pin** (to `addd14cd`): refinements of the browser runner, then macOS and iOS
+  work (`kama run`'s `.dSYM` on macOS, Apple's entropy source, a kama static library linked into a C host, KR-381, and
+  a UIKit app around one on the iPad). No row needs them yet; the macOS ones matter once kyoten runs on the Mac Mini.
 
 **The fifteenth session** (2026-11-12). The fourteenth session's record was committed and all four repositories
 pushed at its start (the owner's choice). Then WIN-4, test-first, with every suite green and every mutation caught or
