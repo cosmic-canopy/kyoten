@@ -103,11 +103,16 @@ reach it; set both in the shell's own profile.
 
 **A browser run** (the packages' browser legs, and later the examples') uses pinned browsers in `~/browsers`, beside
 emsdk (the owner, 2026-11-11): Chrome for Testing 157.0.8103.50 and Firefox 160.0, never auto-updated, so a red run
-can be reproduced. Its `README.md` says where each came from and how it was verified. Each package's
-`tools/webtest.mjs --list` names the browsers a leg runs in (the newest pinned Chrome for Testing, then Edge and Chrome
-as installed; `KAMA_BROWSER` names one), headless, with WebGPU on this machine's GPU. Chrome for Testing's headless
-shell has no WebGPU adapter, so the full browser runs. Firefox needs a WebDriver BiDi client first (`@kama/window`'s
-WIN-18). The drivers are a stopgap until kama runs a wasm program in a browser (KY-50).
+can be reproduced. Its `README.md` says where each came from and how it was verified. A leg runs headless, in every
+browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as the owner decided for WIN-18 on
+2026-11-12:
+- **under `kama run --target WASM --headless`** (kama's KR-377): Edge and Chrome as installed, and the pinned
+  Firefox 160. WebGPU needs no flag in headless Chromium. Headless Firefox gives WebGPU no adapter here, so
+  `@kama/gpu`'s run in it says so and skips what needs one. The cases that need trusted input (kama's KR-378) or a
+  device scale (KY-52) are skipped there, each by name;
+- **through each package's `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing:
+  every case, with trusted input and a device scale of 1.5. An unzipped Chrome for Testing never loads a page under
+  `kama run` (KY-53), even with the folder permissions an installed Chrome's has (`~/browsers/README.md`).
 
 ## Rules
 

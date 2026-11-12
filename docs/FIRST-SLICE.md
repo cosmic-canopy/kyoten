@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-12, the fifteenth session)
+## Where it stands (2026-11-12, the sixteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -26,71 +26,80 @@ the design doc it settles before building on it.
 - **WIN-21 is built** (the fourteenth session, below): under `sizedByPage`, `open` refuses a canvas the page sizes on
   neither axis;
 - **WIN-4 is built** (the fifteenth session, below): gamepads, through the browser's Gamepad API on the web and SDL3,
-  vendored, natively on Windows. No question is open in either package.
+  vendored, natively on Windows;
+- **WIN-18 is built** (the sixteenth session, below): both packages' browser legs run under `kama run --target WASM` in
+  Edge and Firefox 160, and through each package's driver in the pinned Chrome for Testing, which keeps every case. No
+  question is open in either package.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.911+g238198b3`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.928+g94b8025b`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
-   browser legs run in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its
-   `README.md`), and Edge.
+   browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
+   Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `deb11208`,** its HEAD at the fifteenth session's end. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
-   - **KR-377 landed: `kama run --target WASM` runs the page in a browser** (`deb11208`, 2026-11-12, ruled the same day
-     as recommended, `4b198f1a`). It builds into a temp directory, serves the page on 127.0.0.1, opens it in a fresh
-     profile in any browser (`$KAMA_BROWSER`, else Chrome, Edge, Chromium, then **Firefox**), visible by default and
-     `--headless` for tests, reports over HTTP with no automation protocol, prints the program's lines and exits with
-     its status (134 an abort, 1 an uncaught JS error, 129 the page or browser gone first). Trusted input is
-     **KR-378**, filed, not built: each package's `tools/webtest.mjs` makes it today, by the DevTools protocol, on a
-     request the page prints.
-   - **The next session opens with, in order:**
-     1. **Five minutes with pads, at the start, if the owner is there** (optional: nothing waits on it; the owner,
-        2026-11-12: "I can do that at the start of the next session"): move the Xbox Series pad to another USB port and
-        replug it (does GameInput's device id follow the pad?), and plug one Switch pad in by USB and press a few
-        buttons (its layout and labels through SDL). The probe is `.scratch/win4-gamepads/native/probe_sdl_gi.exe` with
-        `--hint SDL_JOYSTICK_GAMEINPUT=1 --hint SDL_XINPUT_ENABLED=0`. Then the session runs without the owner.
-     2. **The pin bump, decided** (the owner, 2026-11-12: "We will want to bump and kama is fixing the new gaps in this
-        session as well"): to kama's HEAD once its fixes for **KWIN-1** and **KY-51** have landed, as a commit of its
-        own (AGENTS.kyoten.md § Build). It brings the browser runner (`deb11208`) and retires `int32.parse(text:)`
-        (0.9.915, KR-370, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`). On it,
-        rerun the repros of KY-50, KY-51 (`.scratch/ky51-spawn/`) and KWIN-1 (`.scratch/win4-gamepads/gap-extern-array/`)
-        and delete each that passes; then retire the workarounds test-first: kama-window's element-by-element copy in
-        `Window.pad` and `winseam_pad_post` (KWIN-1), and the `./` in kyoten's `tools/test.sh` (KY-51), each kept only
-        if its repro still fails.
-     3. **What WIN-18 becomes.** Planned as a WebDriver BiDi client of the packages' own, so their browser legs run in
-        Firefox 160. With `kama run` taking any browser, the cases that need no trusted input could run under
-        `kama run --target WASM --headless` in Chromium and Firefox alike, and `tools/webtest.mjs` shrink to the
-        trusted-input cases until KR-378 lands. The production answer is to be measured first: run both packages'
-        browser legs under `kama run` in Chrome for Testing, Edge and Firefox 160, and compare with the stopgap.
-   - **kama is twelve versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
-     `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
-     one Android package of several ABIs. Nothing a row needed has landed, so the pin stays; bump only when a row needs
-     one.
-   - **Still open with kama:** KY-45, KY-40, **KY-51** (a relative program path with `/`, above), kama-window's
-     **KWIN-1**, and **KY-50, `kama run` in a browser,** which kama filed the same day as
-     **KR-377** (`db6147f8`: "scheduled, design first", naming emscripten's `emrun` and `wasm-bindgen-test-runner`).
-     Each package's `tools/webtest.mjs` is the stopgap until it lands, and its trusted-input requests are the shape to
-     offer KR-377's design.
+   - **Read `../kama`'s log since `0b7a2bb0`,** its HEAD at the sixteenth session's end. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 94b8025b HEAD`. The pin stays until a row needs
+     a bump.
+   - **For the owner to relay to kama:** KY-52 (`kama run` cannot set a device scale) and KY-53 (it waits silently for
+     a page the browser never requests), filed in this session. kama's own KR-378 (trusted input) is the third thing
+     that retires the drivers (`@kama/window`'s WIN-24).
+   - **Still open with kama:** KY-45, KY-40, KY-52, KY-53, and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **Firefox (WIN-18), as the question above settles it:** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
-      Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
-      and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
-   2. Then `@kama/gpu`'s render pipeline set (GPU-4), shaped by the graphics design pass (done in the fourteenth
-      session, below), and `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs. GFX-1's questions are in
-      its `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs
-      the web leg's goldens, and the perceptual tolerance.
+   1. **`@kama/gpu`'s render pipeline set (GPU-4),** shaped by the graphics design pass (the fourteenth session), and
+      `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs. GFX-1's questions are in its
+      `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
+      leg's goldens, and the perceptual tolerance.
+   2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input, a device scale and a page in the
+      pinned Chrome for Testing.
+   - **Optional, a minute hands-on at a session's start:** whether a visible Firefox 160 gives WebGPU an adapter here
+     (headless gives none, AGENTS.gpu.md item 11). Its window takes the focus, so it waits for the owner.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
-     for the owner to post under their account; one was drafted in the fourteenth session's chat. Nothing has been
-     posted to gfx-rs.
+     drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs.
 3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The sixteenth session** (2026-11-12). Test-first, with every suite green and every mutation caught or explained before
+each commit:
+
+- **Every suite was green on the pin, 0.9.911, at the start,** at the fifteenth session's counts.
+- **Five minutes with pads, at the start** (the owner; `.scratch/win4-gamepads/FINDINGS.md`, runs 8 and 9; kama-window
+  `2c249b2`): **GameInput's device id follows a pad to another USB port** (the 360 pad, moved between two USB-A
+  ports); **a pad's labels follow the mode its firmware chose**, not what is printed on it (the 8BitDo, Nintendo's
+  print, labelled as an Xbox pad); and **Steam takes the guide button**, so a program may never receive it. The Series
+  pad enumerates only on the mini PC's USB-C port.
+- **The pin bumped to 0.9.928** (`59fe835`), as decided, once kama fixed KWIN-1 (KR-379) and KY-51 (KR-380), both of
+  which landed during the pad work. Every suite was green with the one port, kama-gpu's clear to
+  `Parseable::<int32>.parse(text:)` (`6abd4cd`; its floor 0.9.915, `8ddcf04`). Both workarounds were retired test-first:
+  KY-51's `./` (`f626a33`; the tool's tests failed 163 of 175 built on 0.9.911 with the variable set, none on 0.9.928)
+  and KWIN-1's copies element by element (kama-window `b16e21c`, 6 mutations caught, a seventh equivalent and
+  removed).
+- **WIN-18 measured** (`.scratch/win18-kamarun/`; kama-window AGENTS.window.md item 10, kama-gpu AGENTS.gpu.md item 11):
+  under `kama run`, Firefox 160 runs kama-window's browser cases as Chromium does, and what fails in all three browsers
+  is trusted input (kama's KR-378) and a device scale `kama run` cannot set. WebGPU needs no flag in headless Chromium.
+  Headless Firefox gives WebGPU no adapter, and `canvas.getContext('webgpu')` answers null there. An unzipped Chrome for
+  Testing never loads a page under `kama run`: its sandboxed network service crashes at start-up, even after its folder
+  was given the four grants an installed Edge's carries (`~/browsers/README.md`).
+- **Five questions, each answered as recommended:** `kama run` for every case it runs and no BiDi client; the Chrome
+  for Testing folder's permissions (done, not enough); KY-52 filed; Chromium-only WebGPU, Firefox reporting its missing
+  adapter; the drivers kept for the pinned Chrome for Testing alone (kama-window `38db04f`, kama-gpu `fa10461`).
+- **Built** (kama-gpu `47aa9ca`, kama-window `a5e46b5`):
+  - in `@kama/gpu`: `Surface.make` refuses a canvas the browser gives no WebGPU context, asking the page first
+    (`js/gpuseam.js`), where emdawnwebgpu's assertion ended a debug build; `GpuError::NoAdapter` for webgpu.h's
+    `Unavailable`; `--adapter-optional` for Firefox's leg alone; the too-wide case independent of the scale;
+  - in `@kama/window`: `--driver`, the 7 scale cases and the trusted-input steps skipped by name without it, and the
+    driver's run failed if it skips one;
+  - in both: `tools/browsers.mjs` and the legs in `tools/test.sh`. kama-gpu's `tests/` is 75 cases in Edge and Chrome
+    for Testing and 18 in Firefox; kama-window's is 245 in Edge and Firefox, and 264 through the driver. Mutations:
+    6 of 6 in each package, each caught in the browser it belongs to.
+- **Filed in kyoten:** KY-52 and KY-53; KY-50 and KY-51 were fixed and removed (`39c347d`, `f626a33`).
+- **kama moved three commits after the pin** (to `0b7a2bb0`): refinements of the browser runner that no row needs.
 
 **The fifteenth session** (2026-11-12). The fourteenth session's record was committed and all four repositories
 pushed at its start (the owner's choice). Then WIN-4, test-first, with every suite green and every mutation caught or
