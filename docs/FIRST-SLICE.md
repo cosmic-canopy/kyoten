@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-11, the fourteenth session)
+## Where it stands (2026-11-12, the fifteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -24,7 +24,9 @@ the design doc it settles before building on it.
   clear example run in headless Chrome for Testing and Edge on a canvas, where WebGPU ran here for the first time, and
   WIN-20, a window's size through its handle, was built for it;
 - **WIN-21 is built** (the fourteenth session, below): under `sizedByPage`, `open` refuses a canvas the page sizes on
-  neither axis. No question is open in either package.
+  neither axis;
+- **WIN-4 is built** (the fifteenth session, below): gamepads, through the browser's Gamepad API on the web and SDL3,
+  vendored, natively on Windows. No question is open in either package.
 
 **The join waits on Track 1. Where the work is:**
 
@@ -33,25 +35,27 @@ the design doc it settles before building on it.
    browser legs run in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its
    `README.md`), and Edge.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `db6147f8`** (0.9.923, `std`'s per-user directories), its HEAD at the thirteenth
-     session's end and still at the fourteenth's start. First check that the pin is still on kama's history:
-     `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
+   - **Read `../kama`'s log since `3583a1d1`,** its HEAD at the fifteenth session's end. Since `db6147f8` it ruled
+     **KR-377, `kama run` in a browser,** all ten decisions as recommended (`4b198f1a`, 2026-11-12: `-- args` reach the
+     page through the URL's query), and filed **KR-378, a UI test asking its runner for trusted input**, which each
+     package's `tools/webtest.mjs` does today by printing a request; it bears on WIN-18 and on retiring that stopgap.
+     First check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
    - **kama is twelve versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
      `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
      one Android package of several ABIs. Nothing a row needed has landed, so the pin stays; bump only when a row needs
      one.
-   - **Still open with kama:** KY-45, KY-40, and **KY-50, `kama run` in a browser,** which kama filed the same day as
+   - **Still open with kama:** KY-45, KY-40, **KY-51** (a relative program path with `/`, above), kama-window's
+     **KWIN-1**, and **KY-50, `kama run` in a browser,** which kama filed the same day as
      **KR-377** (`db6147f8`: "scheduled, design first", naming emscripten's `emrun` and `wasm-bindgen-test-runner`).
      Each package's `tools/webtest.mjs` is the stopgap until it lands, and its trusted-input requests are the shape to
      offer KR-377's design.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **Gamepads (WIN-4),** which asks whether a program reads pads while unfocused (the owner, 2026-11-10).
-   2. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
+   1. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
       Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
       and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
-   3. Then `@kama/gpu`'s render pipeline set (GPU-4), shaped by the graphics design pass (done in the fourteenth
+   2. Then `@kama/gpu`'s render pipeline set (GPU-4), shaped by the graphics design pass (done in the fourteenth
       session, below), and `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs. GFX-1's questions are in
       its `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs
       the web leg's goldens, and the perceptual tolerance.
@@ -64,6 +68,52 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The fifteenth session** (2026-11-12). The fourteenth session's record was committed and all four repositories
+pushed at its start (the owner's choice). Then WIN-4, test-first, with every suite green and every mutation caught or
+explained before each commit:
+
+- **Every suite was green on the pin at the start.** `../kama` had moved one commit, KR-377's brief, then two more
+  during the session (above); the pin stayed on its history, and no row needed a bump.
+- **Measured first, with the owner's pads** (`.scratch/win4-gamepads/`, its `FINDINGS.md`): a wired Xbox 360 pad, a
+  wired Xbox Series pad and an 8BitDo Ultimate. A native C probe over GLFW 3.5.1 and SDL3, the probe page in visible
+  Edge 157 and Firefox 160, every press made with another window focused unless stated:
+  - **GLFW duplicates a replugged pad through DirectInput, its right trigger reading fully pulled,** in 9 of 20
+    replugs, both Xbox pads; SDL3, run alone beside a GLFW window as Godot 4.5 does, never on one backend;
+  - **a pad reports in the background** through XInput, GLFW and SDL; Windows.Gaming.Input gives none unfocused;
+  - **GameInput** needs Microsoft's runtime (Windows 11 ships 0.2309, API 0): with the redistributable installed (the
+    owner's go-ahead) it read all three pads in the background, played every motor of both Xbox pads (the owner felt
+    each, distinct), named each pad's maker and model, and kept each pad's id across replugs and runs. With GameInput
+    and XInput both on, SDL 3.4.18 adds a replugged pad twice; SDL's main branch has the fix, no release yet;
+  - **the browsers:** Edge exposes every pad on one press and gives no input unfocused or hidden, with dual and trigger
+    rumble; Firefox exposes each pad on its own, gives input while visible, and has no rumble;
+  - the 8BitDo came up for 2.9 s as a Switch Pro pad through SDL's own driver (gyroscope, player lights, Nintendo's
+    labels) before its firmware chose Xbox mode; Bluetooth is off on this machine (the owner: "it was leaking").
+- **Nine questions asked in full, each answered as recommended** (kama-window `1d65eac`): SDL3 natively and the Gamepad
+  API alone on the web (the owner: "as lean as possible on the web"); events and state; dead zones, drift and curves in
+  KYR-54's bindings (2a); the W3C layout with face buttons by place, a raw view and SDL's database shipped and
+  updatable; slots, a returning pad's player being kyoten's; background reads off by default; the focus release
+  extended; rumble in the row; tests through the one read function; and GameInput where its runtime is present, XInput
+  otherwise, the duplicate's stopgap until SDL releases its fix (WIN-23). WIN-22 (a pad's sensors and lights) filed.
+- **Built in five parts** (kama-window `bf20ce5` to `b2dde88`; its AGENTS.window.md item 9): the ring's pads; SDL 3.4.18
+  vendored by `tools/vendor-sdl.sh` (237 sources, 452 files, Windows only, never in a web build) with the native
+  backend and `padInfo`; rumble; SDL_GameControllerDB's Windows lines, `addPadMappings` and a raw view; and the web's
+  Gamepad API. `tests/` went from 140 cases natively, 103 under node and 189 in each browser to 249, 163 and 264. The
+  run reads no real pad but where a case asks for one, so it never depends on, or rumbles, the pads plugged in; SDL's
+  own path is tested through SDL's virtual pads, the web's through a `getGamepads` of the tests' own. Mutations: 33,
+  21, 15, 15 and 14, each caught but three explained: the stopgap (needs a physical replug), SDL's background hint
+  (inert with no SDL window), and kept mapping text SDL took nothing from.
+- **Found in kama:** KWIN-1, kama-window's first gap: writing an `extern value`'s `InlineArray` field passes `kama check`
+  and fails in C. Worked around; its repro is in kama-window's `KAMA_GAPS.md`, for the owner to relay.
+- **Found in kama at the session's end: KY-51,** a bug. kyoten's suite failed 163 of the tool's cases when run from a
+  shell carrying `NoDefaultCurrentDirectoryInExePath=1`, which this session's PowerShell did: kama's `std::process`
+  leaves Windows to search for a program, and a relative path written with `/` is searched for as a bare name, out of
+  the current directory. Reproduced alone (`.scratch/ky51-spawn/`); `tools/test.sh` now hands the tool's tests
+  `./tools/kyoten/out/kyoten.exe`, and the suite passes with the variable set and without it.
+- **Filed in kyoten:** KYR-75, offering GameInput's redistributable in a Windows build, and the engine's notices for
+  SDL, its database and GameInput's header once it links `@kama/window`. KYR-54 holds 2a and the returning pad.
+- **Not measured:** whether GameInput's device id follows a pad to another USB port, and the owner's other Switch pads;
+  both at the next session with pads.
 
 **The fourteenth session** (2026-11-11). Test-first, with every suite green and every mutation caught before each
 commit:

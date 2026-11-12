@@ -116,7 +116,10 @@ step "the kyoten tool"
 "$KAMA" check "$TOOL/kama.json" || failed=1
 "$KAMA" pkg install "$TOOL/tests/kama.json" > /dev/null
 "$KAMA" check "$TOOL/tests/kama.json" || failed=1
-tool_exe="$TOOL/out/kyoten$EXE"
+# `./`, not a bare relative path: kama's std::process leaves Windows to search for a program, and a path written with `/`
+# alone is searched for as a bare name, out of the current directory where `NoDefaultCurrentDirectoryInExePath` is set
+# (KY-51).
+tool_exe="./$TOOL/out/kyoten$EXE"
 tool_tests="$TOOL/tests/out/kyotenclitests$EXE"
 if "$KAMA" build "$TOOL/kama.json" -o "$tool_exe" > "$OUT/build-tool.log" 2>&1 &&
         "$KAMA" build "$TOOL/tests/kama.json" -o "$tool_tests" > "$OUT/build-tool-tests.log" 2>&1; then
