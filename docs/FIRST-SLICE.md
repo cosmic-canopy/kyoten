@@ -35,11 +35,25 @@ the design doc it settles before building on it.
    browser legs run in every headless browser present: Chrome for Testing 157.0.8103.50, pinned in `~/browsers` (its
    `README.md`), and Edge.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `3583a1d1`,** its HEAD at the fifteenth session's end. Since `db6147f8` it ruled
-     **KR-377, `kama run` in a browser,** all ten decisions as recommended (`4b198f1a`, 2026-11-12: `-- args` reach the
-     page through the URL's query), and filed **KR-378, a UI test asking its runner for trusted input**, which each
-     package's `tools/webtest.mjs` does today by printing a request; it bears on WIN-18 and on retiring that stopgap.
-     First check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
+   - **Read `../kama`'s log since `deb11208`,** its HEAD at the fifteenth session's end. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 238198b3 HEAD`.
+   - **KR-377 landed: `kama run --target WASM` runs the page in a browser** (`deb11208`, 2026-11-12, ruled the same day
+     as recommended, `4b198f1a`). It builds into a temp directory, serves the page on 127.0.0.1, opens it in a fresh
+     profile in any browser (`$KAMA_BROWSER`, else Chrome, Edge, Chromium, then **Firefox**), visible by default and
+     `--headless` for tests, reports over HTTP with no automation protocol, prints the program's lines and exits with
+     its status (134 an abort, 1 an uncaught JS error, 129 the page or browser gone first). Trusted input is
+     **KR-378**, filed, not built: each package's `tools/webtest.mjs` makes it today, by the DevTools protocol, on a
+     request the page prints.
+   - **So the next session opens on two questions for the owner, before WIN-18:**
+     1. **A pin bump to `deb11208` or later,** as its own commit (AGENTS.kyoten.md § Build): it is the first kama with
+        the runner, and it also retires `int32.parse(text:)` (0.9.915, KR-370, so `../kama-gpu`'s `examples/clear`
+        ports to `Parseable::<int32>.parse(text: v)`). Then re-check KY-50 (`kama run` cannot run a wasm program) on
+        it, and delete it if the repro passes.
+     2. **What WIN-18 becomes.** Planned as a WebDriver BiDi client of the packages' own, so their browser legs run in
+        Firefox 160. With `kama run` taking any browser, the cases that need no trusted input could run under
+        `kama run --target WASM --headless` in Chromium and Firefox alike, and `tools/webtest.mjs` shrink to the
+        trusted-input cases until KR-378 lands. The production answer is to be measured first: run both packages'
+        browser legs under `kama run` in Chrome for Testing, Edge and Firefox 160, and compare with the stopgap.
    - **kama is twelve versions past the pin, and the next bump carries a port:** 0.9.915 (KR-370) retires
      `int32.parse(text:)`, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`. 0.9.922 is
      one Android package of several ABIs. Nothing a row needed has landed, so the pin stays; bump only when a row needs
@@ -52,7 +66,7 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
+   1. **Firefox (WIN-18), as the question above settles it:** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
       Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
       and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
    2. Then `@kama/gpu`'s render pipeline set (GPU-4), shaped by the graphics design pass (done in the fourteenth
