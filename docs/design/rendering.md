@@ -483,3 +483,74 @@
      - **A page without WebGPU says what is missing** and which browsers work, and native builds cover those players.
      - **The Quest:** the owner's note matches what is decided. Players reach Quest natively first, and the Quest
        browser serves development ([web-and-native.md](web-and-native.md) question 8, item 7, 2026-11-07).
+
+- **2026-11-11, the owner: the graphics design pass, area 5, the feature map** (KYR-68;
+  [../research/graphics.md](../research/graphics.md) § 7 and § 8). Five questions, each answered as recommended, with one
+  condition on budgets. This closes the design pass.
+  1. **The map is `@kama/graphics`' `FEATURES.md`, one row per feature, and its `ROADMAP.md` orders it.** "5.1 sounds
+     good. I assume mentioning the name of the engine isn't an issue with legal or anything?"
+     - **A row says:** the feature; what three.js and the engines call it; its methods best first, each with the GPU
+       features it needs; its status (`planned`, `partial` or `built`); the example that first needs it; its test; and
+       its budget.
+     - **`tools/check-features.sh` holds every row complete:** a status from the set, a declared example or `asked`, a
+       unique test that `tests/` has once a method is built, a budget once a method is built and none before, and every
+       example scheduled by a live roadmap row. Each of its 13 failure cases was seen to fail on a mutated map.
+     - **Naming the other products, answered:** referring to a product by its name, to say what a feature is called
+       there, is the accepted use of a trademark (in the US, nominative fair use), on four conditions the map keeps:
+       - the words only, never a logo;
+       - never in a name of ours: a package, a type or a tool;
+       - nothing that suggests affiliation or endorsement, and a notice in the map saying so;
+       - each name spelled as its owner spells it.
+
+       What the owners publish agrees (research § 8): Unity's guidelines let its wordmarks "describe or … refer to
+       Unity products" and forbid them in another's product name, and the Godot Foundation's forbids its name for a
+       commercial engine or a company. Copyright is the stricter line: no code or text is copied from Unreal or
+       Unity, whose source is under their own licenses, and code adapted from three.js, Godot or Bevy (MIT, or MIT or
+       Apache) keeps its notice. This is the usual practice, not legal advice.
+  2. **The order, slice by slice, each driven by an example.** "5.2 sounds good so far and may change."
+     - A lit cube, a level, a product viewer, a shooter's level, stereo on Quest 3 natively, an editor viewport and a
+       data visualization, then the state of the art as programs ask: global illumination, reflections, virtual shadow
+       maps, virtualized geometry, sky and atmosphere, large outdoor worlds, characters, a reference path tracer,
+       vendor upscalers and HDR displays (`@kama/graphics`' GFX-1 to GFX-17).
+     - **The library's examples are its own,** named by the kind of program they stand for, since it names no engine
+       or game. Each mirrors what one of kyoten's needs: the hello cube (KYR-14), level A2 (KYR-11), the fps example's
+       first version (KYR-65), Quest (KYR-33) and the editor (KYR-26).
+     - **Quest may move earlier.** Its graphics needs are small (multiview, foveation, space warp), and what gates it is
+       kama's Android app (KY-2), the XR package (KYR-31) and `@kama/gpu`'s Android surface (GPU-11).
+  3. **Each feature's budget is two ratchets, set by measurement, and a budget never limits what is built.** "5.3
+     sounds good... I don't want to limit what we build though so we should be careful about this."
+     - **The two numbers:** the web code a feature adds (KB, brotli) and its GPU time on each reference machine at
+       that machine's default preset, from timestamp queries.
+     - **The owner's condition, as the rule:**
+       - a feature or method enters with whatever it first measures; a budget is a measurement, never a gate on
+         building;
+       - a ratchet fails only when something already built gets costlier, and raising one is a change with its reason,
+         never a refusal;
+       - a method's cost on a machine decides whether a preset turns it on there, never whether it exists: a path
+         tracer exists on the Steam Deck, off by default;
+       - a program pays only for what it uses, since an unused feature drops out at link time, so a heavy feature costs
+         other programs nothing;
+       - a GPU time is compared within a tolerance measured from its own noise, so noise never fails a build.
+     - The hello cube's whole-program gauge of 150 KB stands ([web-and-native.md](web-and-native.md) question 4).
+  4. **Goldens from a software GPU in CI, checked perceptually on the reference machines.** "5.4 sounds good so far."
+     - CI renders goldens on a software GPU and compares them tightly: WARP on Windows (probed, research § 7),
+       lavapipe on Linux, and SwiftShader on the web once it is verified in the pinned browsers.
+     - On the reference machines the same scenes are compared with a perceptual metric (NVIDIA's FLIP), at a tolerance
+       set by measurement.
+     - A method a software GPU cannot run, such as hardware ray tracing, has goldens per GPU vendor.
+     - A golden changes only through an explicit update command, with its diff reviewed.
+  5. **The library's scope.** "5.5 yes"
+     - **In `@kama/graphics`:** every rendering technique, sky, water, terrain and vegetation rendering among them; the
+       scene graph; loaders for render formats (glTF, KTX2, HDR, EXR); clip playback with skinning and morph targets;
+       text; and helpers and controls, as three.js offers them.
+     - **Elsewhere:** animation state machines and blend graphs (kyoten's animation module); UI (`@kama/ui`); physics
+       and audio; and build-time baking (texture compression, LODs, meshlets, lightmaps), which is the content
+       pipeline's (KYR-29). The library reads what is baked, and offers runtime versions where three.js does, such as
+       mipmaps and tangents. Other model formats become glTF in the content pipeline.
+  - **What the pass wrote** (kama-graphics, the same day), each document to one purpose as decided on 2026-11-10
+    ([architecture.md](architecture.md) § Decided, the eighth session, item 2):
+    - `ROADMAP.md` and `ROADMAP_DETAIL.md`, GFX-1 to GFX-18, held by `tools/check-roadmap.sh`, ported from `@kama/gpu`'s;
+    - `FEATURES.md`, 162 features, all `planned`, 20 of them `asked` (no planned example needs them yet), held by
+      `tools/check-features.sh`;
+    - `SPEC.md`, which says only that nothing is built: a spec is what a package is, never what it will be, so it grows
+      from GFX-1. Until then the decided design is `AGENTS.graphics.md`'s brief and this § Decided.

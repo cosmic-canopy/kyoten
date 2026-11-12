@@ -47,16 +47,17 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **The graphics design pass** (KYR-68; [design/rendering.md](design/rendering.md) § Decided, 2026-11-10),
-      **under way since the fourteenth session:** `@kama/graphics`' `SPEC.md`, `ROADMAP.md` (rows `GFX-<n>`) and
-      feature map, before any of its code, written only from the owner's answers. Its research came first (below), then
-      its questions in the chat, one area at a time: the object model, the names, the renderer's core, beyond WebGPU,
-      and the feature map. GPU-4, `@kama/gpu`'s render pipeline set, is shaped by it.
-   2. **Gamepads (WIN-4),** which asks whether a program reads pads while unfocused (the owner, 2026-11-10).
-   3. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
+   1. **Gamepads (WIN-4),** which asks whether a program reads pads while unfocused (the owner, 2026-11-10).
+   2. **Firefox (WIN-18):** a WebDriver BiDi client beside the DevTools one, so both packages' browser legs run in
       Firefox 160, pinned in `~/browsers` on 2026-11-11 (the owner: "we should definitely get chromium on here as well
       and probably firefox"). Its WebGPU is built on wgpu, so it differs from Dawn usefully.
-   4. Then `@kama/gpu`'s render pipeline set (GPU-4) and `@kama/graphics`' first slice, on both legs.
+   3. Then `@kama/gpu`'s render pipeline set (GPU-4), shaped by the graphics design pass (done in the fourteenth
+      session, below), and `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs. GFX-1's questions are in
+      its `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs
+      the web leg's goldens, and the perceptual tolerance.
+   - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+     for the owner to post under their account; one was drafted in the fourteenth session's chat. Nothing has been
+     posted to gfx-rs.
 3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
@@ -79,9 +80,38 @@ commit:
   layout and puts them back, then refuses in words naming the fix when both axes followed, before anything of the
   canvas is touched. 9 new cases in each browser (189), and 9 of 9 mutations caught. `@kama/gpu`'s suite stayed green on
   it, its `#flat` canvas (not displayed) still opening (kama-gpu `8c1c5e1`, a docs touch).
-- **The graphics design pass (KYR-68) began:** research into Three.js's features, the engines' state of the art, what
-  lies beyond WebGPU (with wgpu-native's and Dawn's headers read locally), and how renderers without a garbage
-  collector hold their objects.
+- **The graphics design pass (KYR-68) was done.** Its research came first ([research/graphics.md](research/graphics.md)):
+  Three.js's features, the engines' state of the art, what lies beyond WebGPU (wgpu-native's and Dawn's headers read
+  locally), and how renderers without a garbage collector hold their objects. Then its five areas were asked in the
+  chat in full, and each was answered by the owner as recommended ([design/rendering.md](design/rendering.md)
+  § Decided, 2026-11-11):
+  1. the object model (`1840bb8`): a flat core of packed instances and a scene graph on it, assets as shared handles,
+     nodes through `Shared` with a `Weak` parent;
+  2. the names (`c6ed162`): Three.js's type names, `make` with Three.js's defaults, `x()`/`xMut()` pairs, units in
+     the labels;
+  3. the renderer's core (`5fece61`, `7e59ee5`): clustered forward with a depth prepass and 4× MSAA, typed material
+     presets over node materials, pipelines compiled off the frame, a per-object buffer with automatic instancing,
+     linear HDR with AgX;
+  4. beyond WebGPU (`cdb531d`): techniques as ladders of methods, hardware ray tracing by helping land wgpu-native
+     PR #630, virtualized geometry natively first, the library's own upscaler, WebGPU as the web's only backend;
+  5. the feature map: `FEATURES.md`, the order by example, budgets that never limit what is built (the owner's
+     condition), goldens on a software GPU, and the library's scope. The owner asked whether naming the engines is a
+     legal issue; answered in the record (research § 8).
+- **The probes behind it** (`.scratch/kyr68-*/`, git-ignored):
+  - a lit pipeline takes about 24 ms on one thread, and wgpu-native compiled 48 in parallel 4.7× faster on 8 threads;
+    its asynchronous call is `unimplemented!()`;
+  - **PR #630 was built and run, with the owner's OK** (`4602c91`): over Vulkan on the Radeon 880M, ray queries
+    matched the CPU on every ray, about 1 G coherent rays a second against half a million triangles, and a task and
+    mesh pipeline drew its target pixel for pixel;
+  - WARP, Windows' software GPU, is reachable through wgpu-native v29 for golden images (`b4b30c1`).
+- **Written from it** (kama-graphics `1bb903e`, then `3dbf89e` for LF line endings): `ROADMAP.md` (GFX-1 to GFX-18)
+  with its detail, `FEATURES.md` (162 features, all planned), `SPEC.md` (empty until GFX-1 lands), and their guards
+  `tools/check-roadmap.sh` and `tools/check-features.sh`, the second seen to fail on each of 13 mutations.
+  `AGENTS.graphics.md` carries each area as it was decided (`be2cb67` to `fe2b0cd`). `@kama/gpu`'s GPU-4 got the
+  pipeline measurement (`8693712`), and GPU-10 the answer for native features (`82bf863`).
+- **Two rows were added at the owner's request:** porting tools from other engines, three.js and Unity first (KYR-73,
+  [design/porting.md](design/porting.md)), and benchmarks against other engines (KYR-74,
+  [design/benchmarks.md](design/benchmarks.md)). Each is a draft of questions, decided when its row comes up.
 - **kyoten's suite did not change:** nothing in kyoten uses the packages yet.
 
 **The thirteenth session** (2026-11-11). Test-first, with every suite green and every mutation caught or explained before

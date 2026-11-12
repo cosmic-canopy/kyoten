@@ -1,4 +1,4 @@
-# Graphics: Three.js, the engines, beyond WebGPU, object models without a garbage collector, and the renderer's core
+# Graphics: Three.js, the engines, beyond WebGPU, object models without a garbage collector, the renderer's core, and the feature map
 
 KYR-68, the graphics design pass, read 2026-11-11 for [rendering.md](../design/rendering.md) § Decided (2026-11-10:
 the design pass's questions) and `../kama-graphics`. Four research agents read the sources below. Their key claims were
@@ -358,3 +358,29 @@ Every measured number is a ratchet on them (KYR-13).
   - macOS has no software Metal.
 - **Whether WARP, lavapipe and SwiftShader run hardware-only methods** (ray queries, mesh shaders) was not checked.
   Such a method's goldens come from hardware.
+
+## 8. Naming other products: what their owners publish
+
+Searched 2026-11-11, when the owner asked whether the feature map may name the engines. These were read through a web
+search's summaries of the pages, not the pages themselves, so each is *(unchecked)*. Re-read the page before relying on
+a detail.
+
+- **Unity** ([Guidelines for Using Unity Trademarks](https://unity.com/legal/branding-trademarks), version 4.2):
+  - its wordmarks may be used "to describe or to refer to Unity products or services themselves";
+  - they may not be used for another's "business, products, or services", nor as a social media name;
+  - nothing may suggest "an affiliation with, or endorsement/sponsorship/approval by" Unity;
+  - published material carries a notice that it is "not sponsored by or affiliated with Unity Technologies";
+  - its logos are stricter: only to promote Unity's own products.
+- **Godot** ([the Godot Foundation's trademark policy](https://godot.foundation/policies-and-procedures/trademark-policy)):
+  - a royalty-free license for contributors and users;
+  - the name may not be used for a commercial game engine without a custom license, nor in a company's or trading
+    name;
+  - its logos are CC BY 4.0, separately from the word mark.
+- **Unreal Engine:** Epic's current page is its branding and trademark usage page, which the search did not open.
+  - Epic's older guides ask that its marks keep their spelling, are never made possessive or plural, and are never
+    altered;
+  - they ask for a license to use the marks in a product or its marketing;
+  - they suggest the notice "Unreal® and Unreal Engine® are trademarks or registered trademarks of Epic Games, Inc."
+- **Not found:** whether any engine's terms forbid publishing benchmarks of it (a "DeWitt clause"). A search of Unity's
+  terms surfaced none, which is not evidence there is none. KYR-74 reads each engine's terms before a number about it is
+  published.

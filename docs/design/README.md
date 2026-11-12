@@ -16,7 +16,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [networking.md](networking.md) | netcode in the frame, and the hosted game backend | draft, one decision recorded (a self-hostable server; the platform is the easy option) |
 | [project-database.md](project-database.md) | the AI-coordinated project database and wiki | draft for the spike (build: KYR-24), four decisions recorded |
 | [human-tools.md](human-tools.md) | human visibility and tuning: the tool surface | deferred to KYR-26, KYR-27 |
-| [rendering.md](rendering.md) | WebGPU first | draft, one decision recorded (2D as layers) |
+| [rendering.md](rendering.md) | WebGPU first, and `@kama/graphics` | draft; the graphics design pass decided (KYR-68, its five areas) |
 | [audio.md](audio.md) | Web Audio first, and the DAW tool | deferred to KYR-15, KYR-35 |
 | [timeline.md](timeline.md) | timeline and cinematic tools | deferred to KYR-36 |
 | [content-pipeline.md](content-pipeline.md) | consuming cosmic-forge | draft |
@@ -26,6 +26,8 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [marketplace.md](marketplace.md) | the developer platform: build, deploy and sell | a separate product; the engine's side is KYR-44 |
 | [website.md](website.md) | kyotenengine.com: the site, its subdomains, provisioning and deployment | deferred to KYR-39 |
 | [examples.md](examples.md) | the example games (FPS, VR on Meta Quest), each its own repository, and the first vertical slice | draft, four decisions recorded |
+| [porting.md](porting.md) | porting tools: other engines' projects onto kyoten, three.js and Unity first | deferred to KYR-73 |
+| [benchmarks.md](benchmarks.md) | benchmarks against other engines | deferred to KYR-74 |
 
 **A doc's status moves from `draft` to `decided`** when every question in it is answered or deferred with a reason,
 and to `superseded` if a later design replaces it (then it says by which).
