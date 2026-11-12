@@ -44,12 +44,21 @@ the design doc it settles before building on it.
      its status (134 an abort, 1 an uncaught JS error, 129 the page or browser gone first). Trusted input is
      **KR-378**, filed, not built: each package's `tools/webtest.mjs` makes it today, by the DevTools protocol, on a
      request the page prints.
-   - **So the next session opens on two questions for the owner, before WIN-18:**
-     1. **A pin bump to `deb11208` or later,** as its own commit (AGENTS.kyoten.md § Build): it is the first kama with
-        the runner, and it also retires `int32.parse(text:)` (0.9.915, KR-370, so `../kama-gpu`'s `examples/clear`
-        ports to `Parseable::<int32>.parse(text: v)`). Then re-check KY-50 (`kama run` cannot run a wasm program) on
-        it, and delete it if the repro passes.
-     2. **What WIN-18 becomes.** Planned as a WebDriver BiDi client of the packages' own, so their browser legs run in
+   - **The next session opens with, in order:**
+     1. **Five minutes with pads, at the start, if the owner is there** (optional: nothing waits on it; the owner,
+        2026-11-12: "I can do that at the start of the next session"): move the Xbox Series pad to another USB port and
+        replug it (does GameInput's device id follow the pad?), and plug one Switch pad in by USB and press a few
+        buttons (its layout and labels through SDL). The probe is `.scratch/win4-gamepads/native/probe_sdl_gi.exe` with
+        `--hint SDL_JOYSTICK_GAMEINPUT=1 --hint SDL_XINPUT_ENABLED=0`. Then the session runs without the owner.
+     2. **The pin bump, decided** (the owner, 2026-11-12: "We will want to bump and kama is fixing the new gaps in this
+        session as well"): to kama's HEAD once its fixes for **KWIN-1** and **KY-51** have landed, as a commit of its
+        own (AGENTS.kyoten.md § Build). It brings the browser runner (`deb11208`) and retires `int32.parse(text:)`
+        (0.9.915, KR-370, so `../kama-gpu`'s `examples/clear` ports to `Parseable::<int32>.parse(text: v)`). On it,
+        rerun the repros of KY-50, KY-51 (`.scratch/ky51-spawn/`) and KWIN-1 (`.scratch/win4-gamepads/gap-extern-array/`)
+        and delete each that passes; then retire the workarounds test-first: kama-window's element-by-element copy in
+        `Window.pad` and `winseam_pad_post` (KWIN-1), and the `./` in kyoten's `tools/test.sh` (KY-51), each kept only
+        if its repro still fails.
+     3. **What WIN-18 becomes.** Planned as a WebDriver BiDi client of the packages' own, so their browser legs run in
         Firefox 160. With `kama run` taking any browser, the cases that need no trusted input could run under
         `kama run --target WASM --headless` in Chromium and Firefox alike, and `tools/webtest.mjs` shrink to the
         trusted-input cases until KR-378 lands. The production answer is to be measured first: run both packages'
