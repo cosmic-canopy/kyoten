@@ -56,5 +56,26 @@
 # builds' lib/ and prelude/ are identical. The e76900bf binary is kept in .scratch/kama-pin-0.9.911-e76900bf. Green
 # on the rebuild with nothing else changed: tools/test.sh, @kama/window's (38 native, 22 under node, after its new
 # case) and @kama/gpu's (45 cases, 60 frames, the xfail, the wasm build, COVERAGE.md).
-KAMA_VERSION=0.9.911
-KAMA_BUILD=g238198b3
+#
+# 2026-11-12: 0.9.911 -> 0.9.928 (94b8025b), kama's dev HEAD with a clean tree; 238198b3 is still on its history, and
+# the 0.9.911 binary is kept in .scratch/kama-pin-0.9.911. Decided by the owner on 2026-11-12, once kama had fixed the
+# two gaps kyoten's fifteenth session found. What moved, for kyoten:
+#   0.9.913 and 0.9.915 KR-370, BREAKING: a primitive has no constructors of its own, so `int32.parse(text:)` is refused,
+#           and a contract's member is named with its contract: `Parseable::<int32>.parse(text: t)`, SPEC's one
+#           spelling. The bump carries the port, the one change "nothing else changed" could not hold off: in
+#           @kama/gpu's examples/clear, `int32.parse(text: v)` became `Parseable::<int32>.parse(text: v)`.
+#   KR-377 (deb11208, then 732ead84): `kama run --target WASM` runs the page in a browser (KY-50).
+#   KR-380 (fdd09083): a program named by a relative path with `/` starts on Windows when the current directory is not
+#           searched (KY-51; its repro, .scratch/ky51-spawn, passes on this pin).
+#   KR-379 (94b8025b): an extern value's InlineArray field is a kama array in every use, so writing one no longer fails
+#           in C (@kama/window's KWIN-1; its repro, extended to an element write, a whole write and a whole read, passes).
+#   Also 0.9.912 (a cross-isolate wake on Linux), 0.9.914 (adapters onto declared types), 0.9.916 (a park's fast path),
+#   0.9.917-0.9.918 (`Instant` counts only time awake), 0.9.919-0.9.922 (Android: debuggable apps, resources and icon,
+#   App Bundles, several ABIs in one package) and 0.9.923 (the per-user directories and `TempDir`), none of which kyoten
+#   uses. Green on it with the port alone, the same counts as on 0.9.911 the same morning: tools/test.sh (engine 164
+#   cases native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native
+#   and wasm; vr checked), @kama/window's (249 native debug and release, 163 under node, 264 in each of Chrome for
+#   Testing 157 and Edge) and @kama/gpu's (96 native debug and release, the clear example's 60 frames, the xfail, 74 in
+#   each browser and 60 frames on its canvas).
+KAMA_VERSION=0.9.928
+KAMA_BUILD=g94b8025b
