@@ -37,3 +37,14 @@
 - **2026-11-01, the owner: deferred past the first slice** when the spike was narrowed
   ([../SPIKE.md](../SPIKE.md#narrowed-2026-11-01)). Questions 1–5 and 7 are taken up with KYR-15, and question 6, the
   DAW, with KYR-35.
+- **2026-11-13, the owner: question 2 is answered by `@kama/audio`** (its `AGENTS.audio.md` § Decided, 1): the same
+  kama DSP runs on both legs. On the web it is the processor of one `AudioWorkletNode`, and Web Audio supplies the
+  audio thread, the device, the clock, the microphone, decoding where it is reliable, and MIDI. Natively it runs in the
+  device's callback. A built-in node is used only where a measurement shows it is the better tool. § What the vision
+  asks still holds ("rather than a heavy replacement shipped to it"): the wasm carries only the DSP. Measured in the package's
+  `RESEARCH.md`: the built-in nodes sound different in each browser, and one worklet is 2.7 to 4 times cheaper for many
+  voices.
+- **2026-11-13, the owner: question 1 is answered by `@kama/audio`** (§ Decided, 2): both, as two tiers of one
+  package. The lower tier is Web Audio's graph of nodes and `AudioParam`s, and the upper tier is the engine-level API:
+  sounds, voices, buses, snapshots, and emitters with a listener, built only on the graph. What kyoten's components bind to
+  is KYR-15's. The split is "similar to what we are doing with kama graphics" (the owner).
