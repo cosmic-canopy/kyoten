@@ -69,3 +69,12 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   package. The lower tier is Web Audio's graph of nodes and `AudioParam`s, and the upper tier is the engine-level API:
   sounds, voices, buses, snapshots, and emitters with a listener, built only on the graph. What kyoten's components bind to
   is KYR-15's. The split is "similar to what we are doing with kama graphics" (the owner).
+- **2026-11-13, the owner: `@kama/audio`'s area 2 binds kyoten in three ways** (its `AGENTS.audio.md` § Decided, 3 to
+  11). The rest of area 2 (names, ownership, the rings) is the package's own.
+  - **The upper tier runs in the context's `update()`, on the thread that owns the context, once a frame.** The
+    library starts no thread. So kyoten's audio module calls `update()` from a phase, which question 3 decides.
+  - **Times are Web Audio's:** float64 seconds on the context's clock, each stamped once into an int64 sample frame.
+    "A little ahead" (question 3) is the stamp kyoten chooses.
+  - **Audio's memory is declared:** every capacity is a field of the context's options, and everything the library
+    allocates comes from an `Allocator` the program hands it. So kyoten sizes audio's block from a Budget record
+    ([components.md](components.md) question 6), as it sizes a zone's. Which scope that budget has is KYR-15's.
