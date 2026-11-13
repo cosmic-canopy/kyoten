@@ -97,5 +97,20 @@
 #   checked), @kama/window's (249 native debug and release, 163 under node, 245 under `kama run` in Edge and Firefox,
 #   264 through the driver in Chrome for Testing) and @kama/gpu's (109 native debug and release, the clear example's
 #   60 frames, the xfail, 88 in Edge and in Chrome for Testing, 18 in Firefox, 60 frames on each canvas).
-KAMA_VERSION=0.9.938
-KAMA_BUILD=g94365be5
+#
+# 2026-11-13: 0.9.938 -> 0.9.940 (1873bcda), kama's dev HEAD with a clean tree; 94365be5 is still on its history, and
+# the 0.9.938 binary is kept in .scratch/kama-pin-0.9.938. Asked for by the owner on 2026-11-13 (the nineteenth
+# session), once kama had answered KY-54. What moved, for kyoten:
+#   fa9e13c3: `kama run --target WASM --headless` sets Firefox's `layers.gpu-process.allow-headless`, so a headless
+#           page in Firefox gets WebGPU (KY-54). @kama/gpu's Firefox leg, still passing `--adapter-optional`, found an
+#           adapter and ran all 185 of its cases, where it had run only those that need none.
+#   58900614: a `kama run` through Firefox on Windows removes its run's directory itself, so it no longer says
+#           "was not removed (EPERM)" after every run.
+#   Also 3fe52f50 and 1873bcda (KR-382), CI only. Green on it with nothing else changed: tools/test.sh (engine 164
+#   cases native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native
+#   and wasm; vr checked), @kama/window's (249 native debug and release, 163 under node, 253 under `kama run` in Edge
+#   and Firefox, 264 through the driver in Chrome for Testing) and @kama/gpu's (208 native debug and release, the clear
+#   example's 60 frames, the xfail, 185 in Edge, in Firefox and in Chrome for Testing, 60 frames on each Chromium
+#   canvas).
+KAMA_VERSION=0.9.940
+KAMA_BUILD=g1873bcda

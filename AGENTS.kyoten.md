@@ -119,8 +119,8 @@ can be reproduced. Its `README.md` says where each came from and how it was veri
 browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as the owner decided for WIN-18 on
 2026-11-12:
 - **under `kama run --target WASM --headless`** (kama's KR-377): Edge and Chrome as installed, and the pinned
-  Firefox 160. WebGPU needs no flag in headless Chromium. Headless Firefox gives WebGPU no adapter here, so
-  `@kama/gpu`'s run in it says so and skips what needs one (KY-54). `@kama/window`'s run passes `--scale 1.5`, as
+  Firefox 160. WebGPU needs no flag in headless Chromium, and since 0.9.940 `kama run` sets the pref that gives
+  headless Firefox its adapter (KY-54, fixed). `@kama/window`'s run passes `--scale 1.5`, as
   its scale cases need. The cases that need trusted input (kama's KR-378) are skipped there, each by name;
 - **through each package's `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing:
   every case, with trusted input and a device scale of 1.5. An unzipped Chrome for Testing never loads a page under
