@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-12, the seventeenth session)
+## Where it stands (2026-11-12, the eighteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -16,7 +16,7 @@ the design doc it settles before building on it.
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
 **Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
-`@kama/gpu` `COVERAGE.md`, 59 of webgpu.h's 206 functions called):
+`@kama/gpu` `COVERAGE.md`, 72 of webgpu.h's 206 functions called):
 - GPU-1, GPU-2 and GPU-13, WIN-1, WIN-2 and WIN-16 are built (the ninth to eleventh sessions, below);
 - WIN-3 is built, the web leg's first row: a window on the page's canvas, and Pointer Events on every backend (the
   twelfth session, below);
@@ -31,47 +31,47 @@ the design doc it settles before building on it.
   Edge and Firefox 160, and through each package's driver in the pinned Chrome for Testing, which keeps every case;
 - **GPU-4 is decided and under way, and GPU-14 is built** (the seventeenth session, below): its questions answered,
   shader modules and their compilation messages built as its first part, and Firefox's three differences from Dawn
-  fixed once headless Firefox was given WebGPU. No question is open in either package.
+  fixed once headless Firefox was given WebGPU;
+- **GPU-4's second part is built** (the eighteenth session, below), with four more decisions: typed flag sets, buffers
+  and samplers by description, layouts, bind groups and `writeBuffer`. **Nothing a program passes to `@kama/gpu` ends
+  it any more** (decision 9): every misuse is a validation error on both legs. `@kama/window`'s scale cases run under
+  `kama run`. No question is open in either package.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.928+g94b8025b`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.938+g94365be5`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `94365be5`,** its HEAD at the seventeenth session's end. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 94b8025b HEAD` (it was). **kama answered KY-52
-     and KY-53 during the seventeenth session**, after the pin: `kama run --target WASM --scale 1.5 --window 1280x1024`
-     (`43f45f5a`), a browser that never asks for the page ending the run by name (`090da76f`, then 60 s in `94365be5`),
-     and the run's directory removed once every browser process has gone (`a99a4729`). **So consider a pin bump at the
-     next session's start,** as its own commit: run each gap's repro on the new binary, remove KY-52 and KY-53 if they
-     pass, then see what retires in the packages (`@kama/window`'s scale cases under `kama run`, the Chrome for Testing
-     driver if its page now loads, WIN-24).
+   - **Read `../kama`'s log since `94365be5`,** its HEAD and kyoten's pin at the eighteenth session's end (kama did
+     not move during it). First check that the pin is still on kama's history:
+     `git -C ../kama merge-base --is-ancestor 94365be5 HEAD`.
    - **For the owner to relay to kama:** KY-54 (`kama run --headless` gives Firefox no WebGPU, which one pref
      restores), filed in the seventeenth session. Once it lands, `@kama/gpu`'s Firefox leg drops `--adapter-optional`
      and runs every case and the clear (its AGENTS.gpu.md item 11).
-   - **Still open with kama:** KY-45, KY-40, KY-54, kama's KR-378, and KY-52 and KY-53 until a bump verifies them.
+   - **Still open with kama:** KY-45, KY-40, KY-54 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/gpu`'s GPU-4, the render pipeline set, parts 2 to 5,** as decided (its AGENTS.gpu.md item 12), each
+   1. **`@kama/gpu`'s GPU-4, the render pipeline set, parts 3 to 5,** as decided (its AGENTS.gpu.md item 12), each
       test-first with its mutations and a commit of its own:
-      2. bind group layouts, pipeline layouts, bind groups, samplers and `queue.writeBuffer`;
       3. render pipelines both ways, with the native compile isolates (`DeviceOptions.compileWorkers`), a failed
          pipeline's error carrying its shaders' messages (decision 3, item 1), and `DeviceOptions.printErrors`
-         (decision 3, item 2);
-      4. the render pass and textures by description;
+         (decision 3, item 2). `ColorWriteMask` comes as a typed flag set (decision 6). Rerun part 1's one uncaught
+         mutation, a module's copy without its `AddRef`, once a pipeline is made from a copy. A pipeline's descriptor
+         is held to decision 9: whatever wgpu-native or a browser would end the program on is refused first. Probe
+         them as part 2's were (`.scratch/gpu4-part2/`), a NaN in a depth bias or blend constant among them;
+      4. the render pass and textures by description. Its clear colour is held to decision 9: today's
+         `beginRenderPass(clear:)` ends a web program on a NaN channel (measured), and the pass by description refuses
+         it instead, test-first. Draw through part 2's bind groups there, which proves their mappings on the GPU;
       5. `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
-
-      Part 2's details follow decision 1. One is open within it: how a description that has a label but only plain
-      parts (a sampler's) is spelled, since a `type value` cannot hold a string. Decide it by decision 1's rule and say
-      so in the summary.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
       leg's goldens, and the perceptual tolerance.
-   3. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input, a device scale and a page in the
-      pinned Chrome for Testing.
+   3. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
+      Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
+      --scale 1.5` in the eighteenth session.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. And, optionally, a report to Dawn of
      emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules), which the
@@ -82,6 +82,59 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The eighteenth session** (2026-11-12). Test-first, with every suite green and every mutation caught or explained
+before each commit:
+
+- **Every suite was green on 0.9.928 at the start,** at the seventeenth session's counts. kama had not moved since
+  `94365be5`.
+- **The pin bumped to 0.9.938** (`3f27d2e`), as the owner decided, with every suite green and nothing else changed.
+  KY-52 and KY-53 passed their repros and were removed (`4f07576`). KY-52's fix is `kama run --scale`, giving 1.5 in
+  Edge and Firefox. Under KY-53's fix, Chrome for Testing is named after 62 s, quoting its own "Network service
+  crashed".
+- **`@kama/window`'s scale cases run under `kama run --scale 1.5`** (kama-window `c8387b1`), as WIN-18's decision 3
+  said: 253 cases in Edge and in Firefox, up from 245, and 264 through the driver. The run without the driver now
+  reaches the one-axis hold, held to 30 frames, and fails itself if it ever stops short. 7 of 8 mutations were caught;
+  the eighth (the scale always 1.5) is equivalent, since every run is at 1.5. One mutation showed the hold case passed
+  after 12 frames, so it was sharpened. WIN-24 is narrowed to trusted input and Chrome for Testing.
+- **GPU-4 part 2's probe** (`.scratch/gpu4-part2/FINDINGS.md`) ran each misuse natively and in Edge. These end the
+  program on one leg:
+  - a `writeBuffer` of a byte count not a multiple of 4 (the web throws);
+  - any 64-bit size or offset past 2^53 - 1 (the web throws; natively a `minBindingSize` of `UINT64_MAX` aborts);
+  - an empty buffer binding (natively);
+  - a non-finite LOD clamp or clear colour (the web throws, and natively a NaN is taken silently).
+
+  It also found that natively a write is not seen by a map until the next submit.
+- **Five questions, asked in full in the chat, each answered as recommended:**
+  - 1, the pin bump;
+  - 2, typed flag sets (`BufferUsage`, `TextureUsage`, `ShaderStage`, and `ColorWriteMask` in part 3), since
+    `TextureUsage::CopyDst`, `BufferUsage::MapWrite` and `ShaderStage::Fragment` were the same `uint64`;
+  - 3, buffers by description, with a label;
+  - 4, the sampler's description, by decision 1's rule;
+  - 5, after the probe, decision 9: **nothing a program passes ends it.** Every misuse is a validation error on both
+    legs, reported where WebGPU reports one, and the handle comes back invalid. The owner asked what that meant before
+    answering, "yes to A".
+
+  These are kama-gpu AGENTS.gpu.md item 12's decisions 6 to 9 (`0952720`, `89f11d2`).
+- **GPU-4 part 2 built in five steps** (kama-gpu `d5c474b`, `623ba00`, `c6002a5`, `f41d5d7` and `766fd29`):
+  - the flag sets, with an xfail held to its four refusals;
+  - buffers by description, a size past 2^53 - 1 clamped to 2^53 - 256;
+  - samplers;
+  - layouts, pipeline layouts and bind groups;
+  - `queue.writeBuffer`, natively flushed before a map.
+
+  Decision 9's plumbing is in the seam:
+  - the refusal rides a carrier call on both legs: a 4-byte buffer with no usage, labelled `kama-gpu-refusal:<n>`,
+    whose words `report_of` swaps for the package's, so it lands in the same scope and order as a real error;
+  - a quiet section drops a substitute call's error, the substitute making the invalid handle a refusal hands back.
+
+  `tests/` went from 109 cases natively and 88 in each browser to 141 and 118, with 21 in Firefox, mostly from the new
+  `tests/src/bindings.kama`, a step a tick on both legs. Mutations: 12, 6, 12, 17 and 11, each caught, two of them
+  only once a case was sharpened: a `has` of two flags, and a map after the queue's last copy is dropped.
+- **For part 3:** today's `beginRenderPass(clear:)` ends a web program on a NaN colour (measured); part 4's pass by
+  description refuses it.
+- **A process from the seventeenth session was left running** (its compile-isolate sketch, hung by design), and could
+  not be stopped from here: the classifier refused `Stop-Process`. The owner was told.
 
 **The seventeenth session** (2026-11-12). Test-first, with every suite green and every mutation caught or explained
 before each commit:
