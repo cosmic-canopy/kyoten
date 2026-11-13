@@ -77,5 +77,25 @@
 #   and wasm; vr checked), @kama/window's (249 native debug and release, 163 under node, 264 in each of Chrome for
 #   Testing 157 and Edge) and @kama/gpu's (96 native debug and release, the clear example's 60 frames, the xfail, 74 in
 #   each browser and 60 frames on its canvas).
-KAMA_VERSION=0.9.928
-KAMA_BUILD=g94b8025b
+#
+# 2026-11-12: 0.9.928 -> 0.9.938 (94365be5), kama's dev HEAD with a clean tree; 94b8025b is still on its history, and
+# the 0.9.928 binary is kept in .scratch/kama-pin-0.9.928. Decided by the owner on 2026-11-12 (the eighteenth session),
+# once kama had answered the two gaps the sixteenth session filed. What moved, for kyoten:
+#   43f45f5a: `kama run --target WASM --scale <n> --window <w>x<h>`, a browser run's device scale and window size
+#           (KY-52; its repro, .scratch/ky52-scale, prints devicePixelRatio 1.5 in Edge 157 and Firefox 160 with
+#           `--scale 1.5`, and 1 without).
+#   090da76f, 94365be5: a browser that never asks for the page ends the run within 60 s, naming the browser and quoting
+#           what it said (KY-53; the unzipped Chrome for Testing 157 is reported after 62 s with its "Network service
+#           crashed", exit 2, where it waited silently).
+#   0b7a2bb0, 8b4bb117, a99a4729: a browser that ends first says why, and its temporary files and the run's directory
+#           go once every process it started has gone.
+#   Also 52e718ee (a Linux build fix), 867e3707 (a macOS run's .dSYM), 6d17820c (KR-376, the debugger guard), 63aa78eb
+#   (the fixture watchdog), 5d48a965 (Apple's entropy source), f9dc4f77 (KR-381, a kama library linked into a C host)
+#   and addd14cd (KR-281's probes, a UIKit app on the iPad), none of which kyoten uses yet. Green on it with nothing
+#   else changed, the same counts as on 0.9.928 the same evening: tools/test.sh (engine 164 cases native debug,
+#   release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr
+#   checked), @kama/window's (249 native debug and release, 163 under node, 245 under `kama run` in Edge and Firefox,
+#   264 through the driver in Chrome for Testing) and @kama/gpu's (109 native debug and release, the clear example's
+#   60 frames, the xfail, 88 in Edge and in Chrome for Testing, 18 in Firefox, 60 frames on each canvas).
+KAMA_VERSION=0.9.938
+KAMA_BUILD=g94365be5
