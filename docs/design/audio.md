@@ -78,3 +78,19 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **Audio's memory is declared:** every capacity is a field of the context's options, and everything the library
     allocates comes from an `Allocator` the program hands it. So kyoten sizes audio's block from a Budget record
     ([components.md](components.md) question 6), as it sizes a zone's. Which scope that budget has is KYR-15's.
+- **2026-11-13, the owner: question 4 is answered by `@kama/audio`'s area 3, which binds kyoten in four ways** (its
+  `AGENTS.audio.md` § Decided, 12 to 19). The rest of area 3 is the package's own.
+  - **Natively, the backend is miniaudio's device layer inside `@kama/audio`** (decision 17), with small seams of the
+    package's own for what miniaudio lacks. So kyoten's audio module vendors and links nothing for sound. A console's
+    private package implements miniaudio's custom backend. The owner foresees kama-native backends replacing it later,
+    inside the package.
+  - **The web's two routes fit [web-and-native.md](web-and-native.md) § Decided, item 5** (decision 12). A threaded
+    game's build is the shared route: its `main` in a worker, the `AudioContext` on the page's thread, and the ring.
+    Its single-threaded build is the other route, and gains a second artifact, the same program built for the
+    AudioWorklet. The loader that picks by `crossOriginIsolated` is the one item 5 already decided. Until kama can
+    build that artifact (the package's KAUD-5), kyoten's generator writes what the package's template asks for.
+  - **`reproducible-float` is the program's choice** (decision 14). kyoten sets it, which is what makes a game's sound
+    the same on every leg and in every build.
+  - **Render workers are a declared count** (decision 19): 0 by default (the device's own thread), more for a large mix.
+    They are the one kind of thread the package starts, natively only. A game's count, like its audio budget, is
+    KYR-15's.
