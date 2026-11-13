@@ -112,5 +112,24 @@
 #   and Firefox, 264 through the driver in Chrome for Testing) and @kama/gpu's (208 native debug and release, the clear
 #   example's 60 frames, the xfail, 185 in Edge, in Firefox and in Chrome for Testing, 60 frames on each Chromium
 #   canvas).
-KAMA_VERSION=0.9.940
-KAMA_BUILD=g1873bcda
+#
+# 2026-11-13, the Mac: 0.9.940 -> 0.9.943 (590aa28a), kama's dev HEAD with a clean tree, cloned from ../cstar (kama's
+# working clone on the Mac). 1873bcda is still on its history, and the Mac's 0.9.940 binary is kept in
+# .scratch/kama-pin-0.9.940. Taken because @kama/audio's design pass needs it (the owner: "We will take kama pins if we
+# see it benefits us"). What moved, for kyoten and the packages:
+#   8d8fccab KR-386 (0.9.942): `emSettings` reach every C source, so a `csources` file in a build that `WASM_WORKERS`
+#           shares compiles with atomics and links (@kama/audio's KAUD-1: its repro now builds with no workaround).
+#   91967501 KR-387 (0.9.943): `kama run --headless` lets a page start its sound with no gesture.
+#   b8ac5596 KR-383 (0.9.941): a `flags` entry in kama.json refuses a key it does not take.
+#   Also 8dfdb4a2 (KR-382, msys2's job pool tokens) and roadmap and tool commits, none of which kyoten uses. Green on it
+#   with nothing else changed, on the Mac, the same results as on 0.9.940: tools/test.sh (engine 164 cases native
+#   debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr
+#   checked; 2 min 53 s), @kama/window's (181 native debug and release, 163 under node, 253 under `kama run` in
+#   Firefox, 264 through the driver in Chrome for Testing) and @kama/gpu's (111 native debug and release, 117 through
+#   the driver in Chrome for Testing, its clear example's 60 frames, both xfails, 118 in Firefox). Two @kama/gpu cases
+#   fail on the Mac on both compilers, so not by this bump: natively, Metal's adapter grants the feature a case expects
+#   refused; and in Firefox, which has an adapter here since 0.9.940, a buffer of 2^60 bytes is reported as
+#   OutOfMemory, not a validation error. Both packages' tools/test.sh need bash 4 (`${name,,}`) and their scripts'
+#   execute bits, which the Mac's checkout lacks; they ran through `bash` from a copy that calls each helper by `bash`.
+KAMA_VERSION=0.9.943
+KAMA_BUILD=g590aa28a
