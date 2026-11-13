@@ -78,7 +78,7 @@ or rebuilt from here.
 
   The binary finds `include/` and `lib/` beside itself, and its prelude is embedded, so `prelude/` is only what an
   editor opens.
-- **On macOS** (the Mac Mini, Apple M4, macOS 26.7.3; verified 2026-11-13 on the 0.9.938 pin): the same steps in any
+- **On macOS** (the Mac Mini, Apple M4, macOS 26.7.3; verified 2026-11-13 on the 0.9.938 pin and again on 0.9.940, the suite green in 2 min 50 s): the same steps in any
   shell, copying `out/Darwin-arm64/kama` (no `.exe`). `tools/test.sh` was green with Windows's counts: the engine's 164
   cases native debug and release and on wasm, the frame guard refused natively and on wasm, the tool's 192, `kyoten
   check`, fps native and wasm, vr checked. What the Mac needs that Windows does not:
