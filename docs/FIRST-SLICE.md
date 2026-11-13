@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-13, the nineteenth session)
+## Where it stands (2026-11-13, the twentieth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -16,7 +16,7 @@ the design doc it settles before building on it.
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
 **Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
-`@kama/gpu` `COVERAGE.md`, 72 of webgpu.h's 206 functions called):
+`@kama/gpu` `COVERAGE.md`, 87 of webgpu.h's 206 functions called):
 - GPU-1, GPU-2 and GPU-13, WIN-1, WIN-2 and WIN-16 are built (the ninth to eleventh sessions, below);
 - WIN-3 is built, the web leg's first row: a window on the page's canvas, and Pointer Events on every backend (the
   twelfth session, below);
@@ -40,41 +40,55 @@ the design doc it settles before building on it.
   description, drawn and read back, the asynchronous ones compiled natively on the package's own isolates;
   `DeviceOptions.printErrors`; and, found by its probe, a texture format whose feature the device lacks refused
   everywhere. Question 10, what wgpu-native takes that WebGPU refuses, is decided and built (decision 10), and Firefox
-  runs every case in the gate since the pin moved to 0.9.940 with KY-54's fix. No question is open in either package.
+  runs every case in the gate since the pin moved to 0.9.940 with KY-54's fix.
+- **GPU-4's fourth part is decided and under way** (the twentieth session, below):
+  - its probe found that every pass error lands at `finish`, and that emdawnwebgpu's NaN depth clear value ends a web
+    program;
+  - the owner decided questions 11 to 14 as recommended;
+  - textures and views by description are built.
+
+  No question is open in either package.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.940+g1873bcda`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.943+g590aa28a`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `1873bcda`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 1873bcda HEAD`.
-   - **kama reached 0.9.943 (`590aa28a`) as the nineteenth session ended.** For `@kama/audio`: KR-386 (0.9.942) is its
-     KAUD-1, `emSettings` reaching a `csources` file, and KR-387 (0.9.943) lets a page under `kama run --headless`
-     start its sound. Also KR-383 (0.9.941): a `flags` entry in `kama.json` refuses a key it does not take. No
-     manifest here has one, and the engine's, its tests', the tool's and both packages' manifests and tests' check OK
-     on 0.9.943 (read-only, through `../kama`'s binary). **Ask the owner whether to bump the pin to it first,** since
-     the Mac's audio work needs both fixes and its AGENTS.audio.md plans a pin at 0.9.940. Both machines build on
-     `.kama-version`.
+   - **Read `../kama`'s log since `590aa28a`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 590aa28a HEAD`.
+   - **The pin is on 0.9.943** since the twentieth session (`a3f5985`), as the owner asked, so the Mac's `@kama/audio`
+     work has KR-386 (its KAUD-1) and KR-387. The Mac rebuilds its pin from `.kama-version`.
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/gpu`'s GPU-4, the render pipeline set, parts 4 and 5,** as decided (its AGENTS.gpu.md item 12), each
-      test-first with its mutations and a commit of its own:
-      4. the render pass and textures by description, with `setVertexBuffer`, `setIndexBuffer`, `setBindGroup` and
-         `setBlendConstant`. Held to decision 9: a NaN or infinite clear colour or blend constant ends a web program
-         (measured, `.scratch/gpu4-part3/FINDINGS.md`), so the pass refuses it first, test-first. A texture by
-         description needs the feature checks part 3 built (`TextureFormat.requiredFeature()`), and a 3D BC or ASTC
-         texture needs its Sliced3D feature too. Draw through part 2's bind groups there, which proves their mappings
-         on the GPU. **Part 3 left three mutations for part 4's draws** (AGENTS.gpu.md item 12): the depth bias slope
-         and the stencil faces, which a depth-stencil attachment shows, and the step mode, which an instanced vertex
-         buffer shows;
-      5. `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
+   1. **`@kama/gpu`'s GPU-4, the render pipeline set: the rest of part 4, then part 5,** as decided (its AGENTS.gpu.md
+      item 12, decisions 11 to 14 for part 4). Each step is test-first, with its mutations and a commit of its own:
+      - **Part 4, step 3: the pass by description.**
+        - `encoder.beginRenderPass(descriptor:)` replaces `beginRenderPass(target:, clear:)` (decision 5). Colour
+          attachments take `LoadOp { Clear(color), Load }`, a `StoreOp`, a resolve target and a `depthSlice`.
+          `ColorAttachment.clearing(view:, color:)` is the common case.
+        - The depth-stencil attachment is typed per aspect (decision 13), with `clearingDepth(view:, value:)`. The
+          package passes a depth clear value of 0 wherever none is given, since emdawnwebgpu hands webgpu.h's NaN to a
+          browser that throws on it (`.scratch/gpu4-part4/FINDINGS.md`).
+        - A refusal inside a pass is reported at `encoder.finish()`, and the encoder is spoiled (decision 14). The
+          encoder will need its device for that, as a texture now holds one.
+        - The refusals: a NaN or infinite clear colour or depth clear value (decision 9), and stencil ops on a format
+          with no stencil, which wgpu-native takes (decision 10). A view keeps its format for that check.
+        - The cases: MSAA resolved and read back, a depth prepass loaded by a later pass, and depth bias and the
+          stencil faces drawn. These catch two of part 3's three carried mutations.
+      - **Part 4, step 4: the pass's eight commands** (decision 11):
+        - `setVertexBuffer` and `setIndexBuffer` over `BufferBinding`, `setBindGroup` and `setBindGroupWithOffsets`,
+          `setBlendConstant`, `drawIndexed`, `setViewport`, `setScissorRect` and `setStencilReference`. There is no
+          unbind.
+        - Clamped: a slot, group index or scissor value at 2^31 or above, and offsets and sizes past 2^53 - 1.
+        - Refused: a NaN or infinite blend constant or viewport value.
+        - Draw through part 2's bind groups. An instanced vertex buffer catches part 3's step mode mutation.
+      - **Part 5:** `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
       leg's goldens, and the perceptual tolerance.
@@ -84,15 +98,48 @@ the design doc it settles before building on it.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
-     one sample, natively and in Firefox, where WebGPU refuses it. And, optionally, a report to Dawn of
-     emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules), which the
-     package works around.
+     one sample, natively and in Firefox, where WebGPU refuses it. And, optionally, two reports to Dawn, each worked
+     around by the package:
+     - emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules);
+     - emdawnwebgpu passing a depth attachment's NaN "no clear value" to Chrome, which throws, so every C program that
+       loads depth through it ends (`.scratch/gpu4-part4/FINDINGS.md`).
 3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twentieth session** (2026-11-13). Test-first, with every suite green and every mutation caught before each
+commit:
+
+- **Every suite was green on 0.9.940 at the start,** at the nineteenth session's counts.
+- **The pin bumped to 0.9.943** (`a3f5985`), as the owner asked first thing, with every suite green at the same counts
+  and nothing else changed. It brings KR-386 and KR-387 for the Mac's `@kama/audio`.
+- **GPU-4 part 4's probe** (`.scratch/gpu4-part4/FINDINGS.md`) ran 149 misuses of textures, views, passes and their
+  commands, natively and in Edge:
+  - every pass error lands at `encoder.finish()` on both legs;
+  - a browser throws on NaN clear colours, blend constants and viewports, on numbers at 2^31 or above (which
+    emdawnwebgpu hands JavaScript negative in a release build), and on a gated view format;
+  - emdawnwebgpu passes webgpu.h's NaN "no clear value" for a depth attachment, so loading depth ends a web program;
+  - natively, an unbind and a count of 0 end the process;
+  - wgpu-native takes stencil ops on a depth-only format, and a view usage the texture lacks.
+- **Questions 11 to 14, decided by the owner** ("I will take your recommendation on all 4 questions"): all eight pass
+  commands with no unbind, views by description, the depth-stencil attachment typed per aspect, and a refusal inside
+  a pass reported at `finish`. They were first asked mid-turn and lost in the scroll; the owner asked that a question
+  always come last in a turn.
+- **Built in two commits** (kama-gpu `ce9b492` and `2e1b8e4`):
+  - **textures by description:** `TextureDescriptor` and WebGPU's `GPUTexture` attributes, brought forward to prove
+    each field reaches the backend, with a view format's feature refused. Red first, 13 of 17. 25 of 25 mutations
+    caught, one in Edge;
+  - **views by description:** `TextureViewDescriptor` with `mips(first:, count:)`, since kama reserves `base`. It
+    refuses a count of 0, a gated format, and a usage beyond the texture's. A texture, and a surface's frame, now hold
+    their device, so a refusal reaches its channel. Red first, 12 of 15. 21 of 21 mutations caught, one in Edge.
+  - wgpu-native v29's errors for a view never name its label, where Dawn's and Firefox's do.
+  - `tests/` is 243 cases natively and 220 in each browser. COVERAGE.md: 87 of 206.
+- **Asked by the owner:** how many sessions to the lit cube. About 7 to 9 for GFX-1 done, at a part a session: the
+  rest of GPU-4, then GFX-1's renderer, scene graph, node-graph material, depth prepass, MSAA, HDR and golden harness.
+  kyoten's hello cube also needs the join.
 
 **The nineteenth session** (2026-11-13). Test-first, with every suite green and every mutation caught or explained
 before each commit:
