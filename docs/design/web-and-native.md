@@ -176,6 +176,14 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
      nothing that works only on the web slips in. A document marked web-only (a store page, say) is let through. **The
      profile grows as the native renderer does, never ahead of it:** RmlUi now, kyoten's own renderer later (KYR-16,
      the owner's direction of 2026-11-05). So a game's UI is the same HTML on both, which is what this question asked.
+     - **Raster UI art is 9-sliced, so the profile includes CSS's `border-image`** (the owner, 2026-11-13: "a smaller
+       square tiled asset that can be interpreted as a grid of 9 segments that each scale accordingly"). The browser
+       renders it on the web (`border-image-slice` with `fill`, and `border-image-repeat`'s stretch, repeat, round
+       and space), and the native renderer must render the same, which KYR-16 builds: RmlUi has a nine-patch decorator
+       of its own rather than CSS's `border-image` *(from memory, not checked)*. A 9-sliced image comes at 1x and 2x
+       (`image-set()`), its slices snapped to whole pixels so no seam shows. Vector UI stays CSS (borders, radii,
+       gradients) and SVG. A 9-sliced sprite in a 2D layer or a world-space HUD is `@kama/graphics`' (its
+       FEATURES.md, "Nine-slice sprites"; KYR-49).
   2. **Natively `@kama/ui`, no webview for games.** A webview ships a browser engine with each game (CEF, WebView2,
      WKWebView), adds a process, draws the UI off-screen and copies it into the game's GPU surface, is missing on
      consoles, and sits outside the budgets. It may still serve tools such as the editor.
