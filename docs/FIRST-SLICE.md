@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-12, the eighteenth session)
+## Where it stands (2026-11-13, the nineteenth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -35,7 +35,13 @@ the design doc it settles before building on it.
 - **GPU-4's second part is built** (the eighteenth session, below), with four more decisions: typed flag sets, buffers
   and samplers by description, layouts, bind groups and `writeBuffer`. **Nothing a program passes to `@kama/gpu` ends
   it any more** (decision 9): every misuse is a validation error on both legs. `@kama/window`'s scale cases run under
-  `kama run`. No question is open in either package.
+  `kama run`.
+- **GPU-4's third part is built** (the nineteenth session, below): render pipelines both ways, from WebGPU's
+  description, drawn and read back, the asynchronous ones compiled natively on the package's own isolates;
+  `DeviceOptions.printErrors`; and, found by its probe, a texture format whose feature the device lacks refused
+  everywhere. **One question is open:** question 10, what wgpu-native takes that WebGPU refuses (below).
+- **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
+  designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
 **The join waits on Track 1. Where the work is:**
 
@@ -44,8 +50,8 @@ the design doc it settles before building on it.
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `94365be5`,** its HEAD and kyoten's pin at the eighteenth session's end (kama did
-     not move during it). First check that the pin is still on kama's history:
+   - **Read `../kama`'s log since `3fe52f50`,** its HEAD at the nineteenth session's start (a CI-only commit past the
+     pin, `94365be5`). First check that the pin is still on kama's history:
      `git -C ../kama merge-base --is-ancestor 94365be5 HEAD`.
    - **For the owner to relay to kama:** KY-54 (`kama run --headless` gives Firefox no WebGPU, which one pref
      restores), filed in the seventeenth session. Once it lands, `@kama/gpu`'s Firefox leg drops `--adapter-optional`
@@ -54,18 +60,22 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/gpu`'s GPU-4, the render pipeline set, parts 3 to 5,** as decided (its AGENTS.gpu.md item 12), each
+   1. **`@kama/gpu`'s GPU-4, the render pipeline set, parts 4 and 5,** as decided (its AGENTS.gpu.md item 12), each
       test-first with its mutations and a commit of its own:
-      3. render pipelines both ways, with the native compile isolates (`DeviceOptions.compileWorkers`), a failed
-         pipeline's error carrying its shaders' messages (decision 3, item 1), and `DeviceOptions.printErrors`
-         (decision 3, item 2). `ColorWriteMask` comes as a typed flag set (decision 6). Rerun part 1's one uncaught
-         mutation, a module's copy without its `AddRef`, once a pipeline is made from a copy. A pipeline's descriptor
-         is held to decision 9: whatever wgpu-native or a browser would end the program on is refused first. Probe
-         them as part 2's were (`.scratch/gpu4-part2/`), a NaN in a depth bias or blend constant among them;
-      4. the render pass and textures by description. Its clear colour is held to decision 9: today's
-         `beginRenderPass(clear:)` ends a web program on a NaN channel (measured), and the pass by description refuses
-         it instead, test-first. Draw through part 2's bind groups there, which proves their mappings on the GPU;
+      4. the render pass and textures by description, with `setVertexBuffer`, `setIndexBuffer`, `setBindGroup` and
+         `setBlendConstant`. Held to decision 9: a NaN or infinite clear colour or blend constant ends a web program
+         (measured, `.scratch/gpu4-part3/FINDINGS.md`), so the pass refuses it first, test-first. A texture by
+         description needs the feature checks part 3 built (`TextureFormat.requiredFeature()`), and a 3D BC or ASTC
+         texture needs its Sliced3D feature too. Draw through part 2's bind groups there, which proves their mappings
+         on the GPU. **Part 3 left three mutations for part 4's draws** (AGENTS.gpu.md item 12): the depth bias slope
+         and the stencil faces, which a depth-stencil attachment shows, and the step mode, which an instanced vertex
+         buffer shows;
       5. `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
+      - **Question 10, open, for the owner** (asked in the nineteenth session's chat): wgpu-native takes three
+        pipeline descriptions WebGPU refuses (9 vertex buffers, alpha to coverage at one sample, a target the fragment
+        never writes with a mask not zero), so a program built natively draws nothing on the web. (A), recommended:
+        the package refuses the first two on both legs, in its words, pins the third as a fact, and drafts a report to
+        wgpu for the owner to post. (B): pin all three and document them.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
       leg's goldens, and the perceptual tolerance.
@@ -82,6 +92,37 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The nineteenth session** (2026-11-13). Test-first, with every suite green and every mutation caught or explained
+before each commit:
+
+- **Every suite was green on 0.9.938 at the start,** at the eighteenth session's counts. kama moved one commit past the
+  pin, `3fe52f50`, CI only, so there was no bump.
+- **GPU-4 part 3's probe** (`.scratch/gpu4-part3/FINDINGS.md`) ran 63 misuses of a pipeline's description natively and
+  in Edge.
+  - Natively, a depth write to a format with no depth ends the process.
+  - On the web, these throw: a non-finite depth bias or pipeline constant, a stride past 2^53 - 1, a `Src1` blend
+    factor without its feature, and **any texture format whose feature the device lacks, `createTexture` included**,
+    which part 2's "nothing a program passes ends it" had missed.
+  - wgpu-native takes three descriptions WebGPU refuses: question 10, asked in the chat and open.
+- **Built in four commits** (kama-gpu `b2e16af`, `2a832e9`, `99eaf80` and `88d4a0b`):
+  - **the feature-gated formats refused** in `createTexture` and storage layouts, with `TextureFormat.requiredFeature()`
+    generated by wgpugen; 19 of 19 mutations caught. A test bug found on the way: the binding cases ran after the case
+    that drops their queue, so their flush did nothing;
+  - **the description types and `createRenderPipeline`,** with `VertexState` and `FragmentState` as types of their own
+    (decision 1's rule; the owner to object), `ColorWriteMask` with `None`, `VertexFormat` generated, and
+    `setPipeline`/`draw` brought forward from part 4, since only a draw read back proves the defaults; 56 of 59
+    mutations caught, part 1's leftover among them, and three carried to part 4;
+  - **`DeviceOptions.printErrors`,** held from outside the program by `tools/test.sh`; 12 of 12;
+  - **`createRenderPipelineAsync`:** one request on both legs. Natively the package's own compile isolates take a deep
+    copy of the description, with an overflow in the seam so asking never waits, and a pending request keeps its
+    device's isolates. Fact 29 pins wgpu-native's abort. On the way: natively a test tick takes no time, so the
+    asynchronous cases wait by the clock.
+- **Firefox with WebGPU runs every case** once `ffrun.sh`'s wrapper was fixed for 0.9.938's runner, and found a fourth
+  difference from Dawn: a buffer of 2^53 - 256 bytes is an OutOfMemory error there (`--huge-buffer-out-of-memory`).
+  Firefox's asynchronous rejection also drops its cause's words.
+- **Audio, the owner's ask:** `@kama/audio` is its own package (`../kama-audio`, seeded with `kama seed`, pushed), for
+  the Mac Mini to design and build in parallel, recorded in [design/audio.md](design/audio.md) § Decided.
 
 **The eighteenth session** (2026-11-12). Test-first, with every suite green and every mutation caught or explained
 before each commit:
