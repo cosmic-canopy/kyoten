@@ -78,6 +78,18 @@ or rebuilt from here.
 
   The binary finds `include/` and `lib/` beside itself, and its prelude is embedded, so `prelude/` is only what an
   editor opens.
+- **On macOS** (the Mac Mini, Apple M4, macOS 26.7.3; verified 2026-11-13 on the 0.9.938 pin): the same steps in any
+  shell, copying `out/Darwin-arm64/kama` (no `.exe`). `tools/test.sh` was green with Windows's counts: the engine's 164
+  cases native debug and release and on wasm, the frame guard refused natively and on wasm, the tool's 192, `kyoten
+  check`, fps native and wasm, vr checked. What the Mac needs that Windows does not:
+  - **emsdk wants Python 3.10 or newer**, and the system's is 3.9: install one with `uv python install 3.13` (uv comes
+    through mise) and export `EMSDK_PYTHON` to it, then `source ~/emsdk/emsdk_env.sh`. emsdk 7.0.0 is verified.
+  - **The packages' native legs find Homebrew's GLFW and SDL 3** only with `CPATH=/opt/homebrew/include` and
+    `LIBRARY_PATH=/opt/homebrew/lib`, which Apple's clang does not search on Apple silicon.
+  - **`@kama/gpu` natively needs wgpu-native for macOS:** `KAMA_WGPU_DIR=$PWD/third_party/wgpu/Darwin-arm64
+    WGPU_NATIVE_VERSION=v29.0.1.1 <kama clone>/tools/fetch-webgpu.sh` from `../kama-gpu`.
+  - **The pinned browsers** are the same versions, mac-arm64 builds, in `~/browsers` (its `README.md`). Safari has no
+    headless mode, so a Safari run waits for the owner.
 - **Bump the pin as a commit of its own:** rebuild at the new commit, run `tools/test.sh` and both packages' suites on
   it with no other change, then update `.kama-version` with what moved and re-check `docs/KAMA_GAPS.md`'s entries.
 - **The packages' suites take `KAMA`,** so run them on kyoten's pin:
