@@ -2,7 +2,7 @@
 
 **Status:** KYR-15 started on 2026-11-13 as `@kama/audio` (`../kama-audio`), designed and built on the Mac Mini in
 parallel with Track 1 (§ Decided). The DAW waits for KYR-35. Below, the questions as kyoten first wrote them; the
-package's design pass answers 1, 2, 4, 5 and 7 in its own `AGENTS.audio.md`, and 3 and 6 stay kyoten's.
+package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3, 6 and 7 stay kyoten's.
 
 ## What the vision asks
 
@@ -45,7 +45,8 @@ package's design pass answers 1, 2, 4, 5 and 7 in its own `AGENTS.audio.md`, and
     and audio's under `@kama/<noun>` "when KYR-15 comes up"; this starts it. Seeded on 2026-11-13 with `kama seed` on
     0.9.938. Its `AGENTS.audio.md` holds the design pass: its open questions, where the evidence is, its rules, and
     how the two machines share the work. Its decisions are recorded there, and this doc keeps what binds kyoten: how
-    kyoten's phases schedule sound (question 3), the DAW (question 6), and what kyoten's audio module presents.
+    kyoten's phases schedule sound (question 3), the DAW (question 6), what comes from cosmic-forge (question 7), and
+    what kyoten's audio module presents.
   - **Its first users:** cosmic-forge, whose page cannot play a loop exact to the sample (its KAMA_GAPS CF-24); kyoten's
     audio module; later the DAW.
   - **The owner asked for "the most cutting edge audio (webaudio 2?)".** There is no Web Audio 2: the v2 work became
