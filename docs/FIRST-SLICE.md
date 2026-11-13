@@ -51,8 +51,15 @@ the design doc it settles before building on it.
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `1873bcda`,** kyoten's pin and kama's HEAD at the nineteenth session's end. First
-     check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 1873bcda HEAD`.
+   - **Read `../kama`'s log since `1873bcda`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 1873bcda HEAD`.
+   - **kama reached 0.9.943 (`590aa28a`) as the nineteenth session ended.** For `@kama/audio`: KR-386 (0.9.942) is its
+     KAUD-1, `emSettings` reaching a `csources` file, and KR-387 (0.9.943) lets a page under `kama run --headless`
+     start its sound. Also KR-383 (0.9.941): a `flags` entry in `kama.json` refuses a key it does not take. No
+     manifest here has one, and the engine's, its tests', the tool's and both packages' manifests and tests' check OK
+     on 0.9.943 (read-only, through `../kama`'s binary). **Ask the owner whether to bump the pin to it first,** since
+     the Mac's audio work needs both fixes and its AGENTS.audio.md plans a pin at 0.9.940. Both machines build on
+     `.kama-version`.
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
