@@ -39,24 +39,21 @@ the design doc it settles before building on it.
 - **GPU-4's third part is built** (the nineteenth session, below): render pipelines both ways, from WebGPU's
   description, drawn and read back, the asynchronous ones compiled natively on the package's own isolates;
   `DeviceOptions.printErrors`; and, found by its probe, a texture format whose feature the device lacks refused
-  everywhere. **One question is open:** question 10, what wgpu-native takes that WebGPU refuses (below).
+  everywhere. Question 10, what wgpu-native takes that WebGPU refuses, is decided and built (decision 10), and Firefox
+  runs every case in the gate since the pin moved to 0.9.940 with KY-54's fix. No question is open in either package.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.938+g94365be5`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.940+g1873bcda`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `3fe52f50`,** its HEAD at the nineteenth session's start (a CI-only commit past the
-     pin, `94365be5`). First check that the pin is still on kama's history:
-     `git -C ../kama merge-base --is-ancestor 94365be5 HEAD`.
-   - **For the owner to relay to kama:** KY-54 (`kama run --headless` gives Firefox no WebGPU, which one pref
-     restores), filed in the seventeenth session. Once it lands, `@kama/gpu`'s Firefox leg drops `--adapter-optional`
-     and runs every case and the clear (its AGENTS.gpu.md item 11).
-   - **Still open with kama:** KY-45, KY-40, KY-54 and kama's KR-378.
+   - **Read `../kama`'s log since `1873bcda`,** kyoten's pin and kama's HEAD at the nineteenth session's end. First
+     check that the pin is still on kama's history: `git -C ../kama merge-base --is-ancestor 1873bcda HEAD`.
+   - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -71,11 +68,6 @@ the design doc it settles before building on it.
          and the stencil faces, which a depth-stencil attachment shows, and the step mode, which an instanced vertex
          buffer shows;
       5. `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
-      - **Question 10, open, for the owner** (asked in the nineteenth session's chat): wgpu-native takes three
-        pipeline descriptions WebGPU refuses (9 vertex buffers, alpha to coverage at one sample, a target the fragment
-        never writes with a mask not zero), so a program built natively draws nothing on the web. (A), recommended:
-        the package refuses the first two on both legs, in its words, pins the third as a fact, and drafts a report to
-        wgpu for the owner to post. (B): pin all three and document them.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
       leg's goldens, and the perceptual tolerance.
@@ -83,7 +75,9 @@ the design doc it settles before building on it.
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
-     drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. And, optionally, a report to Dawn of
+     drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
+     the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
+     one sample, natively and in Firefox, where WebGPU refuses it. And, optionally, a report to Dawn of
      emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules), which the
      package works around.
 3. **Then the join.** Step 7, the platform seam, builds:
@@ -104,7 +98,7 @@ before each commit:
   - On the web, these throw: a non-finite depth bias or pipeline constant, a stride past 2^53 - 1, a `Src1` blend
     factor without its feature, and **any texture format whose feature the device lacks, `createTexture` included**,
     which part 2's "nothing a program passes ends it" had missed.
-  - wgpu-native takes three descriptions WebGPU refuses: question 10, asked in the chat and open.
+  - wgpu-native takes three descriptions WebGPU refuses: question 10, asked in the chat.
 - **Built in four commits** (kama-gpu `b2e16af`, `2a832e9`, `99eaf80` and `88d4a0b`):
   - **the feature-gated formats refused** in `createTexture` and storage layouts, with `TextureFormat.requiredFeature()`
     generated by wgpugen; 19 of 19 mutations caught. A test bug found on the way: the binding cases ran after the case
@@ -123,6 +117,19 @@ before each commit:
   Firefox's asynchronous rejection also drops its cause's words.
 - **Audio, the owner's ask:** `@kama/audio` is its own package (`../kama-audio`, seeded with `kama seed`, pushed), for
   the Mac Mini to design and build in parallel, recorded in [design/audio.md](design/audio.md) § Decided.
+- **Then, once the owner had pushed and the Mac had begun audio's design:**
+  - **The pin bumped to 0.9.940** (`da9e64e`), as the owner asked once kama fixed KY-54 (`fa9e13c3`), with every suite
+    green and nothing else changed. `@kama/gpu`'s Firefox leg then found an adapter and ran all 185 cases. KY-54 was
+    removed, and Firefox's whole leg joined `@kama/gpu`'s gate (`f48d42a`): every case, the printErrors check and the
+    clear, with only its three measured differences passed.
+  - **Question 10, decided** (the owner: "I will take your recommendation A as revised", having said "I would prefer
+    not to nerf native unless it is something that isn't needed"). Re-measured first: wgpu-native refuses 9 vertex
+    buffers that carry attributes, and leaves only the slots with none uncounted (40 taken, past the adapter's 16).
+    None of the three is a capability, so decision 10 (kama-gpu `b6020af`, built in `87379de`) refuses empty
+    slots past the device's `maxVertexBuffers` and alpha to coverage at one sample on both legs, and pins the
+    unwritten target as fact 30. A device that needs more vertex buffers asks for them in `DeviceOptions.limits`.
+    Measured on every leg: Firefox's later wgpu refuses the unwritten target and counts the slots, so only alpha to
+    coverage is still wgpu's, and the draft issue for the owner says so. 9 of 9 mutations caught, and fact 30's own.
 
 **The eighteenth session** (2026-11-12). Test-first, with every suite green and every mutation caught or explained
 before each commit:
