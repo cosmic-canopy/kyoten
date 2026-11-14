@@ -94,3 +94,17 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **Render workers are a declared count** (decision 19): 0 by default (the device's own thread), more for a large mix.
     They are the one kind of thread the package starts, natively only. A game's count, like its audio budget, is
     KYR-15's.
+- **2026-11-13, the owner: `@kama/audio`'s area 4, questions 1 and 2, bind kyoten's question 5 in three ways** (its
+  `AGENTS.audio.md` § Decided, 20 to 22). Whether spatial audio is in the first slice stays deferred (2026-11-01).
+  - **Spatial sound is the package's own rungs, the same on every leg** (decision 20): equal-power panning, HRTF
+    binaural and Ambisonics, chosen per sound. kyoten's emitters and listener bind to them, and an XR head pose turns
+    the Ambisonics field.
+  - **The room is the program's input until the package's geometric-acoustics tier exists** (decision 20). The inputs
+    are occlusion and transmission filters, reverb sends, and a slot for a reflection impulse response, and kyoten's
+    audio module sets them from its world. That later tier takes triangles with acoustic materials and a ray-tracing
+    contract, which kyoten fills with its own scene (the physics one, or a WebGPU tracer).
+  - **HRTF data is converted when a game is built** (decision 22), by the package's converter, from the game's chosen
+    SOFA set or the default (SADIE II's KU100 set, about 1 MB). When the audio module links the package, two notices
+    join `engine/THIRD-PARTY-NOTICES.md`: pffft's FFTPACK notice (decision 21) and SADIE II's citation.
+  - **On the web, a game's voice count waits on kama:** a wasm release is always `-Oz`, where the renderer costs 5 to 10
+    times what it does at `-O3` (the package's KAUD-6).
