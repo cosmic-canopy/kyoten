@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-14, the twenty-first session)
+## Where it stands (2026-11-14, the twenty-second session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -49,8 +49,13 @@ the design doc it settles before building on it.
 - **GPU-4 is built** (the twenty-first session, below): its fifth and last part, `examples/triangle`, draws through a
   vertex buffer, an index buffer and a bind group on every leg, and reads its last frame back from its window, as the
   owner decided (decision 15).
+- **GPU-15 is built** (the twenty-second session, below): the fallback adapter, a software GPU on every leg that has
+  one, for `@kama/graphics`' byte-for-byte goldens. Found on the way and fixed: natively a lost device's next submit or
+  map no longer ends the program.
 
   No question is open in either package.
+- **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-76): image codecs, PNG first, a package
+  of its own, as the owner decided for `@kama/graphics`' goldens. Its remote waits on the owner.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -68,34 +73,54 @@ the design doc it settles before building on it.
    - **The pin is on 0.9.947** since the twenty-second session, for KY-55's fix (`.kama-version`): a number goes on
      either side of an operator, which `@kama/graphics`' typed nodes want. The Mac's pin is still 0.9.943 until it is
      rebuilt there.
+   - **kama reached 0.9.949 (`9f1fdaef`) as the twenty-second session ended,** with the pin on its history: KY-56 fixed
+     the same morning it was filed (`aac1a0a0`, 0.9.948: a native run builds into a directory of its own), a missing
+     operator form named as written (0.9.949), and KR-330, a file watcher in std, ruled. **At the next bump,** run
+     KY-56's repro (`.scratch/ky56/race.sh`, four runs at once, five rounds) on the new pin and remove the entry.
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs, now decided and ready to build.** Its four
-      questions were measured and then decided by the owner on 2026-11-14, each as recommended
-      ([design/rendering.md](design/rendering.md) § Decided, GFX-1's four questions; [research/graphics.md](research/graphics.md)
-      § 9; `.scratch/gfx1-probe/FINDINGS.md`): reversed depth always; typed nodes with a public node contract, so a
-      program's own nodes are checked as the library's are; software goldens per software GPU, compared byte for byte;
-      FLIP against them on the reference machines, and goldens as PNGs in the library's repository.
+   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its four questions were measured and then
+      decided by the owner on 2026-11-14, each as recommended ([design/rendering.md](design/rendering.md) § Decided,
+      GFX-1's four questions; [research/graphics.md](research/graphics.md) § 9; `.scratch/gfx1-probe/FINDINGS.md`):
+      reversed depth always; typed nodes with a public node contract, so a program's own nodes are checked as the
+      library's are; software goldens per software GPU, compared byte for byte; FLIP against them on the reference
+      machines, and goldens as PNGs in the library's repository. **Its parts are laid out, and part 1's three questions
+      decided** (the same day, rendering § Decided, GFX-1's part 1): a `Renderer` gets its GPU both ways
+      (`make(window:, options:)` requesting its own, `withDevice(...)`); the goldens' PNGs through `@kama/image`; each
+      leg names its software GPU (`--golden warp`, `--golden swiftshader`), and only `tools/update-goldens.sh` writes a
+      golden, from the base64 lines the tests print. The parts, depth-first:
+      1. the gate and the golden harness, and a `Renderer` with no window that clears and reads back, with its golden;
+      2. the scene graph on the flat core, `BoxGeometry`, `PerspectiveCamera` with reversed depth: an unlit box;
+      3. typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light: the lit box. Its question:
+         how the library's own shader modules are linked when a material compiles at run time (WESL);
+      4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
+      5. pipelines compiled off the frame, and the quality presets;
+      6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
+      - **Next: `@kama/image`'s design pass** (KYR-76, its `AGENTS.image.md`), since part 1's goldens are its PNGs. Its
+        five questions are measured first, then asked in full: the browser's own codecs on the web against kama's
+        (whether `createImageBitmap` with `colorSpaceConversion: "none"` and `premultiplyAlpha: "none"` decodes a PNG to
+        its exact pixels in every pinned browser, and what a kama codec costs a page), the image type, untrusted input,
+        the formats' order, and a deterministic encoder. Then its PNG row, test-first, and then GFX-1's part 1.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
         **Found on the way and fixed** (kama-gpu `c490c01`): natively a lost device's next submit or map ended the
         process. On wgpu-native v29's D3D12, a read-only depth pass loses the device when the depth texture's usage is
         RenderAttachment alone (`.scratch/warp-lost/`), so GFX-1's depth textures also take TextureBinding.
-      - **Then GFX-1 itself,** depth-first and test-first, in parts the session lays out before building, as GPU-4's
-        were. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
-        golden harness's frame capture, and the node sketch (`.scratch/gfx1-nodes/`) the first form of the node
-        builder.
-      - The twenty-first session's runners (native, Edge, Firefox, the triangle's, and the mutation driver with
-        `--runner`) are in `.scratch/gpu4-part5/tools/` (its README), and the probe's page runner, which works in every
-        browser, is `.scratch/gfx1-probe/run.mjs`; a browser-leg mutation driver starts in a UCRT64 login shell, or emcc
-        is missing and every build fails.
+      - `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the golden
+        harness's frame capture, and the node sketch (`.scratch/gfx1-nodes-947/`, a number on either side since KY-55's
+        fix) the first form of the node builder.
+      - The runners are in `.scratch/gpu15/tools/` (its README): native, Edge, Firefox, Chrome for Testing and Edge
+        through the driver, and the mutation driver with `--runner`, which starts any browser runner in a UCRT64 login
+        shell. The probe's page runner, which works in every browser, is `.scratch/gfx1-probe/run.mjs`.
    2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
-   - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+   - **Waiting on the owner:** `../kama-image`'s remote (`cosmic-canopy/kama-image`), and relaying to kama whether
+     `@kama/image` is first-party, KY-56 (two `kama run`s at once) and KY-57 (`kama run` cannot pass a browser a flag).
+     A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
@@ -119,6 +144,33 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-second session** (2026-11-14). Test-first, with every suite green and every mutation caught before each
+commit:
+
+- **The pin bumped to 0.9.947** (`f919c10e`, kyoten `5ae9726`), once the owner said KY-55 was fixed: its repro refused
+  on 0.9.943 and right on 0.9.947, and every suite green with nothing else changed, at the twenty-first session's
+  counts. The node sketch takes a number on either side of an operator.
+- **KY-56 filed:** two native `kama run`s at once break each other's builds, since each writes its generated C into the
+  shared temp folder under the same names (11 and 13 of 20 runs failed, four at once). It turned six of the tool's cases
+  red at the session's start, while a sketch ran beside the suite.
+- **GPU-15 built** (kama-gpu `b294d66`): `AdapterOptions.forceFallbackAdapter(on:)`, its shape by GPU-4's decision 1.
+  WARP natively and in Firefox (452 texels drawn), SwiftShader in Chrome for Testing and Edge through the driver (453),
+  each the same bytes twice. Chromium gives WebGPU SwiftShader only when asked on its command line (Edge:
+  `--enable-unsafe-webgpu`; Chrome for Testing: that and `--enable-unsafe-swiftshader`, measured one flag at a time), so
+  Chromium under `kama run` passes `--no-fallback-adapter` (KY-57 filed), a flag that fails a run offered one. 9 of 9
+  mutations caught.
+- **Found on the way and fixed** (kama-gpu `c490c01`): with every case on WARP, a read-only depth pass lost the device
+  and the next map ended the process. A C probe (`.scratch/warp-lost/`) showed wgpu-native v29's D3D12 loses the device
+  there, on WARP and the AMD GPU alike, unless the depth texture can also be bound, and that a submit to a lost or
+  destroyed device panics. Natively the seam now finishes an empty encoder quietly before every submit, skipping the
+  submit and failing the map when the device can take no work, so `device.lost()` answers, as in a browser. Two facts
+  pin it, and 7 of 8 mutations were caught, the eighth equivalent. A gfx-rs/wgpu issue is drafted.
+- **GFX-1's parts laid out, and part 1's three questions decided by the owner** ("Yes both I take your
+  recommendation"; "If it makes sense to have a separate image package I'm good with that"; "yes I take your
+  recommendations"). The owner asked what a golden is; it was explained in plain words (a saved picture, compared on a
+  software GPU because real GPUs cover edges a little differently) before the third answer. `@kama/image` was seeded
+  (`../kama-image`, `992942c`).
 
 **The twenty-first session** (2026-11-13). Test-first, with every suite green and every mutation caught before the
 commit:

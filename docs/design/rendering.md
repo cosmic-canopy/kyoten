@@ -609,9 +609,11 @@
        package. A pull request shows their image diff; the flat cube's is 2.3 KB. Git LFS is out, since `kama publish`
        refuses a file stored through a git filter; if goldens ever grow large, a repository of their own takes them.
 
-- **2026-11-14, the owner: GFX-1's part 1, questions 1 and 2** (`@kama/graphics`' first part: the gate, the golden
+- **2026-11-14, the owner: GFX-1's part 1, questions 1 to 3** (`@kama/graphics`' first part: the gate, the golden
   harness and a `Renderer` that clears and reads back with no window). Asked in full in the chat once `@kama/gpu`'s
-  GPU-15 was built; question 3, how a golden is named and updated, was asked again in plainer words.
+  GPU-15 was built. The owner asked of question 3 what a golden is, and whether the answers are the production ones; it
+  was asked again in plainer words (a saved picture of what an example should look like, compared on a software GPU
+  because real GPUs cover an edge's samples a little differently), then answered.
   1. **A `Renderer` gets its GPU both ways** ("Yes both I take your recommendation"). `Renderer.make(window:, options:)`
      requests its own adapter and device, returns at once and draws nothing until the GPU has answered, so a first
      program is as short as three.js's. A second ctor, `withDevice(...)`, takes a device the program already has: an
@@ -626,3 +628,15 @@
      memory-safe, which answers GFX-2's question of a native decoder for untrusted files. Seeded the same day in
      `../kama-image` (its `AGENTS.image.md` holds its short design pass), the owner adding its remote; whether it is
      first-party is kama's to rule, relayed by the owner. The goldens are its first use.
+  3. **A golden is named by its leg and saved only on purpose** ("yes I take your recommendations").
+     - **The leg names its software GPU** (`--golden warp` natively and in Firefox, `--golden swiftshader` in Chromium),
+       as legs already name their differences (`--no-immediates`), since the adapter cannot say (measured 2026-11-14:
+       natively WARP's vendor is the Windows build number, `10.0.26100.9818`, and Firefox's names nothing; only
+       SwiftShader names itself). The harness holds what the adapter can say: its kind is CPU, and SwiftShader's name
+       where it gives one.
+     - **The tests never write a golden.** A frame that differs from its golden, or has none, is printed as one line,
+       the PNG in base64, which `kama run` and the drivers carry from every leg (a 4 KB line arrived whole from Edge and
+       Firefox, measured 2026-11-14). `tools/update-goldens.sh`, run on purpose, writes those PNGs into
+       `tests/goldens/`, and the change is reviewed in the diff, as Playwright's `--update-snapshots` and Jest's `-u`
+       update only when asked. Printing is there because a page cannot write a file; if `kama run` ever lets one, the
+       script uses that, and nothing else changes. The tests read the goldens through `std::asset`, preloaded on the web.
