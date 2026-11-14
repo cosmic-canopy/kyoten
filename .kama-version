@@ -159,9 +159,8 @@
 # 2026-11-14, Windows: 0.9.945 -> 0.9.947 (f919c10e), kama's dev HEAD with a clean tree; c474b5e9 is still on its
 # history. Made from 0.9.943 at kyoten's twenty-second session's start, before the Mac's 0.9.945 bump above was
 # fetched, so its runs compare 0.9.943 with 0.9.947, and the 0.9.943 binary is kept in .scratch/kama-pin-0.9.943
-# here. Taken once the
-# owner said KY-55 was fixed ("KY-55 is fixed local kama"), since @kama/graphics' typed nodes want a number on either
-# side of an operator. What moved, for kyoten and the packages:
+# here. Taken once the owner said KY-55 was fixed ("KY-55 is fixed local kama"), since @kama/graphics' typed nodes
+# want a number on either side of an operator. What moved, for kyoten and the packages:
 #   f919c10e (0.9.947): a type's forms of one operator are told apart by every operand type, a number's by its width,
 #           so `operator*(V rhs)` builds beside `operator*(float32 s)` (KY-55, fixed and removed; its repro builds and
 #           `a * a * 0.5` gives 2, where 0.9.943 refuses it).

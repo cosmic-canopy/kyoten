@@ -54,7 +54,7 @@ the design doc it settles before building on it.
   map no longer ends the program.
 
   No question is open in either package.
-- **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-76): image codecs, PNG first, a package
+- **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
   of its own, as the owner decided for `@kama/graphics`' goldens. Its remote waits on the owner.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
@@ -98,7 +98,7 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: `@kama/image`'s design pass** (KYR-76, its `AGENTS.image.md`), since part 1's goldens are its PNGs. Its
+      - **Next: `@kama/image`'s design pass** (KYR-77, its `AGENTS.image.md`), since part 1's goldens are its PNGs. Its
         five questions are measured first, then asked in full: the browser's own codecs on the web against kama's
         (whether `createImageBitmap` with `colorSpaceConversion: "none"` and `premultiplyAlpha: "none"` decodes a PNG to
         its exact pixels in every pinned browser, and what a kama codec costs a page), the image type, untrusted input,
@@ -148,7 +148,7 @@ the design doc it settles before building on it.
 **The twenty-second session** (2026-11-14). Test-first, with every suite green and every mutation caught before each
 commit:
 
-- **The pin bumped to 0.9.947** (`f919c10e`, kyoten `5ae9726`), once the owner said KY-55 was fixed: its repro refused
+- **The pin bumped to 0.9.947** (`f919c10e`, kyoten `e81a3c7`), once the owner said KY-55 was fixed: its repro refused
   on 0.9.943 and right on 0.9.947, and every suite green with nothing else changed, at the twenty-first session's
   counts. The node sketch takes a number on either side of an operator.
 - **KY-56 filed:** two native `kama run`s at once break each other's builds, since each writes its generated C into the
