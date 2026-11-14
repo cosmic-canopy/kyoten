@@ -28,6 +28,7 @@ empty until the walk-through fills it. The order to take them in, and why, is in
 | [examples.md](examples.md) | the example games (FPS, VR on Meta Quest), each its own repository, and the first vertical slice | draft, four decisions recorded |
 | [porting.md](porting.md) | porting tools: other engines' projects onto kyoten, three.js and Unity first | deferred to KYR-73 |
 | [benchmarks.md](benchmarks.md) | benchmarks against other engines | deferred to KYR-74 |
+| [accessibility.md](accessibility.md) | accessibility: motion comfort, colour vision, speech to text and text to speech, captions | deferred to KYR-76 |
 
 **A doc's status moves from `draft` to `decided`** when every question in it is answered or deferred with a reason,
 and to `superseded` if a later design replaces it (then it says by which).
