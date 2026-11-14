@@ -420,6 +420,13 @@ time. Measured limits: an operator takes its right operand by value only, a numb
 declared in the type, and a type cannot overload one operator for both itself and a number on the right (KY-55), so
 until that is fixed a number goes on the left.
 
+**Custom nodes** (measured 2026-11-14, after the owner asked whether node types are a bound list): three ways, each
+compiled and run in the sketch. A kama function from typed nodes to a typed node (TSL's `Fn()`); a WGSL function wrapped
+as a typed node (TSL's `wgslFn()`); and a node type of the program's own, a struct `Ray` with typed `origin()` and
+`direction()`, implementing the library's contract `Node<T is This>`, which kama requires so a contract can name its
+implementor's type. The library's generic `select<T: Node<T>>` took the program's `Ray` and refused a vec3 on one side
+and a float on the other (*"cannot unify type parameter 'T'"*).
+
 **Software GPUs.** The lit cube, 4× MSAA, sRGB, 256 × 256, hashed:
 - every hardware leg gives the same bytes: Vulkan and D3D12 natively, Edge 157, Chrome for Testing 157 and Firefox 160;
 - **SwiftShader runs WebGPU** in Edge 157 with no extra flag and in the pinned Chrome for Testing with

@@ -554,3 +554,56 @@
       `tools/check-features.sh`;
     - `SPEC.md`, which says only that nothing is built: a spec is what a package is, never what it will be, so it grows
       from GFX-1. Until then the decided design is `AGENTS.graphics.md`'s brief and this § Decided.
+- **2026-11-14, the owner: GFX-1's four questions** (`@kama/graphics`' first slice, a lit cube; its `ROADMAP_DETAIL.md`
+  § cube). Each was measured first ([../research/graphics.md](../research/graphics.md) § 9, `.scratch/gfx1-probe/` and
+  `.scratch/gfx1-nodes/`), asked in full in the chat on 2026-11-13, and answered the next morning:
+  1. **Reversed depth, always, on a 32-bit float depth buffer** ("I will take your recommendation").
+     - The measurement: two surfaces a fraction apart, near 0.1 m and far 10 km. The standard convention got 87% of
+       pixels wrong or tied at 1 km with 10 cm between them, and every pixel at 5 km with 50 cm; reversed depth got none
+       wrong at any distance or gap tried, down to 5 cm at 5 km, and so did reversed depth with an infinite far plane.
+       Near the camera the frame is the same bytes either way.
+     - There is no option for the standard convention, one way to do a thing: three.js keeps it by default only for its
+       existing code (`reverseDepthBuffer`), and this library has none.
+     - A camera keeps three.js's finite `far` by default, and takes an infinite one.
+     - A pass that needs stencil uses depth32float-stencil8 where the device has it (an optional WebGPU feature), and
+       depth24plus-stencil8 otherwise.
+     - WGSL of a program's own that reads depth (fog, soft particles) gets a helper in the library's shader modules
+       that turns a depth into a distance, so nobody writes the convention by hand.
+  2. **Typed nodes** ("It sounds like typed is the production answer. We lean that way typically."). One node type per
+     WGSL type (`FloatNode`, `Vec3Node`, …), operators by operand type, functions with named arguments, and a slot typed
+     by what it holds, so a float in a colour slot or a vec4 used as a colour does not compile. A node is a reference,
+     as TSL's are: handing one on shares it (`Copyable<This>(bare: copy)` over a shared expression).
+     - Until kama fixes KY-55, a number goes on the left (`0.5 * x`), since a type cannot overload one operator for both
+       itself and a number on the right.
+     - **The owner asked whether the node types are a bound list, and whether custom node types are possible.** The
+       answer, measured in the sketch the same morning: the *value* types follow WGSL's own, which are few and fixed
+       (scalars, vectors, matrices, structs), and what a node *computes* is open. Custom nodes are part of the API, in
+       three ways, all checked by kama like the library's own:
+       - a kama function from typed nodes to a typed node, as TSL's `Fn()` is (`fn FloatNode rim(...)`);
+       - a WGSL function wrapped as a typed node, as TSL's `wgslFn()` is: its kama signature types it, and the WGSL is
+         checked when the material's shader compiles;
+       - a node type of a program's own, such as a WGSL struct with typed parts (a `Ray` with `origin()` and
+         `direction()`), implementing the library's node contract (`Node<T is This>`), so it goes wherever the library
+         takes any node: the library's generic `select` took it, and refused a vec3 on one side and a float on the other.
+
+       Proposed with the answer, for the owner to object to: the contract is public from GFX-1, and the three ways
+       arrive as the examples need them, with the full-WGSL escape (§ Decided, 2026-11-07) beside them.
+  3. **Software goldens, one per software GPU, compared byte for byte** ("I will take your recommendation").
+     SwiftShader runs WebGPU in Edge 157 with no extra flag and in the pinned Chrome for Testing with
+     `--enable-unsafe-swiftshader`, the same bytes in both and on every run; WARP natively and as Firefox 160's fallback
+     adapter, the same bytes. So the web's software golden is SwiftShader's, Windows' and Firefox's is WARP's, and
+     Linux's will be lavapipe's once measured. The browsers and drivers are pinned, so a bump that changes bytes shows
+     as a golden update to review. `@kama/gpu` gains WebGPU's `forceFallbackAdapter` (its GPU-15), which natively finds
+     WARP with every backend enabled (measured).
+  4. **On the reference machines, FLIP against the leg's software golden, and goldens kept as PNGs in the library's
+     repository** ("I will take your recommendations as well").
+     - Measured: the GPU and WARP differ at 0.29% of pixels by 1 step of 255; the GPU and SwiftShader at 0.42%, up to 72
+       steps, almost all on the silhouette, where the rasterizers cover an edge's MSAA samples differently.
+     - The harness ports FLIP into kama from NVIDIA's BSD-licensed reference, keeping its notice, since kyoten's tools
+       are kama and the web leg compares too. A frame passes on two numbers: the mean FLIP error, and the share of pixels
+       above an error threshold, so one missing highlight is not averaged away. Both limits are set while GFX-1 is
+       built, from the cube on the reference machines present, plus a margin, recorded with their numbers; raising
+       one later takes a written reason, as every budget does.
+     - Goldens live in the library's repository, `tests/goldens/<example>/<software GPU>.png`, left out of the published
+       package. A pull request shows their image diff; the flat cube's is 2.3 KB. Git LFS is out, since `kama publish`
+       refuses a file stored through a git filter; if goldens ever grow large, a repository of their own takes them.

@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-13, the twenty-first session)
+## Where it stands (2026-11-14, the twenty-first session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -75,15 +75,22 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its four questions (its `ROADMAP_DETAIL.md`
-      § cube) were measured and asked in the twenty-first session ([research/graphics.md](research/graphics.md) § 9,
-      `.scratch/gfx1-probe/FINDINGS.md`): the depth convention, how a node graph reads in kama, whether SwiftShader runs
-      the web leg's goldens, and the perceptual tolerance and where goldens live. The owner's answers go in
-      [design/rendering.md](design/rendering.md) § Decided before GFX-1 is built. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
-      golden harness's frame capture. The `@kama/gpu` rows GFX-1 pulls move into kama-gpu's ROADMAP.md NOW as it does.
-      The twenty-first session's runners (native, Edge, Firefox, the triangle's, and the mutation driver with
-      `--runner`) are in `.scratch/gpu4-part5/tools/` (its README); a browser-leg mutation driver starts in a UCRT64
-      login shell, or emcc is missing and every build fails.
+   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs, now decided and ready to build.** Its four
+      questions were measured and then decided by the owner on 2026-11-14, each as recommended
+      ([design/rendering.md](design/rendering.md) § Decided, GFX-1's four questions; [research/graphics.md](research/graphics.md)
+      § 9; `.scratch/gfx1-probe/FINDINGS.md`): reversed depth always; typed nodes with a public node contract, so a
+      program's own nodes are checked as the library's are; software goldens per software GPU, compared byte for byte;
+      FLIP against them on the reference machines, and goldens as PNGs in the library's repository.
+      - **First, `@kama/gpu`'s GPU-15, the fallback adapter** (its ROADMAP_DETAIL), which the software goldens need:
+        test-first, with its mutations and a commit of its own.
+      - **Then GFX-1 itself,** depth-first and test-first, in parts the session lays out before building, as GPU-4's
+        were. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
+        golden harness's frame capture, and the node sketch (`.scratch/gfx1-nodes/`) the first form of the node
+        builder.
+      - The twenty-first session's runners (native, Edge, Firefox, the triangle's, and the mutation driver with
+        `--runner`) are in `.scratch/gpu4-part5/tools/` (its README), and the probe's page runner, which works in every
+        browser, is `.scratch/gfx1-probe/run.mjs`; a browser-leg mutation driver starts in a UCRT64 login shell, or emcc
+        is missing and every build fails.
    2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
@@ -139,6 +146,13 @@ commit:
   - SwiftShader runs WebGPU in Edge and the pinned Chrome for Testing, and WARP natively and as Firefox's fallback, each
     the same bytes on every run, and every hardware leg here the same bytes as the others;
   - Chrome for Testing loads a page it was started on with its network service unsandboxed, for WIN-24 to weigh.
+- **GFX-1's four questions, decided by the owner the next morning** (2026-11-14), each as recommended: "I will take your
+  recommendation" (1 and 3), "I will take your recommendations as well" (4), and for 2, "It sounds like typed is the
+  production answer. We lean that way typically." The owner asked whether node types are a bound list and whether
+  custom ones are possible; measured in the sketch: custom nodes come three ways (a kama function, a wrapped WGSL
+  function, and a program's own node type through the public node contract), each checked as the library's are. The
+  contract being public from GFX-1 was proposed with that answer, for the owner to object to. `@kama/gpu` gained
+  GPU-15, the fallback adapter, which GFX-1 pulls first.
 - **Found on the way, and fixed in a kama-gpu commit of its own (`08d12e8`):** two of GPU-4 part 3's cases counted the compile
   isolates before each had started, and failed once natively in debug ("1 run, not 2"). Holding each isolate after the
   first 300 ms reproduced it every time. Both now wait by the clock and then hold the count exactly, so a pool one short
