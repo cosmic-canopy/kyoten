@@ -131,5 +131,10 @@
 #   refused; and in Firefox, which has an adapter here since 0.9.940, a buffer of 2^60 bytes is reported as
 #   OutOfMemory, not a validation error. Both packages' tools/test.sh need bash 4 (`${name,,}`) and their scripts'
 #   execute bits, which the Mac's checkout lacks; they ran through `bash` from a copy that calls each helper by `bash`.
+#   Windows rebuilt the same commit from its own clean clone the same afternoon, asked for by the owner at kyoten's
+#   twentieth session's start, and was green on it with nothing else changed, at 0.9.940's counts: tools/test.sh (the
+#   same legs as the Mac's), @kama/window's (249 native debug and release, 163 under node, 253 under `kama run` in Edge
+#   and Firefox, 264 through the driver in Chrome for Testing) and @kama/gpu's (210 native debug and release, the clear
+#   example's 60 frames, the xfails, 187 in Edge, in Firefox and in Chrome for Testing, 60 frames on each canvas).
 KAMA_VERSION=0.9.943
 KAMA_BUILD=g590aa28a
