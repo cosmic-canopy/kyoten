@@ -108,3 +108,12 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     join `engine/THIRD-PARTY-NOTICES.md`: pffft's FFTPACK notice (decision 21) and SADIE II's citation.
   - **On the web, a game's voice count waits on kama:** a wasm release is always `-Oz`, where the renderer costs 5 to 10
     times what it does at `-O3` (the package's KAUD-6).
+- **2026-11-14, the owner: `@kama/audio`'s area 4, questions 3 and 4, bind kyoten in two ways** (its `AGENTS.audio.md`
+  § Decided, 23 and 24).
+  - **A game's sounds decode the same on every leg, except AAC** (decision 23). The package decodes WAV, FLAC, MP3,
+    Vorbis and Opus itself, each codec a module the game opts into, and AAC through the platform. So kyoten's asset
+    pipeline prefers Opus, Vorbis or FLAC wherever a sound must equal itself across legs (a bounce, a replay). Each
+    codec the game ships adds 21 to 168 KB to its wasm, so the game's records decide which ship (KYR-15's).
+  - **Each sound chooses its resampling rung** (decision 24): linear and cubic are cheap and alias; band-limited
+    interpolation costs more per voice. A file at another rate than the context's is converted once, at load. Which
+    rung a sound record names, and its default, are KYR-15's.

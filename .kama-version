@@ -113,7 +113,7 @@
 #   example's 60 frames, the xfail, 185 in Edge, in Firefox and in Chrome for Testing, 60 frames on each Chromium
 #   canvas).
 #
-# 2026-11-13, the Mac: 0.9.940 -> 0.9.943 (590aa28a), kama's dev HEAD with a clean tree, cloned from ../cstar (kama's
+# 2026-11-13, the Mac: 0.9.940 -> 0.9.943 (590aa28a), kama's dev HEAD with a clean tree, cloned from ../kama (kama's
 # working clone on the Mac). 1873bcda is still on its history, and the Mac's 0.9.940 binary is kept in
 # .scratch/kama-pin-0.9.940. Taken because @kama/audio's design pass needs it (the owner: "We will take kama pins if we
 # see it benefits us"). What moved, for kyoten and the packages:
@@ -137,7 +137,7 @@
 #   and Firefox, 264 through the driver in Chrome for Testing) and @kama/gpu's (210 native debug and release, the clear
 #   example's 60 frames, the xfails, 187 in Edge, in Firefox and in Chrome for Testing, 60 frames on each canvas).
 #
-# 2026-11-13, the Mac: 0.9.943 -> 0.9.945 (c474b5e9), kama's dev HEAD with a clean tree, cloned from ../cstar; the one
+# 2026-11-13, the Mac: 0.9.943 -> 0.9.945 (c474b5e9), kama's dev HEAD with a clean tree, cloned from ../kama; the one
 # commit after 24991dab (0.9.945) touches only kama's docs/ROADMAP*.md. 590aa28a is still on its history, and the Mac's
 # 0.9.943 binary is kept in .scratch/kama-pin-0.9.943. Taken at the owner's word for @kama/audio's area 4, whose kama
 # renderers are `@noheap`. What moved, for kyoten and the packages:
