@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-14, the twenty-second session)
+## Where it stands (2026-11-14, the twenty-third session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -56,7 +56,8 @@ the design doc it settles before building on it.
   No question is open in either package.
 - **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
   of its own, as the owner decided for `@kama/graphics`' goldens, pushed to `cosmic-canopy/kama-image` once the owner
-  added it.
+  added it. **Its five design questions are measured** (the twenty-third session, its `RESEARCH.md`, kama-image
+  `ffcbb22`) and asked of the owner; none is decided.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -94,11 +95,10 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: `@kama/image`'s design pass** (KYR-77, its `AGENTS.image.md`), since part 1's goldens are its PNGs. Its
-        five questions are measured first, then asked in full: the browser's own codecs on the web against kama's
-        (whether `createImageBitmap` with `colorSpaceConversion: "none"` and `premultiplyAlpha: "none"` decodes a PNG to
-        its exact pixels in every pinned browser, and what a kama codec costs a page), the image type, untrusted input,
-        the formats' order, and a deterministic encoder. Then its PNG row, test-first, and then GFX-1's part 1.
+      - **Next: `@kama/image`'s five answers** (KYR-77, its `AGENTS.image.md`), since part 1's goldens are its PNGs.
+        They were measured in the twenty-third session (its `RESEARCH.md`) and asked in full in that session's chat.
+        Once answered, they are recorded in its `AGENTS.image.md` § Decided and its `ROADMAP.md` (ids `IMG-<n>`), then
+        its PNG row is built test-first, and then GFX-1's part 1.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -139,6 +139,24 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-third session** (2026-11-14):
+
+- **The pin bumped to 0.9.949** (`9f1fdaef`, kyoten `55ca3ac`), the owner's choice at the session's start, for KY-56's
+  fix. Its repro failed 0 of 20 runs on 0.9.949 and 15 of 20 on 0.9.947 the same hour, and the entry is removed. Every
+  suite was green with nothing else changed, at the twenty-second session's closing counts, and kyoten's and
+  `@kama/gpu`'s suites ran at once.
+- **`@kama/image`'s five questions measured** (kama-image `RESEARCH.md`, `ffcbb22`; probes in its `.scratch/img-probe-*/`).
+  The probes compared PngSuite and ten crafted files against libpng's pixels, in Edge, Chrome for Testing and Firefox:
+  - 8-bit PNGs are exact through a WebGPU or WebGL copy in every browser.
+  - No browser keeps 16 bits: Chromium truncates and Firefox rounds.
+  - Chromium decodes a bad Adler-32, and Firefox also decodes a broken CRC and a truncated stream.
+  - The browsers' encoders write different bytes and lose straight alpha.
+  - A kama PNG codec adds 12.9 KB brotli to a page.
+  - std's deflate wrote the same bytes on native debug and release and on wasm.
+  - kama's `-Oz` wasm release makes a codec 3 to 3.5 times slower than `-O3`: KIMG-1, evidence for kama's KR-332.
+
+  The questions were asked in full in the chat.
 
 **The twenty-second session** (2026-11-14). Test-first, with every suite green and every mutation caught before each
 commit:
