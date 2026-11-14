@@ -81,6 +81,9 @@ the design doc it settles before building on it.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
+        **Found on the way and fixed** (kama-gpu `c490c01`): natively a lost device's next submit or map ended the
+        process. On wgpu-native v29's D3D12, a read-only depth pass loses the device when the depth texture's usage is
+        RenderAttachment alone (`.scratch/warp-lost/`), so GFX-1's depth textures also take TextureBinding.
       - **Then GFX-1 itself,** depth-first and test-first, in parts the session lays out before building, as GPU-4's
         were. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
         golden harness's frame capture, and the node sketch (`.scratch/gfx1-nodes/`) the first form of the node
@@ -95,7 +98,9 @@ the design doc it settles before building on it.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
-     one sample, natively and in Firefox, where WebGPU refuses it. And, optionally, two reports to Dawn, each worked
+     one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
+     (`.scratch/warp-lost/wgpu-issue.md`, with its C repro): on D3D12 a read-only depth pass loses the device when the
+     depth texture's usage is RenderAttachment alone. And, optionally, two reports to Dawn, each worked
      around by the package:
      - emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules);
      - emdawnwebgpu passing a depth attachment's NaN "no clear value" to Chrome, which throws, so every C program that
