@@ -78,8 +78,9 @@ the design doc it settles before building on it.
       § 9; `.scratch/gfx1-probe/FINDINGS.md`): reversed depth always; typed nodes with a public node contract, so a
       program's own nodes are checked as the library's are; software goldens per software GPU, compared byte for byte;
       FLIP against them on the reference machines, and goldens as PNGs in the library's repository.
-      - **First, `@kama/gpu`'s GPU-15, the fallback adapter** (its ROADMAP_DETAIL), which the software goldens need:
-        test-first, with its mutations and a commit of its own.
+      - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
+        AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
+        bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
       - **Then GFX-1 itself,** depth-first and test-first, in parts the session lays out before building, as GPU-4's
         were. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
         golden harness's frame capture, and the node sketch (`.scratch/gfx1-nodes/`) the first form of the node
