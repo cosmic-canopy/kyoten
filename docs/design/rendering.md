@@ -608,3 +608,21 @@
      - Goldens live in the library's repository, `tests/goldens/<example>/<software GPU>.png`, left out of the published
        package. A pull request shows their image diff; the flat cube's is 2.3 KB. Git LFS is out, since `kama publish`
        refuses a file stored through a git filter; if goldens ever grow large, a repository of their own takes them.
+
+- **2026-11-14, the owner: GFX-1's part 1, questions 1 and 2** (`@kama/graphics`' first part: the gate, the golden
+  harness and a `Renderer` that clears and reads back with no window). Asked in full in the chat once `@kama/gpu`'s
+  GPU-15 was built; question 3, how a golden is named and updated, was asked again in plainer words.
+  1. **A `Renderer` gets its GPU both ways** ("Yes both I take your recommendation"). `Renderer.make(window:, options:)`
+     requests its own adapter and device, returns at once and draws nothing until the GPU has answered, so a first
+     program is as short as three.js's. A second ctor, `withDevice(...)`, takes a device the program already has: an
+     engine, an editor's several viewports, or a test on the fallback adapter. Read on 2026-11-14: three.js's
+     `WebGPUBackend` takes `parameters.device` ("If there is an existing GPU device on app level, it can be passed to the
+     renderer") or requests its own, and Bevy's `RenderCreation` is `Automatic` or `Manual`. The names follow area 2's
+     rules: `make` takes what defines the object, and a second common way in is a named ctor.
+  2. **Images are a package of their own, `@kama/image`** ("If it makes sense to have a separate image package I'm good
+     with that. I can create the repo"), over a module of `@kama/graphics` or a request for kama's std. Image formats
+     are general: a tool, a server and cosmic-forge, which reads PNG headers by hand, need them with no GPU. kama's std
+     has deflate, zlib and crc32 and no image format, and kama's roadmap plans none. A decoder written in kama is
+     memory-safe, which answers GFX-2's question of a native decoder for untrusted files. Seeded the same day in
+     `../kama-image` (its `AGENTS.image.md` holds its short design pass), the owner adding its remote; whether it is
+     first-party is kama's to rule, relayed by the owner. The goldens are its first use.
