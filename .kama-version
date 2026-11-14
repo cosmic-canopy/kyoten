@@ -177,5 +177,22 @@
 #   run of tools/test.sh, on 0.9.943, failed 6 of the tool's cases on `C:/msys64/tmp/std__ptr__ptr.c` because another
 #   `kama run` ran beside it, not because of either compiler: that is kama's KY-56, filed the same day. The Mac's pin
 #   is 0.9.945 until it is rebuilt at 0.9.947 there.
-KAMA_VERSION=0.9.947
-KAMA_BUILD=gf919c10e
+#
+# 2026-11-14, Windows: 0.9.947 -> 0.9.949 (9f1fdaef), kama's dev HEAD with a clean tree; f919c10e is still on its
+# history, and the 0.9.947 binary is kept in .scratch/kama-pin-0.9.947. Chosen by the owner at kyoten's twenty-third
+# session's start ("Bump to 0.9.949"), for KY-56's fix, so that the design pass's probes may run beside a suite. What
+# moved, for kyoten and the packages:
+#   aac1a0a0 (0.9.948): a native `kama run` builds into a directory of its own, so two runs at once no longer break
+#           each other (KY-56, fixed and removed: its repro, four runs at once for five rounds, failed 0 of 20 on
+#           0.9.949 and 15 of 20 on 0.9.947 the same hour).
+#   948759d8 (0.9.949): a missing operator form is named as written, with the forms the type has.
+#   Also e8eba361 (windows.md: the Linux legs through WSL2) and roadmap commits (KR-330, a file watcher, claimed,
+#   briefed and ruled), none of which kyoten uses. Green on it with nothing else changed, at the twenty-second
+#   session's closing counts: tools/test.sh (engine 164 cases native debug, release and wasm; the frame guard; the
+#   tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr checked), @kama/window's (249 native debug and
+#   release, 163 under node, 253 under `kama run` in Edge and Firefox, 264 through the driver in Chrome for Testing)
+#   and @kama/gpu's at c490c01 (309 native debug and release, the clear's and the triangle's 60 frames, the triangle
+#   read back, the xfails, 283 in Edge, 286 in Firefox and in Chrome for Testing). kyoten's suite and @kama/gpu's ran
+#   at once, which KY-56 had ruled out. The Mac's pin is 0.9.945 until it is rebuilt there.
+KAMA_VERSION=0.9.949
+KAMA_BUILD=g9f1fdaef

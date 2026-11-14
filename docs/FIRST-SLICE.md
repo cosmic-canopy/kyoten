@@ -62,23 +62,18 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.947+gf919c10e`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.949+g9f1fdaef`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
-   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. **Never
-     run a native `kama run` beside a suite:** two at once break each other's builds in the shared temp folder
-     (KY-56).
-   - **Read `../kama`'s log since `f919c10e`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor f919c10e HEAD`.
-   - **The pin is on 0.9.947** since the twenty-second session, for KY-55's fix (`.kama-version`): a number goes on
-     either side of an operator, which `@kama/graphics`' typed nodes want. The Mac's pin is still 0.9.943 until it is
-     rebuilt there.
-   - **kama reached 0.9.949 (`9f1fdaef`) as the twenty-second session ended,** with the pin on its history: KY-56 fixed
-     the same morning it was filed (`aac1a0a0`, 0.9.948: a native run builds into a directory of its own), a missing
-     operator form named as written (0.9.949), and KR-330, a file watcher in std, ruled. **At the next bump,** run
-     KY-56's repro (`.scratch/ky56/race.sh`, four runs at once, five rounds) on the new pin and remove the entry.
-   - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
+   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
+     0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
+     beside a suite.
+   - **Read `../kama`'s log since `9f1fdaef`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
+   - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
+     The Mac's pin is still 0.9.945 until it is rebuilt there.
+   - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -120,8 +115,7 @@ the design doc it settles before building on it.
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
    - **Waiting on the owner:** relaying to kama whether `@kama/image` is first-party, and KY-57 (`kama run` cannot pass
-     a browser a flag). KY-56 needs no relay: kama fixed it the morning it was filed.
-     A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+     a browser a flag). A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
