@@ -57,7 +57,8 @@ the design doc it settles before building on it.
 - **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
   of its own, as the owner decided for `@kama/graphics`' goldens, pushed to `cosmic-canopy/kama-image` once the owner
   added it. **Its five design questions are measured** (the twenty-third session, its `RESEARCH.md`, kama-image
-  `ffcbb22`) and asked of the owner; none is decided.
+  `ffcbb22`). Four are decided (its `AGENTS.image.md` § Decided, `3c8a8b8`), and its `ROADMAP.md` is written, PNG
+  decoding first (IMG-1). The first, kama's PNG codec on every leg, waits on the owner's confirmation.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -95,10 +96,9 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: `@kama/image`'s five answers** (KYR-77, its `AGENTS.image.md`), since part 1's goldens are its PNGs.
-        They were measured in the twenty-third session (its `RESEARCH.md`) and asked in full in that session's chat.
-        Once answered, they are recorded in its `AGENTS.image.md` § Decided and its `ROADMAP.md` (ids `IMG-<n>`), then
-        its PNG row is built test-first, and then GFX-1's part 1.
+      - **Next: `@kama/image`'s IMG-1, PNG decoding,** test-first (KYR-77, its `ROADMAP_DETAIL.md`), once the owner
+        confirms its question 1, kama's PNG codec on every leg. Then IMG-2, PNG encoding, and then GFX-1's part 1.
+        Its questions 2 to 5 were decided in the twenty-third session as recommended.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -156,7 +156,12 @@ the design doc it settles before building on it.
   - std's deflate wrote the same bytes on native debug and release and on wasm.
   - kama's `-Oz` wasm release makes a codec 3 to 3.5 times slower than `-O3`: KIMG-1, evidence for kama's KR-332.
 
-  The questions were asked in full in the chat.
+  The questions were asked in full in the chat. The owner decided questions 2 to 5 as recommended (kama-image
+  `3c8a8b8`): the image type, strict decoding within limits, every format roadmapped with PNG now, and the encoder's
+  `standard()` and `archival()`. Question 1 drew four follow-ups, each answered in its `AGENTS.image.md`. A request's
+  check each frame costs 1 ns natively and 0.6 ns on wasm (kama-image's `.scratch/img-probe-poll/`). Question 1 waits
+  on the owner's confirmation. The leftover `kama-run-35448.exe`, idle since 2026-11-12, was stopped at the owner's
+  word.
 
 **The twenty-second session** (2026-11-14). Test-first, with every suite green and every mutation caught before each
 commit:
