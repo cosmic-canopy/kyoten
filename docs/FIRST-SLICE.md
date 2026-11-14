@@ -60,8 +60,9 @@ the design doc it settles before building on it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
    - **Read `../kama`'s log since `590aa28a`,** kyoten's pin, every commit in the range. First check that the pin is
      still on kama's history: `git -C ../kama merge-base --is-ancestor 590aa28a HEAD`.
-   - **The pin is on 0.9.943** since the twentieth session (`a3f5985`), as the owner asked, so the Mac's `@kama/audio`
-     work has KR-386 (its KAUD-1) and KR-387. The Mac rebuilds its pin from `.kama-version`.
+   - **The pin is on 0.9.943** since the twentieth session, so the Mac's `@kama/audio` work has KR-386 (its KAUD-1)
+     and KR-387. Both machines bumped to it the same afternoon: the Mac's commit (`01c1eae`) landed first, and
+     Windows's results sit beside the Mac's in `.kama-version` (`0892565`).
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
@@ -114,8 +115,9 @@ the design doc it settles before building on it.
 commit:
 
 - **Every suite was green on 0.9.940 at the start,** at the nineteenth session's counts.
-- **The pin bumped to 0.9.943** (`a3f5985`), as the owner asked first thing, with every suite green at the same counts
-  and nothing else changed. It brings KR-386 and KR-387 for the Mac's `@kama/audio`.
+- **The pin bumped to 0.9.943**, as the owner asked first thing, with every suite green at the same counts and nothing
+  else changed. It brings KR-386 and KR-387 for the Mac's `@kama/audio`. The Mac had bumped to the same commit and
+  pushed first (`01c1eae`), so Windows's results joined its `.kama-version` entry (`0892565`) when this session pushed.
 - **GPU-4 part 4's probe** (`.scratch/gpu4-part4/FINDINGS.md`) ran 149 misuses of textures, views, passes and their
   commands, natively and in Edge:
   - every pass error lands at `encoder.finish()` on both legs;
