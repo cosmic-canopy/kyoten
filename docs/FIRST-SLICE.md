@@ -45,7 +45,7 @@ the design doc it settles before building on it.
   - its probe found that every pass error lands at `finish`, and that emdawnwebgpu's NaN depth clear value ends a web
     program;
   - the owner decided questions 11 to 14 as recommended;
-  - textures and views by description are built.
+  - textures, views and the pass by description are built; the pass's eight commands come next.
 
   No question is open in either package.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
@@ -69,19 +69,6 @@ the design doc it settles before building on it.
    questions asked in full in the chat:
    1. **`@kama/gpu`'s GPU-4, the render pipeline set: the rest of part 4, then part 5,** as decided (its AGENTS.gpu.md
       item 12, decisions 11 to 14 for part 4). Each step is test-first, with its mutations and a commit of its own:
-      - **Part 4, step 3: the pass by description.**
-        - `encoder.beginRenderPass(descriptor:)` replaces `beginRenderPass(target:, clear:)` (decision 5). Colour
-          attachments take `LoadOp { Clear(color), Load }`, a `StoreOp`, a resolve target and a `depthSlice`.
-          `ColorAttachment.clearing(view:, color:)` is the common case.
-        - The depth-stencil attachment is typed per aspect (decision 13), with `clearingDepth(view:, value:)`. The
-          package passes a depth clear value of 0 wherever none is given, since emdawnwebgpu hands webgpu.h's NaN to a
-          browser that throws on it (`.scratch/gpu4-part4/FINDINGS.md`).
-        - A refusal inside a pass is reported at `encoder.finish()`, and the encoder is spoiled (decision 14). The
-          encoder will need its device for that, as a texture now holds one.
-        - The refusals: a NaN or infinite clear colour or depth clear value (decision 9), and stencil ops on a format
-          with no stencil, which wgpu-native takes (decision 10). A view keeps its format for that check.
-        - The cases: MSAA resolved and read back, a depth prepass loaded by a later pass, and depth bias and the
-          stencil faces drawn. These catch two of part 3's three carried mutations.
       - **Part 4, step 4: the pass's eight commands** (decision 11):
         - `setVertexBuffer` and `setIndexBuffer` over `BufferBinding`, `setBindGroup` and `setBindGroupWithOffsets`,
           `setBlendConstant`, `drawIndexed`, `setViewport`, `setScissorRect` and `setStencilReference`. There is no
@@ -89,6 +76,10 @@ the design doc it settles before building on it.
         - Clamped: a slot, group index or scissor value at 2^31 or above, and offsets and sizes past 2^53 - 1.
         - Refused: a NaN or infinite blend constant or viewport value.
         - Draw through part 2's bind groups. An instanced vertex buffer catches part 3's step mode mutation.
+        - **A refusal inside a pass rides `gpuseam_refuse_in_pass`,** built in step 3: the refused command never
+          reaches the backend, and a carrier made for copies alone is set as vertex buffer 0, so its usage error lands
+          at `finish` in WebGPU's order on both legs (`.scratch/gpu4-part4/FINDINGS.md`). The pass will hold its
+          encoder's device for it, as the encoder holds one now.
       - **Part 5:** `examples/triangle` on both legs, COVERAGE.md, the SPEC, and GPU-4's detail section removed.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
@@ -104,6 +95,9 @@ the design doc it settles before building on it.
      - emdawnwebgpu's use-after-free on a second `getCompilationInfo` (kama-gpu's SPEC § Shader modules);
      - emdawnwebgpu passing a depth attachment's NaN "no clear value" to Chrome, which throws, so every C program that
        loads depth through it ends (`.scratch/gpu4-part4/FINDINGS.md`).
+
+     And, optionally, a report to Firefox: Firefox 160 takes a colour attachment's depth slice of 2^32 - 2 on a 2D view,
+     where it refuses a slice of 0 there, and WebGPU refuses both (kama-gpu's `--unchecked-depth-slice`).
 3. **Then the join.** Step 7, the platform seam, builds:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
@@ -130,15 +124,24 @@ commit:
   commands with no unbind, views by description, the depth-stencil attachment typed per aspect, and a refusal inside
   a pass reported at `finish`. They were first asked mid-turn and lost in the scroll; the owner asked that a question
   always come last in a turn.
-- **Built in two commits** (kama-gpu `ce9b492` and `2e1b8e4`):
+- **Built in three commits** (kama-gpu `ce9b492`, `2e1b8e4` and `6158db2`):
   - **textures by description:** `TextureDescriptor` and WebGPU's `GPUTexture` attributes, brought forward to prove
     each field reaches the backend, with a view format's feature refused. Red first, 13 of 17. 25 of 25 mutations
     caught, one in Edge;
   - **views by description:** `TextureViewDescriptor` with `mips(first:, count:)`, since kama reserves `base`. It
     refuses a count of 0, a gated format, and a usage beyond the texture's. A texture, and a surface's frame, now hold
-    their device, so a refusal reaches its channel. Red first, 12 of 15. 21 of 21 mutations caught, one in Edge.
-  - wgpu-native v29's errors for a view never name its label, where Dawn's and Firefox's do.
-  - `tests/` is 243 cases natively and 220 in each browser. COVERAGE.md: 87 of 206.
+    their device, so a refusal reaches its channel. Red first, 12 of 15. 21 of 21 mutations caught, one in Edge;
+  - **the pass by description,** after the owner said to go on once both repositories were pushed: colour
+    attachments with load and store ops, a resolve target, a depth slice and empty ones, and the depth-stencil
+    attachment typed per aspect. A refusal inside a pass rides a carrier set as vertex buffer 0, measured first: an
+    invalid carrier is reported ahead of an earlier error natively, and a valid one made for copies alone keeps
+    WebGPU's order on both legs. It refuses non-finite clear values and ops on an aspect the view's format lacks. Its
+    cases catch two of part 3's carried mutations, the depth bias slope and both stencil faces. Red first, 25 of 28.
+    36 of 36 mutations caught, one in Edge, and part 3's carried slope and both faces with them.
+  - wgpu-native v29's errors for a view never name its label, where Dawn's and Firefox's do; and its pass errors never
+    name the pass, nor do Firefox's (`--unnamed-pass-errors`). Firefox 160 takes a depth slice of 2^32 - 2 on a 2D view
+    (`--unchecked-depth-slice`).
+  - `tests/` is 272 cases natively and 249 in each browser. COVERAGE.md: 88 of 206.
 - **Asked by the owner:** how many sessions to the lit cube. About 7 to 9 for GFX-1 done, at a part a session: the
   rest of GPU-4, then GFX-1's renderer, scene graph, node-graph material, depth prepass, MSAA, HDR and golden harness.
   kyoten's hello cube also needs the join.
