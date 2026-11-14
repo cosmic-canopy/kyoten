@@ -63,13 +63,19 @@ the design doc it settles before building on it.
    - **The pin is on 0.9.943** since the twentieth session, so the Mac's `@kama/audio` work has KR-386 (its KAUD-1)
      and KR-387. Both machines bumped to it the same afternoon: the Mac's commit (`01c1eae`) landed first, and
      Windows's results sit beside the Mac's in `.kama-version` (`0892565`).
+   - **kama reached 0.9.945 (`c474b5e9`) as the twentieth session ended,** with the pin still on its history:
+     KR-388 (0.9.944, a target that cannot start a process refuses `Command` by name), a noheap fix (0.9.945), and
+     roadmap work (KR-281's decisions 3 and 4, KR-373's brief, KR-390 filed, KR-382 closed). Nothing kyoten waits on.
+     At the next bump, check KR-388 against the tool's wasm-built fixture game.
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
    1. **`@kama/gpu`'s GPU-4, the render pipeline set: part 5,** the last: `examples/triangle` on both legs, drawn
       through a vertex buffer, an index buffer and a bind group, COVERAGE.md, the SPEC, and GPU-4's detail section in
-      its ROADMAP_DETAIL.md removed. Test-first, with its mutations and a commit of its own.
+      its ROADMAP_DETAIL.md removed. Test-first, with its mutations and a commit of its own. The twentieth session's
+      runners (native, Edge, Firefox, and the mutation drivers) are in `.scratch/gpu4-part4/tools/` (its README); a
+      browser-leg mutation driver starts in a UCRT64 login shell, or emcc is missing and every build fails.
    2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
       `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
       leg's goldens, and the perceptual tolerance.
