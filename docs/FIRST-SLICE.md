@@ -55,7 +55,8 @@ the design doc it settles before building on it.
 
   No question is open in either package.
 - **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
-  of its own, as the owner decided for `@kama/graphics`' goldens. Pushed to `cosmic-canopy/kama-image` once the owner added it.
+  of its own, as the owner decided for `@kama/graphics`' goldens, pushed to `cosmic-canopy/kama-image` once the owner
+  added it.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -118,8 +119,8 @@ the design doc it settles before building on it.
    2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
-   - **Waiting on the owner:** relaying to kama whether
-     `@kama/image` is first-party, KY-56 (two `kama run`s at once) and KY-57 (`kama run` cannot pass a browser a flag).
+   - **Waiting on the owner:** relaying to kama whether `@kama/image` is first-party, and KY-57 (`kama run` cannot pass
+     a browser a flag). KY-56 needs no relay: kama fixed it the morning it was filed.
      A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
