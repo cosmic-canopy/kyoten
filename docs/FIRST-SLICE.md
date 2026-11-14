@@ -59,9 +59,13 @@ the design doc it settles before building on it.
   added it. **Its five design questions are measured** (the twenty-third session, its `RESEARCH.md`, kama-image
   `ffcbb22`). Four are decided (its `AGENTS.image.md` § Decided, `3c8a8b8`), and its `ROADMAP.md` is written, PNG
   decoding first (IMG-1). The first was confirmed the same day: kama's PNG codec on every leg (kama-image `fc1d108`).
-  **IMG-1's first part is built** (kama-image `2f0e87c`): the `Image` type, and PNG decoding of every colour type and
-  bit depth, strict and within limits, held to libpng's pixels on PngSuite and crafted cases, 219 cases natively and on
-  wasm.
+  **IMG-1, PNG decoding, is built** (kama-image `2f0e87c` to `a18a3f3`, the twenty-third session):
+  - the `Image` type, with `convert(to:)`;
+  - every colour type and bit depth, an APNG's default image, and the colour chunks by the PNG Third Edition's
+    precedence;
+  - `keepGrey` and `partial`;
+  - held to libpng on PngSuite and 28 crafted files, 470 cases natively and on wasm;
+  - a flip-and-cut sweep of 1.3 million decodes in its gate.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -99,14 +103,9 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: the rest of `@kama/image`'s IMG-1** (KYR-77, its `ROADMAP_DETAIL.md`). Its first part is built (the
-        twenty-third session, kama-image `2f0e87c`). Still to come:
-        - the colour chunks read into the `ColorSpace`, and `iCCP`, `eXIf`, `mDCV` and `cLLI` kept, in the PNG Third
-          Edition's precedence (cICP first, then iCCP, sRGB, and gAMA with cHRM);
-        - the option to keep grey as one channel, `partial: true` and `convert(to:)`;
-        - the flip-and-cut sweep in its gate.
-
-        Then IMG-2, PNG encoding, and then GFX-1's part 1.
+      - **Next: `@kama/image`'s IMG-2, PNG encoding** (KYR-77, its `ROADMAP_DETAIL.md`), test-first, by its decision 4:
+        `standard()` and `archival()`, the same bytes on every leg. IMG-1, PNG decoding, is built (the twenty-third
+        session). Then GFX-1's part 1.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -181,6 +180,14 @@ the design doc it settles before building on it.
 
   It was red first: 186 of 186 failed against a decoder that refused everything. 41 of 42 mutations were caught. The
   42nd, a Paeth tie broken the other way, is shown equivalent. Four that were missed at first sharpened the tests.
+- **IMG-1 finished** (kama-image `010dbba` to `a18a3f3`), each part test-first with every mutation caught:
+  - **the colour chunks** (40 mutations), as libpng 1.6.50's source keeps them. An ICC profile is never matched to
+    sRGB, as libpng no longer does. A gAMA of 0 is dropped, where libpng 1.6.59 reads it as 1.0;
+  - **the flip-and-cut sweep in the gate.** A flip's chunk CRC is put right first, as libpng's OSS-Fuzz harness does,
+    so the flip reaches the inflate and the filters. Debug builds compile the package at the release level
+    (`debug.optimize`) and keep kama's traps, so a leg takes 24 s where `-O0` took 405;
+  - `keepGrey` (7 mutations), `convert(to:)` (15) and `partial` (8);
+  - an APNG's default image.
 
 **The twenty-second session** (2026-11-14). Test-first, with every suite green and every mutation caught before each
 commit:
