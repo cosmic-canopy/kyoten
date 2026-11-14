@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-13, the twentieth session)
+## Where it stands (2026-11-13, the twenty-first session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -16,7 +16,7 @@ the design doc it settles before building on it.
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
 **Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
-`@kama/gpu` `COVERAGE.md`, 87 of webgpu.h's 206 functions called):
+`@kama/gpu` `COVERAGE.md`, 95 of webgpu.h's 206 functions called):
 - GPU-1, GPU-2 and GPU-13, WIN-1, WIN-2 and WIN-16 are built (the ninth to eleventh sessions, below);
 - WIN-3 is built, the web leg's first row: a window on the page's canvas, and Pointer Events on every backend (the
   twelfth session, below);
@@ -45,7 +45,10 @@ the design doc it settles before building on it.
   - its probe found that every pass error lands at `finish`, and that emdawnwebgpu's NaN depth clear value ends a web
     program;
   - the owner decided questions 11 to 14 as recommended;
-  - textures, views and the pass by description are built, and the pass's eight commands; part 5 comes next.
+  - textures, views and the pass by description are built, and the pass's eight commands.
+- **GPU-4 is built** (the twenty-first session, below): its fifth and last part, `examples/triangle`, draws through a
+  vertex buffer, an index buffer and a bind group on every leg, and reads its last frame back from its window, as the
+  owner decided (decision 15).
 
   No question is open in either package.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
@@ -63,7 +66,8 @@ the design doc it settles before building on it.
    - **The pin is on 0.9.943** since the twentieth session, so the Mac's `@kama/audio` work has KR-386 (its KAUD-1)
      and KR-387. Both machines bumped to it the same afternoon: the Mac's commit (`01c1eae`) landed first, and
      Windows's results sit beside the Mac's in `.kama-version` (`0892565`).
-   - **kama reached 0.9.945 (`c474b5e9`) as the twentieth session ended,** with the pin still on its history:
+   - **kama reached 0.9.945 (`c474b5e9`) as the twentieth session ended, and stood there through the twenty-first,**
+     with the pin still on its history:
      KR-388 (0.9.944, a target that cannot start a process refuses `Command` by name), a noheap fix (0.9.945), and
      roadmap work (KR-281's decisions 3 and 4, KR-373's brief, KR-390 filed, KR-382 closed). Nothing kyoten waits on.
      At the next bump, check KR-388 against the tool's wasm-built fixture game.
@@ -71,15 +75,15 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/gpu`'s GPU-4, the render pipeline set: part 5,** the last: `examples/triangle` on both legs, drawn
-      through a vertex buffer, an index buffer and a bind group, COVERAGE.md, the SPEC, and GPU-4's detail section in
-      its ROADMAP_DETAIL.md removed. Test-first, with its mutations and a commit of its own. The twentieth session's
-      runners (native, Edge, Firefox, and the mutation drivers) are in `.scratch/gpu4-part4/tools/` (its README); a
-      browser-leg mutation driver starts in a UCRT64 login shell, or emcc is missing and every build fails.
-   2. **Then `@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions are in its
-      `ROADMAP_DETAIL.md` § cube: the depth convention, how a node graph reads in kama, whether SwiftShader runs the web
-      leg's goldens, and the perceptual tolerance.
-   3. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
+   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions come first, asked in full in the
+      chat: they are in its `ROADMAP_DETAIL.md` § cube (the depth convention, how a node graph reads in kama, whether
+      SwiftShader runs the web leg's goldens, and the perceptual tolerance). Measure before asking, as GPU-4's probes
+      did. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
+      golden harness's frame capture. The `@kama/gpu` rows GFX-1 pulls move into kama-gpu's ROADMAP.md NOW as it does.
+      The twenty-first session's runners (native, Edge, Firefox, the triangle's, and the mutation driver with
+      `--runner`) are in `.scratch/gpu4-part5/tools/` (its README); a browser-leg mutation driver starts in a UCRT64
+      login shell, or emcc is missing and every build fails.
+   2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
    - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
@@ -104,6 +108,33 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-first session** (2026-11-13). Test-first, with every suite green and every mutation caught before the
+commit:
+
+- **Every suite was green on 0.9.943 at the start,** at the twentieth session's counts: kyoten's (the engine's 164 natively
+  and on wasm, the tool's 192), `@kama/gpu`'s (301 natively, 278 in Edge, Firefox and Chrome for Testing) and
+  `@kama/window`'s. kama stood at 0.9.945 (`c474b5e9`) all session, with the pin on its history and nothing kyoten waits
+  on, so there was no bump.
+- **Question 15, decided by the owner** ("B, as recommended"): `examples/triangle` reads its own window back, since
+  "60 frames with no WebGPU error" is also what a frame with nothing drawn gives.
+- **GPU-4 part 5 built, and with it GPU-4** (kama-gpu `e100084`): `examples/triangle`, a triangle spun in a window
+  through a vertex buffer, an index buffer and a bind group whose uniform is written each frame, with its group's layout
+  written out and nothing released by hand. Under `--frames 60` it copies its last frame out of the window and holds
+  three texels: the centre, a point towards the red corner at the frame's angle, and the clear colour. The gate runs it
+  natively, in Edge and Firefox under `kama run`, and in Chrome for Testing through the driver.
+  - Red first twice: the gate's step before the example, then the example without its draw, which presented 60 frames
+    with no WebGPU error and read back the clear colour.
+  - The point towards the red corner came after a first run: with the centre and a corner alone, a spin never written
+    passed. The window is 600 wide so that a copy's rows need padding, which 640 hid.
+  - COVERAGE.md stays at 95 of 206: the uncalled rows of the render path's sections are the `SetLabel`s, which GPU-8
+    holds, and compute's, GPU-5's.
+  - 21 of 21 mutations caught: 16 natively, four in Edge, and a raw handle taken in the example, caught by the gate's
+    grep alone. Six of the drawing's mutations leave WebGPU silent, so only the read back catches them.
+- **Found on the way, and fixed in a kama-gpu commit of its own (`08d12e8`):** two of GPU-4 part 3's cases counted the compile
+  isolates before each had started, and failed once natively in debug ("1 run, not 2"). Holding each isolate after the
+  first 300 ms reproduced it every time. Both now wait by the clock and then hold the count exactly, so a pool one short
+  or one over still fails.
 
 **The twentieth session** (2026-11-13). Test-first, with every suite green and every mutation caught before each
 commit:
