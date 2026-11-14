@@ -574,7 +574,8 @@
      by what it holds, so a float in a colour slot or a vec4 used as a colour does not compile. A node is a reference,
      as TSL's are: handing one on shares it (`Copyable<This>(bare: copy)` over a shared expression).
      - Until kama fixes KY-55, a number goes on the left (`0.5 * x`), since a type cannot overload one operator for both
-       itself and a number on the right.
+       itself and a number on the right. **Fixed in kama 0.9.947** (2026-11-14, kyoten's pin since that day's bump): a
+       number goes on either side, as in WGSL (`.scratch/gfx1-nodes-947/`: `sin(x: time()) * 0.5 + 0.5`).
      - **The owner asked whether the node types are a bound list, and whether custom node types are possible.** The
        answer, measured in the sketch the same morning: the *value* types follow WGSL's own, which are few and fixed
        (scalars, vectors, matrices, structs), and what a node *computes* is open. Custom nodes are part of the API, in

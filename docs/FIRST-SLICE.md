@@ -56,21 +56,18 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.943+g590aa28a`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.947+gf919c10e`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
    browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
    Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
-   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet.
-   - **Read `../kama`'s log since `590aa28a`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 590aa28a HEAD`.
-   - **The pin is on 0.9.943** since the twentieth session, so the Mac's `@kama/audio` work has KR-386 (its KAUD-1)
-     and KR-387. Both machines bumped to it the same afternoon: the Mac's commit (`01c1eae`) landed first, and
-     Windows's results sit beside the Mac's in `.kama-version` (`0892565`).
-   - **kama reached 0.9.945 (`c474b5e9`) as the twentieth session ended, and stood there through the twenty-first,**
-     with the pin still on its history:
-     KR-388 (0.9.944, a target that cannot start a process refuses `Command` by name), a noheap fix (0.9.945), and
-     roadmap work (KR-281's decisions 3 and 4, KR-373's brief, KR-390 filed, KR-382 closed). Nothing kyoten waits on.
-     At the next bump, check KR-388 against the tool's wasm-built fixture game.
+   - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. **Never
+     run a native `kama run` beside a suite:** two at once break each other's builds in the shared temp folder
+     (KY-56).
+   - **Read `../kama`'s log since `f919c10e`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor f919c10e HEAD`.
+   - **The pin is on 0.9.947** since the twenty-second session, for KY-55's fix (`.kama-version`): a number goes on
+     either side of an operator, which `@kama/graphics`' typed nodes want. The Mac's pin is still 0.9.943 until it is
+     rebuilt there.
    - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its

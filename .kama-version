@@ -155,5 +155,28 @@
 #   Firefox and 264 through the driver in Chrome for Testing; @kama/gpu's 242 native debug and release with the one
 #   Metal case red on both compilers (the adapter grants the feature the case expects refused), 249 in Firefox, 248
 #   through the driver, and the clear example's 60 frames on both canvases.
-KAMA_VERSION=0.9.945
-KAMA_BUILD=gc474b5e9
+#
+# 2026-11-14, Windows: 0.9.945 -> 0.9.947 (f919c10e), kama's dev HEAD with a clean tree; c474b5e9 is still on its
+# history. Made from 0.9.943 at kyoten's twenty-second session's start, before the Mac's 0.9.945 bump above was
+# fetched, so its runs compare 0.9.943 with 0.9.947, and the 0.9.943 binary is kept in .scratch/kama-pin-0.9.943
+# here. Taken once the
+# owner said KY-55 was fixed ("KY-55 is fixed local kama"), since @kama/graphics' typed nodes want a number on either
+# side of an operator. What moved, for kyoten and the packages:
+#   f919c10e (0.9.947): a type's forms of one operator are told apart by every operand type, a number's by its width,
+#           so `operator*(V rhs)` builds beside `operator*(float32 s)` (KY-55, fixed and removed; its repro builds and
+#           `a * a * 0.5` gives 2, where 0.9.943 refuses it).
+#   77a786a9 KR-388 (0.9.944): a target that cannot start a process refuses `Command` by name. The tool's wasm-built
+#           fixture games (spin, schedule) build and run under node as before.
+#   24991dab (0.9.945): noheap files an allocation fact under the body that wrote it.
+#   a58a5e7f KR-373 (0.9.946): std::time's `BootInstant`, a monotonic clock that counts a suspend.
+#   Also roadmap commits (KR-281's decisions 3 and 4, KR-373 ruled, KR-390 and KR-391 filed), none of which kyoten uses.
+#   Green on it with nothing else changed, at 0.9.943's counts: tools/test.sh (engine 164 cases native debug, release
+#   and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr checked),
+#   @kama/window's (249 native debug and release, 163 under node, 253 under `kama run` in Edge and Firefox, 264 through
+#   the driver in Chrome for Testing) and @kama/gpu's (301 native debug and release, the clear's and the triangle's 60
+#   frames, the triangle read back, the xfails, 278 in Edge, in Firefox and in Chrome for Testing). The session's first
+#   run of tools/test.sh, on 0.9.943, failed 6 of the tool's cases on `C:/msys64/tmp/std__ptr__ptr.c` because another
+#   `kama run` ran beside it, not because of either compiler: that is kama's KY-56, filed the same day. The Mac's pin
+#   is 0.9.945 until it is rebuilt at 0.9.947 there.
+KAMA_VERSION=0.9.947
+KAMA_BUILD=gf919c10e

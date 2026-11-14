@@ -418,7 +418,8 @@ m.emissiveNode(node: 2.0 * color(hex: 0xff3300) * fresnel(power: 3.0));
 It compiles to the WGSL the expression says. A float in a colour slot and a vec4 used as a colour are refused at compile
 time. Measured limits: an operator takes its right operand by value only, a number on the left is a two-operand form
 declared in the type, and a type cannot overload one operator for both itself and a number on the right (KY-55), so
-until that is fixed a number goes on the left.
+until that is fixed a number goes on the left. kama 0.9.947 fixed it on 2026-11-14: the sketch takes a number on
+either side (`.scratch/gfx1-nodes-947/`).
 
 **Custom nodes** (measured 2026-11-14, after the owner asked whether node types are a bound list): three ways, each
 compiled and run in the sketch. A kama function from typed nodes to a typed node (TSL's `Fn()`); a WGSL function wrapped
