@@ -354,7 +354,8 @@ Every measured number is a ratchet on them (KYR-13).
 
 - **Elsewhere:**
   - Linux's software Vulkan is Mesa's lavapipe, where a distribution installs it;
-  - on the web, Chrome's fallback adapter is SwiftShader *(to verify in the pinned browsers)*;
+  - on the web, Chromium's fallback adapter is SwiftShader, verified in Edge 157 and the pinned Chrome for Testing on
+    2026-11-13 (§ 9);
   - macOS has no software Metal.
 - **Whether WARP, lavapipe and SwiftShader run hardware-only methods** (ray queries, mesh shaders) was not checked.
   Such a method's goldens come from hardware.
@@ -384,3 +385,57 @@ a detail.
 - **Not found:** whether any engine's terms forbid publishing benchmarks of it (a "DeWitt clause"). A search of Unity's
   terms surfaced none, which is not evidence there is none. KYR-74 reads each engine's terms before a number about it is
   published.
+
+## 9. GFX-1's questions, measured
+
+Measured 2026-11-13, kyoten's twenty-first session, before `@kama/graphics`' GFX-1 questions were asked. One shader ran
+unchanged in each browser and natively (`.scratch/gfx1-probe/`, its `FINDINGS.md`), and a node builder was sketched in
+kama (`.scratch/gfx1-nodes/`), on kama 0.9.943. This machine: the AMD Radeon 880M, Windows 11.
+
+**The depth convention.** Two tilted quads, the back one a copy of the front a fraction `rel` further at every pixel,
+depth32float, near 0.1 and far 10 km, drawn in both orders so ties show:
+
+| Distance | Gap | Standard: pixels wrong or tied | Reversed | Reversed, infinite far |
+|---|---|---|---|---|
+| 100 m | 1 cm | 2% | 0 | 0 |
+| 100 m | 1 mm | 87% | 0 | 0 |
+| 1 km | 10 cm | 87.5% | 0 | 0 |
+| 5 km | 50 cm | 100% | 0 | 0 |
+| 5 km | 5 cm | 50% | 0 | 0 |
+
+Every case at 1 m and 10 m, and at gaps of 1% and 0.1%, is 0 in every convention, and a cube near the camera is the
+same bytes in all three.
+
+**A node graph in kama.** Typed nodes, one per WGSL type, each holding a shared expression and copied as a reference
+when handed on (`Copyable<This>(bare: copy)`, as TSL's nodes are references), with operators by operand type:
+
+```kama
+FloatNode pulse = 0.5 + 0.5 * sin(x: time());
+m.colorNode(node: mix(from: color(hex: 0x0066ff), to: texture(map: albedo, at: uv()).rgb(), by: pulse));
+m.emissiveNode(node: 2.0 * color(hex: 0xff3300) * fresnel(power: 3.0));
+```
+
+It compiles to the WGSL the expression says. A float in a colour slot and a vec4 used as a colour are refused at compile
+time. Measured limits: an operator takes its right operand by value only, a number on the left is a two-operand form
+declared in the type, and a type cannot overload one operator for both itself and a number on the right (KY-55), so
+until that is fixed a number goes on the left.
+
+**Software GPUs.** The lit cube, 4× MSAA, sRGB, 256 × 256, hashed:
+- every hardware leg gives the same bytes: Vulkan and D3D12 natively, Edge 157, Chrome for Testing 157 and Firefox 160;
+- **SwiftShader runs WebGPU** in Edge 157 with no extra flag and in the pinned Chrome for Testing with
+  `--enable-unsafe-swiftshader` (`forceFallbackAdapter`), the same bytes in both and on every run;
+- **WARP** natively (wgpu-native's fallback on D3D12) is deterministic, and **Firefox 160's fallback adapter is WARP**,
+  the same bytes;
+- Vulkan has no fallback here, since lavapipe is not installed; Linux's is unmeasured.
+
+**How far apart the frames are:**
+
+| Pair | Pixels that differ | by more than 32 of 255 | Largest |
+|---|---|---|---|
+| the GPU and WARP | 0.29% | 0 | 1 |
+| the GPU and SwiftShader | 0.42% | 15 pixels | 72 |
+
+SwiftShader's larger differences are on the cube's silhouette (136 of the 146 pixels off by more than 8): the shading
+agrees, and the rasterizers cover an edge's MSAA samples differently. A frame of the flat-shaded cube is about 2.3 KB as
+a PNG. FLIP, the perceptual metric decided for the reference machines (rendering § Decided, area 5), was not run: it is
+not installed here.

@@ -75,10 +75,11 @@ the design doc it settles before building on it.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
-   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its questions come first, asked in full in the
-      chat: they are in its `ROADMAP_DETAIL.md` § cube (the depth convention, how a node graph reads in kama, whether
-      SwiftShader runs the web leg's goldens, and the perceptual tolerance). Measure before asking, as GPU-4's probes
-      did. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
+   1. **`@kama/graphics`' first slice, GFX-1, a lit cube, on both legs.** Its four questions (its `ROADMAP_DETAIL.md`
+      § cube) were measured and asked in the twenty-first session ([research/graphics.md](research/graphics.md) § 9,
+      `.scratch/gfx1-probe/FINDINGS.md`): the depth convention, how a node graph reads in kama, whether SwiftShader runs
+      the web leg's goldens, and the perceptual tolerance and where goldens live. The owner's answers go in
+      [design/rendering.md](design/rendering.md) § Decided before GFX-1 is built. `examples/triangle`'s read back (kama-gpu's `examples/triangle/src/check.kama`) is the first form of the
       golden harness's frame capture. The `@kama/gpu` rows GFX-1 pulls move into kama-gpu's ROADMAP.md NOW as it does.
       The twenty-first session's runners (native, Edge, Firefox, the triangle's, and the mutation driver with
       `--runner`) are in `.scratch/gpu4-part5/tools/` (its README); a browser-leg mutation driver starts in a UCRT64
@@ -131,6 +132,13 @@ commit:
     holds, and compute's, GPU-5's.
   - 21 of 21 mutations caught: 16 natively, four in Edge, and a raw handle taken in the example, caught by the gate's
     grep alone. Six of the drawing's mutations leave WebGPU silent, so only the read back catches them.
+- **GFX-1's four questions, measured, then asked** after the owner said to go on to them (research/graphics.md § 9):
+  - reversed depth resolves 5 cm at 5 km on depth32float, where the standard convention gets every pixel wrong or tied;
+  - a typed node builder reads close to TSL in kama and refuses a float in a colour slot at compile time, but a type
+    cannot overload one operator for both itself and a number on the right, filed as KY-55;
+  - SwiftShader runs WebGPU in Edge and the pinned Chrome for Testing, and WARP natively and as Firefox's fallback, each
+    the same bytes on every run, and every hardware leg here the same bytes as the others;
+  - Chrome for Testing loads a page it was started on with its network service unsandboxed, for WIN-24 to weigh.
 - **Found on the way, and fixed in a kama-gpu commit of its own (`08d12e8`):** two of GPU-4 part 3's cases counted the compile
   isolates before each had started, and failed once natively in debug ("1 run, not 2"). Holding each isolate after the
   first 300 ms reproduced it every time. Both now wait by the clock and then hold the count exactly, so a pool one short
