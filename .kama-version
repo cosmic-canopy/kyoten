@@ -221,5 +221,11 @@
 #   Edge, 286 in Firefox and in Chrome for Testing), @kama/image's at 8575bb8 (1,401 natively debug and release and on
 #   wasm, the sweep's 197) and @kama/graphics' at 9afdbee (32 natively debug and release, in Firefox and through the
 #   driver, 28 in Edge). KY-40 and KY-45 re-checked, unchanged. The Mac's pin is 0.9.945 until it is rebuilt there.
+#
+# 2026-11-15, Mac: the Mac's pin rebuilt at 0.9.956 (df5a6edf) from a clean clone, so both machines run the same
+# compiler. tools/test.sh is green on it there with Windows's counts (engine 164 cases native debug, release and wasm;
+# the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr checked), in 3 min 3 s.
+# @kama/audio's KAUD-4 is fixed on it (0.9.953, KR-390) and retired. The 0.9.945 binary is kept in
+# .scratch/kama-pin-0.9.945.
 KAMA_VERSION=0.9.956
 KAMA_BUILD=gdf5a6edf
