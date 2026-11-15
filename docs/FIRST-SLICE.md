@@ -82,31 +82,25 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.949+g9f1fdaef`** (`.kama-pin/`, through `tools/kama`;
-   AGENTS.kyoten.md § Build): `tools/test.sh`, then both packages' `tools/test.sh` with `KAMA` set to the pin. Their
-   browser legs run under `kama run` in Edge and the pinned Firefox 160, and through each package's driver in the pinned
-   Chrome for Testing 157.0.8103.50 (`~/browsers`, its `README.md`).
+1. **At a session's start, run the suites on kyoten's pin, `0.9.956+gdf5a6edf`** (`.kama-pin/`, through `tools/kama`;
+   AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
+   `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge and the pinned
+   Firefox 160, and through each package's driver in the pinned Chrome for Testing 157.0.8103.50 (`~/browsers`, its
+   `README.md`).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `9f1fdaef`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
-   - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
-     The Mac's pin is still 0.9.945 until it is rebuilt there.
-   - **kama rebased during the twenty-fifth session, and the pin's commit, `9f1fdaef`, left its history.** kama is now
-     at 0.9.955 (`4b79cad2`), and 0.9.950 to 0.9.954 sit before the KR-330 ruling that `9f1fdaef` was. `48a8e67f`, on
-     its history, differs from the pin only in kama's `docs/ROADMAP*.md`, so it holds the same compiler. What
-     0.9.950 to 0.9.955 bring:
-     - a gate's refusal names its file;
-     - one error for a refused import;
-     - a generic type's own parameter as an operand (0.9.952, which part 3's typed nodes want);
-     - a library's declared flag counting in its consumer's build (KR-390);
-     - no `string` operand on a type's operator;
-     - `std::fs::Watcher`.
-
-     **At the next session's start, the owner chooses:** bump to 0.9.955, or re-point the pin at `48a8e67f`, the same
-     compiler rebuilt from a clean clone. Either way it is a commit of its own, with every suite green.
-   - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
+   - **Read `../kama`'s log since `df5a6edf`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor df5a6edf HEAD`. kama rebases at times. If the
+     pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
+     0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
+   - **The pin is on 0.9.956** since the twenty-fifth session's end (`.kama-version`, kyoten `877966e`), at the owner's
+     word. The Mac's pin is still 0.9.945 until it is rebuilt there.
+   - **0.9.956 brings what kyoten waited on** (`.kama-version` says what each moved):
+     - `kama run` hands a browser the flags a project or its command line names, `--chromium-arg` or `"browser"` in
+       `kama.json` (KY-57, fixed and removed);
+     - a generic type's own parameter as an operand (0.9.952), which part 3's typed nodes want.
+   - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -135,9 +129,18 @@ the design doc it settles before building on it.
           the default 8-bit sRGB target holds what the window would show, and a read hands back an `Image`.
       - **Next: GFX-1's part 2,** the scene graph on the flat core, `BoxGeometry`, and `PerspectiveCamera` with reversed
         depth and the target it draws into (question 4): an unlit box, with its golden.
+      - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
+        tests).
+        - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
+          `--enable-unsafe-swiftshader` and `--disable-features=NetworkServiceSandbox`, and with them it loads a page
+          under `kama run` for the first time. Each matched both SwiftShader goldens.
+        - **What it opens, for the owner to choose at the next session's start:** both packages' Edge legs under
+          `kama run` could compare goldens too, through `"browser": { "chromiumArgs": [...] }` in their tests'
+          `kama.json`. `@kama/gpu`'s and `@kama/graphics`' DevTools drivers could be retired, since neither needs
+          trusted input. `@kama/window`'s keeps its driver for KR-378.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
-        bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
+        bytes twice. Its Chromium legs under `kama run` still pass `--no-fallback-adapter`, from before KY-57's fix.
         **Found on the way and fixed** (kama-gpu `c490c01`): natively a lost device's next submit or map ended the
         process. On wgpu-native v29's D3D12, a read-only depth pass loses the device when the depth texture's usage is
         RenderAttachment alone (`.scratch/warp-lost/`), so GFX-1's depth textures also take TextureBinding.
@@ -146,13 +149,17 @@ the design doc it settles before building on it.
         fix) the first form of the node builder.
       - The runners are in `.scratch/gpu15/tools/` (its README): native, Edge, Firefox, Chrome for Testing and Edge
         through the driver, and the mutation driver with `--runner`, which starts any browser runner in a UCRT64 login
-        shell. The probe's page runner, which works in every browser, is `.scratch/gfx1-probe/run.mjs`.
-   2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
-      Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
-      --scale 1.5` in the eighteenth session.
-   - **Waiting on the owner:** relaying to kama whether `@kama/image` is first-party, KY-57 (`kama run` cannot pass a
-     browser a flag), and `@kama/image`'s KIMG-1 (its `KAMA_GAPS.md`): a wasm release is `-Oz` for every package, a codec
-     3 to 3.5 times slower than at `-O3`, which is the evidence kama's KR-332 asks for. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+        shell. The probe's page runner, which works in every browser, is `.scratch/gfx1-probe/run.mjs`. **For
+        `@kama/graphics`, `.scratch/gfx1-part1/tools/`** (its README): the same driver pointed there, with runners that
+        hold a mutation to the gate's own checks, and part 1's mutation lists.
+   2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378). Since 0.9.956 the pinned
+      Chrome for Testing loads a page under `kama run`, given `--chromium-arg --disable-features=NetworkServiceSandbox`,
+      which was WIN-24's other condition. The device scale moved to `kama run --scale 1.5` in the eighteenth session.
+   - **Reached kama on 2026-11-14:**
+     - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
+     - KY-57 is fixed (0.9.956);
+     - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
+   - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
@@ -178,7 +185,12 @@ the design doc it settles before building on it.
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
 
 **The twenty-fifth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start, at the twenty-fourth
-session's counts, and kama had not moved. Then GFX-1's part 1 began in `../kama-graphics`, test-first:
+session's counts, and kama had not moved. It ended with the pin bumped to 0.9.956 at the owner's word (kyoten `877966e`):
+- **The rebase:** kama had rebased, and the old pin's commit had left its history.
+- **The suites:** every one, kyoten's and four packages', was green on 0.9.956 at the same counts.
+- **The gaps:** KY-57 is fixed and removed, and KY-40 and KY-45 are unchanged.
+
+GFX-1's part 1 was built in `../kama-graphics`, test-first:
 
 - **The gate and the golden harness** (kama-graphics `3ac9c79`):
   - **The tests program, and `tools/test.sh`,** natively debug and release, under `kama run` in Edge and Firefox, and
