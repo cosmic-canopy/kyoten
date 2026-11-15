@@ -696,3 +696,60 @@
     Chromium browser, Edge included. Each package's `tools/browsers.mjs` says what each browser is and is started with.
   - **Considered and set aside:** Edge given the flags as well, so its legs compare SwiftShader goldens (above); and
     keeping the drivers, a stopgap whose replacement had arrived.
+
+- **2026-11-15, the owner: GFX-1's part 2, questions 1 to 3** (the scene graph on the flat core and an unlit box). Asked
+  in full in the chat once the shapes compiled and ran on kama 0.9.956 (`.scratch/gfx1-part2/sketch/`); "I take the
+  recommendations", after two asked back (can Euler be made hard to get wrong; is `Shared<T>` a performance cost).
+  1. **A node holds its rotation both ways, under three.js's names** ("this sounds like the production and common answer.
+     Yes. We need to be able to use both quats and euler"): `rotation()`/`rotationMut()`, an `Euler` (the library's own
+     type; std::math has none), and `quaternion()`/`quaternionMut()`, a std::math `Quat`. The last written wins, and the
+     other is made from it when next read (measured: `rotation.y += 0.5` reads back as the quaternion (0, 0.2474, 0,
+     0.9689), `rotateY(rad: 0.25)` as rotation y 0.75). three.js, Godot, Unity and Unreal all keep both.
+     **Its five safeguards** (the owner: "Although euler does have limitations it is easier for people to use at times...
+     it can be error prone so I'm curious if that can be mitigated"):
+     1. **The order is part of what an Euler means:** `Euler.make(xRad:, yRad:, zRad:, order:)` takes it, so no Euler is
+        built without it; `reordered(order:)` keeps the turn (three.js's `reorder`), and there is no `orderMut()`, which
+        would reinterpret the numbers. A node's own starts at XYZ, three.js's default.
+     2. **Turns go through the quaternion,** so no turn meets gimbal lock: `rotateX/Y/Z(rad:)` about the object's own
+        axes, `rotateOnAxis`, `rotateOnWorldAxis` and `lookAt`. The Euler is for setting and reading absolute angles.
+     3. **No Euler is blended:** the library interpolates quaternions only.
+     4. **The Euler made from a quaternion is the one nearest the angles the node last held,** so a read after a
+        quaternion write never jumps by 2π or to the other equivalent triple (Blender's `to_euler` takes such a
+        compatible Euler for the same reason).
+     5. **Degrees enter only through `Euler.fromDegrees(x:, y:, z:, order:)`,** and every labelled call says radians. A
+        bare `rotationMut().y += 45.0` cannot be caught, since kama cannot tell a number's unit; an angle type for the
+        fields was set aside, as it would refuse three.js's `rotation.y += 0.01` and no engine uses one.
+  2. **`MeshBasicMaterial` arrives in part 2** ("This sounds good"), unlit, white by default, `color()`/`colorMut()`, with
+     its WGSL written by hand as a stopgap inside the library. Part 3 rebuilds it from typed nodes behind the same API, and
+     part 2's golden must still match byte for byte, so it holds part 3's compiler. Set aside: no material type until
+     part 3, which would change the API between parts and redraw the goldens; and the typed nodes first, which reorders
+     the decided parts.
+  3. **Every object the library shares is a `Shared<T>` made with `new`:** nodes, geometries, materials, textures and
+     render targets, `RenderTarget` included, which changes from part 1's handle type. Colours, vectors, `Euler` and
+     options are plain values, and a `Renderer` is a resource the program owns. Measured first: kama refuses a contract
+     stored in a field (*"a contract (`Geometry`) borrows its object, so it can't be stored in a field — it would
+     dangle; own the object instead (e.g. `Shared<Geometry>`)"*), so a mesh holds `Shared<Geometry>` and
+     `Shared<Material>` either way. **Not a performance cost** (the owner asked): a handle type holding one `Shared` is
+     the same pointer, count and checks, and a `Shared`'s costs are a non-atomic count when handed on (at setup), kama's
+     check on a write through it, and an indirect call per node in the walk. Measured on 0.9.956 natively at release,
+     10,100 meshes in 100 groups (`.scratch/gfx1-part2/bench/`, three runs each): with change marks, nothing changed
+     costs 0 µs a frame, one mesh moved about 2 µs, every mesh moved 39 ns a node (0.4 ms), against 3.7 ns a node
+     (37 µs) for the same transforms in flat arrays; a walk without the marks costs 15 ns a node when nothing changed.
+     The scene graph is the easy layer, and an engine drives the flat core.
+  - **Settled under the decided rules, reported with the questions and not objected to:**
+    - the node contract is `Object3D`, three.js's base class, since `Node<T>` is the shader nodes' contract;
+    - positions and scales are std::math's `Vec3`, as kyoten's `Transform` holds them;
+    - `scene.add(object: cube)` is a method: each node owns a small shared part with its children, and a child's parent
+      link is a `Weak` to its parent's part, since nothing reaches the `Shared` holding `this` (KY-58, filed); `parent()`
+      waits on KY-58;
+    - **change marks:** a write marks the node and each ancestor up to the first already marked, and the render walk
+      enters only a subtree that moved or holds a mark, so an unchanged scene costs nothing to walk; three.js remakes
+      every node's world matrix every frame;
+    - `PerspectiveCamera.make(fovRad:, aspect:, near:, far:)`, three.js's four with radians; the renderer remakes the
+      projection when the camera changed, so there is no `updateProjectionMatrix()`; reversed depth as three.js r187's
+      `makePerspective` (near to 1, far to 0), an infinite far as its limit;
+    - `BoxGeometry` as three.js's: faces +X, −X, +Y, −Y, +Z, −Z, counter-clockwise, a UV and a group per face,
+      `withSegments`;
+    - the flat core is built under the graph and stays internal; its public surface for an engine is asked when
+      kyoten's render module first drives it, at the join;
+    - the box's golden is two boxes in two colours crossing in depth, so it holds reversed depth, not only a silhouette.
