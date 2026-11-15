@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-14, the twenty-fourth session)
+## Where it stands (2026-11-14, the twenty-fifth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -93,7 +93,7 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
    - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
      The Mac's pin is still 0.9.945 until it is rebuilt there.
-   - **kama is still at 0.9.950 (`0be5d3b2`) as the twenty-fourth session ends,** with the pin on its history: KR-330's
+   - **kama is still at 0.9.950 (`0be5d3b2`) as the twenty-fifth session starts,** with the pin on its history: KR-330's
      `std::fs::Watcher`, which kyoten does not use yet. There is no reason to bump for it.
    - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
@@ -116,9 +116,10 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: GFX-1's part 1,** the gate and the golden harness, and a `Renderer` with no window that clears and reads
-        back, with its golden. Its PNGs go through `@kama/image`, whose PNG is whole: `decode`, and `encode` with
-        `archival()` for the goldens (the twenty-fourth session, KYR-77).
+      - **GFX-1's part 1: its gate and golden harness are built** (kama-graphics `3ac9c79`, the twenty-fifth session).
+        Each leg names its software GPU, every frame is held to `tests/goldens/<test>/<gpu>.png`, and
+        `tools/update-goldens.sh` writes what the legs print. **Its `Renderer` waits on three questions** asked of the
+        owner the same day: where a frame goes with no window, what a render target holds, and what a read returns.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -160,6 +161,25 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-fifth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start, at the twenty-fourth
+session's counts, and kama had not moved. Then GFX-1's part 1 began in `../kama-graphics`, test-first:
+
+- **The gate and the golden harness** (kama-graphics `3ac9c79`):
+  - **The tests program, and `tools/test.sh`,** natively debug and release, under `kama run` in Edge and Firefox, and
+    through the driver in Chrome for Testing. The legs are defined once, in `tools/legs.sh`.
+  - **Each leg names its software GPU:** `--golden warp` natively and in Firefox, `--golden swiftshader` through the
+    driver. Edge under `kama run` names none (KY-57). The adapter is held to what it can say about itself.
+  - **The comparison takes the golden's bytes as a parameter,** decodes it with `@kama/image` and compares byte for byte.
+    A frame that differs, or has no golden yet, prints as one `golden-png` line at `archival()`. `tools/update-goldens.sh`
+    writes those, refusing when the legs of one GPU disagree.
+  - **The gate holds each leg that names a GPU** to declaring and matching every golden it has.
+  - **The harness's own scene is two triangles at 4x MSAA, 37x23.** WARP draws 381 texels and SwiftShader 382, so each
+    has its own golden. WARP draws the same bytes natively and in Firefox.
+  - **17 cases on each golden leg, 14 in Edge.** 29 of 29 mutations were caught, and a broken golden was written back
+    byte for byte by the updater.
+- **The `Renderer`'s three questions** were asked of the owner: where a frame goes with no window, what a render target
+  holds, and what a read returns.
 
 **The twenty-fourth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start (kama had reached
 0.9.950, `std::fs::Watcher`, nothing kyoten uses). Each part was test-first and committed with every suite green:
