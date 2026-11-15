@@ -676,3 +676,23 @@
        Whether `@kama/image` is first-party is still kama's to rule, relayed by the owner.
      - **Considered and set aside:** raw bytes with their size and format beside them, which say nothing of what they
        hold, so every program that saves one builds an image itself.
+
+- **2026-11-14, the owner: the browser drivers retired, and Edge kept as players run it** ("A", as recommended, asked
+  at the twenty-sixth session's start). kama 0.9.956 hands a browser the flags a run names (`--chromium-arg`, KY-57
+  fixed), and the pinned Chrome for Testing, given `--enable-unsafe-webgpu`, `--enable-unsafe-swiftshader` and
+  `--disable-features=NetworkServiceSandbox`, loaded `@kama/graphics`' tests under `kama run` and matched both
+  SwiftShader goldens (measured the day before). What that opened was the owner's to choose:
+  - **The pinned Chrome for Testing runs under `kama run`,** in `@kama/gpu` and `@kama/graphics`, with those three flags
+    and `--scale 1.5` (as the driver ran it) on its own command line. It stays the web's SwiftShader leg: `@kama/gpu`'s
+    fallback cases, and `@kama/graphics`' goldens. Each package's `tools/webtest.mjs`, the DevTools-protocol stopgap,
+    is deleted. `@kama/window` keeps its own for trusted input (kama's KR-378, its WIN-24).
+  - **Edge stays as players run it: no flags, its real GPU, no golden.**
+    - It is the only Windows leg of `@kama/graphics` on a real GPU: natively and in Firefox the leg names WARP, and Chrome
+      for Testing names SwiftShader. Until FLIP compares hardware frames (part 6), it is what runs the library on one.
+    - `--enable-unsafe-webgpu` unlocks what Chromium holds back from pages (Dawn's unsafe APIs and its adapter
+      blocklist), so `@kama/gpu`'s Edge leg would stop testing WebGPU as a player's browser gives it.
+    - As a SwiftShader leg it would add nothing: Edge and Chrome for Testing drew the same SwiftShader bytes.
+  - **The flags go on that browser's command line, never in the tests' `kama.json`,** whose `chromiumArgs` reach every
+    Chromium browser, Edge included. Each package's `tools/browsers.mjs` says what each browser is and is started with.
+  - **Considered and set aside:** Edge given the flags as well, so its legs compare SwiftShader goldens (above); and
+    keeping the drivers, a stopgap whose replacement had arrived.

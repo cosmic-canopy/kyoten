@@ -95,12 +95,14 @@ the design doc it settles before building on it.
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
    - **The pin is on 0.9.956** since the twenty-fifth session's end (`.kama-version`, kyoten `c6ed657`), at the owner's
-     word. The Mac's pin is still 0.9.945 until it is rebuilt there.
+     word. The Mac's pin was rebuilt at 0.9.956 too (kyoten `7caa18c`, its `tools/test.sh` green there), so both
+     machines run the same compiler.
    - **0.9.956 brings what kyoten waited on** (`.kama-version` says what each moved):
      - `kama run` hands a browser the flags a project or its command line names, `--chromium-arg` or `"browser"` in
        `kama.json` (KY-57, fixed and removed);
      - a generic type's own parameter as an operand (0.9.952), which part 3's typed nodes want.
-   - **Still open with kama:** KY-45, KY-40 and kama's KR-378.
+   - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
+     handle, worked around in GFX-1's part 2) and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -134,13 +136,15 @@ the design doc it settles before building on it.
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
           `--enable-unsafe-swiftshader` and `--disable-features=NetworkServiceSandbox`, and with them it loads a page
           under `kama run` for the first time. Each matched both SwiftShader goldens.
-        - **What it opens, for the owner to choose at the next session's start:** both packages' Edge legs under
-          `kama run` could compare goldens too, through `"browser": { "chromiumArgs": [...] }` in their tests'
-          `kama.json`. `@kama/gpu`'s and `@kama/graphics`' DevTools drivers could be retired, since neither needs
-          trusted input. `@kama/window`'s keeps its driver for KR-378.
+        - **Decided by the owner at the twenty-sixth session's start, as recommended** (rendering § Decided, the
+          drivers retired): `@kama/gpu`'s and `@kama/graphics`' DevTools drivers are retired (kama-gpu `fba6beb`,
+          kama-graphics `80aa861`). The pinned Chrome for Testing runs under `kama run` with its flags on its own command
+          line, the web's SwiftShader leg, and Edge runs as a player's does, on its real GPU, with no flag and no golden.
+          `@kama/window`'s keeps its driver for KR-378.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
-        bytes twice. Its Chromium legs under `kama run` still pass `--no-fallback-adapter`, from before KY-57's fix.
+        bytes twice. Since the drivers' retirement, Chrome for Testing runs its fallback cases under `kama run`, and Edge
+        holds that none is offered (`--no-fallback-adapter`).
         **Found on the way and fixed** (kama-gpu `c490c01`): natively a lost device's next submit or map ended the
         process. On wgpu-native v29's D3D12, a read-only depth pass loses the device when the depth texture's usage is
         RenderAttachment alone (`.scratch/warp-lost/`), so GFX-1's depth textures also take TextureBinding.

@@ -117,15 +117,18 @@ reach it; set both in the shell's own profile.
 emsdk (the owner, 2026-11-11): Chrome for Testing 157.0.8103.50 and Firefox 160.0, never auto-updated, so a red run
 can be reproduced. Its `README.md` says where each came from and how it was verified. A leg runs headless, in every
 browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as the owner decided for WIN-18 on
-2026-11-12:
-- **under `kama run --target WASM --headless`** (kama's KR-377): Edge and Chrome as installed, and the pinned
-  Firefox 160. WebGPU needs no flag in headless Chromium, and since 0.9.940 `kama run` sets the pref that gives
-  headless Firefox its adapter (KY-54, fixed). `@kama/window`'s run passes `--scale 1.5`, as
-  its scale cases need. The cases that need trusted input (kama's KR-378) are skipped there, each by name;
-- **through each package's `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing:
-  every case, with trusted input and a device scale of 1.5. An unzipped Chrome for Testing never loads a page under
-  `kama run`, even with the folder permissions an installed Chrome's has (`~/browsers/README.md`): its sandboxed
-  network service crashes, and `kama run` names it after 60 s.
+2026-11-12 and for the drivers on 2026-11-14 ([design/rendering.md](docs/design/rendering.md) § Decided):
+- **under `kama run --target WASM --headless`** (kama's KR-377): Edge and Chrome as installed, as a player's run, on
+  their real GPU; the pinned Firefox 160, whose headless adapter `kama run` gives since 0.9.940 (KY-54, fixed); and, in
+  `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing, the web's SwiftShader leg. That one alone takes flags,
+  on its own command line (`tools/browsers.mjs flags`, kama 0.9.956's `--chromium-arg`): `--enable-unsafe-webgpu` and
+  `--enable-unsafe-swiftshader`, which offer WebGPU SwiftShader, `--disable-features=NetworkServiceSandbox`, without
+  which an unzipped Chrome for Testing's sandboxed network service crashes and it loads no page, and `--scale 1.5`.
+  `@kama/window`'s runs pass `--scale 1.5`, as its scale cases need. The cases that need trusted input (kama's KR-378)
+  are skipped there, each by name;
+- **through `@kama/window`'s `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing:
+  every case, with trusted input and a device scale of 1.5, until kama gives trusted input (its WIN-24). `@kama/gpu`'s
+  and `@kama/graphics`' drivers are retired.
 
 ## Rules
 
