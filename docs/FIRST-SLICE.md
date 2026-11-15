@@ -82,6 +82,8 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
    - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
      The Mac's pin is still 0.9.945 until it is rebuilt there.
+   - **kama reached 0.9.950 (`0be5d3b2`) as the twenty-third session ended,** with the pin on its history: KR-330's
+     `std::fs::Watcher`, which kyoten does not use yet. There is no reason to bump for it.
    - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
@@ -121,8 +123,9 @@ the design doc it settles before building on it.
    2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378) and the pinned Chrome for
       Testing loads a page under `kama run`, or a pinned Chromium that does. The device scale moved to `kama run
       --scale 1.5` in the eighteenth session.
-   - **Waiting on the owner:** relaying to kama whether `@kama/image` is first-party, and KY-57 (`kama run` cannot pass
-     a browser a flag). A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+   - **Waiting on the owner:** relaying to kama whether `@kama/image` is first-party, KY-57 (`kama run` cannot pass a
+     browser a flag), and `@kama/image`'s KIMG-1 (its `KAMA_GAPS.md`): a wasm release is `-Oz` for every package, a codec
+     3 to 3.5 times slower than at `-O3`, which is the evidence kama's KR-332 asks for. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
