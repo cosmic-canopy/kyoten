@@ -93,7 +93,7 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
    - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
      The Mac's pin is still 0.9.945 until it is rebuilt there.
-   - **kama reached 0.9.950 (`0be5d3b2`) as the twenty-third session ended,** with the pin on its history: KR-330's
+   - **kama is still at 0.9.950 (`0be5d3b2`) as the twenty-fourth session ends,** with the pin on its history: KR-330's
      `std::fs::Watcher`, which kyoten does not use yet. There is no reason to bump for it.
    - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
