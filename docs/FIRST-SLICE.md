@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-14, the twenty-third session)
+## Where it stands (2026-11-14, the twenty-fourth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -66,6 +66,17 @@ the design doc it settles before building on it.
   - `keepGrey` and `partial`;
   - held to libpng on PngSuite and 28 crafted files, 470 cases natively and on wasm;
   - a flip-and-cut sweep of 1.3 million decodes in its gate.
+
+  **IMG-2, PNG encoding, is built, so PNG is whole** (kama-image `9f704e9` to `8575bb8`, the twenty-fourth session):
+  - `encode` with `standard()` and `archival()`, libpng's adaptive filter and the five fixed ones, and IDAT chunks of
+    65,536 bytes;
+  - the colour chunks, written so a file decodes back to the image's colour space with everything it carries;
+  - the same bytes on every leg, held by the gate, and `archival()`'s written down;
+  - libpng reads all 254 files it writes from the fixtures with no warning;
+  - 1,401 cases natively and on wasm.
+
+  Its six details were settled under the owner's word on decision 4 (kama-image's `AGENTS.image.md` § Decided 4).
+  Reading libpng's writer found two places the decoder kept chunks other than as libpng does, now fixed.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -105,9 +116,9 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **Next: `@kama/image`'s IMG-2, PNG encoding** (KYR-77, its `ROADMAP_DETAIL.md`), test-first, by its decision 4:
-        `standard()` and `archival()`, the same bytes on every leg. IMG-1, PNG decoding, is built (the twenty-third
-        session). Then GFX-1's part 1.
+      - **Next: GFX-1's part 1,** the gate and the golden harness, and a `Renderer` with no window that clears and reads
+        back, with its golden. Its PNGs go through `@kama/image`, whose PNG is whole: `decode`, and `encode` with
+        `archival()` for the goldens (the twenty-fourth session, KYR-77).
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -149,6 +160,39 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-fourth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start (kama had reached
+0.9.950, `std::fs::Watcher`, nothing kyoten uses). Each part was test-first and committed with every suite green:
+
+- **The decoder fixed first** (kama-image `9f704e9`). Reading libpng 1.6.50's writer for IMG-2 found two places the
+  decoder kept chunks other than as libpng does:
+  - it kept a cICP whose matrix is not 0, which `png_set_cICP` drops and the PNG Third Edition forbids;
+  - it counted a broken colour chunk as seen, so it dropped a good one after it.
+
+  Ten crafted fixtures, held to libpng, were red first. 11 of 11 mutations were caught.
+- **IMG-2 built** in three parts:
+  - **The encoder** (`a6baa14`):
+    - the image as it is held, but an opaque image without its alpha;
+    - `Adaptive` as libpng's `png_write_find_filter`, with its one-row and one-column rules, held to libpng's choice for
+      every row of every fixture;
+    - IDAT chunks of 65,536 bytes;
+    - the refusals.
+
+    The decoder's shared helpers moved to `image::png::detail`, which only `image::png` reaches. 30 of 31 mutations
+    were caught. The 31st, the guard on a width past 2³¹ − 1, needs a 2 GiB image to reach.
+  - **The colour chunks** (`9831d5c`). What the image carries is written back, and its colour space is written where
+    that does not give it. The check is the decoder's own precedence, so a contradiction is refused as the new
+    `Metadata` kind. 34 of 34 mutations were caught, two after their cases were sharpened.
+  - **The promise** (`8575bb8`):
+    - `archival()`'s bytes are written down for a fixed set;
+    - the gate holds every leg's bytes to the others';
+    - `tools/reference/encoded.sh` has libpng read every file written from the fixtures, with no warning and with its
+      answer unchanged from the fixture's.
+
+    The gate's own new check, proved by mutation, had a `diff | head` that `pipefail` cut short; it was fixed.
+- **Settled under the owner's word on decision 4** ("I will defer to your production answer"), and reported at the
+  session's end: the colour type written, what is refused, the colour chunks for each colour space, what is written
+  back, the IDAT size, and `Adaptive` as libpng's.
 
 **The twenty-third session** (2026-11-14):
 
