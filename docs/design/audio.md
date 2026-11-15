@@ -164,3 +164,11 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     that package.
   - **The feature map is the package's `FEATURES.md`** (decision 27), one row per feature, naming features only. When
     kyoten's audio module needs a feature that no slice has scheduled, it asks for it there.
+- **2026-11-15, the owner: `@kama/audio`'s command protocol binds kyoten's question 3 in two ways** (its
+  `AGENTS.audio.md` § Decided, 32 and 33).
+  - **A call reaches the audio side only when the context's `update()` flushes it** (decision 33), and a frame's calls
+    land together, in one quantum. So the phase that calls `update()` runs after every processor that makes audio calls
+    in that frame. A sound triggered in the Update phase is heard from the first quantum after that frame's flush.
+  - **"A little ahead" is a call's own time** (decision 32). kyoten passes it as `start(when:)` or as an automation
+    event's `startTime:`, and the node keeps it. A call with no time of its own applies in the quantum it lands in. A
+    time that has already passed by then takes effect at once, and the package counts it as late.
