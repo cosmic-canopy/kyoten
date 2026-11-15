@@ -1,7 +1,8 @@
 # Audio, and the DAW tool
 
 **Status:** KYR-15 started on 2026-11-13 as `@kama/audio` (`../kama-audio`), designed and built on the Mac Mini in
-parallel with Track 1 (§ Decided). The DAW waits for KYR-35. Below, the questions as kyoten first wrote them; the
+parallel with Track 1 (§ Decided). The package's design pass finished on 2026-11-15, and its first slice (AUD-29, a
+sample-exact loop) is under way. The DAW waits for KYR-35. Below, the questions as kyoten first wrote them; the
 package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3, 6 and 7 stay kyoten's.
 
 ## What the vision asks
@@ -131,3 +132,35 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **The room's reverb is the package's own convolver on every leg** (decision 26), never the browser's
     `ConvolverNode`. So kyoten's reverb sends and the room's reflection slot (decision 20) are fed by impulse responses
     the game loads as assets, and they sound the same on every leg.
+- **2026-11-15, the owner: `@kama/audio`'s area 5 closes its design pass, and binds kyoten in four ways** (its
+  `AGENTS.audio.md` § Decided, 27 to 30).
+  - **The package's order is by example** (decision 28), so kyoten's needs arrive slice by slice:
+    1. a sample-exact loop (AUD-29), first, for cosmic-forge's CF-24;
+    2. a game's sounds (AUD-30), which kyoten's audio module (KYR-15) binds for the fps example (KYR-65);
+    3. adaptive music (AUD-31);
+    4. voice chat (AUD-32), for networked play (KYR-18) and captions (KYR-76);
+    5. spatial sound on a headset (AUD-33), which moves earlier when kama's Android app (KY-2) and the XR package
+       (KYR-31) land;
+    6. a synth on MIDI (AUD-34);
+    7. a multitrack session (AUD-35).
+
+    The owner: "option 1 sounds good to me so far", so it may change.
+  - **A DAW's own engine is a package of its own, on `@kama/audio`'s public API** (decision 29). It holds:
+    - editing the tempo map;
+    - tracks and clips, takes and comping;
+    - plugin hosting (CLAP natively, WebCLAP on the web);
+    - sync, and the project document and its undo.
+
+    `@kama/audio` keeps what a game also uses: automation, latency compensation, sidechains, the bounce, metering, and
+    the tempo map as a function. So kyoten's DAW tool (question 6, KYR-35) is built on that package, which is built when
+    KYR-35 or another DAW asks for it.
+  - **Speech is a package of its own, on `@kama/audio`'s public API** (decision 30). `@kama/audio`'s half is three
+    features of its voice-chat slice:
+    - frames tapped from any node;
+    - a source the program feeds;
+    - the output as a media stream on the web.
+
+    So kyoten's speech to text and text to speech ([accessibility.md](accessibility.md) questions 4 and 5) come from
+    that package.
+  - **The feature map is the package's `FEATURES.md`** (decision 27), one row per feature, naming features only. When
+    kyoten's audio module needs a feature that no slice has scheduled, it asks for it there.

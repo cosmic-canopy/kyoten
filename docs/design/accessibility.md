@@ -1,7 +1,9 @@
 # Accessibility: what every kyoten game gives its players
 
-**Status:** draft, deferred to KYR-76. These are questions, not decisions. A platform fact marked *(not checked)* was
-not measured or read from its source when this was written; each is checked before its question is asked.
+**Status:** draft, deferred to KYR-76. One decision so far, speech's package (§ Decided); the rest are questions. A
+platform fact marked *(not checked)* was not measured or read from its source when this was written; each is checked
+before its question is asked. Questions 4, 5 and 9's facts were checked on 2026-11-15, in `@kama/audio`'s
+`RESEARCH.md` § 10.3.
 
 ## What the owner asks
 
@@ -63,26 +65,42 @@ not measured or read from its source when this was written; each is checked befo
      controller may need to speak commands.
    - *The uses:* voice chat captioned live, voice commands, dictation into chat.
    - *The candidates:*
-     - on the web, the Web Speech API's recognition. It is not in Firefox, and Chrome's sends audio to a server by
-       default *(not checked)*;
-     - a local model on every leg, such as whisper.cpp as friendly-fire-department ships it. It keeps speech on the
-       device and works offline, but its model weighs 30 MB or more, which kyoten's rule to lean on the web argues
-       against for every web game;
-     - the OS natively: Apple's Speech framework, Windows' speech recognition, Android's *(not checked)*.
+     - **on the web, the Web Speech API's recognition.**
+       - Chrome 139+ and Firefox 160 recognise on the device when a page asks for it (`processLocally`, with
+         `available()` and `install()`; measured in the pinned Chrome 157 and Firefox 160).
+       - From Chrome 135 and Firefox 160 it takes a `MediaStreamTrack`, so the engine's own frames can feed it.
+       - Chrome sends audio to a server unless `processLocally` is set.
+       - Firefox's is on the device only, and desktop only.
+       - Safari has only the prefixed API, with no track input, on the device only where the locale has a model;
+     - **a local model on every leg.** whisper.cpp, as friendly-fire-department ships it, is MIT and 31 MB at 5 bits,
+       and does not stream. Moonshine is MIT and streams, at 26M parameters. A streaming Zipformer is Apache-2.0 and
+       41 MB. Each keeps speech on the device and works offline, but its model weighs tens of MB, which kyoten's rule to
+       lean on the web argues against for every web game;
+     - **the OS natively.** Apple's Speech framework (and `SpeechAnalyzer` on 26) and Android's on-device recognizer
+       (API 33) take the app's own buffers. Windows has no production on-device API that takes them, since its dictation
+       is a web service, and Linux has none.
    - *To settle:* which runs on each leg, what happens to privacy when audio leaves the device, and whether the model
-     is downloaded only by a player who turns it on. `@kama/audio` supplies the microphone's audio. Recognition runs off
-     the audio thread, in this package or a speech package of its own (`@kama/audio`'s area 5).
+     is downloaded only by a player who turns it on. `@kama/audio` supplies the frames (the microphone's and the remote
+     voices'), and recognition runs off the audio thread in a speech package of its own (§ Decided).
 5. **Text to speech.**
    - *The problem:* a blind or low-vision player cannot read menus, chat or on-screen text, and the OS's screen reader
      cannot see inside a game's canvas.
    - *The uses:* menus and UI read aloud, chat read aloud, a game's own narrator.
    - *The candidates:*
-     - on the web, the Web Speech API's synthesis, in every browser. Its voices differ by browser and OS, and its sound
-       does not pass through Web Audio, so the engine cannot duck, place or mix it *(not checked)*;
-     - the OS natively: AVSpeechSynthesizer, Windows' speech synthesis, Android's TextToSpeech *(not checked)*;
-     - a local voice model rendering into `@kama/audio`'s engine on every leg (Piper, Kokoro *(not checked)*). It is
-       the same voice everywhere and mixes like any sound, at a download's cost.
-   - *To settle:* where the voice comes from on each leg, and whether speech goes through the engine's mix.
+     - **on the web, the Web Speech API's synthesis, in every browser.**
+       - Its voices differ by browser and OS. Chrome's and Edge's online voices send the text to a server.
+       - Its sound never passes through Web Audio: `speechSynthesis` has no stream, node or sink (measured in Chrome
+         157 and Firefox 160), and the proposal to add one has had no activity since 2019.
+       - So the engine cannot place, mix or send it, only duck its own mix while it speaks;
+     - **the OS natively.** AVSpeechSynthesizer (`write(_:toBufferCallback:)`), WinRT's `SynthesizeTextToStreamAsync`
+       and Android's `onAudioAvailable` hand back samples. Linux's Speech Dispatcher plays the speech itself and returns
+       none;
+     - **a local voice model rendering into `@kama/audio`'s engine on every leg.** Kokoro is Apache-2.0 and about 82 MB
+       at 8 bits; Kitten TTS is Apache-2.0 and 8 to 17 MB a language; Piper's maintained fork is GPL-3, and each of its
+       voices has its dataset's licence. It is the same voice everywhere and mixes like any sound, at a download's
+       cost.
+   - *To settle:* where the voice comes from on each leg. That speech goes through the engine's mix wherever the
+     platform or a model gives samples is decided (§ Decided).
 6. **Captions and subtitles.**
    - *The problem:* a player who cannot hear misses dialogue and the sounds that matter, such as footsteps behind
      them or an alarm.
@@ -109,10 +127,32 @@ not measured or read from its source when this was written; each is checked befo
 9. **Which standards, and the law.**
    - *Guidelines to measure against:* the Game Accessibility Guidelines, Xbox's Accessibility Guidelines (XAG), and
      WCAG for UI *(not checked)*.
-   - *The law:* in the US the CVAA asks games with voice or text chat to make that communication accessible, which
-     may make speech to text and text to speech required for any kyoten game with chat *(not checked)*. Consoles'
-     certification may ask for more (KYR-42).
+   - *The law:* in the US the CVAA has asked games with voice or text chat to make that communication accessible
+     since 1 January 2019. Checked on 2026-11-15, in a reading of the rule, not legal advice:
+     - the rule asks for a mode that needs no hearing and one that needs no speech, and names no technology;
+     - the FCC's guide gives text to speech for chat and captions of voice chat as ways to comply.
+
+     Xbox's guideline 119 asks for both, speaking a player's typed chat on the voice channel, but it is guidance, not
+     a certification gate. Consoles' certification may ask for more (KYR-42).
 
 ## Decided
 
-Nothing yet.
+- **2026-11-15, the owner: speech is a package of its own, on `@kama/audio`'s public API** (questions 4 and 5's audio
+  half; `@kama/audio`'s `AGENTS.audio.md` § Decided, 30). The owner took the recommendation.
+  - **Its two ladders:**
+    - **text to speech:** the platform's voice played by the platform (on the web the only rung without a model, with
+      the engine ducking around it); then the platform's voice as samples into the mix; then a local voice model on
+      every leg;
+    - **speech to text:** the platform's recognizer on the device, fed the engine's frames; then a local model on every
+      leg, downloaded only when a player turns it on.
+  - **`@kama/audio`'s half is three features of its voice-chat slice** (AUD-32): frames tapped from any node, a source
+    the program feeds, and the output as a media stream on the web.
+  - **Wherever the platform or a model gives samples, speech goes through the engine's mix,** so it can be placed,
+    ducked and sent over voice chat.
+  - **What stays open here:** which rung each leg defaults to, what may leave the device, and when a model is
+    downloaded (questions 4 and 5's *To settle*).
+  - **Why:**
+    - Web Speech's synthesis cannot reach Web Audio.
+    - The models are tens of MB and need an inference runtime, which an audio engine does not.
+    - The platforms' speech services are bindings of their own.
+    - Recognition runs off the audio thread anyway.
