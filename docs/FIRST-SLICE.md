@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-14, the twenty-fifth session)
+## Where it stands (2026-11-15, the twenty-sixth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -129,8 +129,22 @@ the design doc it settles before building on it.
         - **a `Renderer` with no window** that clears a render target and reads it back as an `@kama/image` `Image`,
           shaped by part 1's questions 4 to 6 (rendering § Decided, the owner the same day): a camera names its target,
           the default 8-bit sRGB target holds what the window would show, and a read hands back an `Image`.
-      - **Next: GFX-1's part 2,** the scene graph on the flat core, `BoxGeometry`, and `PerspectiveCamera` with reversed
-        depth and the target it draws into (question 4): an unlit box, with its golden.
+      - **GFX-1's part 2 is built** (kama-graphics `bc845db`, the twenty-sixth session), its questions 1 to 3 decided by
+        the owner that day (rendering § Decided, GFX-1's part 2):
+        - **the scene graph on the flat core:** `Scene`, `Group`, `Mesh` and `PerspectiveCamera` behind `Object3D`;
+          change marks, so an unchanged scene costs nothing to walk; each mesh's record in its scene's storage buffer;
+        - **rotation both ways,** `Euler` with its five safeguards and a std::math `Quat`;
+        - **`BoxGeometry` as three.js's, `MeshBasicMaterial`** (its WGSL by hand until part 3), **reversed depth,**
+          `Renderer.render(scene:, camera:)` and `info()`; every shared object a `Shared<T>` made with `new`;
+        - **its golden,** two boxes crossing in depth; 82 cases on each golden leg, 77 in Edge; 49 of 51 mutations
+          caught, the other two only slower.
+      - **Waiting on the owner: part 2's question 4,** what a misuse does (a camera naming no target on a renderer with
+        no window; a node added under itself), asked at the twenty-sixth session's end with (A), refuse and report as
+        `@kama/gpu`'s decision 9, recommended. Until it is answered the first draws nothing and the second ends the
+        program.
+      - **Next: GFX-1's part 3,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light: the
+        lit box. Its question first: how the library's own shader modules are linked when a material compiles at run
+        time (WESL). Part 3 rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -154,8 +168,8 @@ the design doc it settles before building on it.
       - The runners are in `.scratch/gpu15/tools/` (its README): native, Edge, Firefox, Chrome for Testing and Edge
         through the driver, and the mutation driver with `--runner`, which starts any browser runner in a UCRT64 login
         shell. The probe's page runner, which works in every browser, is `.scratch/gfx1-probe/run.mjs`. **For
-        `@kama/graphics`, `.scratch/gfx1-part1/tools/`** (its README): the same driver pointed there, with runners that
-        hold a mutation to the gate's own checks, and part 1's mutation lists.
+        `@kama/graphics`, `.scratch/gfx1-part2/tools/`** (its README): the same driver pointed there, with runners that
+        hold a mutation to the gate's own checks, and part 2's mutation list; part 1's are in `.scratch/gfx1-part1/tools/`.
    2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378). Since 0.9.956 the pinned
       Chrome for Testing loads a page under `kama run`, given `--chromium-arg --disable-features=NetworkServiceSandbox`,
       which was WIN-24's other condition. The device scale moved to `kama run --scale 1.5` in the eighteenth session.
@@ -187,6 +201,22 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-sixth session** (2026-11-14/15). Every suite was green on the 0.9.956 pin at the start, at the
+twenty-fifth session's counts, and kama had not moved; the Mac rebuilt its pin at 0.9.956 too (kyoten `7caa18c`).
+- **The drivers retired** (the owner's choice at the start, "A"; rendering § Decided): the pinned Chrome for Testing runs
+  under `kama run` in `@kama/gpu` (kama-gpu `fba6beb`) and `@kama/graphics` (kama-graphics `80aa861`), its flags on its
+  own command line, and Edge as a player's, on its GPU. Each leg's role follows its browser's kind, so a missing flag
+  fails rather than skips: 11 of 12 mutations caught, the twelfth caught by `@kama/gpu`'s gate in the same file.
+- **GFX-1's part 2 measured, asked, decided and built** (kama-graphics `2480686` and `bc845db`):
+  - a sketch on 0.9.956 (`.scratch/gfx1-part2/sketch/`) found kama's shapes first: a `ref` handed out must point into
+    `this`, so the transform is inline; a contract cannot be a field, so a mesh holds `Shared<Geometry>`; and nothing
+    reaches the `Shared` holding `this` (KY-58, filed);
+  - the owner's three answers ("I take the recommendations"), after asking whether Euler's traps can be closed (five
+    safeguards) and whether `Shared<T>` costs speed (measured: no; `.scratch/gfx1-part2/bench/`, with change marks an
+    unchanged scene of 10,100 meshes walks in 0 µs);
+  - built test-first, its golden viewed on both GPUs, and the tests sharpened twice by mutation.
+- **Asked at its end:** part 2's question 4, what a misuse does.
 
 **The twenty-fifth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start, at the twenty-fourth
 session's counts, and kama had not moved. It ended with the pin bumped to 0.9.956 at the owner's word (kyoten `c6ed657`):

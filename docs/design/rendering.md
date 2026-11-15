@@ -753,3 +753,12 @@
     - the flat core is built under the graph and stays internal; its public surface for an engine is asked when
       kyoten's render module first drives it, at the join;
     - the box's golden is two boxes in two colours crossing in depth, so it holds reversed depth, not only a silhouette.
+  - **Built the same day** (kama-graphics `bc845db`, its SPEC): the scene graph on the flat core, `Euler` with its
+    safeguards, `BoxGeometry`, `MeshBasicMaterial`, reversed depth with an infinite far, `render(scene:, camera:)` and
+    `info()`. Its golden is `boxes/warp.png` and `boxes/swiftshader.png`, 9 of 3,072 texels apart where the boxes' top
+    faces cross. 82 cases on each golden leg, 77 in Edge on its GPU, where every texel reads back exactly a colour
+    written and either draw order gives the same bytes. 49 of 51 mutations caught; the other two only make it slower.
+  - **Asked while building, question 4: what a misuse does** that kama's types cannot refuse: a camera naming no target
+    on a renderer with no window, and a node added under itself or one of its children. (A), refuse and report, never
+    end the program, as `@kama/gpu`'s decision 9, three.js, Godot and Unity, recommended; (B), end the program, as kama
+    does for a bug. Until it is answered, the first draws nothing and the second ends the program.
