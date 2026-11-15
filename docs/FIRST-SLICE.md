@@ -93,8 +93,19 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 9f1fdaef HEAD`.
    - **The pin is on 0.9.949** since the twenty-third session (`.kama-version`), chosen by the owner for KY-56's fix.
      The Mac's pin is still 0.9.945 until it is rebuilt there.
-   - **kama is still at 0.9.950 (`0be5d3b2`) as the twenty-fifth session starts,** with the pin on its history: KR-330's
-     `std::fs::Watcher`, which kyoten does not use yet. There is no reason to bump for it.
+   - **kama rebased during the twenty-fifth session, and the pin's commit, `9f1fdaef`, left its history.** kama is now
+     at 0.9.955 (`4b79cad2`), and 0.9.950 to 0.9.954 sit before the KR-330 ruling that `9f1fdaef` was. `48a8e67f`, on
+     its history, differs from the pin only in kama's `docs/ROADMAP*.md`, so it holds the same compiler. What
+     0.9.950 to 0.9.955 bring:
+     - a gate's refusal names its file;
+     - one error for a refused import;
+     - a generic type's own parameter as an operand (0.9.952, which part 3's typed nodes want);
+     - a library's declared flag counting in its consumer's build (KR-390);
+     - no `string` operand on a type's operator;
+     - `std::fs::Watcher`.
+
+     **At the next session's start, the owner chooses:** bump to 0.9.955, or re-point the pin at `48a8e67f`, the same
+     compiler rebuilt from a clean clone. Either way it is a commit of its own, with every suite green.
    - **Still open with kama:** KY-45, KY-40, KY-57 and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
