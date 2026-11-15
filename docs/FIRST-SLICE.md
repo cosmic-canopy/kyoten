@@ -115,6 +115,14 @@ the design doc it settles before building on it.
      - **kama's next session claimed this machine** for KR-332 and KR-269 (`e89ebec3`): a wasm release's optimization
        level and who may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three
        browsers here, so kyoten's timings wait while it runs.
+   - **kama reached 0.9.960 during the twenty-seventh session** (`f2c8b31b`, then `b39fbaab`, its roadmap): **KY-59's
+     fix**, an operator's by-value operand handed over as a call's argument is, verified on `../kama`'s working binary
+     with `.scratch/ky59/`; and KR-395 filed for KY-58.
+   - **The next session's first question: bump the pin to 0.9.960 or later** (the owner's call). Part 3's typed nodes
+     need KY-59's fix, and the bump carries 0.9.958's breaking `run(app:, pace:)`, five calls to port (above). The
+     recommendation was to wait for KR-332 and KR-269; KY-59 makes the bump part 3's first step instead. A bump is its own
+     commit, every suite green on the new compiler with nothing else changed, KY-59's repro re-run on the pin and its
+     entry removed.
    - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
      handle, worked around in GFX-1's part 2), **KY-59** (filed 2026-11-15, a BUG: an overloaded operator releases a node
      passed to it by value twice, a use-after-free in safe code that part 3's typed nodes meet; relay it to kama) and
@@ -166,9 +174,10 @@ the design doc it settles before building on it.
         WESL linker at run time.
       - **Next, GFX-1's part 3 built,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light:
         the lit box. It rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte. A sketch
-        on the pin first, as part 2's was. **It meets KY-59:** until kama fixes it, the library hands its operators a
-        temporary (`.scratch/gfx1-part3/probe/`'s `again()`), and its tests hold the bug as an expected failure that
-        turns red when kama fixes it.
+        on the pin first, as part 2's was, from `.scratch/gfx1-part3/PLAN.md` (what to build, and what three.js r187's
+        lighting does: its sources are in `three-r187/`). **It needs KY-59's fix,** in kama 0.9.960: on a pin with it,
+        operators take named nodes with no workaround; on 0.9.956 the library would hand them temporaries
+        (`.scratch/gfx1-part3/probe/`'s `again()`).
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,

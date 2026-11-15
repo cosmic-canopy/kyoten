@@ -256,6 +256,8 @@ retires.
 
 **KY-59 was filed on 0.9.956** (2026-11-15, `0.9.956+gdf5a6edf`, kyoten's pin), at `@kama/graphics`' GFX-1 part 3 probe: an overloaded operator whose operand is a resource passed by value (a `Copyable(bare: copy)` node) is handed the caller's object bitwise, with no copy ctor, and both release it: a use-after-free in safe code. The typed node builder's `RECIPROCAL_PI * diffuseColor` and `a + b` with a node local on the right freed nodes a function's body still held. Worked around by never handing a named node to an operator: a temporary (`b.again()`, a fresh handle) is released once.
 
+**KY-59 was fixed upstream the same day** (kama `f2c8b31b`, 0.9.960, *"an operator's by-value operand is handed over as a call's argument is"*): `.scratch/ky59/` built with `../kama`'s working binary (`0.9.960+ge89ebec3`, its version string behind its code) keeps the object alive on every route. A named `Copyable` operand now copies, and any other resource operand moves. It is removed when kyoten's pin moves to 0.9.960 or later. **KY-58 is kama's KR-395** (`b39fbaab`), filed and open.
+
 Ids are `KY-<n>` and are permanent. **Next id: KY-60**
 
 | Id | Kind | Status | Summary |
