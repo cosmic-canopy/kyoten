@@ -769,5 +769,49 @@
      This is `@kama/gpu`'s decision 9 ("nothing a program passes ends it") for the library above it, and what three.js
      (a console error), Godot (`add_child` prints and refuses) and Unity (an error logged) do. Set aside: ending the
      program, as kama does for a bug, which kills a page or a shipped game over a mistake that could be reported. How a
-     program turns the printing off is settled when it is built. **Built next,** at the twenty-seventh session's start:
-     until then the first draws nothing and the second ends the program.
+     program turns the printing off is settled when it is built.
+     - **Built at the twenty-seventh session's start** (kama-graphics `faafb92`, its SPEC § Misuse), with how the
+       printing is turned off settled under the owner's word and reported for the owner to object to:
+       - **the renderer's switch is a property pair,** `printErrors()`/`printErrorsMut()`, true by default, as
+         `clearColor()` is: three.js keeps its `renderer.debug.checkShaderErrors` on the renderer, and a renderer's own
+         misuses never arise while it is made, so it is no option at its making, where `@kama/gpu`'s `DeviceOptions`
+         holds its device's switch because a device's errors start at creation;
+       - **`add`'s refusal always prints,** as three.js's and Godot's do, and `isAncestorOf(object:)` (Godot's
+         `is_ancestor_of`) lets a program that must not print, an editor refusing a drag, ask first. A switch for the
+         whole library would be global mutable state.
+     - **The record:** `renderer.takeErrors()` hands back a `RendererErrors`, shaped as `@kama/gpu`'s `DeviceErrors`: the
+       oldest 64 kept and the rest counted in `dropped()`, each a `GraphicsErrorReport` of a `@nonExhaustive`
+       `GraphicsErrorKind` (`NoTarget` so far). A printed line begins `@kama/graphics:`, and the gate counts each leg's,
+       browsers included, from outside the program. 95 cases on each golden leg, 90 in Edge, the goldens unchanged.
+       Red first against a stub, 5 of the first 11 new cases; planning the mutations added two more (`printErrors`
+       read back, the count drained) and sharpened a third (a refused node with a parent of its own). 20 of 21 mutations caught (`.scratch/gfx1-q4/`), five by the gate's printed-line count alone and one, `add` refusing only a node under itself, as a hang, the loop's walk never ending; the 21st, `isEmpty` ignoring the count, is equivalent, since a count above 0 exists only with 64 reports kept and `takeErrors` drains both.
+
+- **2026-11-15, the owner: GFX-1's part 3, its question: how the library's own shader functions reach a material
+  compiled at run time** ("Yes I take your recommendation", asked in full in the chat after the probe). WGSL has no
+  imports, so each material's shader carries its own copy of exactly the functions it reaches, once each, in an order
+  WGSL takes, and a material is a typed node graph compiled at run time (a record, the kama builder, a hot reload), so
+  that gathering happens at run time too. Measured first ([../research/graphics.md](../research/graphics.md) § 10,
+  `.scratch/gfx1-part3/`): the same lit material, Lambert plus three.js's GGX, its five library functions held as (A)
+  typed-node functions and as (B) WGSL text with includes, compiled with no message in Dawn and naga, the two giving the
+  same values exactly; (A) adds 3,949 B of web code (brotli) and links in about 42 µs a material, (B) 1,962 B and about
+  6.4 µs; (C), a WESL linker at run time as Bevy 0.20 runs one, is a WGSL parser and linker (wesl-js is 39 KB gzip).
+  1. **The library's shader functions are typed-node functions in kama** (A), as three.js's TSL holds its BSDFs
+     (`Fn(..., layout)`): a function is a value whose body is a node expression over its parameters, and the material
+     compiler emits each function a material reaches once, its callees first, so a shader carries only what it uses. One
+     source, checked by kama's compiler, so a wrong type in the lighting is a build error rather than a shader error on a
+     player's machine, and the library's functions are held to the public node contract a program's nodes are (GFX-1's
+     question 2). The compiler writes a `let` for a node used more than once, as TSL does, so the WGSL reads as written by
+     hand.
+  2. **A WGSL function as text is the escape** (B's form, TSL's `wgslFn(code, includes)`): code nodes say badly, a
+     program's or the library's, its signature typed in kama and its includes naming the typed or WGSL functions it
+     calls, each compiled on every leg by the library's tests. It is also how a program's own WGSL calls the library's
+     functions.
+  3. **No WESL linker at run time** (C set aside): ten times (A)'s code on the web for what the node compiler and the
+     build-time tools already do. WESL stays a format a program's files are written in, linked at build by kyoten's
+     tools, as decided on 2026-11-07, reaching a material through 2.
+  - **This revises one line of 2026-11-07's item 1:** the library's shared shader functions are typed nodes, not WESL
+    modules a game imports. Passes the library owns whole, such as tone mapping, may stay plain WGSL; the question was
+    about functions a run-time material reaches.
+  - **Found on the way: KY-59** ([../KAMA_GAPS.md](../KAMA_GAPS.md)): an overloaded operator releases a node passed to it
+    by value twice, so typed nodes free what a function still holds. Part 3 hands operators a temporary until kama fixes
+    it, inside the library only; a program writing `a * b` meets it too, so it is relayed to kama.

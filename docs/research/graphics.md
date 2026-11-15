@@ -447,3 +447,49 @@ SwiftShader's larger differences are on the cube's silhouette (136 of the 146 pi
 agrees, and the rasterizers cover an edge's MSAA samples differently. A frame of the flat-shaded cube is about 2.3 KB as
 a PNG. FLIP, the perceptual metric decided for the reference machines (rendering § Decided, area 5), was not run: it is
 not installed here.
+
+## 10. GFX-1's part 3 question, measured
+
+Measured 2026-11-15, kyoten's twenty-seventh session, before the question was asked: how the library's own shader
+functions reach a material compiled to WGSL at run time, since a material is a typed node graph (GFX-1's question 2) and
+WGSL has no imports. On kama 0.9.956 (`.scratch/gfx1-part3/`, its `FINDINGS.md`), this machine.
+
+**What the engines do** (read 2026-11-15):
+- **three.js r187's TSL** holds its BSDFs as node functions (`Fn(..., layout)`), and its builder emits each function a
+  material reaches once per shader stage (`FunctionNode.generate`: *"The includes and the function code are generated
+  once per builder and shader stage, further calls only need the function name"*). A program's own WGSL joins through
+  `wgslFn(code, includes)`.
+- **Bevy 0.20** removed naga_oil and links WESL **at run time in the shipped game**: `ShaderCache::get` (0.20.1) keys on
+  the pipeline's shader defs and calls `wesl::compile` on a miss, the defs becoming WESL features. wesl-rs' `wesl` crate
+  says to link in `build.rs` *"unless your WGSL code must be assembled at runtime"*; its default strips to what the
+  entry points reach and mangles names by their path (`Escape`).
+- **Unity and Unreal** compile their variants offline, at build or cook time; **Godot** compiles pipelines at load time
+  (bakes them at export since 4.5).
+
+**One material, its library functions held two ways.** Lambert diffuse plus three.js's GGX specular (`F_Schlick`,
+`V_GGX_SmithCorrelated`, `D_GGX`, `BRDF_GGX`, `BRDF_Lambert`), the material's graph in typed nodes either way:
+- **(A) typed-node functions in kama**, a function a value whose body is a node expression over its parameters, as TSL's;
+- **(B) WGSL text with includes**, as `wgslFn`'s.
+
+Each route's WGSL compiled with no message and no validation error in Edge (Dawn, the AMD RDNA 3 GPU) and Firefox 160
+(naga), and run in a compute shader over three inputs both gave the same nine values exactly. On the web, release, brotli
+-q 11, wasm plus JS:
+
+| Build | Code | Over neither |
+|---|---|---|
+| neither route: the node machinery, strings and float formatting any material compiler carries | 21,762 B | |
+| (A) typed | 42,149 B | 20,387 B |
+| (B) table | 40,162 B | 18,400 B |
+| both | 44,111 B | 22,349 B |
+
+What each route adds on its own, five functions and their linker: **(A) 3,949 B, (B) 1,962 B.** A material's link,
+natively in release and building the library's functions each time: (A) about 42 µs, (B) about 6.4 µs (taken beside a
+mutation run, so an order of magnitude).
+
+**(C) a WESL linker at run time** is a WGSL parser and linker: wesl-js 0.7.31 is 127,915 B minified and 39,206 B gzip
+(bundlephobia), and wesl-rs-web 0.6.0's wasm 4,034,088 B with naga, both read by the research agent and not re-measured
+here. None is in kama.
+
+**Found on the way: KY-59.** An overloaded operator whose operand is a node passed by value releases it twice
+([KAMA_GAPS.md](../KAMA_GAPS.md)), so `RECIPROCAL_PI * diffuseColor` and `a * a` freed nodes a function still held. The
+probe hands operators a temporary (`a.again()`). Typed nodes are the decided material API, so part 3 needs it fixed.

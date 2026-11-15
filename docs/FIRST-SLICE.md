@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-15, the twenty-sixth session)
+## Where it stands (2026-11-15, the twenty-seventh session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -86,11 +86,11 @@ the design doc it settles before building on it.
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
-   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The twenty-sixth session's closing
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The twenty-seventh session's closing
    counts: tools/test.sh (engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps
    native and wasm; vr checked), `@kama/window`'s (249, 163 under node, 253 in Edge and Firefox, 264 through the driver),
    `@kama/gpu`'s (309, 283 in Edge, 286 in Firefox and Chrome for Testing), `@kama/image`'s (1,401 natively and on wasm,
-   the sweep's 197) and `@kama/graphics`' (82 natively, in Firefox and in Chrome for Testing, 77 in Edge).
+   the sweep's 197) and `@kama/graphics`' (95 natively, in Firefox and in Chrome for Testing, 90 in Edge).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -116,7 +116,9 @@ the design doc it settles before building on it.
        level and who may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three
        browsers here, so kyoten's timings wait while it runs.
    - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
-     handle, worked around in GFX-1's part 2) and kama's KR-378.
+     handle, worked around in GFX-1's part 2), **KY-59** (filed 2026-11-15, a BUG: an overloaded operator releases a node
+     passed to it by value twice, a use-after-free in safe code that part 3's typed nodes meet; relay it to kama) and
+     kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -152,14 +154,21 @@ the design doc it settles before building on it.
           `Renderer.render(scene:, camera:)` and `info()`; every shared object a `Shared<T>` made with `new`;
         - **its golden,** two boxes crossing in depth; 82 cases on each golden leg, 77 in Edge; 49 of 51 mutations
           caught, the other two only slower.
-      - **Part 2's question 4 is decided, and built first at the next session** (the owner, 2026-11-15, "A";
-        rendering § Decided, GFX-1's part 2, item 4): a misuse the types cannot refuse is refused and reported, never
-        ending the program. A camera naming no target on a renderer with no window draws nothing, its error recorded
-        for `renderer.takeErrors()` and printed by default; a node added under itself is refused, printed, and `add`
-        returns `false`. Test-first in `../kama-graphics`, settling how a program turns the printing off.
-      - **Then GFX-1's part 3,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light: the
-        lit box. Its question first: how the library's own shader modules are linked when a material compiles at run
-        time (WESL). Part 3 rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte.
+      - **Part 2's question 4 is built** (kama-graphics `faafb92`, the twenty-seventh session; rendering § Decided,
+        GFX-1's part 2, item 4; SPEC § Misuse): a camera naming no target on a renderer with no window draws nothing,
+        its error recorded for `renderer.takeErrors()` and printed unless `printErrorsMut()` turns it off; a node added
+        under itself or one of its children is refused, printed, and `add` says `false`, with `isAncestorOf(object:)` to
+        ask first. 95 cases on each golden leg, 90 in Edge.
+      - **Part 3's question is decided** (the owner, 2026-11-15, "Yes I take your recommendation"; rendering § Decided,
+        GFX-1's part 3; measured in [research/graphics.md](research/graphics.md) § 10, `.scratch/gfx1-part3/`): the
+        library's shader functions are typed-node functions in kama, emitted into a material's WGSL once where it
+        reaches them, with a `let` for a node used twice; a WGSL function as text with its includes is the escape; no
+        WESL linker at run time.
+      - **Next, GFX-1's part 3 built,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light:
+        the lit box. It rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte. A sketch
+        on the pin first, as part 2's was. **It meets KY-59:** until kama fixes it, the library hands its operators a
+        temporary (`.scratch/gfx1-part3/probe/`'s `again()`), and its tests hold the bug as an expected failure that
+        turns red when kama fixes it.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -216,6 +225,22 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-seventh session** (2026-11-15). Every suite was green on the 0.9.956 pin at the start, at the twenty-sixth
+session's counts; kama had not moved past 0.9.959 and its roadmap claim, and nothing came from the Mac.
+- **Part 2's question 4 built** test-first (kama-graphics `faafb92`): red first against a stub, 5 of 11 new cases;
+  the gate counts each leg's printed lines from outside the program, browsers included. How the printing is turned off
+  was settled under the owner's word and reported: the renderer's `printErrors` property pair, and `isAncestorOf` to
+  ask before an `add`. 20 of 21 mutations caught, five by the gate's printed-line count alone and one as a hang; the 21st is equivalent (`.scratch/gfx1-q4/`).
+- **Part 3's question measured, asked and decided** (research/graphics.md § 10): the same lit material with its five
+  library functions held as typed nodes and as WGSL text, both compiled with no message in Dawn and naga and giving the
+  same values; (A) typed adds 3.9 KB of web code and about 42 µs a material, (B) text 2.0 KB and 6 µs, (C) a WESL linker
+  at run time a WGSL parser (wesl-js is 39 KB gzip). The owner took (A) with (B) the escape and no (C).
+- **KY-59 found and filed:** the probe's typed nodes crashed, then emitted WGSL from freed nodes. An overloaded operator
+  is handed a by-value node bitwise, with no copy ctor, and both it and the caller release it (`.scratch/ky59/`, the
+  emitted C quoted in the entry).
+- **A mutation that makes the tree a loop hangs the test program,** and the driver's timeout cannot end it while the
+  program holds the run's pipes: `.scratch/gfx1-q4/tools/watchdog.ps1` stops a mutant program past 180 s.
 
 **The twenty-sixth session** (2026-11-14/15). Every suite was green on the 0.9.956 pin at the start, at the
 twenty-fifth session's counts, and kama had not moved; the Mac rebuilt its pin at 0.9.956 too (kyoten `7caa18c`).

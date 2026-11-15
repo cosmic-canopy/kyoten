@@ -117,8 +117,9 @@ when a measurement asks. Each view runs a fixed list of passes until a frame gra
 **Shaders** (*decided*, 2026-11-07, with rendering question 2) are WGSL, with WESL's `import` and `@if` translated to
 plain WGSL by kyoten's tools. A **material** is the standard lit model with slots (colour, normal, roughness,
 emissive…), each filled by a graph of nodes kept as a record, which the graphics library compiles to WGSL; a kama
-builder makes the same graph from code, and a slot or a whole stage may be hand-written WGSL. Compute shaders serve
-Output's visuals, never the simulation.
+builder makes the same graph from code, and a slot or a whole stage may be hand-written WGSL. The library's own shader
+functions (the lighting, the BRDF) are typed-node functions too, emitted into a material's WGSL only where it reaches
+them (*decided*, 2026-11-15, rendering, GFX-1's part 3). Compute shaders serve Output's visuals, never the simulation.
 
 ## The world at run time
 
