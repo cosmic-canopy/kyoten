@@ -82,11 +82,12 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.960+gb39fbaab`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.962+g0769524f`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
-   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts on 0.9.960:
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, the same on
+   0.9.960 and 0.9.962:
    - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
      and wasm; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
@@ -97,18 +98,20 @@ the design doc it settles before building on it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `b39fbaab`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor b39fbaab HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `0769524f`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 0769524f HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-   - **The pin is on 0.9.960** since the twenty-seventh session's end (`.kama-version`, kyoten `7164a9c`), at the
-     owner's word ("We can bump now"), every suite green on it at the same counts. `.kama-version` says what moved:
+   - **The pin is on 0.9.962** since the twenty-eighth session (`.kama-version`), at the owner's word ("bump"), every
+     suite green on it at the same counts. Before it, 0.9.960 since the twenty-seventh session's end (kyoten
+     `7164a9c`). `.kama-version` says what moved:
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
        matters once a program runs on demand, as an editor would.
      - **0.9.960: KY-59 fixed and removed,** so part 3's typed nodes take named nodes as operands with no workaround.
-   - **The Mac rebuilds its pin at `b39fbaab`** (it is on 0.9.956), from a clean clone, and runs `tools/test.sh` there. A
+     - **0.9.961 and 0.9.962: KY-60 fixed and removed,** so a chain of node operators frees what it makes.
+   - **The Mac rebuilds its pin at `0769524f`** (it is on 0.9.956), from a clean clone, and runs `tools/test.sh` there. A
      probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
    - **kama's KR-332 and KR-269 are claimed by this machine** (`e89ebec3`): a wasm release's optimization level and who
      may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three browsers here, so
@@ -117,9 +120,7 @@ the design doc it settles before building on it.
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-60 and KY-61, filed 2026-11-15:
-       - KY-60: a chained operator's left operand is never freed, so a node graph leaks a node a chain. Fixed upstream
-         the same day (kama 0.9.962, `0769524f`), its repro freeing everything there; open until the pin moves;
+     - KY-61, filed 2026-11-15:
        - KY-61: across packages, an operator's result is untyped unless its type is imported, and the message names the
          wrong type;
      - kama's KR-378.
@@ -264,6 +265,8 @@ twenty-seventh session's counts. kama had committed nothing since the pin, and n
 - **Part 3's second part's question 1 asked and decided:** normals under a non-uniform scale, (A), the normal matrix
   in the record. The prior art was read in its source (`.scratch/gfx1-part3/prior-art/`): three.js's
   `modelNormalMatrix`, Bevy's record, Godot's flag.
+- **The pin bumped to 0.9.962** at the owner's word ("bump"), after kama fixed KY-60 within hours of its filing. Every
+  suite is green on it at the same counts. KY-60's repro frees all 11 values on it, and the entry is removed.
 
 **The twenty-seventh session** (2026-11-15). Every suite was green on the 0.9.956 pin at the start, at the twenty-sixth
 session's counts; kama had not moved past 0.9.959 and its roadmap claim, and nothing came from the Mac.
