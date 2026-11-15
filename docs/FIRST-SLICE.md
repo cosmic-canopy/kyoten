@@ -84,9 +84,13 @@ the design doc it settles before building on it.
 
 1. **At a session's start, run the suites on kyoten's pin, `0.9.956+gdf5a6edf`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
-   `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge and the pinned
-   Firefox 160, and through each package's driver in the pinned Chrome for Testing 157.0.8103.50 (`~/browsers`, its
-   `README.md`).
+   `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
+   Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The twenty-sixth session's closing
+   counts: tools/test.sh (engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps
+   native and wasm; vr checked), `@kama/window`'s (249, 163 under node, 253 in Edge and Firefox, 264 through the driver),
+   `@kama/gpu`'s (309, 283 in Edge, 286 in Firefox and Chrome for Testing), `@kama/image`'s (1,401 natively and on wasm,
+   the sweep's 197) and `@kama/graphics`' (82 natively, in Firefox and in Chrome for Testing, 77 in Edge).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
