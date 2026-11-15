@@ -92,8 +92,8 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **`reproducible-float` is the program's choice** (decision 14). kyoten sets it, which is what makes a game's sound
     the same on every leg and in every build.
   - **Render workers are a declared count** (decision 19): 0 by default (the device's own thread), more for a large mix.
-    They are the one kind of thread the package starts, natively only. A game's count, like its audio budget, is
-    KYR-15's.
+    They are the one kind of thread the package starts, natively only (amended 2026-11-14: decision 25 adds a decode
+    thread, below). A game's count, like its audio budget, is KYR-15's.
 - **2026-11-13, the owner: `@kama/audio`'s area 4, questions 1 and 2, bind kyoten's question 5 in three ways** (its
   `AGENTS.audio.md` § Decided, 20 to 22). Whether spatial audio is in the first slice stays deferred (2026-11-01).
   - **Spatial sound is the package's own rungs, the same on every leg** (decision 20): equal-power panning, HRTF
@@ -117,3 +117,17 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **Each sound chooses its resampling rung** (decision 24): linear and cubic are cheap and alias; band-limited
     interpolation costs more per voice. A file at another rate than the context's is converted once, at load. Which
     rung a sound record names, and its default, are KYR-15's.
+- **2026-11-14, the owner: `@kama/audio`'s area 4, questions 5 and 6, bind kyoten in three ways** (its `AGENTS.audio.md`
+  § Decided, 25 and 26).
+  - **A game's long sounds are streams** (decision 25): music, dialogue and ambience beds. The package decodes each a
+    little ahead into a ring, on every leg. A stream starts, stops and hands off to the next on a stamped frame, so
+    music's sections join with no gap, and a seek plays the file's own samples. Which sounds a game's records mark as
+    streams is KYR-15's. So is each stream's ring, a declared capacity (341 ms by default) that the audio Budget record
+    sizes.
+  - **The package starts a decode thread** natively (a declared count, 1 by default), besides its render workers. On
+    the web, a threaded game's build decodes in a Wasm Worker. A single-threaded build gains a third artifact, a
+    decode Worker beside the AudioWorklet's (decision 12's second artifact), which kyoten's generator writes until kama
+    can build it (the package's KAUD-5).
+  - **The room's reverb is the package's own convolver on every leg** (decision 26), never the browser's
+    `ConvolverNode`. So kyoten's reverb sends and the room's reflection slot (decision 20) are fed by impulse responses
+    the game loads as assets, and they sound the same on every leg.
