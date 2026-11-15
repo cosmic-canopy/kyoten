@@ -856,3 +856,12 @@
   - **Set aside:**
     - (B), the inverse in the vertex stage on every vertex every frame (about 40 operations, WGSL having no `inverse`);
     - (C), Godot's flag with (B) behind it, a branch per vertex and a flag word in the record.
+  - **Built the same session** (kama-graphics, step 1 of the second part):
+    - the record carries the normal matrix;
+    - the normals reach the vertex stage;
+    - `normalWorld()` and `positionWorld()` exist.
+
+    The test is a box under a shear and under a mirrored shear, every texel held to S⁻¹ R n worked in float64. It was red
+    against the plain 3x3, with 279 texels wrong. 18 of 18 mutations caught. A test that turns the box alone would not
+    tell the plain matrix from the inverse transpose: a box's normals lie along its own axes, so only a shear, a
+    non-uniform scale above a turn, separates them.

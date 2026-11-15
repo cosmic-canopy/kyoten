@@ -93,8 +93,8 @@ the design doc it settles before building on it.
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 309, 283 in Edge, 286 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 144 natively, in Firefox and in Chrome for Testing, 139 in Edge, since part 3's first part and
-     the mirrored mesh (the twenty-eighth session); 95 and 90 before them.
+   - `@kama/graphics`': 151 natively, in Firefox and in Chrome for Testing, 146 in Edge, since part 3's first part, the
+     mirrored mesh and the second part's step 1 (the twenty-eighth session); 95 and 90 before them.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -120,9 +120,10 @@ the design doc it settles before building on it.
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-61, filed 2026-11-15:
+     - KY-61 and KY-62, filed 2026-11-15:
        - KY-61: across packages, an operator's result is untyped unless its type is imported, and the message names the
          wrong type;
+       - KY-62: a generic's type argument inferred from an operator expression is the left operand's type;
      - kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
@@ -179,13 +180,12 @@ the design doc it settles before building on it.
       - **The mirrored mesh is fixed** (the same session): part 2's renderer drew a mesh with a negative determinant
         inside out, where three.js flips its winding. A camera inside a mirrored box now sees the backdrop, with a
         clockwise pipeline per material for such a mesh.
-      - **Next, part 3's second part,** from `.scratch/gfx1-part3/PLAN.md`:
-        - the record's normal matrix (std's `Mat3`, zero where the determinant is);
-        - the vertex's normal at location 1, with `normalLocal()`, `modelNormalMatrix()` (a `Mat3Node`), `normalWorld()`
-          and `positionWorld()`, a varying used twice written once;
-        - `MeshStandardMaterial`'s values and slots;
-        - a test material showing `normalWorld()` on a box scaled unevenly and mirrored, each face's colour held to the
-          inverse transpose worked on the CPU.
+      - **Part 3's second part, step 1, is built** (the same session): the record's normal matrix, the vertex's normal at
+        location 1, `normalLocal()`, `modelNormalMatrix()`, `normalWorld()` and `positionWorld()`, held by a box under a
+        shear and a mirrored shear; 18 of 18 mutations caught.
+      - **Next, its step 2,** from `.scratch/gfx1-part3/PLAN.md`: `MeshStandardMaterial`'s values (color, roughness,
+        metalness, emissive, emissiveIntensity) and its slots (`colorNode` and the rest), a slot's change recompiling the
+        material. With no light yet it draws its emissive alone, as three.js's does.
 
         Then part 3's third part, the lights.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
