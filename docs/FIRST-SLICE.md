@@ -101,6 +101,16 @@ the design doc it settles before building on it.
      - `kama run` hands a browser the flags a project or its command line names, `--chromium-arg` or `"browser"` in
        `kama.json` (KY-57, fixed and removed);
      - a generic type's own parameter as an operand (0.9.952), which part 3's typed nodes want.
+   - **kama reached 0.9.959 during the twenty-sixth session** (`80390dde` to `f149c7e6`), and the pin stays on 0.9.956
+     until the owner bumps it:
+     - 0.9.957: every `static` states its start (none here lacks one);
+     - **0.9.958, breaking:** `run(app:, pace:)` takes a required `Pace` (`EveryRefresh`, `AtMost(hz:)`, `OnDemand`),
+       and an app on demand ticks only when woken (KR-281 4g). A bump ports the five calls: `@kama/gpu`'s tests and its
+       two examples, `@kama/window`'s and `@kama/graphics`' tests;
+     - 0.9.959: a web connection's arrival wakes an app on demand.
+     - **kama's next session claimed this machine** for KR-332 and KR-269 (`e89ebec3`): a wasm release's optimization
+       level and who may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three
+       browsers here, so kyoten's timings wait while it runs.
    - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
      handle, worked around in GFX-1's part 2) and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
@@ -138,11 +148,12 @@ the design doc it settles before building on it.
           `Renderer.render(scene:, camera:)` and `info()`; every shared object a `Shared<T>` made with `new`;
         - **its golden,** two boxes crossing in depth; 82 cases on each golden leg, 77 in Edge; 49 of 51 mutations
           caught, the other two only slower.
-      - **Waiting on the owner: part 2's question 4,** what a misuse does (a camera naming no target on a renderer with
-        no window; a node added under itself), asked at the twenty-sixth session's end with (A), refuse and report as
-        `@kama/gpu`'s decision 9, recommended. Until it is answered the first draws nothing and the second ends the
-        program.
-      - **Next: GFX-1's part 3,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light: the
+      - **Part 2's question 4 is decided, and built first at the next session** (the owner, 2026-11-15, "A";
+        rendering § Decided, GFX-1's part 2, item 4): a misuse the types cannot refuse is refused and reported, never
+        ending the program. A camera naming no target on a renderer with no window draws nothing, its error recorded
+        for `renderer.takeErrors()` and printed by default; a node added under itself is refused, printed, and `add`
+        returns `false`. Test-first in `../kama-graphics`, settling how a program turns the printing off.
+      - **Then GFX-1's part 3,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light: the
         lit box. Its question first: how the library's own shader modules are linked when a material compiles at run
         time (WESL). Part 3 rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
@@ -216,7 +227,8 @@ twenty-fifth session's counts, and kama had not moved; the Mac rebuilt its pin a
     safeguards) and whether `Shared<T>` costs speed (measured: no; `.scratch/gfx1-part2/bench/`, with change marks an
     unchanged scene of 10,100 meshes walks in 0 µs);
   - built test-first, its golden viewed on both GPUs, and the tests sharpened twice by mutation.
-- **Asked at its end:** part 2's question 4, what a misuse does.
+- **Decided at its end:** part 2's question 4, what a misuse does ("A": refused and reported, never ending the
+  program), to be built first at the next session. Pushed at the owner's word ("you can push").
 
 **The twenty-fifth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start, at the twenty-fourth
 session's counts, and kama had not moved. It ended with the pin bumped to 0.9.956 at the owner's word (kyoten `c6ed657`):

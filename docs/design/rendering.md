@@ -758,7 +758,16 @@
     `info()`. Its golden is `boxes/warp.png` and `boxes/swiftshader.png`, 9 of 3,072 texels apart where the boxes' top
     faces cross. 82 cases on each golden leg, 77 in Edge on its GPU, where every texel reads back exactly a colour
     written and either draw order gives the same bytes. 49 of 51 mutations caught; the other two only make it slower.
-  - **Asked while building, question 4: what a misuse does** that kama's types cannot refuse: a camera naming no target
-    on a renderer with no window, and a node added under itself or one of its children. (A), refuse and report, never
-    end the program, as `@kama/gpu`'s decision 9, three.js, Godot and Unity, recommended; (B), end the program, as kama
-    does for a bug. Until it is answered, the first draws nothing and the second ends the program.
+  4. **A misuse the types cannot refuse is refused and reported, and never ends the program** ("I will take your
+     recommendation A", 2026-11-15; asked while building part 2). The two so far:
+     - **a camera naming no target, rendered by a renderer with no window:** `render` draws nothing and records the
+       error on the renderer, read by `renderer.takeErrors()` and printed by default, as `@kama/gpu`'s device prints its
+       own (its decision 3, item 2);
+     - **a node added under itself or one of its children:** `add` refuses, changes nothing, prints the error and returns
+       `false`, which a program may ignore.
+
+     This is `@kama/gpu`'s decision 9 ("nothing a program passes ends it") for the library above it, and what three.js
+     (a console error), Godot (`add_child` prints and refuses) and Unity (an error logged) do. Set aside: ending the
+     program, as kama does for a bug, which kills a page or a shipped game over a mistake that could be reported. How a
+     program turns the printing off is settled when it is built. **Built next,** at the twenty-seventh session's start:
+     until then the first draws nothing and the second ends the program.
