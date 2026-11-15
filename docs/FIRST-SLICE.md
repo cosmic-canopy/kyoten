@@ -94,7 +94,7 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor df5a6edf HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-   - **The pin is on 0.9.956** since the twenty-fifth session's end (`.kama-version`, kyoten `877966e`), at the owner's
+   - **The pin is on 0.9.956** since the twenty-fifth session's end (`.kama-version`, kyoten `c6ed657`), at the owner's
      word. The Mac's pin is still 0.9.945 until it is rebuilt there.
    - **0.9.956 brings what kyoten waited on** (`.kama-version` says what each moved):
      - `kama run` hands a browser the flags a project or its command line names, `--chromium-arg` or `"browser"` in
@@ -185,7 +185,7 @@ the design doc it settles before building on it.
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
 
 **The twenty-fifth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start, at the twenty-fourth
-session's counts, and kama had not moved. It ended with the pin bumped to 0.9.956 at the owner's word (kyoten `877966e`):
+session's counts, and kama had not moved. It ended with the pin bumped to 0.9.956 at the owner's word (kyoten `c6ed657`):
 - **The rebase:** kama had rebased, and the old pin's commit had left its history.
 - **The suites:** every one, kyoten's and four packages', was green on 0.9.956 at the same counts.
 - **The gaps:** KY-57 is fixed and removed, and KY-40 and KY-45 are unchanged.
