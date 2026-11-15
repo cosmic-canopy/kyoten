@@ -227,5 +227,26 @@
 # the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and wasm; vr checked), in 3 min 3 s.
 # @kama/audio's KAUD-4 is fixed on it (0.9.953, KR-390) and retired. The 0.9.945 binary is kept in
 # .scratch/kama-pin-0.9.945.
-KAMA_VERSION=0.9.956
-KAMA_BUILD=gdf5a6edf
+#
+# 2026-11-15, Windows: 0.9.956 -> 0.9.960 (b39fbaab), at the owner's word at the twenty-seventh session's end ("We can
+# bump now"), from a clean clone (.scratch/kama-pin-src-960); the 0.9.956 binary is kept in .scratch/kama-pin-0.9.956.
+# What moved, for kyoten:
+#   80390dde (0.9.957): every `static` states its start (none here lacks one).
+#   ea48eccb (0.9.958, breaking): `run(app:, pace:)` takes a required `Pace` (`EveryRefresh`, `AtMost(hz:)`,
+#           `OnDemand`), and an app on demand ticks only when woken (KR-281 4g). The five calls are ported, each
+#           `Pace::EveryRefresh`, as it ran: @kama/gpu's tests and two examples (kama-gpu 542789b), @kama/window's tests
+#           (kama-window dfe07c4) and @kama/graphics' tests (kama-graphics 5f494fa), their manifests needing 0.9.958.
+#           A window package may install its own wait for an app on demand (`setEventWait`); @kama/window does not yet.
+#   f149c7e6 (0.9.959): a web connection's arrival wakes an app on demand.
+#   f2c8b31b (0.9.960): an operator's by-value operand is handed over as a call's argument is (KY-59, fixed and
+#           removed: .scratch/ky59/ keeps the object alive on every route here, and frees it on three on 0.9.956).
+#   Also e89ebec3 and b39fbaab, roadmap commits (KR-332 and KR-269 claimed by this machine; KR-395 filed for KY-58).
+#   Green on it with nothing else changed, at the twenty-seventh session's counts: tools/test.sh (engine 164 cases
+#   native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native and
+#   wasm; vr checked), @kama/window's (249 native debug and release, 163 under node, 253 under `kama run` in Edge and
+#   Firefox, 264 through the driver), @kama/gpu's (309 native debug and release, 283 in Edge, 286 in Firefox and in
+#   Chrome for Testing, both examples on every leg), @kama/image's at 2839f81 (1,401 natively debug and release and on
+#   wasm, the sweep's 197) and @kama/graphics' (95 natively debug and release, in Firefox and in Chrome for Testing, 90
+#   in Edge). KY-40, KY-45 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.956 until it is rebuilt there.
+KAMA_VERSION=0.9.960
+KAMA_BUILD=gb39fbaab
