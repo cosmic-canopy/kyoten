@@ -640,3 +640,39 @@
        `tests/goldens/`, and the change is reviewed in the diff, as Playwright's `--update-snapshots` and Jest's `-u`
        update only when asked. Printing is there because a page cannot write a file; if `kama run` ever lets one, the
        script uses that, and nothing else changes. The tests read the goldens through `std::asset`, preloaded on the web.
+
+- **2026-11-14, the owner: GFX-1's part 1, questions 4 to 6, the `Renderer`'s shape with no window** ("I will take your
+  recommendation on all 3 yes"). Asked in full in the chat once the gate and the golden harness were built (kama-graphics
+  `3ac9c79`), each with what a program writes, the problem and the production answer. The shapes were sketched to
+  compile on 0.9.949 (`.scratch/gfx1-part1/sketch/`).
+  4. **A camera names the target it draws into, and with none it draws into the renderer's window.**
+     - This is Bevy's `Camera` target, Unity's `Camera.targetTexture`, Godot's viewports and Unreal's scene capture, and
+       kyoten's `Camera` component already has its `target` (question 2's item 7).
+     - `render(scene:, camera:)` keeps three.js's two arguments. A target is cleared and read on its own:
+       `renderer.clear(target:)`, and `renderer.readRenderTargetPixels(target:)`.
+     - **Considered and set aside:**
+       - three.js's current render target on the renderer (`setRenderTarget`). It is state a program must remember to
+         reset, every view of an editor sets it, and with no window, drawing before it is set fails only when it runs;
+       - a target on every call. kama has neither default arguments nor overloads, so the window would need a second
+         name.
+     - Part 1 builds `clear(target:)` and the read; part 2 builds the camera's target.
+  5. **A render target's format decides what it holds.**
+     - **The default, 8-bit sRGB, holds what the window would show:** tone mapped and sRGB-encoded. Read back, it is a
+       picture, which the cube's golden needs, and screenshots will.
+     - **A 16-bit float target holds the linear HDR scene,** for a program that processes it further. This is Unreal's
+       scene capture, final colour or scene colour, and Bevy, which tone maps a camera into the image it draws to.
+     - three.js gives a target no tone mapping or sRGB encoding, only the canvas (its PR #28909). So a headless picture
+       there is not what the window shows, and an 8-bit target stores linear colours, banding in the dark.
+     - A clear colour is written in sRGB, as every colour is (area 2, item 4), and reads back as written: clearing the
+       default target to `#336699` reads back `0x33 0x66 0x99`.
+  6. **A read hands back an `@kama/image` `Image`,** carrying its size, pixel format, colour space and alpha, so a
+     screenshot or a golden is one `encode` call.
+     - kama has no promises, so a read is a request the program polls, as `@kama/gpu`'s are.
+     - **Costs, accepted:**
+       - `@kama/graphics` depends on `@kama/image`. A program links only what it uses, so the PNG codec comes in only
+         for one that encodes;
+       - it is published after `@kama/image`, as it already is after `@kama/gpu` and `@kama/window`.
+
+       Whether `@kama/image` is first-party is still kama's to rule, relayed by the owner.
+     - **Considered and set aside:** raw bytes with their size and format beside them, which say nothing of what they
+       hold, so every program that saves one builds an image itself.

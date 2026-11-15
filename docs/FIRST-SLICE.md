@@ -116,10 +116,14 @@ the design doc it settles before building on it.
       4. the frame: the depth prepass, 4x MSAA, the 16-bit float target and AgX;
       5. pipelines compiled off the frame, and the quality presets;
       6. `examples/cube` in a window on both legs, FLIP, the 150 KB measurement, FEATURES.md's rows and the SPEC.
-      - **GFX-1's part 1: its gate and golden harness are built** (kama-graphics `3ac9c79`, the twenty-fifth session).
-        Each leg names its software GPU, every frame is held to `tests/goldens/<test>/<gpu>.png`, and
-        `tools/update-goldens.sh` writes what the legs print. **Its `Renderer` waits on three questions** asked of the
-        owner the same day: where a frame goes with no window, what a render target holds, and what a read returns.
+      - **GFX-1's part 1 is built** (kama-graphics `3ac9c79` and `9afdbee`, the twenty-fifth session):
+        - **the gate and the golden harness:** each leg names its software GPU, every frame is held to
+          `tests/goldens/<test>/<gpu>.png`, and `tools/update-goldens.sh` writes what the legs print;
+        - **a `Renderer` with no window** that clears a render target and reads it back as an `@kama/image` `Image`,
+          shaped by part 1's questions 4 to 6 (rendering § Decided, the owner the same day): a camera names its target,
+          the default 8-bit sRGB target holds what the window would show, and a read hands back an `Image`.
+      - **Next: GFX-1's part 2,** the scene graph on the flat core, `BoxGeometry`, and `PerspectiveCamera` with reversed
+        depth and the target it draws into (question 4): an unlit box, with its golden.
       - **`@kama/gpu`'s GPU-15, the fallback adapter, is built** (the twenty-second session, kama-gpu `b294d66`, its
         AGENTS.gpu.md item 13): WARP natively and in Firefox, SwiftShader in Chromium through the driver, each the same
         bytes twice. Chromium under `kama run` offers none, since `kama run` cannot pass it WebGPU's flags (KY-57).
@@ -178,8 +182,22 @@ session's counts, and kama had not moved. Then GFX-1's part 1 began in `../kama-
     has its own golden. WARP draws the same bytes natively and in Firefox.
   - **17 cases on each golden leg, 14 in Edge.** 29 of 29 mutations were caught, and a broken golden was written back
     byte for byte by the updater.
-- **The `Renderer`'s three questions** were asked of the owner: where a frame goes with no window, what a render target
-  holds, and what a read returns.
+- **The `Renderer`'s three questions, decided by the owner as recommended** ("I will take your recommendation on all 3
+  yes"; rendering § Decided, GFX-1's part 1, questions 4 to 6):
+  - a camera names the target it draws into, and with none the window;
+  - a target's format decides what it holds, the default 8-bit sRGB target what the window would show;
+  - a read hands back an `@kama/image` `Image`, so the library depends on `@kama/image`.
+- **The `Renderer`, built test-first** (kama-graphics `9afdbee`):
+  - **The API:** `Renderer.withDevice(device:, queue:)`, a clear colour written in sRGB and held linear (`Color`),
+    `clear(target:)`, and `readRenderTargetPixels(target:)`, a read polled until it hands back an `Image`.
+  - **The tests:** `#336699` reads back `0x33 0x66 0x99` on every leg, hardware included, and against its golden on WARP
+    and SwiftShader. Also covered: an alpha of 0.4 is 102, a copy of a target clears the target, a target never cleared
+    reads 0, a read dropped while pending is safe, and two renderers share one device.
+  - **The counts:** 32 cases on each golden leg, 28 in Edge.
+  - **The proof:** 30 of 31 mutations caught, after the gate was sharpened twice. Every leg must now run its GPU cases
+    to the end, and natively a run naming SwiftShader on WARP must print no frame. The one not caught drops a verdict
+    only a device that never opens reaches.
+  - **SPEC.md now describes what is built,** since it said nothing was.
 
 **The twenty-fourth session** (2026-11-14). Every suite was green on the 0.9.949 pin at the start (kama had reached
 0.9.950, `std::fs::Watcher`, nothing kyoten uses). Each part was test-first and committed with every suite green:
