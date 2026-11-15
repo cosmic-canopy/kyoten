@@ -82,51 +82,37 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.956+gdf5a6edf`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.960+gb39fbaab`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The twenty-seventh session's closing
-   counts: tools/test.sh (engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps
-   native and wasm; vr checked), `@kama/window`'s (249, 163 under node, 253 in Edge and Firefox, 264 through the driver),
-   `@kama/gpu`'s (309, 283 in Edge, 286 in Firefox and Chrome for Testing), `@kama/image`'s (1,401 natively and on wasm,
-   the sweep's 197) and `@kama/graphics`' (95 natively, in Firefox and in Chrome for Testing, 90 in Edge).
+   counts, the same on 0.9.956 and 0.9.960: tools/test.sh (engine 164 native debug, release and wasm; the frame guard; the
+   tool's 192; kyoten check; fps native and wasm; vr checked), `@kama/window`'s (249, 163 under node, 253 in Edge and
+   Firefox, 264 through the driver), `@kama/gpu`'s (309, 283 in Edge, 286 in Firefox and Chrome for Testing, both
+   examples on every leg), `@kama/image`'s (1,401 natively and on wasm, the sweep's 197) and `@kama/graphics`' (95
+   natively, in Firefox and in Chrome for Testing, 90 in Edge).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `df5a6edf`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor df5a6edf HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `b39fbaab`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor b39fbaab HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-   - **The pin is on 0.9.956** since the twenty-fifth session's end (`.kama-version`, kyoten `c6ed657`), at the owner's
-     word. The Mac's pin was rebuilt at 0.9.956 too (kyoten `7caa18c`, its `tools/test.sh` green there), so both
-     machines run the same compiler.
-   - **0.9.956 brings what kyoten waited on** (`.kama-version` says what each moved):
-     - `kama run` hands a browser the flags a project or its command line names, `--chromium-arg` or `"browser"` in
-       `kama.json` (KY-57, fixed and removed);
-     - a generic type's own parameter as an operand (0.9.952), which part 3's typed nodes want.
-   - **kama reached 0.9.959 during the twenty-sixth session** (`80390dde` to `f149c7e6`), and the pin stays on 0.9.956
-     until the owner bumps it:
-     - 0.9.957: every `static` states its start (none here lacks one);
-     - **0.9.958, breaking:** `run(app:, pace:)` takes a required `Pace` (`EveryRefresh`, `AtMost(hz:)`, `OnDemand`),
-       and an app on demand ticks only when woken (KR-281 4g). A bump ports the five calls: `@kama/gpu`'s tests and its
-       two examples, `@kama/window`'s and `@kama/graphics`' tests;
-     - 0.9.959: a web connection's arrival wakes an app on demand.
-     - **kama's next session claimed this machine** for KR-332 and KR-269 (`e89ebec3`): a wasm release's optimization
-       level and who may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three
-       browsers here, so kyoten's timings wait while it runs.
-   - **kama reached 0.9.960 during the twenty-seventh session** (`f2c8b31b`, then `b39fbaab`, its roadmap): **KY-59's
-     fix**, an operator's by-value operand handed over as a call's argument is, verified on `../kama`'s working binary
-     with `.scratch/ky59/`; and KR-395 filed for KY-58.
-   - **The next session's first question: bump the pin to 0.9.960 or later** (the owner's call). Part 3's typed nodes
-     need KY-59's fix, and the bump carries 0.9.958's breaking `run(app:, pace:)`, five calls to port (above). The
-     recommendation was to wait for KR-332 and KR-269; KY-59 makes the bump part 3's first step instead. A bump is its own
-     commit, every suite green on the new compiler with nothing else changed, KY-59's repro re-run on the pin and its
-     entry removed.
+   - **The pin is on 0.9.960** since the twenty-seventh session's end (`.kama-version`, kyoten `7164a9c`), at the
+     owner's word ("We can bump now"), every suite green on it at the same counts. `.kama-version` says what moved:
+     - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
+       (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
+       package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
+       matters once a program runs on demand, as an editor would.
+     - **0.9.960: KY-59 fixed and removed,** so part 3's typed nodes take named nodes as operands with no workaround.
+   - **The Mac rebuilds its pin at `b39fbaab`** (it is on 0.9.956), from a clean clone, and runs `tools/test.sh` there. A
+     probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
+   - **kama's KR-332 and KR-269 are claimed by this machine** (`e89ebec3`): a wasm release's optimization level and who
+     may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three browsers here, so
+     kyoten's timings wait while it runs.
    - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
-     handle, worked around in GFX-1's part 2), **KY-59** (filed 2026-11-15, a BUG: an overloaded operator releases a node
-     passed to it by value twice, a use-after-free in safe code that part 3's typed nodes meet; relay it to kama) and
-     kama's KR-378.
+     handle, worked around in GFX-1's part 2; kama's KR-395 since 2026-11-15) and kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -175,9 +161,8 @@ the design doc it settles before building on it.
       - **Next, GFX-1's part 3 built,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light:
         the lit box. It rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte. A sketch
         on the pin first, as part 2's was, from `.scratch/gfx1-part3/PLAN.md` (what to build, and what three.js r187's
-        lighting does: its sources are in `three-r187/`). **It needs KY-59's fix,** in kama 0.9.960: on a pin with it,
-        operators take named nodes with no workaround; on 0.9.956 the library would hand them temporaries
-        (`.scratch/gfx1-part3/probe/`'s `again()`).
+        lighting does: its sources are in `three-r187/`). KY-59 is fixed on the pin, so operators take named nodes as
+        they are; the probe's `again()` is not needed.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -248,6 +233,10 @@ session's counts; kama had not moved past 0.9.959 and its roadmap claim, and not
 - **KY-59 found and filed:** the probe's typed nodes crashed, then emitted WGSL from freed nodes. An overloaded operator
   is handed a by-value node bitwise, with no copy ctor, and both it and the caller release it (`.scratch/ky59/`, the
   emitted C quoted in the entry).
+- **The pin bumped to 0.9.960** at the owner's word (kyoten `7164a9c`): KY-59's fix landed upstream within the hour
+  (kama `f2c8b31b`), found by reading kama's log before pushing. Every suite green on it at the same counts, with the
+  five `run(app:, pace:)` calls ported in the packages; KY-59's repro passes on the pin and fails on 0.9.956, and the
+  entry is removed.
 - **A mutation that makes the tree a loop hangs the test program,** and the driver's timeout cannot end it while the
   program holds the run's pipes: `.scratch/gfx1-q4/tools/watchdog.ps1` stops a mutant program past 180 s.
 

@@ -813,5 +813,5 @@
     modules a game imports. Passes the library owns whole, such as tone mapping, may stay plain WGSL; the question was
     about functions a run-time material reaches.
   - **Found on the way: KY-59** ([../KAMA_GAPS.md](../KAMA_GAPS.md)): an overloaded operator releases a node passed to it
-    by value twice, so typed nodes free what a function still holds. Part 3 hands operators a temporary until kama fixes
-    it, inside the library only; a program writing `a * b` meets it too, so it is relayed to kama.
+    by value twice, so typed nodes free what a function still holds. kama fixed it the same day (`f2c8b31b`, 0.9.960),
+    and kyoten's pin moved to 0.9.960 at the owner's word, so part 3's operators take named nodes as they are.
