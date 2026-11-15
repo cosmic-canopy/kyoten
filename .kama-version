@@ -194,5 +194,32 @@
 #   and @kama/gpu's at c490c01 (309 native debug and release, the clear's and the triangle's 60 frames, the triangle
 #   read back, the xfails, 283 in Edge, 286 in Firefox and in Chrome for Testing). kyoten's suite and @kama/gpu's ran
 #   at once, which KY-56 had ruled out. The Mac's pin is 0.9.945 until it is rebuilt there.
-KAMA_VERSION=0.9.949
-KAMA_BUILD=g9f1fdaef
+#
+# 2026-11-14, Windows: 0.9.949 -> 0.9.956 (df5a6edf), kama's dev HEAD with a clean tree, at the owner's word at the end
+# of kyoten's twenty-fifth session ("you can bump kama"). kama rebased during that session, and 9f1fdaef, the 0.9.949
+# pin, left its history: 0.9.950 to 0.9.954 now sit before the KR-330 ruling it was. 48a8e67f, on the history, held
+# the same compiler (it differs from 9f1fdaef only in docs/ROADMAP*.md). The 0.9.949 binary is kept in
+# .scratch/kama-pin-0.9.949. What moved, for kyoten and the packages:
+#   cd36aa18 (0.9.950): a @compileFor gate's refusal names the file that holds it.
+#   f9dc69a3 (0.9.951): a name its import refused is one error, not one per use.
+#   98ff3176 (0.9.952): a generic type's own parameter is an operand (`operator*(T)` beside `operator*(This)`), which
+#           @kama/graphics' typed nodes (GFX-1's part 3) want.
+#   54b44d61 (0.9.953): a library's declared flag is a flag of its consumer's build (KR-390).
+#   9d312af9 (0.9.954): a type's operator cannot take a `string` operand.
+#   4b79cad2 (0.9.955): std::fs::Watcher, on Linux, Android and Windows (KR-330).
+#   4323e8b2 (0.9.956): `kama run` hands a browser the flags a project and its command line name, `--chromium-arg`,
+#           `--firefox-arg` and `--firefox-pref`, or `browser` in kama.json (KY-57, fixed and removed: @kama/graphics'
+#           tests under `kama run` got SwiftShader in Edge with --enable-unsafe-webgpu, and the pinned Chrome for
+#           Testing loaded the page with that, --enable-unsafe-swiftshader and --disable-features=NetworkServiceSandbox,
+#           each matching both SwiftShader goldens).
+#   Also 74784471 (packages.md lists every @kama/* package with its ruling: @kama/image first-party, 2026-11-14; KR-332
+#   measured on std's own inflate), df5a6edf, 04c9ea58, 27f74a80 and roadmap commits (KR-390 ruled), none of which
+#   kyoten uses. Green on it with nothing else changed, at the twenty-fifth session's counts: tools/test.sh (engine 164
+#   cases native debug, release and wasm; the frame guard; the tool's 192; `kyoten check engine/kama.json`; fps native
+#   and wasm; vr checked), @kama/window's (249 native debug and release, 163 under node, 253 under `kama run` in Edge and
+#   Firefox, 264 through the driver in Chrome for Testing), @kama/gpu's at c490c01 (309 native debug and release, 283 in
+#   Edge, 286 in Firefox and in Chrome for Testing), @kama/image's at 8575bb8 (1,401 natively debug and release and on
+#   wasm, the sweep's 197) and @kama/graphics' at 9afdbee (32 natively debug and release, in Firefox and through the
+#   driver, 28 in Edge). KY-40 and KY-45 re-checked, unchanged. The Mac's pin is 0.9.945 until it is rebuilt there.
+KAMA_VERSION=0.9.956
+KAMA_BUILD=gdf5a6edf
