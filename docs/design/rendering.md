@@ -815,3 +815,43 @@
   - **Found on the way: KY-59** ([../KAMA_GAPS.md](../KAMA_GAPS.md)): an overloaded operator releases a node passed to it
     by value twice, so typed nodes free what a function still holds. kama fixed it the same day (`f2c8b31b`, 0.9.960),
     and kyoten's pin moved to 0.9.960 at the owner's word, so part 3's operators take named nodes as they are.
+  - **Its first part is built** (kama-graphics, the twenty-eighth session, 2026-11-15; its SPEC § Typed nodes and § The
+    compiler):
+    - typed nodes and typed functions, each parameter declared with the argument it takes;
+    - the material compiler, each function written once with its callees first, a `let` for a node used twice;
+    - the varyings, and its refusals: a refused material draws nothing and is reported once;
+    - `MeshBasicMaterial` rebuilt on them, part 2's golden matched byte for byte on WARP and SwiftShader.
+
+    Settled under the owner's word and reported:
+    - a material's settings are declared apart from its nodes, so a setting changed each frame builds no node;
+    - programs write nodes in safe kama;
+    - a float literal is written so that a WGSL compiler reading it through a float64 gets it back. Over every float32,
+      one positive value, `7.038531e-26`, needs its float64 digits for that, and its negative does too.
+
+    142 cases on each golden leg, 137 in Edge; red first against a stubbed compiler; 65 of 65 mutations caught
+    (`.scratch/gfx1-part3/tools/`).
+
+    Found on the way:
+    - KY-60 and KY-61 ([../KAMA_GAPS.md](../KAMA_GAPS.md)): a chained operator's left operand is never freed, and across
+      packages an operator's result is untyped unless its type is imported;
+    - a material's settings were visible to the fragment stage alone, fixed test-first in this part;
+    - part 2's renderer draws a mirrored mesh inside out, where three.js r187 flips its winding (`WebGPUPipelineUtils.js`:
+      `matrixWorld.determinantAffine() < 0`). It is fixed test-first as part 3's second part begins.
+
+- **2026-11-15, the owner: GFX-1's part 3, its second part's question 1: how normals reach world space under a
+  non-uniform scale** ("Sounds like A is the best solution", asked in full in the chat). Multiplying a normal by the
+  world matrix tilts it wrong under a non-uniform scale; the inverse transpose of the world matrix's 3x3 is right under
+  any scale, shear or mirror. **(A): each mesh's record carries its normal matrix**, the inverse transpose, computed on
+  the CPU when its world matrix changes, so only what moved pays, and the vertex stage multiplies by it.
+  - **Prior art, read in its source on 2026-11-15** (`.scratch/gfx1-part3/prior-art/`):
+    - three.js r187's `modelNormalMatrix` is a per-object `Matrix3`, `getNormalMatrix(object.matrixWorld)`, which is
+      `invert().transpose()` (`ModelNode.js`, `Matrix3.js`);
+    - Bevy 0.16's mesh record carries `local_from_world_transpose_a` and `_b`, a 3x3 in 36 bytes (`mesh_types.wgsl`);
+    - Godot 4.4 computes `transpose(inverse(mat3(model_matrix)))` per vertex when an instance's
+      `INSTANCE_FLAGS_NON_UNIFORM_SCALE` is set (`scene_forward_clustered.glsl`).
+  - **Its cost:** the record grows from 64 to 112 bytes, a `mat3x3f` in a storage buffer taking 48. Bevy's packing into 36
+    saves nothing here, since the record's stride is a multiple of 16. So 10,000 meshes take 1.12 MB, not 0.64 MB, and a
+    mesh that moved uploads 112 bytes.
+  - **Set aside:**
+    - (B), the inverse in the vertex stage on every vertex every frame (about 40 operations, WGSL having no `inverse`);
+    - (C), Godot's flag with (B) behind it, a branch per vertex and a flag word in the record.

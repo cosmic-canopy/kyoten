@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-15, the twenty-seventh session)
+## Where it stands (2026-11-15, the twenty-eighth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -86,12 +86,14 @@ the design doc it settles before building on it.
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
-   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The twenty-seventh session's closing
-   counts, the same on 0.9.956 and 0.9.960: tools/test.sh (engine 164 native debug, release and wasm; the frame guard; the
-   tool's 192; kyoten check; fps native and wasm; vr checked), `@kama/window`'s (249, 163 under node, 253 in Edge and
-   Firefox, 264 through the driver), `@kama/gpu`'s (309, 283 in Edge, 286 in Firefox and Chrome for Testing, both
-   examples on every leg), `@kama/image`'s (1,401 natively and on wasm, the sweep's 197) and `@kama/graphics`' (95
-   natively, in Firefox and in Chrome for Testing, 90 in Edge).
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts on 0.9.960:
+   - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
+     and wasm; vr checked;
+   - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
+   - `@kama/gpu`'s: 309, 283 in Edge, 286 in Firefox and Chrome for Testing, both examples on every leg;
+   - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
+   - `@kama/graphics`': 142 natively, in Firefox and in Chrome for Testing, 137 in Edge, since part 3's first part (the
+     twenty-eighth session); 95 and 90 before it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -111,8 +113,16 @@ the design doc it settles before building on it.
    - **kama's KR-332 and KR-269 are claimed by this machine** (`e89ebec3`): a wasm release's optimization level and who
      may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three browsers here, so
      kyoten's timings wait while it runs.
-   - **Still open with kama:** KY-45, KY-40, KY-58 (filed 2026-11-14: an object held in a `Shared` cannot reach its own
-     handle, worked around in GFX-1's part 2; kama's KR-395 since 2026-11-15) and kama's KR-378.
+   - **Still open with kama:**
+     - KY-45 and KY-40;
+     - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
+       worked around in GFX-1's part 2;
+     - KY-60 and KY-61, filed 2026-11-15:
+       - KY-60: a chained operator's left operand is never freed, so a node graph leaks a node a chain. Fixed upstream
+         the same day (kama 0.9.962, `0769524f`), its repro freeing everything there; open until the pin moves;
+       - KY-61: across packages, an operator's result is untyped unless its type is imported, and the message names the
+         wrong type;
+     - kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -158,11 +168,26 @@ the design doc it settles before building on it.
         library's shader functions are typed-node functions in kama, emitted into a material's WGSL once where it
         reaches them, with a `let` for a node used twice; a WGSL function as text with its includes is the escape; no
         WESL linker at run time.
-      - **Next, GFX-1's part 3 built,** typed nodes compiled to WGSL, `MeshStandardMaterial`, the sun and ambient light:
-        the lit box. It rebuilds `MeshBasicMaterial` from typed nodes, held to `boxes/<gpu>.png` byte for byte. A sketch
-        on the pin first, as part 2's was, from `.scratch/gfx1-part3/PLAN.md` (what to build, and what three.js r187's
-        lighting does: its sources are in `three-r187/`). KY-59 is fixed on the pin, so operators take named nodes as
-        they are; the probe's `again()` is not needed.
+      - **Part 3's first part is built** (kama-graphics, the twenty-eighth session; rendering § Decided, GFX-1's part 3):
+        - typed nodes, typed functions and the material compiler;
+        - `MeshBasicMaterial` rebuilt on them, `boxes/<gpu>.png` matched byte for byte;
+        - 142 cases on each golden leg, 137 in Edge, and 65 of 65 mutations caught.
+      - **Part 3's second part's question 1 is decided** (the owner, 2026-11-15, "Sounds like A is the best solution";
+        rendering § Decided): each mesh's record carries its normal matrix, computed on the CPU when it moves, the record
+        growing from 64 bytes to 112.
+      - **Next, as part 3's second part begins:** the mirrored mesh fixed test-first. Part 2's renderer draws a mesh
+        with a negative determinant inside out, where three.js flips its winding. The test and the fix are written as
+        scripts: `.scratch/gfx1-part3/tools/mirror_test.py` (a camera inside a mirrored box sees the backdrop) and
+        `mirror_fix.py` (a clockwise pipeline per material for such a mesh).
+      - **Then part 3's second part,** from `.scratch/gfx1-part3/PLAN.md`:
+        - the record's normal matrix (std's `Mat3`, zero where the determinant is);
+        - the vertex's normal at location 1, with `normalLocal()`, `modelNormalMatrix()` (a `Mat3Node`), `normalWorld()`
+          and `positionWorld()`, a varying used twice written once;
+        - `MeshStandardMaterial`'s values and slots;
+        - a test material showing `normalWorld()` on a box scaled unevenly and mirrored, each face's colour held to the
+          inverse transpose worked on the CPU.
+
+        Then part 3's third part, the lights.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -219,6 +244,26 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-eighth session** (2026-11-15). Every suite was green on the 0.9.960 pin at the start, at the
+twenty-seventh session's counts. kama had committed nothing since the pin, and nothing came from the Mac.
+- **KY-60 found from kama's working tree and filed:** an uncommitted fix there said a chained operator's left operand
+  was never freed. `.scratch/ky60/` made 11 values and freed 9 on the pin, and freed all 11 on `../kama`'s working
+  binary.
+- **GFX-1's part 3, its first part, built** in kama-graphics: typed nodes, typed functions, the material compiler, and
+  `MeshBasicMaterial` on them, its golden matched byte for byte.
+  - A sketch on the pin came first (`.scratch/gfx1-part3/sketch/`). kama has no generic methods, so `param` is a free
+    function. A node's identity is its expression's address. Programs write nodes in safe kama.
+  - **Every float32 swept** (`.scratch/gfx1-part3/numbers/`, six processes): one value, `7.038531e-26`, is read through
+    a float64, as WGSL compilers read literals, as its neighbour. The compiler writes that one with its float64
+    digits.
+  - **Mutations:** 65 of 65 caught, after `pow`'s case was sharpened.
+  - **Found and fixed:** a material's settings were visible to the fragment stage alone.
+  - **Found and filed:** KY-61, an operator's result across packages untyped unless its type is imported.
+  - **Found, fixed next:** a mirrored mesh draws inside out.
+- **Part 3's second part's question 1 asked and decided:** normals under a non-uniform scale, (A), the normal matrix
+  in the record. The prior art was read in its source (`.scratch/gfx1-part3/prior-art/`): three.js's
+  `modelNormalMatrix`, Bevy's record, Godot's flag.
 
 **The twenty-seventh session** (2026-11-15). Every suite was green on the 0.9.956 pin at the start, at the twenty-sixth
 session's counts; kama had not moved past 0.9.959 and its roadmap claim, and nothing came from the Mac.
