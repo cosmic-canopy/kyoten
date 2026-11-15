@@ -835,8 +835,9 @@
     - KY-60 and KY-61 ([../KAMA_GAPS.md](../KAMA_GAPS.md)): a chained operator's left operand is never freed, and across
       packages an operator's result is untyped unless its type is imported;
     - a material's settings were visible to the fragment stage alone, fixed test-first in this part;
-    - part 2's renderer draws a mirrored mesh inside out, where three.js r187 flips its winding (`WebGPUPipelineUtils.js`:
-      `matrixWorld.determinantAffine() < 0`). It is fixed test-first as part 3's second part begins.
+    - part 2's renderer drew a mirrored mesh inside out, where three.js r187 flips its winding (`WebGPUPipelineUtils.js`:
+      `matrixWorld.determinantAffine() < 0`). Fixed test-first the same session, with a pipeline per material and
+      winding; 3 of 3 mutations caught.
 
 - **2026-11-15, the owner: GFX-1's part 3, its second part's question 1: how normals reach world space under a
   non-uniform scale** ("Sounds like A is the best solution", asked in full in the chat). Multiplying a normal by the

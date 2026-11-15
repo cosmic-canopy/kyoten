@@ -93,8 +93,8 @@ the design doc it settles before building on it.
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 309, 283 in Edge, 286 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 142 natively, in Firefox and in Chrome for Testing, 137 in Edge, since part 3's first part (the
-     twenty-eighth session); 95 and 90 before it.
+   - `@kama/graphics`': 144 natively, in Firefox and in Chrome for Testing, 139 in Edge, since part 3's first part and
+     the mirrored mesh (the twenty-eighth session); 95 and 90 before them.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -176,11 +176,10 @@ the design doc it settles before building on it.
       - **Part 3's second part's question 1 is decided** (the owner, 2026-11-15, "Sounds like A is the best solution";
         rendering § Decided): each mesh's record carries its normal matrix, computed on the CPU when it moves, the record
         growing from 64 bytes to 112.
-      - **Next, as part 3's second part begins:** the mirrored mesh fixed test-first. Part 2's renderer draws a mesh
-        with a negative determinant inside out, where three.js flips its winding. The test and the fix are written as
-        scripts: `.scratch/gfx1-part3/tools/mirror_test.py` (a camera inside a mirrored box sees the backdrop) and
-        `mirror_fix.py` (a clockwise pipeline per material for such a mesh).
-      - **Then part 3's second part,** from `.scratch/gfx1-part3/PLAN.md`:
+      - **The mirrored mesh is fixed** (the same session): part 2's renderer drew a mesh with a negative determinant
+        inside out, where three.js flips its winding. A camera inside a mirrored box now sees the backdrop, with a
+        clockwise pipeline per material for such a mesh.
+      - **Next, part 3's second part,** from `.scratch/gfx1-part3/PLAN.md`:
         - the record's normal matrix (std's `Mat3`, zero where the determinant is);
         - the vertex's normal at location 1, with `normalLocal()`, `modelNormalMatrix()` (a `Mat3Node`), `normalWorld()`
           and `positionWorld()`, a varying used twice written once;
@@ -261,7 +260,7 @@ twenty-seventh session's counts. kama had committed nothing since the pin, and n
   - **Mutations:** 65 of 65 caught, after `pow`'s case was sharpened.
   - **Found and fixed:** a material's settings were visible to the fragment stage alone.
   - **Found and filed:** KY-61, an operator's result across packages untyped unless its type is imported.
-  - **Found, fixed next:** a mirrored mesh draws inside out.
+  - **Found and fixed:** a mirrored mesh drew inside out (3 of 3 mutations caught).
 - **Part 3's second part's question 1 asked and decided:** normals under a non-uniform scale, (A), the normal matrix
   in the record. The prior art was read in its source (`.scratch/gfx1-part3/prior-art/`): three.js's
   `modelNormalMatrix`, Bevy's record, Godot's flag.
