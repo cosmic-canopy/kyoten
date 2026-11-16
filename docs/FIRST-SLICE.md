@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-15, the twenty-ninth session's end)
+## Where it stands (2026-11-16, the twenty-ninth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -115,11 +115,18 @@ the design doc it settles before building on it.
        generic infers it from the operator.
    - **The Mac rebuilds its pin at `52032a3b`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
      `tools/test.sh` there. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
-   - **kama's KR-332 is ruled, all five decisions as recommended, and KR-269 is a non-goal** (kama `ecc5ee9c`): a wasm
-     `--release` will compile and link at `-O3`, as native does, which carries `@kama/image`'s KIMG-1. At this
-     session's end it was being built in kama's working tree (0.9.965, uncommitted: `src/kama.driver.cpp`,
-     `docs/targets.md`, an `-Oz` kept for size). Once it lands, the wasm release legs' sizes and speeds move, and
-     KY-6's text (`-Oz` and no Closure, kama's KR-289) is to be re-read against it.
+   - **kama's KR-332 is built, 0.9.965** (kama `57de22cd`, 2026-11-15; KR-269 closed as a non-goal), which carries
+     `@kama/image`'s KIMG-1:
+     - a `--release` build compiles and links at `-O3` on every target, wasm included, where wasm was `-Oz`;
+     - the root manifest's `release.optimize` says `"size"`, for the whole build or one target, and `release.speed` and
+       `release.size` name packages or modules at the other level;
+     - **an `-O` in any manifest's `cflags`, `cxxflags`, `objcflags` or `ldflags` is now refused by name.**
+
+     **Propose bumping the pin to it at the next session's start,** as its own commit. Checked 2026-11-16: no
+     committed manifest in kyoten, its examples or the four packages carries an `-O` (only kama-image's `.scratch`
+     probes do), and no suite holds a wasm size. So it should move only the wasm release legs' sizes and speeds. KY-6
+     then reads `-O3` where it says `-Oz`; Closure is still not run (kama's KR-289). kama's `8f8543d3` after it is the
+     job pool's gate on Windows (KR-396 filed), nothing kyoten calls yet.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
@@ -192,12 +199,24 @@ the design doc it settles before building on it.
         `graphVersion()`. With no light it draws its emissive alone, as three.js's does. 166 cases on each golden leg, 161
         in Edge; 26 of 26 mutations caught. `colorNode`, `roughnessNode` and `metalnessNode` moved to the third part,
         with the lights that read them, since nothing could hold them before.
-      - **Next, part 3's third part, the lights:** `DirectionalLight` and `AmbientLight`, the direct and ambient terms,
-        and the three slots. Its three questions are prepared, with their prior art read in source
-        (`.scratch/gfx1-part3/lights/QUESTIONS.md`, `PLAN.md` § Part 3's third part): how the scene's lights reach a
-        material's shader, the DFG table r187's direct light reads (so a texture node), and where a directional light
-        points. Each is asked in full in the chat before it is built. The runners and mutation driver are in
-        `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`).
+      - **Part 3's third part's three questions are decided** (the owner, 2026-11-16, "I assume your recommendations
+        are the best production answer for kyoten and I will take them", each (A); rendering § Decided, kyoten
+        `e52c870`, kama-graphics `9aa00f8`):
+        1. the scene's lights reach a shader as data: a storage buffer of directional lights of any length in the
+           frame's group and the ambient lights' sum, so a light's change compiles nothing and nothing is capped;
+        2. the direct light reads three.js r187's DFG table through a texture-sample node, and kama-graphics carries
+           three.js's MIT notice for it;
+        3. a `DirectionalLight` points from its world position to `target()`, a world-space point, its default
+           position (0, 1, 0).
+      - **Next, build part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part, depth-first, each
+        step test-first with its mutations:
+        1. the texture node and the DFG table, with the notice;
+        2. `DirectionalLight` and `AmbientLight` as scene nodes, and their buffer;
+        3. the direct and ambient terms, with `colorNode`, `roughnessNode` and `metalnessNode`;
+        4. the lit box's golden on WARP and SwiftShader.
+
+        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` among them. The runners and mutation
+        driver are in `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`).
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -255,7 +274,7 @@ the design doc it settles before building on it.
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
 
-**The twenty-ninth session** (2026-11-15). Every suite was green on the 0.9.962 pin at the start, at the
+**The twenty-ninth session** (2026-11-15 and 16). Every suite was green on the 0.9.962 pin at the start, at the
 twenty-eighth session's counts. Nothing came from the Mac. kama had committed four things since the pin.
 - **The pin bumped to 0.9.964** at the owner's word ("Yes, bump first"; kyoten `59e21c4`): kama `52032a3b` fixed
   KY-61 and KY-62 the day they were filed. Their repros build and run on it and are refused on 0.9.962, and both
@@ -273,6 +292,8 @@ twenty-eighth session's counts. Nothing came from the Mac. kama had committed fo
   (10 and 8). r187's direct light reads a 16x16 RG16F DFG table, which r170's analytic fit misses by up to 0.41 in its
   scale term (`.scratch/gfx1-part3/lights/dfg_compare.py`). A directional light's target must be added to the scene
   before moving it does anything.
+- **The lights' three questions asked in full at its end, and decided the next morning,** each as recommended. Pushed
+  at the owner's word: kyoten and kama-graphics.
 
 **The twenty-eighth session** (2026-11-15). Every suite was green on the 0.9.960 pin at the start, at the
 twenty-seventh session's counts. kama had committed nothing since the pin, and nothing came from the Mac.
