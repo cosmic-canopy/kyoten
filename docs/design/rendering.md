@@ -903,3 +903,55 @@
     sharpened to hold the texel's alpha.
   - **Found for part 4:** three.js r187's `NodeMaterial.setup` clamps every material's output with `max(0)` ("force
     unsigned floats"). An 8-bit target clamps anyway, so it is built, and held, with the 16-bit float target.
+
+- **2026-11-16, the owner: GFX-1's part 3, its third part's three questions, the lights** ("I assume your
+  recommendations are the best production answer for kyoten and I will take them", asked in full in the chat at the
+  twenty-ninth session's end). The prior art was read in its source (`.scratch/gfx1-part3/prior-art/` and
+  `three-r187/`).
+  1. **The scene's lights reach a material's shader as data, never as code (A).**
+     - **The problem:** three.js r187 builds each light into every lit material's shader. `LightsNode.customCacheKey()`
+       puts each light's id in the material's cache key, so adding or removing a light compiles every lit material
+       again, about 24 ms a lit pipeline (measured 2026-11-11). That is a hitch, or, once part 5 compiles off the frame,
+       frames drawn with the old lights.
+     - **(A):** each frame the renderer writes the scene's lights into the frame's group:
+       - the directional lights as a storage buffer of any length, each its direction and its colour × intensity, which
+         a lit shader loops over;
+       - the ambient lights summed into one colour.
+
+       Adding, removing, moving or dimming a light compiles nothing, and there is no cap. Point and spot lights will
+       reach the clusters' storage buffers the same way (area 3, item 1).
+     - **Its cost:** a loop whose length is known only at run time, and one storage read a light a fragment. The
+       objects' records are a storage buffer already.
+     - **Set aside:**
+       - (B), three.js's: a compile for each change of the light set;
+       - (C), Bevy 0.16's and Godot 4.4's: a fixed number in one uniform with a count (10 and 8, Bevy's 1 on WebGL2).
+         It compiles nothing, but it is a cap, which the bar refuses.
+  2. **The direct light reads three.js r187's DFG table (A).**
+     - **The problem:** r187's direct light compensates for multiple scattering with `1 + F0 (1/Ess - 1)`, reading Ess
+       from a 16 × 16 RG16F table sampled at (roughness, dotNV) (`DFGLUT.js`, 4,096 samples a texel). r170's analytic
+       fit misses the table by up to 0.41 in its scale term and by up to 4.4% in the dielectric's compensation
+       (`.scratch/gfx1-part3/lights/dfg_compare.py`, in float64).
+     - **(A):** the renderer makes the table once a device and binds it in the frame's group with a linear, clamped
+       sampler, and a texture-sample node reads it. It is the first texture the compiler reads, and material maps need
+       that node next. The tests' wants stay three.js's own numbers.
+     - **Its cost:** 1 KB, one sample a fragment, and the texture node built now.
+     - **Set aside:** (B), r170's fit: no texture, but not three.js's numbers.
+     - **Settled with it, by the library's rule** (kama-graphics' AGENTS.graphics.md § Rules: code adapted from an MIT
+       or Apache project keeps its notice): the table is three.js's data, its 512 half floats copied as they are, so
+       kama-graphics carries three.js's MIT notice ("Copyright © 2010-2026 three.js authors") in a notices file, as
+       kyoten's `engine/THIRD-PARTY-NOTICES.md` carries musl's.
+  3. **A directional light points from its world position to `target()`, a point in world space (A).**
+     - **The problem:** in three.js, `sun.target.position.set(3, 0, 0)` does nothing unless the program also calls
+       `scene.add(sun.target)`. r187's own docs say so: "For the target's position to be changed to anything other than
+       the default, it must be added to the scene."
+     - **(A):** three.js's idea with the trap gone. `target()` and `targetMut()` are a `Vec3` in world space, the origin
+       by default, a property pair whose write marks the light changed, and there is no object to add. Its default
+       position is (0, 1, 0), so it shines straight down, as three.js's does (`Object3D.DEFAULT_UP`). Its colour is
+       white and its intensity 1, as three.js's, and so are an `AmbientLight`'s.
+     - **Given up with it:** in three.js the target may be another object in the scene, which the light then tracks.
+       Under (A) a program that tracks one writes that object's world position to `targetMut()` each frame. kyoten's
+       render module, whose `Light` component is aimed by its entity's rotation, writes position + forward the same way.
+     - **Set aside:**
+       - (B), three.js's exactly: a target object that must be in the scene before moving it does anything;
+       - (C), Unity's, Godot's, Bevy's and kyoten's `Light` component's: the light's own rotation, shining along -Z and
+         aimed with `lookAt`. It departs from three.js's default, which shines down, and from its examples.
