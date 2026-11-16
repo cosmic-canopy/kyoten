@@ -865,3 +865,29 @@
     against the plain 3x3, with 279 texels wrong. 18 of 18 mutations caught. A test that turns the box alone would not
     tell the plain matrix from the inverse transpose: a box's normals lie along its own axes, so only a shear, a
     non-uniform scale above a turn, separates them.
+
+- **2026-11-15, the owner: GFX-1's part 3, its second part's question 2: how a renderer learns that a material's node
+  graph changed** ("A: graphVersion() (Recommended)", asked in full in the chat at the twenty-ninth session's start).
+  - **Until now** a renderer compiles a material the first time it draws it, and never again. A setting's write moves
+    the material's `version()`, and the renderer writes only its bytes again.
+  - **The problem:** step 2 adds the first slot whose change needs a new shader, `MeshStandardMaterial`'s
+    `emissiveNode`. A program's own `Material` may change its graph too, since the contract is public. With no signal,
+    a mesh keeps its old shader and nothing says so. That is three.js's `needsUpdate` trap, which area 2's item 3 says a
+    program never meets.
+  - **(A): the `Material` contract gains `graphVersion()` beside `version()`.**
+    - `version()` moves when a value changes, and the renderer writes the bytes again.
+    - `graphVersion()` moves when a node changes, and the renderer compiles again. A slot's `Mut` moves it, as
+      `colorMut()` moves `version()`.
+    - The renderer keeps the number it compiled at. A material whose graph never changes answers 0.
+  - **Why:** it is one rule, the one the settings already follow, and the renderer's cache stays the renderer's own.
+    Its cost is one more method on every implementor.
+  - **Set aside:** (B), `MaterialGpu.forget()` made public, so a material drops the renderer's compiled WGSL itself
+    (the twenty-eighth session's sketch). It needs no contract change. But the renderer's cache would become API that
+    every program touches, and nothing would remind a program's own material that it must call it.
+  - **Settled with it, and reported, step 2's scope:** with no light, a standard material's colour, roughness and
+    metalness change neither a pixel nor its WGSL. So step 2 builds:
+    - the five values;
+    - the first slot, `emissiveNode`.
+
+    `colorNode`, `roughnessNode` and `metalnessNode` arrive with the lights that read them (step 3), where a test can
+    hold them.
