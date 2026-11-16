@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-15, the twenty-eighth session)
+## Where it stands (2026-11-15, the twenty-eighth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -111,16 +111,17 @@ the design doc it settles before building on it.
        matters once a program runs on demand, as an editor would.
      - **0.9.960: KY-59 fixed and removed,** so part 3's typed nodes take named nodes as operands with no workaround.
      - **0.9.961 and 0.9.962: KY-60 fixed and removed,** so a chain of node operators frees what it makes.
-   - **The Mac rebuilds its pin at `0769524f`** (it is on 0.9.956), from a clean clone, and runs `tools/test.sh` there. A
-     probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
-   - **kama's KR-332 and KR-269 are claimed by this machine** (`e89ebec3`): a wasm release's optimization level and who
-     may set one for which code, which carries `@kama/image`'s KIMG-1. It measures in node and three browsers here, so
-     kyoten's timings wait while it runs.
+   - **The Mac rebuilds its pin at `0769524f`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
+     `tools/test.sh` there. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
+   - **kama's KR-332 and KR-269 are briefed, their ruling owed** (kama `e0936930`, measured on this machine): a wasm
+     release's optimization level and who may set one for which code, which carries `@kama/image`'s KIMG-1. Five
+     decisions are put to kama's maintainer, the first a wasm `--release` at `-O3`. kyoten's timings wait while kama
+     measures here.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-61 and KY-62, filed 2026-11-15:
+     - KY-61 and KY-62, filed 2026-11-15, with no KR id yet at the session's end:
        - KY-61: across packages, an operator's result is untyped unless its type is imported, and the message names the
          wrong type;
        - KY-62: a generic's type argument inferred from an operator expression is the left operand's type;
@@ -170,22 +171,25 @@ the design doc it settles before building on it.
         library's shader functions are typed-node functions in kama, emitted into a material's WGSL once where it
         reaches them, with a `let` for a node used twice; a WGSL function as text with its includes is the escape; no
         WESL linker at run time.
-      - **Part 3's first part is built** (kama-graphics, the twenty-eighth session; rendering § Decided, GFX-1's part 3):
+      - **Part 3's first part is built** (kama-graphics `ad29352`, the twenty-eighth session; rendering § Decided,
+        GFX-1's part 3):
         - typed nodes, typed functions and the material compiler;
         - `MeshBasicMaterial` rebuilt on them, `boxes/<gpu>.png` matched byte for byte;
         - 142 cases on each golden leg, 137 in Edge, and 65 of 65 mutations caught.
       - **Part 3's second part's question 1 is decided** (the owner, 2026-11-15, "Sounds like A is the best solution";
         rendering § Decided): each mesh's record carries its normal matrix, computed on the CPU when it moves, the record
         growing from 64 bytes to 112.
-      - **The mirrored mesh is fixed** (the same session): part 2's renderer drew a mesh with a negative determinant
-        inside out, where three.js flips its winding. A camera inside a mirrored box now sees the backdrop, with a
-        clockwise pipeline per material for such a mesh.
-      - **Part 3's second part, step 1, is built** (the same session): the record's normal matrix, the vertex's normal at
-        location 1, `normalLocal()`, `modelNormalMatrix()`, `normalWorld()` and `positionWorld()`, held by a box under a
-        shear and a mirrored shear; 18 of 18 mutations caught.
-      - **Next, its step 2,** from `.scratch/gfx1-part3/PLAN.md`: `MeshStandardMaterial`'s values (color, roughness,
-        metalness, emissive, emissiveIntensity) and its slots (`colorNode` and the rest), a slot's change recompiling the
-        material. With no light yet it draws its emissive alone, as three.js's does.
+      - **The mirrored mesh is fixed** (kama-graphics `2d3b043`, the same session): part 2's renderer drew a mesh with a
+        negative determinant inside out, where three.js flips its winding. A camera inside a mirrored box now sees the
+        backdrop, with a clockwise pipeline per material for such a mesh.
+      - **Part 3's second part, step 1, is built** (kama-graphics `f2e2ec7`, the same session): the record's normal
+        matrix, the vertex's normal at location 1, `normalLocal()`, `modelNormalMatrix()`, `normalWorld()` and
+        `positionWorld()`, held by a box under a shear and a mirrored shear; 18 of 18 mutations caught.
+      - **Next, its step 2,** from `.scratch/gfx1-part3/PLAN.md` § Part 2's step 2, as sketched:
+        `MeshStandardMaterial`'s values (color, roughness, metalness, emissive, emissiveIntensity, a 48-byte settings
+        block) and its slots (`colorNode` and the rest), a slot's change recompiling the material. With no light yet it
+        draws its emissive alone, as three.js's does. Its runners and mutation lists are in `.scratch/gfx1-part3/tools/`
+        (`native.sh`, `mutate.py`, `list31.py` to `list32a.py`).
 
         Then part 3's third part, the lights.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
@@ -266,6 +270,14 @@ twenty-seventh session's counts. kama had committed nothing since the pin, and n
   `modelNormalMatrix`, Bevy's record, Godot's flag.
 - **The pin bumped to 0.9.962** at the owner's word ("bump"), after kama fixed KY-60 within hours of its filing. Every
   suite is green on it at the same counts. KY-60's repro frees all 11 values on it, and the entry is removed.
+- **Part 3's second part, step 1, built** (kama-graphics `f2e2ec7`): the record's normal matrix, held by a box under a
+  shear, every texel to S⁻¹ R n in float64. A test turning the box alone could not tell the plain matrix from the inverse
+  transpose; red first against the plain 3x3 (279 texels wrong). 18 of 18 mutations caught. **Found and filed:** KY-62,
+  a generic's type argument inferred from `a * b` is `a`'s type.
+- **At the end:** the Mac's four commits (audio's design pass closed, its pin rebuilt at 0.9.960) were fetched and this
+  session's rebased onto them; kama had committed one roadmap commit since the pin (`e0936930`, KR-332's brief), and its
+  tree holds 0.9.963 (Android's `Pace`, proved on the emulator), which touches nothing of kyoten's. Pushed at the
+  owner's word ("go ahead and push and get things ready for the next session"): kyoten and kama-graphics.
 
 **The twenty-seventh session** (2026-11-15). Every suite was green on the 0.9.956 pin at the start, at the twenty-sixth
 session's counts; kama had not moved past 0.9.959 and its roadmap claim, and nothing came from the Mac.
