@@ -458,7 +458,9 @@ module writes in kama, CI checks every merged result, and a hot reload that fail
 meet in git, each on its own branch. Tasks are wiki pages with advisory claims, and each commit's trailers carry its
 provenance. Humans override everything, and roles and approvals are off until a project turns them on. A shipped
 game reads a **pack** per source, its merge patches in JSON, through the same stack. A wiki's screenshots are
-**captures**, kept in the asset store with the recipe that retakes them.
+**captures**, kept in the asset store with the recipe that retakes them. Built assets ship apart from the code, in
+**asset packs** of what loads together, each named by its hash and found through an **asset manifest** that the game
+locks and the stack's identity covers (*decided in part*, content-delivery-tool questions 3 to 8 and 10, 2026-11-16).
 
 ## One way to do each thing
 
@@ -550,6 +552,8 @@ words.
 | **World generator** | a function named in a scene's record that fills a zone, its cells and entities, from the scene's seed, the zone's coordinate and the records. Never recorded; what is not deterministic (an LLM) is input | decided (question 9, 2026-11-07) |
 | **World component** | a component the world or a zone holds one of, rather than each entity: the step's `Time`, the physics world, a spatial grid. It is a field of the generated world or zone, passed only to the processors that name it, never reached globally, and owned by a module. A processor's state between steps lives in one. Its component record says `"store": "World"`, and it starts from its `default ctor` | decided (question 3, choice 2; renamed from "singleton" at question 8 part b, 2026-11-07; declared by `store` on 2026-11-09) |
 | **Asset** | shared read-only data loaded with a zone, reached by handle: a mesh, a clip, a navmesh | decided |
+| **Asset pack** | the built assets that load together, as a shipped game reads them: a content layer's, split by zone or scene when it streams and by platform, in one file named by its hash, each asset compressed alone in a fixed order. In development each asset is a file of its own, named by its hash | decided (content-delivery-tool questions 3 and 7, 2026-11-16); the name is proposed until question 3 says whether a record pack and an asset pack are one file |
+| **Asset manifest** | maps each asset's id to its SHA-256 and its place (asset pack, offset, length). A lock in the game's repository names its hash, and the stack's identity covers it, so a save or a replay pins asset contents | decided (content-delivery-tool questions 4 and 5, 2026-11-16) |
 | **Processor** | a function over components that the scheduler runs, plus a record that schedules it (phase, processor group, order, rate, iterations). Its signature is its access: each parameter means what its type says, and names are free. A free function, never a method, named by its kama path (`towers::fire`: module `towers`, processor `fire`). What Bevy, flecs and Unity Entities call a system | decided (question 3, choices 1 and 2, as "system"; types only, functions and paths, and the name, at question 8 part b, 2026-11-07) |
 | **Random key** | a processor's key for one purpose its record lists (`random.crit`, in a generated `<Processor>RandomKeys`). The same entity, step and counter give the same value on any thread, in any order: a counter-based generator, holding no state. `random.spread.nth(n: i)` derives the key for value `i` | decided (question 8 part b, 2026-11-07) |
 | **Phase** | Input, Update, Constraints, Output: a place in the order | decided |

@@ -104,6 +104,8 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 8f8543d3 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
+     At the thirtieth session's end the range held one commit, `d817de00`: a fix to kama's CI guard for KR-332
+     (`tools/check-release-optimize.sh`), with the compiler unchanged, so no bump.
    - **The pin is on 0.9.965** (`8f8543d3`) since the thirtieth session's start (`.kama-version`), at the owner's word
      ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.964 since the twenty-ninth session.
      `.kama-version` says what moved:
@@ -293,6 +295,16 @@ benchmark.
 - **Step 1 built in `@kama/graphics`** (kama-graphics `b039404`): the DFG table, the texture-sample node and `dfg()`, red first
   3 of 10 against a stubbed `dfg()`; 23 of 23 mutations caught.
 - Built in worktrees (`../kama-gpu-s30`, `../kama-graphics-s30`) while the suites held the packages at their HEADs.
+- **KYR-66's direction was decided at the session's end** ([design/content-delivery-tool.md](design/content-delivery-tool.md)
+  § Decided, questions 3 to 8 and 10 in part). The owner asked whether each asset should be built and hashed, so that
+  only what changed is built, and whether development and the shipped game should differ, then said "all sounds good to
+  me":
+  - each asset is keyed by a SHA-256 of its inputs, with a shared cache;
+  - a file per asset in development, and asset packs of what loads together when a game ships;
+  - an asset manifest that the game's lock names and the stack's identity covers;
+  - fetched when needed on the web, every hash checked at load.
+
+  KYR-10, the first slice's assets, reads by it.
 
 **The twenty-ninth session** (2026-11-15 and 16). Every suite was green on the 0.9.962 pin at the start, at the
 twenty-eighth session's counts. Nothing came from the Mac. kama had committed four things since the pin.
