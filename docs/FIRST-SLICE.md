@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-15, the twenty-eighth session's end)
+## Where it stands (2026-11-15, the twenty-ninth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -82,49 +82,48 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.962+g0769524f`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.964+g52032a3b`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, the same on
-   0.9.960 and 0.9.962:
+   0.9.962 and 0.9.964:
    - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
      and wasm; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 309, 283 in Edge, 286 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 151 natively, in Firefox and in Chrome for Testing, 146 in Edge, since part 3's first part, the
-     mirrored mesh and the second part's step 1 (the twenty-eighth session); 95 and 90 before them.
+   - `@kama/graphics`': 166 natively, in Firefox and in Chrome for Testing, 161 in Edge, since part 3's second part's
+     step 2 (the twenty-ninth session); 151 and 146 before it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `0769524f`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 0769524f HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `52032a3b`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 52032a3b HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-   - **The pin is on 0.9.962** since the twenty-eighth session (`.kama-version`), at the owner's word ("bump"), every
-     suite green on it at the same counts. Before it, 0.9.960 since the twenty-seventh session's end (kyoten
-     `7164a9c`). `.kama-version` says what moved:
+   - **The pin is on 0.9.964** since the twenty-ninth session's start (`.kama-version`, kyoten `59e21c4`), at the
+     owner's word ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.962 since the
+     twenty-eighth session. `.kama-version` says what moved:
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
        matters once a program runs on demand, as an editor would.
      - **0.9.960: KY-59 fixed and removed,** so part 3's typed nodes take named nodes as operands with no workaround.
      - **0.9.961 and 0.9.962: KY-60 fixed and removed,** so a chain of node operators frees what it makes.
-   - **The Mac rebuilds its pin at `0769524f`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
+     - **0.9.964: KY-61 and KY-62 fixed and removed,** so an operator's result needs no import of its type, and a
+       generic infers it from the operator.
+   - **The Mac rebuilds its pin at `52032a3b`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
      `tools/test.sh` there. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
-   - **kama's KR-332 and KR-269 are briefed, their ruling owed** (kama `e0936930`, measured on this machine): a wasm
-     release's optimization level and who may set one for which code, which carries `@kama/image`'s KIMG-1. Five
-     decisions are put to kama's maintainer, the first a wasm `--release` at `-O3`. kyoten's timings wait while kama
-     measures here.
+   - **kama's KR-332 is ruled, all five decisions as recommended, and KR-269 is a non-goal** (kama `ecc5ee9c`): a wasm
+     `--release` will compile and link at `-O3`, as native does, which carries `@kama/image`'s KIMG-1. At this
+     session's end it was being built in kama's working tree (0.9.965, uncommitted: `src/kama.driver.cpp`,
+     `docs/targets.md`, an `-Oz` kept for size). Once it lands, the wasm release legs' sizes and speeds move, and
+     KY-6's text (`-Oz` and no Closure, kama's KR-289) is to be re-read against it.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-61 and KY-62, filed 2026-11-15, with no KR id yet at the session's end:
-       - KY-61: across packages, an operator's result is untyped unless its type is imported, and the message names the
-         wrong type;
-       - KY-62: a generic's type argument inferred from an operator expression is the left operand's type;
      - kama's KR-378.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
@@ -185,13 +184,20 @@ the design doc it settles before building on it.
       - **Part 3's second part, step 1, is built** (kama-graphics `f2e2ec7`, the same session): the record's normal
         matrix, the vertex's normal at location 1, `normalLocal()`, `modelNormalMatrix()`, `normalWorld()` and
         `positionWorld()`, held by a box under a shear and a mirrored shear; 18 of 18 mutations caught.
-      - **Next, its step 2,** from `.scratch/gfx1-part3/PLAN.md` § Part 2's step 2, as sketched:
-        `MeshStandardMaterial`'s values (color, roughness, metalness, emissive, emissiveIntensity, a 48-byte settings
-        block) and its slots (`colorNode` and the rest), a slot's change recompiling the material. With no light yet it
-        draws its emissive alone, as three.js's does. Its runners and mutation lists are in `.scratch/gfx1-part3/tools/`
-        (`native.sh`, `mutate.py`, `list31.py` to `list32a.py`).
-
-        Then part 3's third part, the lights.
+      - **Part 3's second part's question 2 is decided** (the owner, 2026-11-15, "A: graphVersion() (Recommended)";
+        rendering § Decided): the `Material` contract gains `graphVersion()` beside `version()`, moved when a
+        material's nodes change, and a renderer compiles a material again before its next draw once it moves.
+      - **Part 3's second part, step 2, is built** (kama-graphics `7843e3c`, the twenty-ninth session):
+        `MeshStandardMaterial`'s five values with three.js r187's defaults, its 48-byte settings, `emissiveNode`, and
+        `graphVersion()`. With no light it draws its emissive alone, as three.js's does. 166 cases on each golden leg, 161
+        in Edge; 26 of 26 mutations caught. `colorNode`, `roughnessNode` and `metalnessNode` moved to the third part,
+        with the lights that read them, since nothing could hold them before.
+      - **Next, part 3's third part, the lights:** `DirectionalLight` and `AmbientLight`, the direct and ambient terms,
+        and the three slots. Its three questions are prepared, with their prior art read in source
+        (`.scratch/gfx1-part3/lights/QUESTIONS.md`, `PLAN.md` § Part 3's third part): how the scene's lights reach a
+        material's shader, the DFG table r187's direct light reads (so a texture node), and where a directional light
+        points. Each is asked in full in the chat before it is built. The runners and mutation driver are in
+        `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`).
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -248,6 +254,25 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The twenty-ninth session** (2026-11-15). Every suite was green on the 0.9.962 pin at the start, at the
+twenty-eighth session's counts. Nothing came from the Mac. kama had committed four things since the pin.
+- **The pin bumped to 0.9.964** at the owner's word ("Yes, bump first"; kyoten `59e21c4`): kama `52032a3b` fixed
+  KY-61 and KY-62 the day they were filed. Their repros build and run on it and are refused on 0.9.962, and both
+  entries are removed. Every suite is green on it at the same counts. KR-332 was ruled (a wasm `--release` at `-O3`,
+  to be built).
+- **Part 3's second part's question 2 asked and decided:** (A), `graphVersion()` on the `Material` contract.
+- **Step 2 built** (kama-graphics `7843e3c`) in a worktree beside the packages, while both suite batches held
+  kama-graphics at its HEAD. Red first against a stub, 12 of 15 new cases; 26 of 26 mutations caught after the drawn
+  cases were sharpened to hold alpha.
+  - **Settled and reported:** `colorNode`, `roughnessNode` and `metalnessNode` move to the lights' part, since with no
+    light they change neither a pixel nor the WGSL, so no test could hold them now.
+  - **Found for part 4:** three.js clamps every node material's output with `max(0)`, which only a float target shows.
+- **The lights' part prepared:** three.js r187 recompiles every lit material when a light is added or removed (each
+  light's id is in its cache key); Bevy and Godot keep a fixed number of directional lights in one uniform with a count
+  (10 and 8). r187's direct light reads a 16x16 RG16F DFG table, which r170's analytic fit misses by up to 0.41 in its
+  scale term (`.scratch/gfx1-part3/lights/dfg_compare.py`). A directional light's target must be added to the scene
+  before moving it does anything.
 
 **The twenty-eighth session** (2026-11-15). Every suite was green on the 0.9.960 pin at the start, at the
 twenty-seventh session's counts. kama had committed nothing since the pin, and nothing came from the Mac.

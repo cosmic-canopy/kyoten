@@ -889,5 +889,17 @@
     - the five values;
     - the first slot, `emissiveNode`.
 
-    `colorNode`, `roughnessNode` and `metalnessNode` arrive with the lights that read them (step 3), where a test can
-    hold them.
+    `colorNode`, `roughnessNode` and `metalnessNode` arrive with the lights that read them (part 3's third part), where
+    a test can hold them.
+  - **Built the same session** (kama-graphics, step 2 of the second part; its SPEC § Materials):
+    - `MeshStandardMaterial` with three.js r187's five defaults, each value a property pair, its settings 48 bytes;
+    - with no light it draws its emissive alone, as three.js r187's `NodeMaterial.setupLighting` does;
+    - `emissiveNode`, a program's own node in place of emissive × emissiveIntensity;
+    - `graphVersion()` on the contract, so a renderer compiles a material once for each graph.
+
+    Red first against a stub, 12 of the 15 new cases failing; the other three held what was already so. A program's own
+    material that counts its compiles holds the renderer to one compile a graph and none for a setting. 166 cases on each
+    golden leg, 161 in Edge. 26 of 26 mutations caught (`.scratch/gfx1-part3/step2/`), after the drawn cases were
+    sharpened to hold the texel's alpha.
+  - **Found for part 4:** three.js r187's `NodeMaterial.setup` clamps every material's output with `max(0)` ("force
+    unsigned floats"). An 8-bit target clamps anyway, so it is built, and held, with the 16-bit float target.
