@@ -274,5 +274,24 @@
 #   - @kama/image's: 1,401 natively debug and release and on wasm, the sweep's 197;
 #   - @kama/graphics' at ad29352: 142 natively debug and release, in Firefox and in Chrome for Testing, 137 in Edge.
 #   KY-40, KY-45, KY-58 and KY-61 re-checked, unchanged. The Mac's pin is 0.9.960 until it is rebuilt there.
-KAMA_VERSION=0.9.962
-KAMA_BUILD=g0769524f
+#
+# 2026-11-15, Windows: 0.9.962 -> 0.9.964 (52032a3b), at the owner's word at the twenty-ninth session's start ("Yes,
+# bump first"), from a clean clone (.scratch/kama-pin-src-964); the 0.9.962 binary is kept in
+# .scratch/kama-pin-0.9.962. What moved, for kyoten:
+#   c50e6d28 (0.9.963): an Android app on demand ticks only for what its app hears; nothing of kyoten's.
+#   ecc5ee9c: KR-332's five decisions ruled as recommended (a wasm --release at -O3, to be built), KR-269 a non-goal.
+#   52032a3b (0.9.964): an operator expression is typed as its operator's result, read in the declaring file, so a
+#           generic infers it (KY-62) and a file needs no import of a type it never names (KY-61).
+#   KY-61 and KY-62 are fixed and removed: their repros build and run here, and are refused on 0.9.962.
+#   Green on it with nothing else changed, at the counts the session's start had on 0.9.962:
+#   - tools/test.sh: engine 164 cases native debug, release and wasm; the frame guard; the tool's 192;
+#     `kyoten check engine/kama.json`; fps native and wasm; vr checked;
+#   - @kama/window's: 249 native debug and release, 163 under node, 253 under `kama run` in Edge and Firefox, 264
+#     through the driver;
+#   - @kama/gpu's: 309 native debug and release, 283 in Edge, 286 in Firefox and in Chrome for Testing, both examples on
+#     every leg;
+#   - @kama/image's: 1,401 natively debug and release and on wasm, the sweep's 197;
+#   - @kama/graphics' at f2e2ec7: 151 natively debug and release, in Firefox and in Chrome for Testing, 146 in Edge.
+#   KY-40, KY-45 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.960 until it is rebuilt there.
+KAMA_VERSION=0.9.964
+KAMA_BUILD=g52032a3b
