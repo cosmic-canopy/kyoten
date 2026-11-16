@@ -82,12 +82,12 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.964+g52032a3b`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.965+g8f8543d3`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, the same on
-   0.9.962 and 0.9.964:
+   0.9.964 and 0.9.965 before this session's work:
    - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
      and wasm; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
@@ -98,13 +98,13 @@ the design doc it settles before building on it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `52032a3b`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 52032a3b HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `8f8543d3`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 8f8543d3 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-   - **The pin is on 0.9.964** since the twenty-ninth session's start (`.kama-version`, kyoten `59e21c4`), at the
-     owner's word ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.962 since the
-     twenty-eighth session. `.kama-version` says what moved:
+   - **The pin is on 0.9.965** (`8f8543d3`) since the thirtieth session's start (`.kama-version`), at the owner's word
+     ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.964 since the twenty-ninth session.
+     `.kama-version` says what moved:
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
@@ -113,20 +113,11 @@ the design doc it settles before building on it.
      - **0.9.961 and 0.9.962: KY-60 fixed and removed,** so a chain of node operators frees what it makes.
      - **0.9.964: KY-61 and KY-62 fixed and removed,** so an operator's result needs no import of its type, and a
        generic infers it from the operator.
-   - **The Mac rebuilds its pin at `52032a3b`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
+     - **0.9.965: kama's KR-332,** which carries `@kama/image`'s KIMG-1: a `--release` build is `-O3` on every target,
+       wasm included, `release.optimize` says `"size"`, and an `-O` in a manifest's flags is refused by name. No
+       committed manifest carries one; KY-6 reads `-O3`, and Closure is still not run (KR-289).
+   - **The Mac rebuilds its pin at `8f8543d3`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
      `tools/test.sh` there. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
-   - **kama's KR-332 is built, 0.9.965** (kama `57de22cd`, 2026-11-15; KR-269 closed as a non-goal), which carries
-     `@kama/image`'s KIMG-1:
-     - a `--release` build compiles and links at `-O3` on every target, wasm included, where wasm was `-Oz`;
-     - the root manifest's `release.optimize` says `"size"`, for the whole build or one target, and `release.speed` and
-       `release.size` name packages or modules at the other level;
-     - **an `-O` in any manifest's `cflags`, `cxxflags`, `objcflags` or `ldflags` is now refused by name.**
-
-     **Propose bumping the pin to it at the next session's start,** as its own commit. Checked 2026-11-16: no
-     committed manifest in kyoten, its examples or the four packages carries an `-O` (only kama-image's `.scratch`
-     probes do), and no suite holds a wasm size. So it should move only the wasm release legs' sizes and speeds. KY-6
-     then reads `-O3` where it says `-Oz`; Closure is still not run (kama's KR-289). kama's `8f8543d3` after it is the
-     job pool's gate on Windows (KR-396 filed), nothing kyoten calls yet.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
