@@ -955,3 +955,16 @@
        - (B), three.js's exactly: a target object that must be in the scene before moving it does anything;
        - (C), Unity's, Godot's, Bevy's and kyoten's `Light` component's: the light's own rotation, shining along -Z and
          aimed with `lookAt`. It departs from three.js's default, which shines down, and from its examples.
+
+- **2026-11-16, the owner: `@kama/gpu`'s `writeTexture` comes forward from GPU-8, for the DFG table (A)** ("A:
+  writeTexture now", at the thirtieth session's start, after asking whether it was a stopgap).
+  - **The problem:** question 2's table must reach a texture, and `@kama/gpu` could not fill one from the CPU. Its item 12,
+    decision 4, had left `writeTexture` in GPU-8, after compute, queries and indirect draws.
+  - **(A):** `queue.writeTexture(destination:, data:, layout:, size:)` by WebGPU's full description, probed on both legs
+    first and test-first on every leg (kama-gpu's AGENTS.gpu.md item 14). It is not a stopgap: kama lacked nothing, the
+    package had not wrapped WebGPU's call, and it is how three.js's WebGPU backend fills a `DataTexture`. Every texture
+    `@kama/graphics` fills from the CPU later, a material's maps among them, takes it. The copies, `mappedAtCreation`
+    and staging buffers stay in GPU-8.
+  - **Set aside:** (B), all of GPU-8's uploads and copies now, more than this part needs; a narrow call with no origin, mip
+    level or layout, which decision 5 of item 12 had replaced elsewhere; and (C), the table in a storage buffer filtered
+    by hand, which would set aside question 2's texture-sample node.

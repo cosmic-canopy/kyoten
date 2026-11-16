@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-16, the twenty-ninth session's end)
+## Where it stands (2026-11-16, the thirtieth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -16,7 +16,7 @@ the design doc it settles before building on it.
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
 
 **Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
-`@kama/gpu` `COVERAGE.md`, 95 of webgpu.h's 206 functions called):
+`@kama/gpu` `COVERAGE.md`, 96 of webgpu.h's 206 functions called):
 - GPU-1, GPU-2 and GPU-13, WIN-1, WIN-2 and WIN-16 are built (the ninth to eleventh sessions, below);
 - WIN-3 is built, the web leg's first row: a window on the page's canvas, and Pointer Events on every backend (the
   twelfth session, below);
@@ -52,6 +52,8 @@ the design doc it settles before building on it.
 - **GPU-15 is built** (the twenty-second session, below): the fallback adapter, a software GPU on every leg that has
   one, for `@kama/graphics`' byte-for-byte goldens. Found on the way and fixed: natively a lost device's next submit or
   map no longer ends the program.
+- **`queue.writeTexture` is built** (the thirtieth session, below; kama-gpu `27760aa`, its AGENTS.gpu.md item 14), brought
+  forward from GPU-8 at the owner's word for `@kama/graphics`' DFG table, by WebGPU's full description.
 
   No question is open in either package.
 - **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
@@ -86,15 +88,15 @@ the design doc it settles before building on it.
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
-   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, the same on
-   0.9.964 and 0.9.965 before this session's work:
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, on 0.9.965:
    - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
      and wasm; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
-   - `@kama/gpu`'s: 309, 283 in Edge, 286 in Firefox and Chrome for Testing, both examples on every leg;
+   - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg, since
+     `writeTexture` (the thirtieth session); 309, 283 and 286 before it;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 166 natively, in Firefox and in Chrome for Testing, 161 in Edge, since part 3's second part's
-     step 2 (the twenty-ninth session); 151 and 146 before it.
+   - `@kama/graphics`': 177 natively, in Firefox and in Chrome for Testing, 172 in Edge, since part 3's third part's
+     step 1 (the thirtieth session); 166 and 161 before it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -199,15 +201,23 @@ the design doc it settles before building on it.
            three.js's MIT notice for it;
         3. a `DirectionalLight` points from its world position to `target()`, a world-space point, its default
            position (0, 1, 0).
-      - **Next, build part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part, depth-first, each
-        step test-first with its mutations:
-        1. the texture node and the DFG table, with the notice;
+      - **`@kama/gpu`'s `writeTexture` brought forward from GPU-8** (the owner, 2026-11-16, "A: writeTexture now";
+        rendering § Decided): the table needed a texture filled from the CPU, which the package could not do.
+      - **Part 3's third part, step 1, is built** (kama-graphics `b039404`, the thirtieth session; SPEC § Typed nodes
+        and § The compiler): `dfgTable()`, three.js r187's 512 half floats, written once a renderer into an RG16Float texture
+        bound in group 0 with a linear, clamped sampler; `dfg(roughness:, dotNV:)`, r187's `DFGLUT`, a typed function
+        that samples it; `Vec2Node`; and the compiler declaring the table only where it is read, refusing a sample in the
+        vertex stage. THIRD-PARTY-NOTICES.md carries three.js's MIT notice. 177 cases on each golden leg, 172 in Edge;
+        23 of 23 mutations caught.
+      - **Next, build the rest of part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part,
+        depth-first, each step test-first with its mutations:
         2. `DirectionalLight` and `AmbientLight` as scene nodes, and their buffer;
         3. the direct and ambient terms, with `colorNode`, `roughnessNode` and `metalnessNode`;
         4. the lit box's golden on WARP and SwiftShader.
 
         r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` among them. The runners and mutation
-        driver are in `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`).
+        driver are in `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`,
+        exported inside the UCRT64 shell's command), and the browser runner in `.scratch/s30/kg-tools/web.sh`.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -264,6 +274,25 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirtieth session** (2026-11-16). Every suite was green on the 0.9.964 pin at the start, at the twenty-ninth
+session's counts. Nothing came from the Mac. kama had committed two things since the pin: 0.9.965 (KR-332) and a
+benchmark.
+- **The pin bumped to 0.9.965** at the owner's word ("Yes, bump first"; kyoten `ab76ced`), every suite green on it at the
+  same counts with nothing else changed.
+- **Step 1 of the lights met a gap:** `@kama/gpu` could not fill a texture from the CPU, `writeTexture` having been left
+  in GPU-8. The owner asked whether bringing it forward was a stopgap; it is not, since kama lacked nothing and the
+  package had not wrapped WebGPU's call, and the owner took (A), "writeTexture now".
+- **`writeTexture` built in `@kama/gpu`** (kama-gpu `27760aa`, AGENTS.gpu.md item 14), probed first:
+  - natively every misuse is a validation error inside the call, and only a null pointer with a size ends the process,
+    which a `ConstView` never hands it (`.scratch/s30/wt-probe/`); emdawnwebgpu reads every 32-bit field unsigned, so on
+    the web only an offset past 2^53 - 1 would throw, which the package clamps;
+  - **found in Firefox 160:** every write from past the end of its data is worded alike, so with its dropping of a
+    repeated error only one such case is seen;
+  - red first 17 of 29; 18 of 19 mutations caught, the nineteenth (a stride of 2^32 - 1 unclamped) equivalent.
+- **Step 1 built in `@kama/graphics`** (kama-graphics `b039404`): the DFG table, the texture-sample node and `dfg()`, red first
+  3 of 10 against a stubbed `dfg()`; 23 of 23 mutations caught.
+- Built in worktrees (`../kama-gpu-s30`, `../kama-graphics-s30`) while the suites held the packages at their HEADs.
 
 **The twenty-ninth session** (2026-11-15 and 16). Every suite was green on the 0.9.962 pin at the start, at the
 twenty-eighth session's counts. Nothing came from the Mac. kama had committed four things since the pin.
