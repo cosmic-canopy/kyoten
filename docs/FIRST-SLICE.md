@@ -354,6 +354,9 @@ Nothing came from the Mac for kyoten. Its `@kama/audio` work is on its origin, w
 
   Its three questions were asked in full at the end and decided at once, each (A), the owner asking whether they were
   the production answers: they are, with the two checks above to make while building.
+- **Pushed at the owner's word** ("push anything you need"): kyoten and kama-graphics, each a fast-forward with nothing
+  new on its origin. kama-window, kama-gpu and kama-image did not change. Part 4 starts in the next session, in plan
+  mode, with its two checks.
 
 **The thirty-second session** (2026-11-17). Every suite was green on the 0.9.965 pin at the start, at the
 thirty-first session's counts. Nothing came from the Mac.
