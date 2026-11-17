@@ -1181,3 +1181,23 @@
     so each texel is shaded once (Godot's Forward+; Bevy keeps GreaterEqual with writes on).
   - **To verify first:** whether naga and Tint each honour `@invariant`. A leg that does not is reported before the pass
     is built on it.
+
+- **2026-11-17, the owner: where a program chooses its tone mapping, (A) on each camera** ("A: on each camera
+  (Recommended)", asked in full in the chat at the thirty-fourth session's start, before part 4 was built). Reading the
+  code for part 4 found that its decisions place the exposure but not the curve.
+  - **The problem:** three.js keeps the curve on the renderer (`renderer.toneMapping`, r187's `Renderer.js`), so a
+    program that draws two views differently sets it before each render and must set it back. A game's main view under
+    AgX and its minimap with none, or an editor's game view beside a material preview, each need it. Part 1 set the
+    render target's equivalent aside (`setRenderTarget`) for that reason.
+  - **(A):** the curve is a property pair on each camera, `toneMapping()` and `toneMappingMut()`, beside its exposure in
+    EV100, Blender's AgX by default. A camera drawing into a 16-bit float target ignores it, since that target holds the
+    linear scene. Bevy's `Tonemapping` is a component on a camera (`bevy_render/src/view/mod.rs`, 0.20.1); Filament's
+    renderer reads its colour grading from the view (`view.getColorGrading()`, 1.81.0's `Renderer.cpp`); Godot sets its
+    tone map on an environment, which a camera can carry (`environment_set_tonemap`, `camera_set_environment`, 4.7.2).
+    Unity HDRP and Unreal set theirs in post-process settings a camera reads, from their documentation, not checked
+    against their sources.
+  - **Its cost:** a ported three.js program moves one line from its renderer to its camera.
+  - **Set aside:** (B) the renderer's, as three.js's.
+  - **Settled beside it, and reported:** the anti-aliasing method stays on the renderer. A technique is a machine's
+    quality, which a preset sets for the machine (area 4, question 1), where tone mapping and exposure are each view's
+    look.
