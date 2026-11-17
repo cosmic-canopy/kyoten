@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-16, the thirtieth session's end)
+## Where it stands (2026-11-16, the thirty-first session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -95,8 +95,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg, since
      `writeTexture` (the thirtieth session); 309, 283 and 286 before it;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 177 natively, in Firefox and in Chrome for Testing, 172 in Edge, since part 3's third part's
-     step 1 (the thirtieth session); 166 and 161 before it.
+   - `@kama/graphics`': 240 natively, in Firefox and in Chrome for Testing, 235 in Edge, since part 3's third part's
+     step 2 (the thirty-first session); 177 and 172 before it.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -104,8 +104,13 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 8f8543d3 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirtieth session's end the range held one commit, `d817de00`: a fix to kama's CI guard for KR-332
-     (`tools/check-release-optimize.sh`), with the compiler unchanged, so no bump.
+     At the thirty-first session's end the range held four commits: `d817de00` (a CI guard), `b7800cbd` and `7eb3a4dd`
+     (a job-pool benchmark and its docs), and **`ca0e88e7`, 0.9.966, kama's KR-289: a wasm `--release` runs Closure**
+     unless a root manifest says `"release": { "closure": false }`, and `--closure` in a manifest's flags is refused.
+     **Propose a bump at the next session's start.** It would fix KY-6 (run its repro on both, then remove the entry).
+     Closure renames every property it cannot prove external, so `@kama/gpu`'s `js/gpuseam.js` and `@kama/window`'s
+     `js/winseam.js` must be Closure-safe: their release web legs are the check, and a property the glue reads by name
+     may need quoting. No committed manifest names `--closure`.
    - **The pin is on 0.9.965** (`8f8543d3`) since the thirtieth session's start (`.kama-version`), at the owner's word
      ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.964 since the twenty-ninth session.
      `.kama-version` says what moved:
@@ -211,15 +216,31 @@ the design doc it settles before building on it.
         that samples it; `Vec2Node`; and the compiler declaring the table only where it is read, refusing a sample in the
         vertex stage. THIRD-PARTY-NOTICES.md carries three.js's MIT notice. 177 cases on each golden leg, 172 in Edge;
         23 of 23 mutations caught.
-      - **Next, build the rest of part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part,
-        depth-first, each step test-first with its mutations:
-        2. `DirectionalLight` and `AmbientLight` as scene nodes, and their buffer;
-        3. the direct and ambient terms, with `colorNode`, `roughnessNode` and `metalnessNode`;
+      - **How a material's shader reads the lights is decided** (the owner, 2026-11-16, at the thirty-first session's
+        start, "(A) LightingModel (Recommended)"; rendering § Decided, kyoten `94c2b52`): a public `LightingModel`
+        contract, as three.js r187's `LightingModel` and Godot's `light()`, which the compiler writes once inside a loop
+        over the scene's directional lights. The step's tests needed a shader to read the lights back, and no node could.
+      - **Part 3's third part, step 2, is built** (kama-graphics `dfcdc71`, the thirty-first session; SPEC § The renderer,
+        § Misuse, § The scene graph, § Typed nodes and § The compiler):
+        - `DirectionalLight` and `AmbientLight` as scene nodes with three.js r187's defaults, the sun's `target()` a
+          world-space point; each light's slot in its scene's lights table; the directional lights' storage buffer at
+          group 0's binding 4, and the frame block's ambient sum and count (80 bytes);
+        - `LightingModel`, `ReflectedLight` and `lit(model:)`; the compiler's one loop a stage, in either stage, with what
+          depends on no light a let before it;
+        - `GraphicsErrorKind::Light`, for a sun at its own target, which lights nothing.
+
+        240 cases on each golden leg, 235 in Edge. 67 of 67 mutations caught, and a 68th shown equivalent.
+      - **Next, build the rest of part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part, its
+        step 3 recut onto the contract, depth-first, each step test-first with its mutations:
+        3. `PhysicalLightingModel` on `LightingModel`: r187's direct term with the DFG compensation and its ambient term,
+           and `colorNode`, `roughnessNode` and `metalnessNode`. The view direction needs the camera's world position in
+           the frame block, the one new piece of data: plan it first;
         4. the lit box's golden on WARP and SwiftShader.
 
-        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` among them. The runners and mutation
-        driver are in `.scratch/gfx1-part3/step2/` (`native.sh`, `mutate.py`, taking `KG`, `KAMA` and `KG_WIN`,
-        exported inside the UCRT64 shell's command), and the browser runner in `.scratch/s30/kg-tools/web.sh`.
+        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` among them. The runners, stubs and
+        mutation lists are in `.scratch/s31/kg-tools/` (`native.sh`, `web.sh`, `mutate.py`, each defaulting to a
+        `../kama-graphics-s31` worktree, and their `-m` twins for a second worktree that mutations run in while the
+        first is built).
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -276,6 +297,27 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-first session** (2026-11-16). Every suite was green on the 0.9.965 pin at the start, at the thirtieth
+session's counts. Nothing came from the Mac. kama's range since the pin held a CI guard (`d817de00`) and a job-pool
+benchmark (`b7800cbd`), with the compiler unchanged, so no bump.
+- **One question, asked in plan mode and decided at once:** reading the code for step 2 found that its tests must read
+  the lights back in a shader, and that nothing could: the compiler wrote no loop. The owner took (A), a `LightingModel`
+  contract (kyoten `94c2b52`), so the contract and the loop came into step 2 from step 3.
+- **Step 2 built** in a worktree (`../kama-graphics-s31`), in two halves: the lights as scene nodes with their table and
+  buffer, then the contract and the loop. Mutations ran in a second worktree (`../kama-graphics-s31m`) while the second
+  half was built.
+  - **Red first:** the lights' half against a stub with its defaults, marks, refusal and reserved names taken out, 8
+    of its 20 cases and the gate's printed-refusal check failing; the lighting half against a `lit()` that drops what
+    `direct()` gives, 36 of its 40 failing.
+  - **The mutations found four gaps in the tests, now closed:** no let inside the loop, no vertex-only value read in a
+    vertex-stage loop, and no typed function with a let called from inside the loop. A fifth, a model reading an
+    earlier `lit()`'s result, looked like a bug, but the tests showed the old code refused it too, by another path. It
+    is recorded as equivalent, and the refusal is now made in the loop's body, in words that say why.
+  - **Settled under part 2's question 4 and reported:** a directional light at its own target lights nothing, and is
+    reported as `GraphicsErrorKind::Light`, once a change.
+  - **Committed as one commit, not one per half as planned:** the halves share the compiler and the test file, so
+    splitting them would have meant rebuilding the first half's state by hand and running the gate again.
 
 **The thirtieth session** (2026-11-16). Every suite was green on the 0.9.964 pin at the start, at the twenty-ninth
 session's counts. Nothing came from the Mac. kama had committed two things since the pin: 0.9.965 (KR-332) and a

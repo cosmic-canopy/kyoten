@@ -994,3 +994,7 @@
       escape. Nothing inside the loop would be type-checked.
     - Lights read by `MeshStandardMaterial` alone, so a program's own material could never be lit: a stopgap, since
       three.js, Godot and Unity all let a program write its own lighting.
+  - **Built the same session** (kama-graphics `dfcdc71`, the third part's step 2, its SPEC § The scene graph, § Typed
+    nodes and § The compiler), with the lights as scene nodes and their buffer. A program's own toon model, a
+    vertex-lit one, and models showing each light's colour and direction were held to their WGSL and their pixels across
+    eight frames of lights changing. 240 cases on each golden leg, 235 in Edge; 67 of 67 mutations caught.
