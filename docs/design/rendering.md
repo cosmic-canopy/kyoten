@@ -1072,22 +1072,6 @@
       reports, would go unchecked under Closure.
     - A root manifest's `"release": { "closure": false }`, which leaves every game's download larger: on kama's
       `examples/webgpu` the JS is 15,440 bytes of brotli without Closure and 8,677 with it.
-  - **Measured** (2026-11-17, the thirty-third session, kama 0.9.966, kama quiet and nothing else building). Each gate
-    was run back to back, once on the commit before its release legs and once on the commit that added them, on the
-    same pinned compiler:
-
-    | Gate | before (commit) | with the release legs (commit) | change |
-    |---|---|---|---|
-    | kyoten `tools/test.sh` | 261 s (`38ac701`) | 295 s (`2fdd8ff`) | +13 % |
-    | `@kama/window` | 64 s (`dfe07c4`) | 104 s (`b719ab2`) | +63 % |
-    | `@kama/gpu` | 344 s (`27760aa`) | 533 s (`5f400be`) | +55 % |
-    | `@kama/image` | 66 s (`2839f81`) | 81 s (`a860c6b`) | +23 % |
-    | `@kama/graphics` | 295 s (`dfcdc71`) | 416 s (`9bc2e64`) | +41 % |
-    | all five | 17.2 min | 23.8 min | +39 % |
-
-    The cost is less than the doubling expected: a gate's building and its native legs are a large part of it, and
-    they were already debug and release. One run each, so the noise is not measured: `@kama/graphics`' later HEAD
-    (`c3ff5ed`, 19 more cases) took 392 s, 24 s less than `9bc2e64`. `.scratch/s33/measure.sh` reruns it.
   - **Built the same session, on kama 0.9.966** (kyoten `38ac701`'s pin), each package's legs red first where Closure
     broke something:
     - **How a leg proves its build:** each tests program, and `@kama/gpu`'s two examples, print `build: debug` or
@@ -1122,3 +1106,78 @@
       - the frame guard at release, on a fixture whose 40 KB frame is in its release build alone. Its debug build must
         build, so the leg can tell its build: without that fixture, the guard's release leg built in debug went uncaught;
       - 5 of 5 mutations caught.
+  - **Measured** (2026-11-17, the thirty-third session, kama 0.9.966, kama quiet and nothing else building). Each gate
+    was run back to back, once on the commit before its release legs and once on the commit that added them, on the
+    same pinned compiler:
+
+    | Gate | before (commit) | with the release legs (commit) | change |
+    |---|---|---|---|
+    | kyoten `tools/test.sh` | 261 s (`38ac701`) | 295 s (`2fdd8ff`) | +13 % |
+    | `@kama/window` | 64 s (`dfe07c4`) | 104 s (`b719ab2`) | +63 % |
+    | `@kama/gpu` | 344 s (`27760aa`) | 533 s (`5f400be`) | +55 % |
+    | `@kama/image` | 66 s (`2839f81`) | 81 s (`a860c6b`) | +23 % |
+    | `@kama/graphics` | 295 s (`dfcdc71`) | 416 s (`9bc2e64`) | +41 % |
+    | all five | 17.2 min | 23.8 min | +39 % |
+
+    The cost is less than the doubling expected: a gate's building and its native legs are a large part of it, and
+    they were already debug and release. One run each, so the noise is not measured: `@kama/graphics`' later HEAD
+    (`c3ff5ed`, 19 more cases) took 392 s, 24 s less than `9bc2e64`. `.scratch/s33/measure.sh` reruns it.
+
+- **2026-11-17, the owner: GFX-1's part 4, the frame, its three questions, each (A) as recommended** ("Your
+  recommendations sounds good to me... I assume those are the production kyoten answers?", asked in full in the chat at
+  the thirty-third session's end, and confirmed as production answers, none a stopgap). The frame was decided in the
+  design pass's area 3: a depth prepass, 4x MSAA, linear HDR in a 16-bit float target, and AgX at output. Part 1 decided
+  what a target holds: an 8-bit sRGB target what the window would show, a 16-bit float target the linear scene. The
+  survey behind these is in `.scratch/s33/part4-sources/`, pinned and checked against the sources: three.js r187,
+  Bevy 0.20.1, Godot 4.7.2, Filament 1.81.0, Unity's Graphics and the WebGPU spec. Its measurements are in
+  `.scratch/s33/part4/`.
+  1. **How 4x MSAA resolves against the HDR scene: a ladder** of a tone-mapped resolve, best, and the GPU's own resolve,
+     next, each with its golden. The presets choose: desktop and the web take the tone-mapped resolve, and a tiled GPU's
+     preset (Quest's) is set by measurement at GFX-5.
+     - **The problem:** the GPU's resolve averages linear values. At an edge texel where 2 of 4 samples cover a
+       highlight of 20 over a surface of 0.05, the average is 10, which r187's AgX shows at 250 of 255. With 1 or 3
+       samples covered it shows 242 and 254, so the edge is a hard staircase where its contrast is highest.
+       - The tone-mapped resolve weights each sample by 1/(1 + its brightness), averages, and undoes the weight, so the
+         result stays linear for later effects. It shows 162, 202 and 231. The coverage itself is 116, 162 and 209
+         (`resolve_edge.py`).
+     - **Prior art:**
+       - three.js r187, Bevy, Godot and Unity URP use the GPU's resolve. Unity HDRP ships a tone-mapped resolve
+         (`ColorResolve.shader`, a luma weight). Filament offers one (`customResolve`, Lottes' max3 weight), but not on
+         WebGPU or Vulkan.
+       - Core WebGPU lets a shader read a 4x rgba16float texture (`unfilterable-float`), so it runs on both legs.
+       - Its cost is a full-screen pass, and the 4x target stored rather than resolved on chip, which a tiled GPU pays
+         most for.
+     - **Set aside:** (B) the GPU's resolve alone, which leaves the edge; (C) the tone-mapped resolve alone, which takes
+       away the cheap method a tiled GPU's preset may need.
+  2. **Which AgX: both, each under its own name, the default Blender's.**
+     - `AgX` is three.js r187's (from Filament), held to its formulas in float64.
+     - Blender's AgX, its default view since Blender 4.0 (EaryChow's, which Godot 4.6 moved to), goes under its own
+       name. It is held to the lookup table Blender ships, its formulas ported from the generator that table is made
+       from, so the web downloads no table.
+     - It is the default because glTF art comes from Blender, and what an artist sees there is what the program shows.
+     - **The problem:** the two differ by up to 45 steps on saturated colours and 10 at mid-grey. A linear (1, 0, 0) is
+       (221, 92, 73) under r187's and (222, 64, 28) under Blender's (`agx_compare.py`, measured against Godot 4.7's
+       approximation of Blender's, not Blender's table).
+     - **To verify while building:** whether the ported formulas match Blender's table within a step. If they cannot,
+       the table itself as a 3D texture is the fallback, and its bytes are measured and brought to the owner, not
+       settled silently.
+     - **Set aside:** (B) r187's alone, Blender's when a program asks; (C) Blender's alone under the name `AgX`, which
+       would make the name mean something other than it does in three.js.
+  3. **Exposure: on each camera, in EV100,** as Filament, Bevy, Unreal and Unity HDRP set it (exposure = 2^−EV100 /
+     1.2).
+     - The default is three.js's exposure of 1 (EV100 ≈ −0.26), which matches the lights' default intensity of 1, so a
+       ported three.js scene looks the same.
+     - There are named values: sunlight 15, overcast 12, indoor 7, and Blender 9.7, Bevy's calibration to Blender's
+       implicit exposure.
+     - Automatic exposure later drives the same property (FEATURES' exposure row, GFX-4).
+     - **The problem:** the lights are in lux and candela, as glTF's are, and sunlight is about 100,000 lux, so a scene in
+       real units needs bringing into the display's range. Where that sits decides whether two views of a scene can
+       expose differently.
+     - **Set aside:** (B) three.js's renderer-wide `toneMappingExposure`; (C) Blender's 9.7 as the default, which renders
+       a default light of intensity 1 nearly black.
+
+  **Settled under area 3's prepass, and reported:**
+  - After the prepass, the main pass tests depth Equal with writes off, and the position is `@invariant` in both passes,
+    so each texel is shaded once (Godot's Forward+; Bevy keeps GreaterEqual with writes on).
+  - **To verify first:** whether naga and Tint each honour `@invariant`. A leg that does not is reported before the pass
+    is built on it.

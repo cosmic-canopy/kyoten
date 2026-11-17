@@ -259,14 +259,16 @@ the design doc it settles before building on it.
         WARP draws the same lit bytes natively and in Firefox. 266 cases on each golden leg, 258 in Edge, each debug and
         release; 7 of 7 mutations caught. Found and fixed first: a leg whose device never opened panicked.
       - **Next, part 4: the frame** (the depth prepass, 4x MSAA, the 16-bit float target and AgX), where three.js's
-        `max(0)` on every output becomes visible and is built and held. **Its three questions were asked in full at the
-        thirty-third session's end and wait on the owner:**
-        - how 4x MSAA resolves against the HDR scene;
-        - which AgX;
-        - exposure as three.js's multiplier or in EV.
+        `max(0)` on every output becomes visible and is built and held. **Its three questions are decided** (the owner,
+        at the thirty-third session's end, each (A) and confirmed as the production answers; rendering § Decided):
+        - 4x MSAA resolves by a ladder, a tone-mapped resolve best and the GPU's own next, the presets choosing;
+        - AgX is both, r187's as `AgX` and Blender's under its own name, Blender's the default;
+        - exposure is on each camera in EV100, its default three.js's exposure of 1.
 
-        Settled under the decisions, and reported with them: after the prepass, the main pass tests depth Equal with
-        writes off, the position `@invariant` in both passes, as Godot does.
+        Settled under area 3's prepass, and reported: the main pass tests depth Equal with writes off, the position
+        `@invariant` in both passes, as Godot does. **Start part 4 with its two checks:** that naga and Tint each honour
+        `@invariant`, and that Blender's AgX formulas, ported from the generator of Blender's table, match that table
+        within a step. Bring either one back to the owner if it fails.
       - **Part 4's evidence** is in `.scratch/s33/` (machine-local):
         - `part4-sources/` holds the survey's sources, pinned: three.js r187, Bevy 0.20.1, Godot 4.7.2, Filament 1.81.0,
           Unity's Graphics and the WebGPU spec;
@@ -350,7 +352,8 @@ Nothing came from the Mac for kyoten. Its `@kama/audio` work is on its origin, w
     mid-grey;
   - an HDR edge texel through each resolve.
 
-  Its three questions were asked in full at the end.
+  Its three questions were asked in full at the end and decided at once, each (A), the owner asking whether they were
+  the production answers: they are, with the two checks above to make while building.
 
 **The thirty-second session** (2026-11-17). Every suite was green on the 0.9.965 pin at the start, at the
 thirty-first session's counts. Nothing came from the Mac.
