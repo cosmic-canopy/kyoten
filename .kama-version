@@ -314,5 +314,28 @@
 #   - @kama/image's: 1,401 natively debug and release and on wasm, the sweep's 197;
 #   - @kama/graphics' at 9aa00f8: 166 natively debug and release, in Firefox and in Chrome for Testing, 161 in Edge.
 #   KY-40, KY-45 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.960 until it is rebuilt there.
-KAMA_VERSION=0.9.965
-KAMA_BUILD=g8f8543d3
+#
+# 2026-11-17, Windows: 0.9.965 -> 0.9.966 (ca0e88e7), at the owner's word at the thirty-second session's start ("Yes
+# you can bump kama"), from a clean clone (.scratch/kama-pin-src-966); the 0.9.965 binary is kept in
+# .scratch/kama-pin-0.9.965. What moved, for kyoten:
+#   ca0e88e7 (0.9.966): KR-289. A wasm --release runs Closure (`--closure=1`) unless the root manifest, or a target
+#           entry, says `"release": { "closure": false }`, and `--closure` in a flag key is refused. KY-6 is fixed and
+#           removed: kama's examples/webgpu at --release for the web is 8,677 bytes of brotli JS here and 15,440 on
+#           0.9.965, the wasm 11,958 on both (.scratch/s32/ky6/). No committed manifest names `--closure`.
+#   d817de00 (a CI guard), b7800cbd and 7eb3a4dd (KR-396's job-pool benchmark and its docs): the compiler unchanged.
+#   Green on it with nothing else changed, at the counts the session's start had on 0.9.965:
+#   - tools/test.sh: engine 164 cases native debug, release and wasm; the frame guard; the tool's 192;
+#     `kyoten check engine/kama.json`; fps native and wasm; vr checked;
+#   - @kama/window's: 249 native debug and release, 163 under node, 253 under `kama run` in Edge and Firefox, 264
+#     through the driver;
+#   - @kama/gpu's: 339 native debug and release, 313 in Edge, 316 in Firefox and in Chrome for Testing, both examples on
+#     every leg;
+#   - @kama/image's: 1,401 natively debug and release and on wasm, the sweep's 197;
+#   - @kama/graphics' at dfcdc71: 240 natively debug and release, in Firefox and in Chrome for Testing, 235 in Edge.
+#   Green says nothing of Closure: no leg built a wasm release. A probe on this compiler before the swap found
+#   @kama/gpu's glue refused by Closure (`GPUTextureUsage` undeclared), so a release web build of any program using it
+#   would not link, and @kama/window's DOM-code table renamed by it, so every key read as Unknown. Both are the
+#   packages' to fix, and every wasm leg now runs debug and release (rendering.md § Decided, 2026-11-17).
+#   KY-40, KY-45 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.960 until it is rebuilt there.
+KAMA_VERSION=0.9.966
+KAMA_BUILD=gca0e88e7
