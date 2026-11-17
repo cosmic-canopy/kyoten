@@ -337,5 +337,14 @@
 #   would not link, and @kama/window's DOM-code table renamed by it, so every key read as Unknown. Both are the
 #   packages' to fix, and every wasm leg now runs debug and release (rendering.md § Decided, 2026-11-17).
 #   KY-40, KY-45 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.960 until it is rebuilt there.
+#
+# 2026-11-17, Mac: the Mac's pin rebuilt at 0.9.966 (ca0e88e7) from a clean clone (.scratch/kama-pin-src-966), so both
+# machines run the same compiler again; the 0.9.960 binary is kept in .scratch/kama-pin-0.9.960. tools/test.sh is green
+# on it there with Windows's counts, every wasm leg in debug and release: engine 164 cases native debug and release and
+# on wasm debug and release, each release JS held to Closure; the frame guard natively and on wasm, and the release
+# fixture's two legs; the tool's 211, the spin and schedule fixtures' release web builds under Closure; `kyoten check
+# engine/kama.json`; fps native and on wasm in both builds; vr checked. 3 min 46 s at a load of 3.8 to 4.5 (2 min 58 s
+# on 0.9.960, before the release legs). Emscripten 7.0.0's Closure runs natively on the M4
+# (google-closure-compiler-macos, arm64), so no Java is needed.
 KAMA_VERSION=0.9.966
 KAMA_BUILD=gca0e88e7
