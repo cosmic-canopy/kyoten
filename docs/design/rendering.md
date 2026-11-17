@@ -998,3 +998,40 @@
     nodes and § The compiler), with the lights as scene nodes and their buffer. A program's own toon model, a
     vertex-lit one, and models showing each light's colour and direction were held to their WGSL and their pixels across
     eight frames of lights changing. 240 cases on each golden leg, 235 in Edge; 67 of 67 mutations caught.
+
+- **2026-11-17, the owner: every wasm leg runs debug and release, as every native leg does (A)** ("(A) Debug + release
+  (Recommended)", asked in full in the chat at the thirty-second session's start, before the pin's bump to kama 0.9.966).
+  - **The problem:**
+    - kama 0.9.966 (KR-289, kyoten's KY-6) runs Closure over every wasm `--release` build. Closure renames each
+      property name it cannot prove belongs to something outside the program.
+    - No gate built a wasm release: every native leg ran debug and release, and every web and node leg debug only. So the
+      bump would have passed every suite without Closure ever reading the packages' JS glue. The first place it would run
+      is a game's shipped web build.
+  - **The probe found two breakages before the bump,** each absent on 0.9.965 at release (`.scratch/s32/closure/`):
+    - **`@kama/gpu`'s `js/gpuseam.js` does not build under Closure.** `GPUTextureUsage` is undeclared to it, because
+      emscripten hands Closure no WebGPU declarations; emdawnwebgpu's own glue quotes every WebGPU name instead. So every
+      release web build of a program using `@kama/gpu` failed to link.
+    - **`@kama/window`'s `js/winseam.js` lost 119 of its DOM-code-to-HID table's keys** (`KeyA: 4` and the rest). The
+      table is read by the browser's `e.code` string, and Closure renamed the keys it did not know. So on a release web
+      build 119 keys never reached a game. Its node leg at release failed 119 cases on 0.9.966 and none on 0.9.965.
+
+    The browser's own option keys the glue hands over kept their names under Closure, since its browser declarations
+    cover them: pointer lock's `unadjustedMovement`, the rumble's magnitudes, `preventScroll`, `passive`, `box`.
+  - **(A):**
+    - Every wasm leg also runs a release build: each browser leg under `kama run`, `@kama/window`'s driver leg, and each
+      node leg (kyoten's engine tests and fps, `@kama/window`'s, `@kama/image`'s).
+    - The gate tests what ships, and keeps debug's checks on the web: kama's overflow and bounds traps in the web seam's
+      code, and emdawnwebgpu's assertions.
+    - `@kama/window`'s and `@kama/gpu`'s gates also check that the release JS still holds every key the glue hands the
+      browser. This holds the keys that no headless case can observe, such as the rumble and pointer lock.
+    - Glue that Closure breaks is fixed as kama's `docs/targets.md` § jsLibraries says: a name the browser or the page
+      reads is quoted on both sides.
+    - The cost is the browser time, about doubled. It is measured as each gate gains its legs, and recorded as a
+      measurement, never a cap.
+  - **Set aside:**
+    - (B), the web legs switched to release only, as kama's own browser fixtures were. It adds no time, but debug's
+      traps and emdawnwebgpu's assertions would never run in a browser again.
+    - (C), one release run per package in one browser. A path only another browser takes, such as Firefox's error
+      reports, would go unchecked under Closure.
+    - A root manifest's `"release": { "closure": false }`, which leaves every game's download larger: on kama's
+      `examples/webgpu` the JS is 15,440 bytes of brotli without Closure and 8,677 with it.
