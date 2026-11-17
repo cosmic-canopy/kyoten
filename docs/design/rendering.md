@@ -968,3 +968,29 @@
   - **Set aside:** (B), all of GPU-8's uploads and copies now, more than this part needs; a narrow call with no origin, mip
     level or layout, which decision 5 of item 12 had replaced elsewhere; and (C), the table in a storage buffer filtered
     by hand, which would set aside question 2's texture-sample node.
+
+- **2026-11-16, the owner: how a material's shader reads the scene's lights (A), a `LightingModel` contract** ("(A)
+  LightingModel (Recommended)", asked in full in the chat at the thirty-first session's start). The prior art was read
+  in its source: three.js r187's `LightsNode` and `PhysicalLightingModel`, Godot 4.4's `light()`, Bevy 0.16's PBR loop.
+  - **The problem:** the lights' question 1 put them in a storage buffer whose length the shader learns only at run
+    time, so a lit shader must loop over them. The compiler wrote only expressions and lets, so nothing could read the
+    lights: neither `MeshStandardMaterial` nor a program's own material, nor a test holding the buffer's bytes.
+  - **(A):** a public `LightingModel` contract, as three.js's `LightingModel` and Godot's `light()`.
+    - A model says how ONE light lights the surface: `direct`, given that light's direction and colour as nodes, and
+      `indirect`, given the ambient light's sum. Each gives a diffuse and a specular part.
+    - The compiler writes `direct` once, inside a loop over the scene's directional lights. What depends on no light,
+      such as the surface's normal, is computed once, before the loop.
+    - A model cannot get the count, the buffer or its bounds wrong, and a program's own model, a toon look for example,
+      is checked exactly as the library's, under GFX-1's question 2 (a public node contract).
+    - The physical model of `MeshStandardMaterial` is the first built on it, and point and spot lights later reach the
+      same `direct` from the clusters' lists.
+    - It is not a stopgap: it is the shape three.js and Godot ship. Its cost is the compiler's loop and the pass that
+      moves what depends on no light out of it, which step 2 builds, and step 3 builds the physical model on it.
+  - **Set aside:**
+    - (B), a general `Loop` node with mutable variables, as TSL's `Loop`. It is the most general, but it brings
+      statements, mutable variables and their order into a compiler of pure expressions. Every model would also write
+      the loop over the lights itself, which is easy to get wrong.
+    - (C), nodes that read the raw data (the count, a light by index), with the loop written as WGSL text through the
+      escape. Nothing inside the loop would be type-checked.
+    - Lights read by `MeshStandardMaterial` alone, so a program's own material could never be lit: a stopgap, since
+      three.js, Godot and Unity all let a program write its own lighting.
