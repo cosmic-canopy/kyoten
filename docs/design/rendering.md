@@ -998,6 +998,28 @@
     nodes and § The compiler), with the lights as scene nodes and their buffer. A program's own toon model, a
     vertex-lit one, and models showing each light's colour and direction were held to their WGSL and their pixels across
     eight frames of lights changing. 240 cases on each golden leg, 235 in Edge; 67 of 67 mutations caught.
+  - **Step 3 built the physical model on it** (2026-11-17, the thirty-second session, kama-graphics `c3ff5ed`; its SPEC §
+    The renderer, § Materials, § Typed nodes and § The compiler):
+    - the frame block carries the camera's position in world space (`cameraPosition()`), 96 bytes;
+    - r187's BSDFs and `getRoughness` as typed functions under r187's names;
+    - `PhysicalLightingModel`, r187's direct light and ambient indirect diffuse, with the DFG compensation;
+    - `MeshStandardMaterial` lit by it, with `colorNode`, `roughnessNode` and `metalnessNode`.
+
+    A lit box's centre texel is held within a step to r187's formulas worked in float64 from the exact ray through it,
+    in five lightings, on WARP, SwiftShader and Edge's GPU alike. Its ambient term, amplified 128 times against the
+    float64 value, matches it too. 259 cases natively and on each golden leg, 254 in Edge, each debug and release.
+    35 of 35 mutations caught; five were caught only after the tests were sharpened, as kama-graphics' ROADMAP_DETAIL
+    records.
+
+    **Settled under the decisions above, and reported for the owner to object to:**
+    - the node is TSL's `cameraPosition`, and the model lights in world space, where the lights' buffer is; r187 lights
+      in view space, and the two agree but for rounding;
+    - `PhysicalLightingModel` is public, made from nodes, so a program's own material lights physically;
+    - the BSDFs are public under kama's names for r187's (`brdfGgx` for `BRDF_GGX`), each written into WGSL under
+      r187's;
+    - r187's geometry roughness, the change of the normal in view space across a pixel, waits for the first geometry
+      whose normals vary (kama-graphics' GFX-2). It is 0 on a flat face, and every geometry the library has is
+      flat-faced, so no test could hold it now. With it comes the view matrix in the frame block, which it reads.
 
 - **2026-11-17, the owner: every wasm leg runs debug and release, as every native leg does (A)** ("(A) Debug + release
   (Recommended)", asked in full in the chat at the thirty-second session's start, before the pin's bump to kama 0.9.966).
@@ -1035,3 +1057,37 @@
       reports, would go unchecked under Closure.
     - A root manifest's `"release": { "closure": false }`, which leaves every game's download larger: on kama's
       `examples/webgpu` the JS is 15,440 bytes of brotli without Closure and 8,677 with it.
+  - **Built the same session, on kama 0.9.966** (kyoten `38ac701`'s pin), each package's legs red first where Closure
+    broke something:
+    - **How a leg proves its build:** each tests program, and `@kama/gpu`'s two examples, print `build: debug` or
+      `build: release` first, from a `@compileFor` pair, and the gate fails a run whose program says another. A release
+      build's JS that still names emscripten's `UTF8ToString` was not run through Closure, and fails.
+    - **`tools/closure-names.mjs`** in `@kama/window` and `@kama/gpu` reads each JS file against the release build.
+      Every name the file writes or reads must be in the build, and so must every name it quotes, except the file's own
+      names, listed on its `// closure-own:` lines. So a name a later change adds is held by default. It reads names as
+      words, so it is the second check: the release legs' cases are the first.
+    - **`@kama/window`** (kama-window `b719ab2`, its AGENTS.window.md item 11):
+      - the DOM-code table is made by a function with its keys quoted. Quoting alone was not enough: emscripten writes a
+        library object's own literal back with its keys unquoted, and keeps only a function's body as written;
+      - a pad's `effects` is read quoted;
+      - in the tests' JS, the driver's acknowledgement is read quoted, and the fake pads' keys are quoted;
+      - 249 natively, 163 under node, 253 in Edge and Firefox, 264 through the driver, each debug and release; 11 of 11
+        mutations caught. One, `effects` unquoted in both the package and the fake, is caught by the names check
+        alone: every case in every leg passed.
+    - **`@kama/gpu`** (kama-gpu `5f400be`, its AGENTS.gpu.md item 15):
+      - the usage is passed as its value, and the configuration's keys are quoted;
+      - its gate now makes `tests/out/` and installs the root's and the examples' dependencies, which a fresh clone lacks;
+      - 339 natively, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg, each debug and
+        release;
+      - 9 of 10 mutations caught. The tenth, the keys unquoted, is equivalent: Closure's WebGPU declarations keep a
+        dictionary's keys.
+    - **`@kama/image`** (kama-image `a860c6b`): 1,401 on wasm in both builds, its encoded bytes agreeing on 4 legs; 2 of 2
+      mutations caught.
+    - **`@kama/graphics`** (kama-graphics `9bc2e64`, its AGENTS.graphics.md): 240 natively, in Firefox and in Chrome
+      for Testing, 235 in Edge, each debug and release, every golden matched in both; 4 of 4 mutations caught.
+    - **kyoten** (`2fdd8ff`):
+      - the engine's tests and fps on wasm in both builds;
+      - the tool's `spin` and `schedule` fixtures built for the web at release (211 cases, 192 before);
+      - the frame guard at release, on a fixture whose 40 KB frame is in its release build alone. Its debug build must
+        build, so the leg can tell its build: without that fixture, the guard's release leg built in debug went uncaught;
+      - 5 of 5 mutations caught.

@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-16, the thirty-first session's end)
+## Where it stands (2026-11-17, the thirty-second session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -84,49 +84,54 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.965+g8f8543d3`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.966+gca0e88e7`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
-   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). The closing counts, on 0.9.965:
-   - tools/test.sh: engine 164 native debug, release and wasm; the frame guard; the tool's 192; kyoten check; fps native
-     and wasm; vr checked;
+   `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
+   release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
+   twice on each leg. The closing counts, on 0.9.966:
+   - tools/test.sh: engine 164 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 211; kyoten check; fps native, and on wasm in both builds; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
-   - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg, since
-     `writeTexture` (the thirtieth session); 309, 283 and 286 before it;
+   - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 240 natively, in Firefox and in Chrome for Testing, 235 in Edge, since part 3's third part's
-     step 2 (the thirty-first session); 177 and 172 before it.
+   - `@kama/graphics`': 259 natively, in Firefox and in Chrome for Testing, 254 in Edge, since part 3's third part's
+     step 3 (the thirty-second session); 240 and 235 before it.
+   - **A gate's browser legs now run twice,** so a gate that reaches a browser takes about twice as long. It is not
+     measured yet: every run this session shared the machine with mutation batches. Time each gate once, back to back
+     on the previous commit and this one, when kama is quiet, and record it as a measurement (rendering.md § Decided).
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
-   - **Read `../kama`'s log since `8f8543d3`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 8f8543d3 HEAD`. kama rebases at times. If the
+   - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
+     emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
+   - **Read `../kama`'s log since `ca0e88e7`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor ca0e88e7 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirty-first session's end the range held four commits: `d817de00` (a CI guard), `b7800cbd` and `7eb3a4dd`
-     (a job-pool benchmark and its docs), and **`ca0e88e7`, 0.9.966, kama's KR-289: a wasm `--release` runs Closure**
-     unless a root manifest says `"release": { "closure": false }`, and `--closure` in a manifest's flags is refused.
-     **Propose a bump at the next session's start.** It would fix KY-6 (run its repro on both, then remove the entry).
-     Closure renames every property it cannot prove external, so `@kama/gpu`'s `js/gpuseam.js` and `@kama/window`'s
-     `js/winseam.js` must be Closure-safe: their release web legs are the check, and a property the glue reads by name
-     may need quoting. No committed manifest names `--closure`.
-   - **The pin is on 0.9.965** (`8f8543d3`) since the thirtieth session's start (`.kama-version`), at the owner's word
-     ("Yes, bump first"), every suite green on it at the same counts. Before it, 0.9.964 since the twenty-ninth session.
-     `.kama-version` says what moved:
+     At the thirty-second session's end the range held one commit, `cf04df19`: kama's brief for KR-378, trusted input
+     for a program under `kama run`, measured, which `@kama/window`'s WIN-24 waits on. Docs alone.
+   - **The pin is on 0.9.966** (`ca0e88e7`) since the thirty-second session's start (`.kama-version`), at the owner's
+     word ("Yes you can bump kama"), every suite green on it at the same counts. Before it, 0.9.965 since the thirtieth
+     session. `.kama-version` says what moved:
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
        matters once a program runs on demand, as an editor would.
-     - **0.9.960: KY-59 fixed and removed,** so part 3's typed nodes take named nodes as operands with no workaround.
-     - **0.9.961 and 0.9.962: KY-60 fixed and removed,** so a chain of node operators frees what it makes.
-     - **0.9.964: KY-61 and KY-62 fixed and removed,** so an operator's result needs no import of its type, and a
-       generic infers it from the operator.
-     - **0.9.965: kama's KR-332,** which carries `@kama/image`'s KIMG-1: a `--release` build is `-O3` on every target,
-       wasm included, `release.optimize` says `"size"`, and an `-O` in a manifest's flags is refused by name. No
-       committed manifest carries one; KY-6 reads `-O3`, and Closure is still not run (KR-289).
-   - **The Mac rebuilds its pin at `8f8543d3`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
-     `tools/test.sh` there. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
+     - **0.9.960 to 0.9.964: KY-59, KY-60, KY-61 and KY-62 fixed and removed,** so typed nodes take named nodes as
+       operands, a chain of operators frees what it makes, and an operator's result needs no import of its type.
+     - **0.9.965: kama's KR-332:** a `--release` build is `-O3` on every target, wasm included; `release.optimize` says
+       `"size"`; an `-O` in a manifest's flags is refused by name.
+     - **0.9.966: kama's KR-289, a wasm `--release` runs Closure** unless the root manifest says
+       `"release": { "closure": false }`, and `--closure` in a flag key is refused. KY-6 is fixed and removed: kama's
+       webgpu triangle's JS is 8,677 bytes of brotli where it was 15,440. **No gate had built a wasm release,** so the
+       bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
+       `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
+       as Unknown. That is why every leg now runs in both builds.
+   - **The Mac rebuilds its pin at `ca0e88e7`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
+     `tools/test.sh` there, whose legs now run in both builds. A probe of `@kama/audio`'s that calls `run` needs
+     `pace:`; its committed code has none.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
@@ -230,17 +235,24 @@ the design doc it settles before building on it.
         - `GraphicsErrorKind::Light`, for a sun at its own target, which lights nothing.
 
         240 cases on each golden leg, 235 in Edge. 67 of 67 mutations caught, and a 68th shown equivalent.
-      - **Next, build the rest of part 3's third part,** from `.scratch/gfx1-part3/PLAN.md` § Part 3's third part, its
-        step 3 recut onto the contract, depth-first, each step test-first with its mutations:
-        3. `PhysicalLightingModel` on `LightingModel`: r187's direct term with the DFG compensation and its ambient term,
-           and `colorNode`, `roughnessNode` and `metalnessNode`. The view direction needs the camera's world position in
-           the frame block, the one new piece of data: plan it first;
-        4. the lit box's golden on WARP and SwiftShader.
+      - **Part 3's third part, step 3, is built** (kama-graphics `c3ff5ed`, the thirty-second session; rendering § Decided,
+        under the `LightingModel` decision; SPEC § The renderer, § Materials, § Typed nodes and § The compiler):
+        - the frame block carries the camera's position in world space (`cameraPosition()`), 96 bytes;
+        - r187's BSDFs and `getRoughness` as typed functions, and `PhysicalLightingModel` on the contract;
+        - `MeshStandardMaterial` lit by it, with `colorNode`, `roughnessNode` and `metalnessNode`.
 
-        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` among them. The runners, stubs and
-        mutation lists are in `.scratch/s31/kg-tools/` (`native.sh`, `web.sh`, `mutate.py`, each defaulting to a
-        `../kama-graphics-s31` worktree, and their `-m` twins for a second worktree that mutations run in while the
-        first is built).
+        A lit box's centre texel is held within a step to r187's formulas in float64, in five lightings, and the ambient
+        term amplified 128 times against its float64 value. 259 cases natively and on each golden leg, 254 in Edge, each
+        debug and release; 35 of 35 mutations caught, five after the tests were sharpened. r187's geometry roughness
+        waits for the first geometry whose normals vary (GFX-2), since on a flat face it is 0; settled and reported.
+      - **Next, part 3's third part, step 4: the lit box's golden on WARP and SwiftShader,** and the part's SPEC,
+        CHANGELOG and ROADMAP_DETAIL. Then part 4: the frame (the depth prepass, 4x MSAA, the 16-bit float target, AgX),
+        where three.js's `max(0)` on every output becomes visible and is built and held.
+
+        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` and now `getRoughness.js` and
+        `getGeometryRoughness.js` among them. The runners and mutation lists are in `.scratch/s32/kg-tools/` (`native.sh`,
+        `web.sh`, `mutate.py` and `list3.py`, defaulting to a `../kama-graphics-s32b` worktree), and the whole-gate
+        mutation driver for any package is `.scratch/s32/mutate.py`.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -297,6 +309,31 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-second session** (2026-11-17). Every suite was green on the 0.9.965 pin at the start, at the
+thirty-first session's counts. Nothing came from the Mac.
+- **The pin bumped to 0.9.966** at the owner's word ("Yes you can bump kama"; kyoten `38ac701`), every suite green on it at
+  the same counts with nothing else changed, and KY-6 fixed and removed.
+- **One question, asked in plan mode and decided at once:** no gate built a wasm release, so the bump would pass without
+  Closure ever running on the packages' glue. The owner took (A), every wasm leg in both builds (kyoten `c35f08b`). A
+  probe on the staged pin had already found the two breakages:
+  - `@kama/gpu`'s glue would not link under Closure: `GPUTextureUsage` is undeclared to it;
+  - `@kama/window`'s DOM-code table was renamed, so every key read as Unknown.
+- **The release legs, built test-first, red on 0.9.966 where Closure broke something:**
+  - `@kama/window` (kama-window `b719ab2`): 11 of 11 mutations caught. Quoting the table was not enough, since emscripten
+    rewrites a library object's keys unquoted, so a function makes the table. The release legs also found a pad's
+    `effects` and the driver's acknowledgement renamed;
+  - `@kama/gpu` (kama-gpu `5f400be`): 9 of 10 caught, one equivalent. Its gate now runs from a fresh clone;
+  - `@kama/image` (kama-image `a860c6b`): 2 of 2 caught;
+  - `@kama/graphics` (kama-graphics `9bc2e64`): 4 of 4 caught;
+  - kyoten (`2fdd8ff`): 5 of 5 caught. The frame guard's release leg needed a fixture whose big frame is in the release
+    build alone, so the leg can tell its build.
+
+  `tools/closure-names.mjs` holds each JS file's names to its release build, and it caught the one renaming no case
+  could see: `effects` unquoted on both sides of the test's fake pad.
+- **Step 3 built** (kama-graphics `c3ff5ed`) in a second worktree while the release legs were mutated, then put onto
+  them. Its first mutation run found five gaps in the tests, now closed: Fresnel at a grazing angle, F90 other than 1, an
+  off-axis camera for the view direction, and the ambient's multiple scattering, amplified past the 8-bit step.
 
 **The thirty-first session** (2026-11-16). Every suite was green on the 0.9.965 pin at the start, at the thirtieth
 session's counts. Nothing came from the Mac. kama's range since the pin held a CI guard (`d817de00`) and a job-pool
@@ -1635,8 +1672,8 @@ depth-first through the cube.
 ## kama gaps that touch the first slice
 
 - **KY-28** (kama KR-338, "scheduled, design first"): generated code on a fresh clone. Step 5's wrapper covers it.
-- **KY-6:** kama's wasm release does not run Closure. Until it does, measure the 150 KB with web-baseline's variant,
-  `--closure=1` as an `ldflags` entry gated `ARCH_WASM32`, and record both numbers.
+- **KY-6, fixed in 0.9.966 and removed:** a wasm release runs Closure, and `--closure` in a flag key is refused. Measure
+  the 150 KB on the release build as kama makes it.
 - **Fixed on 2026-11-07 and removed:** KY-37 (kama KR-344, `546dd54e`): a module's `importsOnly` now lists std's,
   `core`'s and other packages' modules too, and the command line and the environment moved to `core::env`. Step 6
   made the simulation rule a module fence on it (2026-11-08).
