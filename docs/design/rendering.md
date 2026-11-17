@@ -1201,3 +1201,46 @@
   - **Settled beside it, and reported:** the anti-aliasing method stays on the renderer. A technique is a machine's
     quality, which a preset sets for the machine (area 4, question 1), where tone mapping and exposure are each view's
     look.
+
+- **2026-11-17, the owner: part 4's two checks, and Blender's AgX as a table the renderer makes (A), its source credited
+  and a licence asked for (A)** (asked in full in the chat at the thirty-fourth session, after the checks ran: "I find
+  it hard to believe we must rely on an unlicenced repo to make this work? I am fine with your recommendations though if
+  that is the best action"). The checks' evidence is in `.scratch/s34/` (machine-local): `FINDINGS.md`, the probe in
+  `invariant/`, the port and its comparison in `agx/tools/`.
+  - **Check 1, `@invariant`, passes on every Windows leg.** 400 overlapping triangles drawn by a depth prepass and an
+    Equal main pass shade exactly the texels one pass does, at 1x and 4x: natively on D3D12, WARP and Vulkan, in Edge,
+    in Firefox on its GPU and on WARP, and in Chrome for Testing on SwiftShader. A control prepass computing the position
+    in another order loses 7,000 to 18,000 texels on each, so the probe sees a mismatch. Each compiler writes the marker:
+    naga's `precise` (wgpu-native's log) and SPIR-V `Invariant` (its source), Tint's `precise`, which DXC keeps in DXIL
+    as `!dx.precise`, and Tint's SPIR-V `Invariant` (Dawn's `dump_shaders`). Every leg also matched without the
+    attribute, since both passes run the same vertex code, so `@invariant` is the guarantee and the tests hold it in the
+    emitted WGSL. The Mac's Metal legs are the Mac's to run.
+  - **Check 2, Blender's AgX against its table, fails as worded.**
+    - Blender 5.3.0 shows AgX on an sRGB display through a 57³ table (`AgX_Base_sRGB.cube`, last changed 2023-10-06),
+      interpolated tetrahedrally by OpenColorIO. EaryChow's generator (AgX_LUT_Gen) as it stood then (`ab7415e`,
+      2023-09-07) was ported to float64 with the colour-science 0.4.3 functions it calls. It reproduces all 185,193
+      entries to the table's own rounding (5e-8).
+    - **Blender's display is the table interpolated, not the formulas.** Over every colour on a log2 grid from −12 to
+      +16 stops by 0.5, 79 % land on the same byte, 17 % one step apart and 4.6 % further, up to 22 steps; on hue rings,
+      up to 18. The worst are saturated colours with a channel near zero: linear (0.00025, 0.18, 0.51) shows red 8 in
+      Blender and 30 by the formulas. One cell of the table spans a sharp change there.
+  - **Question 1, how Blender's AgX is computed: (A) a table the renderer makes.** When a renderer starts it makes the
+    57³ table from the ported formulas and samples it as OpenColorIO samples Blender's, tetrahedrally. So it shows what
+    an artist sees in Blender, the reason Blender's AgX is the default, and nothing is downloaded.
+    - **Costs:** 1.48 MB of GPU memory at 16-bit float, made once, and four texel reads a pixel.
+    - **Held by:** the tests hold the made table to the formulas in float64 at every grid point.
+    - **Set aside:** (B) the formulas per pixel, smoother on those colours than Blender but not what it shows, and a
+      heavier shader; (C) Blender's own file downloaded. Blender is GPL-3.0-or-later and the table has no licence of its
+      own, so the file cannot ship in an MIT or Apache library.
+  - **Question 2, the generator's licence: (A) credited now, and a licence asked for.**
+    - **The problem:** EaryChow/AgX_LUT_Gen, EaryChow/AgX, sobotka/AgX and sobotka/SB2383-Configuration-Generation
+      declare no licence. What kama-graphics takes from them is the method: standard colour operations (matrices, a log2
+      encoding, a sigmoid, HSV) and their numbers. The code is its own, written from that method. The repository is the
+      only place the method is written down whole.
+    - **(A):** kama-graphics credits the generator in THIRD-PARTY-NOTICES, as Godot 4.6 (MIT) credits the same script
+      for its approximation. EaryChow explained the method's design for Godot (godot-proposals#12317, 2025-04-28). The
+      owner posts a request, which kyoten drafts, that EaryChow put a permissive licence on the generator, and
+      kama-graphics' first publish waits on the answer. It already waits on kama's floor.
+    - **Set aside:** (B) credited without asking; (C) r187's AgX alone, the default until a licence is in hand. r187's
+      AgX (three.js, MIT, from Filament, Apache-2.0) is fully licensed, but it is not what Blender shows.
+    - Not legal advice.
