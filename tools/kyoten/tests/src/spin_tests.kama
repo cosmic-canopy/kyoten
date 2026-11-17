@@ -5,7 +5,7 @@
 
 import { Tally, Setup, Ran, has, read, write, erase, eraseDir, linesAfter, lastAfter, std::collections::DynamicArray };
 
-export { spinTests, ranAs, none, check };
+export { spinTests, ranAs, none, check, closured, releaseWeb };
 
 fn DynamicArray<string> none() { return DynamicArray.empty(); }
 
@@ -24,6 +24,26 @@ fn void check(ref Tally t, const ref string name, bool ok, const ref string why)
     if (ok) { t.verdict(name: name, why: ""); return; }
     if (why.isEmpty()) { t.verdict(name: name, why: "failed, and nothing was said"); return; }
     t.verdict(name: name, why: why);
+}
+
+// A release web build's JS was run through Closure, which a wasm release does since kama 0.9.966 (KR-289): Closure
+// renames emscripten's `UTF8ToString`, so JS that still names it was built without, and its run tests nothing of what a
+// game ships.
+unsafe fn void closured(ref Tally t, const ref string name, const ref string js) {
+    string text = read(path: js);
+    if (text.isEmpty()) { check(t: t, name: name, ok: false, why: "no JS at " + js); return; }
+    check(t: t, name: name, ok: !text.contains(substring: "UTF8ToString"), why: js + " still names UTF8ToString");
+}
+
+// `kyoten build --release --target WASM -o <js>`'s arguments.
+fn DynamicArray<string> releaseWeb(const ref string js) {
+    DynamicArray<string> more = DynamicArray.empty();
+    more.add(item: "--release");
+    more.add(item: "--target");
+    more.add(item: "WASM");
+    more.add(item: "-o");
+    more.add(item: copy js);
+    return give more;
 }
 
 // `main` loads the content after the turns by hand, and prints this line before the placed world's Output.
@@ -205,6 +225,17 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
               says: "spin: player 1, faster held false");
         sameTurns(t: t, leg: "wasm under node", r: underNode);
         loaded(t: t, leg: "wasm under node", r: underNode);
+
+        // The release web build, which a game ships, under Closure.
+        string releaseJs = s.fixture(at: "spin/out/web-release/spin.js");
+        Ran builtRelease = s.kyoten(command: "build", game: "spin", more: releaseWeb(js: releaseJs));
+        ranAs(t: t, name: "spin: `kyoten build --release --target WASM`", r: builtRelease, want: 0, says: "");
+        closured(t: t, name: "spin: the release web build ran under Closure", js: releaseJs);
+        Ran releaseUnderNode = s.runProgramIn(program: "node", argv: node, dir: s.fixture(at: "spin/out/web-release"));
+        ranAs(t: t, name: "spin: the release web build runs under node", r: releaseUnderNode, want: 0,
+              says: "spin: player 1, faster held false");
+        sameTurns(t: t, leg: "wasm release under node", r: releaseUnderNode);
+        loaded(t: t, leg: "wasm release under node", r: releaseUnderNode);
     }
 
     // The naming rule's clearing (2026-11-07): each run deletes what it did not write, if it carries the header.

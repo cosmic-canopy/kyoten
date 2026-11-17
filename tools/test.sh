@@ -6,17 +6,23 @@
 #
 # It runs:
 #   - `kama check` on the engine and on its tests program;
-#   - the engine's tests (engine/tests/, one program), built debug and release and run natively, then built for wasm
-#     and run under node;
+#   - the engine's tests (engine/tests/, one program), built debug and release and run natively, then built for wasm,
+#     debug and release, and run under node;
 #   - the 32 KiB frame guard: tools/fixtures/frame-guard, a game with a 40 KB frame, refused on every target but
-#     Windows (natively off Windows, and on wasm), and built natively on Windows, where the guard is off;
+#     Windows (natively off Windows, and on wasm, debug and release), and built natively on Windows, where the guard is
+#     off;
 #   - the kyoten tool (tools/kyoten/, built as `kyoten`) and its tests, one program that runs it on the fixture games
-#     in tools/kyoten/tests/fixtures/, natively, with the spin fixture's web build run under node;
+#     in tools/kyoten/tests/fixtures/, natively, with the spin and schedule fixtures' web builds, debug and release,
+#     run under node;
 #   - `kyoten check engine/kama.json`: the engine held to the simulation's fence, its tiers and the platform flags
 #     (KYR-53), then `kama check`;
 #   - each example game that is cloned under examples/games/: `examples/games/fps` checked, then run natively and on
-#     wasm, its output held to "fps example, on kyoten"; `examples/games/vr` checked. A game that is not cloned is
-#     skipped, and says so.
+#     wasm, debug and release, its output held to "fps example, on kyoten"; `examples/games/vr` checked. A game that is
+#     not cloned is skipped, and says so.
+#
+# Every wasm leg runs a debug build and a release build, as every native leg does (rendering.md § Decided,
+# 2026-11-17): a wasm release runs Closure over its JS since kama 0.9.966 (KR-289), and a game ships that build. A
+# release build's JS that still names emscripten's `UTF8ToString` was not run through Closure, and fails.
 #
 # Run it from msys2 UCRT64 on Windows (`bash -lic`, so emcc and node are on PATH for the wasm legs), or any shell
 # elsewhere. Without emcc or node the wasm legs are skipped, and say so.
@@ -64,28 +70,49 @@ for mode in debug release; do
     fi
 done
 
-step "engine tests, wasm, under node"
-if [ "$wasm" = 1 ]; then
-    if "$KAMA" build "$TESTS/kama.json" --target WASM -o "$OUT/wasm/kyotentests.js" > "$OUT/build-wasm.log" 2>&1; then
-        node "$OUT/wasm/kyotentests.js" || failed=1
-    else
-        tail -n 20 "$OUT/build-wasm.log"
+# A release build's JS that still names emscripten's `UTF8ToString` was never run through Closure: a root manifest's
+# `"release": { "closure": false }` would do that, and the leg would test nothing of what a game ships.
+closured() {
+    local js="$1" leg="$2"
+    if grep -q 'UTF8ToString' "$js"; then
+        echo "FAIL $leg: $js still names UTF8ToString, so Closure never ran over it"
         failed=1
+    else
+        echo "ok   $leg: Closure ran over $js"
     fi
-else
-    echo "skip no emcc or node on PATH (run from an interactive UCRT64 shell, bash -lic)"
-fi
+}
+
+for mode in debug release; do
+    step "engine tests, wasm, $mode, under node"
+    if [ "$wasm" = 1 ]; then
+        flag=""
+        [ "$mode" = release ] && flag="--release"
+        if "$KAMA" build "$TESTS/kama.json" $flag --target WASM -o "$OUT/wasm-$mode/kyotentests.js" \
+                > "$OUT/build-wasm-$mode.log" 2>&1; then
+            node "$OUT/wasm-$mode/kyotentests.js" || failed=1
+            if [ "$mode" = release ]; then closured "$OUT/wasm-$mode/kyotentests.js" "engine tests, wasm, release"; fi
+        else
+            tail -n 20 "$OUT/build-wasm-$mode.log"
+            failed=1
+        fi
+    else
+        echo "skip no emcc or node on PATH (run from an interactive UCRT64 shell, bash -lic)"
+    fi
+done
 
 # The 32 KiB frame guard (components § Decided, question 6, choice 5). The engine's manifest sets it on every target
 # but Windows, and a dependency's cflags reach its consumer's build, so it holds for every game without the game
 # saying so. tools/fixtures/frame-guard is a game with a 40 KB frame and no flag of its own: its build must be
-# refused by the guard, and on Windows, where the guard is off, it must build.
+# refused by the guard, and on Windows, where the guard is off, it must build. tools/fixtures/frame-guard-release has
+# that frame in its release build alone: built for the web at --release it must be refused, so the guard holds at the
+# level a game ships, and in debug it must build, so a release leg that lost its `--release` fails.
 FIXTURE=tools/fixtures/frame-guard
+RELEASE_FIXTURE=tools/fixtures/frame-guard-release
 guard_build() {
-    local label="$1" want="$2"; shift 2
+    local label="$1" want="$2" fixture="$3" why="$4"; shift 4
     local log="$OUT/frame-guard-$label.log"
-    if "$KAMA" build "$FIXTURE/kama.json" "$@" > "$log" 2>&1; then
-        if [ "$want" = built ]; then echo "ok   frame guard, $label: off on Windows, so a 40 KB frame builds"
+    if "$KAMA" build "$fixture/kama.json" "$@" > "$log" 2>&1; then
+        if [ "$want" = built ]; then echo "ok   frame guard, $label: $why"
         else echo "FAIL frame guard, $label: a 40 KB frame built"; failed=1; fi
     elif [ "$want" = refused ] && grep -q "frame-larger-than" "$log"; then
         echo "ok   frame guard, $label: a 40 KB frame is refused"
@@ -97,19 +124,25 @@ guard_build() {
 }
 step "the frame guard"
 "$KAMA" pkg install "$FIXTURE/kama.json" > /dev/null
+"$KAMA" pkg install "$RELEASE_FIXTURE/kama.json" > /dev/null
 case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) guard_build native built -o "$OUT/frame-guard/native/frameguard$EXE" ;;
-    *) guard_build native refused -o "$OUT/frame-guard/native/frameguard$EXE" ;;
+    MINGW*|MSYS*|CYGWIN*) guard_build native built "$FIXTURE" "off on Windows, so a 40 KB frame builds" \
+        -o "$OUT/frame-guard/native/frameguard$EXE" ;;
+    *) guard_build native refused "$FIXTURE" "" -o "$OUT/frame-guard/native/frameguard$EXE" ;;
 esac
 if [ "$wasm" = 1 ]; then
-    guard_build wasm refused --target WASM -o "$OUT/frame-guard/wasm/frameguard.js"
+    guard_build wasm refused "$FIXTURE" "" --target WASM -o "$OUT/frame-guard/wasm/frameguard.js"
+    guard_build wasm-release refused "$RELEASE_FIXTURE" "" --release --target WASM \
+        -o "$OUT/frame-guard/wasm-release/frameguard.js"
+    guard_build wasm-release-fixture-in-debug built "$RELEASE_FIXTURE" \
+        "the release fixture's debug build has no 40 KB frame" --target WASM -o "$OUT/frame-guard/wasm-release-debug/frameguard.js"
 else
     echo "skip the frame guard on wasm: no emcc or node on PATH"
 fi
 
 # The kyoten tool (components § Decided, step 5.3): built as `kyoten`, then its tests, one program that runs the tool
 # on the fixture games in tools/kyoten/tests/fixtures/, with the tool, the compiler and the fixtures handed to it. The
-# spin fixture's web build runs under node when emcc and node are there.
+# spin and schedule fixtures' web builds, debug and release, run under node when emcc and node are there.
 TOOL=tools/kyoten
 step "the kyoten tool"
 "$KAMA" pkg install "$TOOL/kama.json" > /dev/null
@@ -167,6 +200,8 @@ for game in fps vr; do
         run_example fps native "$want" "$OUT/games/fps/native/fps$EXE" native
         if [ "$wasm" = 1 ]; then
             run_example fps wasm "$want" "$OUT/games/fps/wasm/fps.js" under_node --target WASM
+            run_example fps wasm-release "$want" "$OUT/games/fps/wasm-release/fps.js" under_node --release --target WASM
+            closured "$OUT/games/fps/wasm-release/fps.js" "examples/games/fps, wasm, release"
         else
             echo "skip $GAMES/fps on wasm: no emcc or node on PATH"
         fi

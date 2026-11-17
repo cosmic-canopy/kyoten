@@ -96,13 +96,19 @@ or rebuilt from here.
   `KAMA=$PWD/.kama-pin/kama.exe ../kama-gpu/tools/test.sh`.
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
-engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, and the 32 KiB
-frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows), and the `kyoten`
-tool's tests (`tools/kyoten/tests/`, on its fixture games, natively and with one built for wasm), and `kyoten check`
-on the engine, which holds its modules to the simulation's fence, the tiers and the platform flags (KYR-53). Then each
-cloned example: `examples/games/fps` is checked and run natively and on wasm, and `examples/games/vr` is checked. A leg with
-no `emcc` or `node`, or a game that is not cloned, is skipped, and says so. Run it from an interactive UCRT64 shell
-(`bash -lic`) so the wasm legs run.
+engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, debug and release,
+and the 32 KiB frame guard (`tools/fixtures/frame-guard`, a game whose 40 KB frame must be refused off Windows), and
+the `kyoten` tool's tests (`tools/kyoten/tests/`, on its fixture games, natively and with two built for wasm, debug
+and release), and `kyoten check` on the engine, which holds its modules to the simulation's fence, the tiers and the
+platform flags (KYR-53). Then each cloned example: `examples/games/fps` is checked and run natively and on wasm, debug
+and release, and `examples/games/vr` is checked. A leg with no `emcc` or `node`, or a game that is not cloned, is
+skipped, and says so. Run it from an interactive UCRT64 shell (`bash -lic`) so the wasm legs run.
+
+**Every wasm leg runs a debug build and a release build,** here and in every package, as every native leg does (the
+owner, 2026-11-17, [design/rendering.md](docs/design/rendering.md) § Decided): since kama 0.9.966 a wasm release runs
+Closure over its JS, which renames every name it cannot prove the browser's, and a game ships that build. A release
+leg's JS that still names emscripten's `UTF8ToString` was not run through Closure, and fails. A package's JS glue is
+held to its release build by its `tools/closure-names.mjs`, and a name the browser or the page reads is quoted.
 
 On Windows, drive kama from msys2 UCRT64, as kama's own `docs/platforms/windows.md` describes.
 
@@ -118,7 +124,7 @@ emsdk (the owner, 2026-11-11): Chrome for Testing 157.0.8103.50 and Firefox 160.
 can be reproduced. Its `README.md` says where each came from and how it was verified. A leg runs headless, in every
 browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as the owner decided for WIN-18 on
 2026-11-12 and for the drivers on 2026-11-14 ([design/rendering.md](docs/design/rendering.md) § Decided):
-- **under `kama run --target WASM --headless`** (kama's KR-377): Edge and Chrome as installed, as a player's run, on
+- **under `kama run --target WASM --headless`** (kama's KR-377), debug and release: Edge and Chrome as installed, as a player's run, on
   their real GPU; the pinned Firefox 160, whose headless adapter `kama run` gives since 0.9.940 (KY-54, fixed); and, in
   `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing, the web's SwiftShader leg. That one alone takes flags,
   on its own command line (`tools/browsers.mjs flags`, kama 0.9.956's `--chromium-arg`): `--enable-unsafe-webgpu` and
@@ -126,9 +132,9 @@ browser each package's `tools/browsers.mjs` names (`KAMA_BROWSER` names one), as
   which an unzipped Chrome for Testing's sandboxed network service crashes and it loads no page, and `--scale 1.5`.
   `@kama/window`'s runs pass `--scale 1.5`, as its scale cases need. The cases that need trusted input (kama's KR-378)
   are skipped there, each by name;
-- **through `@kama/window`'s `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing:
-  every case, with trusted input and a device scale of 1.5, until kama gives trusted input (its WIN-24). `@kama/gpu`'s
-  and `@kama/graphics`' drivers are retired.
+- **through `@kama/window`'s `tools/webtest.mjs`**, the DevTools-protocol stopgap, in the pinned Chrome for Testing,
+  debug and release: every case, with trusted input and a device scale of 1.5, until kama gives trusted input (its
+  WIN-24). `@kama/gpu`'s and `@kama/graphics`' drivers are retired.
 
 ## Rules
 

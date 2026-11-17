@@ -3,7 +3,7 @@
 // its stated order against its names' order; a world component gathers a reader's sums after its writer; and Output
 // runs once a frame through the frame's driver, fed one second in 60 frames.
 
-import { Tally, Setup, Ran, has, read, eraseDir, ranAs, none, check, linesAfter, lastAfter,
+import { Tally, Setup, Ran, has, read, eraseDir, ranAs, none, check, closured, releaseWeb, linesAfter, lastAfter,
          std::collections::DynamicArray };
 
 export { scheduleTests };
@@ -70,5 +70,15 @@ unsafe fn void scheduleTests(ref Tally t, ref Setup s) {
         Ran underNode = s.runProgramIn(program: "node", argv: node, dir: s.fixture(at: "schedule/out/web"));
         ranAs(t: t, name: "schedule: the web build runs under node", r: underNode, want: 0, says: "");
         reported(t: t, leg: "wasm under node", r: underNode);
+
+        // The release web build, which a game ships, under Closure.
+        string releaseJs = s.fixture(at: "schedule/out/web-release/schedule.js");
+        Ran builtRelease = s.kyoten(command: "build", game: "schedule", more: releaseWeb(js: releaseJs));
+        ranAs(t: t, name: "schedule: `kyoten build --release --target WASM`", r: builtRelease, want: 0, says: "");
+        closured(t: t, name: "schedule: the release web build ran under Closure", js: releaseJs);
+        Ran releaseUnderNode = s.runProgramIn(program: "node", argv: node,
+                                              dir: s.fixture(at: "schedule/out/web-release"));
+        ranAs(t: t, name: "schedule: the release web build runs under node", r: releaseUnderNode, want: 0, says: "");
+        reported(t: t, leg: "wasm release under node", r: releaseUnderNode);
     }
 }
