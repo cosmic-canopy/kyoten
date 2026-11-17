@@ -1020,6 +1020,21 @@
     - r187's geometry roughness, the change of the normal in view space across a pixel, waits for the first geometry
       whose normals vary (kama-graphics' GFX-2). It is 0 on a flat face, and every geometry the library has is
       flat-faced, so no test could hold it now. With it comes the view matrix in the frame block, which it reads.
+  - **Step 4 built the lit goldens, and so part 3** (2026-11-17, the thirty-third session, kama-graphics `126ac07`; its
+    SPEC § Tests): `light-directional`, two coloured suns on the default box, one aimed off the origin; `light-ambient`,
+    two ambient lights; `material-standard`, a rough dielectric with an emissive, a smooth dielectric and a metal, under a
+    sun and an ambient light. Each is held byte for byte on WARP and SwiftShader. On every leg, hardware included, each
+    face the camera sees well is held within a step of r187's formulas in float64. WARP draws the same lit bytes
+    natively and in Firefox, so no golden is kept per leg. 266 cases on each golden leg, 258 in Edge, each debug and
+    release; 7 of 7 mutations caught, each by the golden of the feature it breaks alone.
+
+    **Settled under GFX-1's decisions, and reported for the owner to object to:** "the lit box's golden" became one
+    golden for each feature the part built, named as kama-graphics' FEATURES.md names each feature's test, since that map
+    has a golden test per feature. Their rows hold tests that exist once a measured budget makes them `built` (part 6).
+
+    **Found on the way and fixed first** (kama-graphics `ef418f2`): step 3 left the tests' no-device path pointing at
+    its new stage, so a leg whose device never opened panicked rather than failing with its reasons. The gate now holds
+    that path, asking Edge, which offers no fallback adapter, for WARP.
 
 - **2026-11-17, the owner: every wasm leg runs debug and release, as every native leg does (A)** ("(A) Debug + release
   (Recommended)", asked in full in the chat at the thirty-second session's start, before the pin's bump to kama 0.9.966).
@@ -1057,6 +1072,22 @@
       reports, would go unchecked under Closure.
     - A root manifest's `"release": { "closure": false }`, which leaves every game's download larger: on kama's
       `examples/webgpu` the JS is 15,440 bytes of brotli without Closure and 8,677 with it.
+  - **Measured** (2026-11-17, the thirty-third session, kama 0.9.966, kama quiet and nothing else building). Each gate
+    was run back to back, once on the commit before its release legs and once on the commit that added them, on the
+    same pinned compiler:
+
+    | Gate | before (commit) | with the release legs (commit) | change |
+    |---|---|---|---|
+    | kyoten `tools/test.sh` | 261 s (`38ac701`) | 295 s (`2fdd8ff`) | +13 % |
+    | `@kama/window` | 64 s (`dfe07c4`) | 104 s (`b719ab2`) | +63 % |
+    | `@kama/gpu` | 344 s (`27760aa`) | 533 s (`5f400be`) | +55 % |
+    | `@kama/image` | 66 s (`2839f81`) | 81 s (`a860c6b`) | +23 % |
+    | `@kama/graphics` | 295 s (`dfcdc71`) | 416 s (`9bc2e64`) | +41 % |
+    | all five | 17.2 min | 23.8 min | +39 % |
+
+    The cost is less than the doubling expected: a gate's building and its native legs are a large part of it, and
+    they were already debug and release. One run each, so the noise is not measured: `@kama/graphics`' later HEAD
+    (`c3ff5ed`, 19 more cases) took 392 s, 24 s less than `9bc2e64`. `.scratch/s33/measure.sh` reruns it.
   - **Built the same session, on kama 0.9.966** (kyoten `38ac701`'s pin), each package's legs red first where Closure
     broke something:
     - **How a leg proves its build:** each tests program, and `@kama/gpu`'s two examples, print `build: debug` or

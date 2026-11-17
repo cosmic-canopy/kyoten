@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-17, the thirty-second session's end)
+## Where it stands (2026-11-17, the thirty-third session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -96,11 +96,16 @@ the design doc it settles before building on it.
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 259 natively, in Firefox and in Chrome for Testing, 254 in Edge, since part 3's third part's
-     step 3 (the thirty-second session); 240 and 235 before it.
-   - **A gate's browser legs now run twice,** so a gate that reaches a browser takes about twice as long. It is not
-     measured yet: every run this session shared the machine with mutation batches. Time each gate once, back to back
-     on the previous commit and this one, when kama is quiet, and record it as a measurement (rendering.md § Decided).
+   - `@kama/graphics`': 266 natively, in Firefox and in Chrome for Testing, 258 in Edge, since part 3's step 4 (the
+     thirty-third session); 259 and 254 before it. Its gate also asks Edge for WARP, which it does not offer, and holds
+     the run to failing cleanly.
+   - **The release legs cost the five gates 39 % more time, not double** (measured with kama quiet, the thirty-third
+     session; rendering.md § Decided): 17.2 minutes before, 23.8 with them, from +13 % for kyoten's to +63 % for
+     `@kama/window`'s. Building and the native legs were already debug and release.
+   - **Start a suite or a driver in msys2's bash, never in Git Bash** (the Bash tool):
+     `MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lic '…'`. A `bash -lic` from Git Bash is Git Bash's own login shell,
+     with no `emcc` or `node`, and `MSYSTEM=MINGW64`, so `@kama/gpu` looks for its SDK in the wrong folder. Every gate
+     then fails within seconds.
    - Suites and builds may run while kama works on this machine; only measurements wait until it is quiet. Since
      0.9.948 two native `kama run`s at once no longer break each other (KY-56, fixed and removed), so a probe may run
      beside a suite.
@@ -110,8 +115,8 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor ca0e88e7 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirty-second session's end the range held one commit, `cf04df19`: kama's brief for KR-378, trusted input
-     for a program under `kama run`, measured, which `@kama/window`'s WIN-24 waits on. Docs alone.
+     At the thirty-third session's end the range still held one commit, `cf04df19`: kama's brief for KR-378, trusted
+     input for a program under `kama run`, measured, which `@kama/window`'s WIN-24 waits on. Docs alone.
    - **The pin is on 0.9.966** (`ca0e88e7`) since the thirty-second session's start (`.kama-version`), at the owner's
      word ("Yes you can bump kama"), every suite green on it at the same counts. Before it, 0.9.965 since the thirtieth
      session. `.kama-version` says what moved:
@@ -245,14 +250,31 @@ the design doc it settles before building on it.
         term amplified 128 times against its float64 value. 259 cases natively and on each golden leg, 254 in Edge, each
         debug and release; 35 of 35 mutations caught, five after the tests were sharpened. r187's geometry roughness
         waits for the first geometry whose normals vary (GFX-2), since on a flat face it is 0; settled and reported.
-      - **Next, part 3's third part, step 4: the lit box's golden on WARP and SwiftShader,** and the part's SPEC,
-        CHANGELOG and ROADMAP_DETAIL. Then part 4: the frame (the depth prepass, 4x MSAA, the 16-bit float target, AgX),
-        where three.js's `max(0)` on every output becomes visible and is built and held.
+      - **Part 3's third part, step 4, is built, and so part 3** (kama-graphics `ef418f2` and `126ac07`, the thirty-third
+        session; rendering § Decided, under the `LightingModel` decision; SPEC § Tests):
+        - the lit goldens `light-directional`, `light-ambient` and `material-standard` on WARP and SwiftShader, one per
+          feature the part built, named as FEATURES.md names their tests (settled and reported);
+        - on every leg, every face they show held within a step to r187's formulas in float64.
 
-        r187's sources are in `.scratch/gfx1-part3/three-r187/`, its `LICENSE` and now `getRoughness.js` and
-        `getGeometryRoughness.js` among them. The runners and mutation lists are in `.scratch/s32/kg-tools/` (`native.sh`,
-        `web.sh`, `mutate.py` and `list3.py`, defaulting to a `../kama-graphics-s32b` worktree), and the whole-gate
-        mutation driver for any package is `.scratch/s32/mutate.py`.
+        WARP draws the same lit bytes natively and in Firefox. 266 cases on each golden leg, 258 in Edge, each debug and
+        release; 7 of 7 mutations caught. Found and fixed first: a leg whose device never opened panicked.
+      - **Next, part 4: the frame** (the depth prepass, 4x MSAA, the 16-bit float target and AgX), where three.js's
+        `max(0)` on every output becomes visible and is built and held. **Its three questions were asked in full at the
+        thirty-third session's end and wait on the owner:**
+        - how 4x MSAA resolves against the HDR scene;
+        - which AgX;
+        - exposure as three.js's multiplier or in EV.
+
+        Settled under the decisions, and reported with them: after the prepass, the main pass tests depth Equal with
+        writes off, the position `@invariant` in both passes, as Godot does.
+      - **Part 4's evidence** is in `.scratch/s33/` (machine-local):
+        - `part4-sources/` holds the survey's sources, pinned: three.js r187, Bevy 0.20.1, Godot 4.7.2, Filament 1.81.0,
+          Unity's Graphics and the WebGPU spec;
+        - `part4/` holds the measurements, `agx_compare.py` and `resolve_edge.py`.
+
+        Step 4's runners are `native.sh`, `golden.sh` (only the lit verdicts), `nodevice.sh`, `mutate.py` and `list4.py`,
+        defaulting to a `../kama-graphics-s33` worktree, which is removed now. `measure.sh` times every gate against
+        older commits.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -309,6 +331,26 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-third session** (2026-11-17). kama's range since the pin held one commit, `cf04df19` (docs), so no bump.
+Nothing came from the Mac for kyoten. Its `@kama/audio` work is on its origin, which this machine's clone has not pulled.
+- **Every suite was green on 0.9.966 at the start,** at the thirty-second session's counts.
+- **Each gate was timed against the commit before its release legs,** with kama quiet: 17.2 minutes before, 23.8 with
+  them (+39 %), recorded in rendering.md § Decided. The first launch ran in Git Bash and measured nothing (item 1).
+- **Found and fixed first, test-first** (kama-graphics `ef418f2`): step 3 left the tests' no-device path pointing at its
+  new stage, so a leg whose device never opened panicked (Edge asked for WARP, status 134). The finishing stage is one
+  named constant, and the gate holds the path.
+- **Step 4 built** (kama-graphics `126ac07`): the lit goldens, red first ("no golden yet"), written by update-goldens
+  with WARP's two legs agreeing. Their face checks were green first and proved by the same 7 mutations as the goldens.
+  **Part 3 is built.**
+- **Part 4 prepared:**
+  - a survey of three.js r187's output path, Bevy, Godot, Filament, Unity HDRP and the WebGPU spec, its claims checked
+    against the downloaded sources;
+  - r187's AgX against Blender's, as Godot 4.7 approximates it: up to 45 steps apart on saturated colours, and 10 at
+    mid-grey;
+  - an HDR edge texel through each resolve.
+
+  Its three questions were asked in full at the end.
 
 **The thirty-second session** (2026-11-17). Every suite was green on the 0.9.965 pin at the start, at the
 thirty-first session's counts. Nothing came from the Mac.
