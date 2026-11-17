@@ -334,6 +334,8 @@ thirty-first session's counts. Nothing came from the Mac.
 - **Step 3 built** (kama-graphics `c3ff5ed`) in a second worktree while the release legs were mutated, then put onto
   them. Its first mutation run found five gaps in the tests, now closed: Fresnel at a grazing angle, F90 other than 1, an
   off-axis camera for the view direction, and the ambient's multiple scattering, amplified past the 8-bit step.
+- **Pushed at the owner's word** ("yes you can push and get things ready for next session"): kyoten, kama-window,
+  kama-gpu, kama-image and kama-graphics, each a fast-forward with nothing new on its origin.
 
 **The thirty-first session** (2026-11-16). Every suite was green on the 0.9.965 pin at the start, at the thirtieth
 session's counts. Nothing came from the Mac. kama's range since the pin held a CI guard (`d817de00`) and a job-pool
