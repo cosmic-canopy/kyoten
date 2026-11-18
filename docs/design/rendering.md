@@ -1244,6 +1244,16 @@
     - **Set aside:** (B) credited without asking; (C) r187's AgX alone, the default until a licence is in hand. r187's
       AgX (three.js, MIT, from Filament, Apache-2.0) is fully licensed, but it is not what Blender shows.
     - Not legal advice.
+    - **The owner asked again at the session's end** ("Did you end up not finding another solution beyond EaryChow's
+      unlicenced repo? ... if Godot uses it I'm doubting there is an issue there? ... can we not build our own?"). The
+      answer: nothing from the repository ships or runs; it is where the method is written down, about a dozen steps and
+      their numbers, and `src/agx.kama` is the library's own code written from them, checked against Blender's table.
+      The alternatives each lose something: Blender's table file is GPL with Blender; Godot's AgX (MIT) approximates the
+      same script, credited to it, so its provenance is the same and its image is not Blender's; r187's AgX is licensed
+      but up to 45 steps from Blender on saturated colours; Troy Sobotka's original AgX states no licence either; a
+      curve of the library's own design would not look like Blender, which is why Blender's is the default. Godot's
+      precedent, and the author's help in its proposal, make an issue unlikely; the request only removes doubt, and the
+      owner may publish on the credit alone (option B) whenever they choose.
   - **Step 1 built the depth prepass** (2026-11-17, the thirty-fourth session, kama-graphics `43bd19a`; its SPEC § The
     renderer and § The compiler): each material's pipeline has a depth-only twin, its own vertex stage with no fragment
     stage, culling the same faces; `render` draws every mesh into depth, then shades it where its depth is the prepass's,
