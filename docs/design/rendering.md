@@ -1455,3 +1455,27 @@
       does not count it, as it does not count the output pass;
     - `antialiasing()` says the method asked for. Both rungs are core WebGPU, so nothing falls back yet; the report of
       the method chosen comes with part 5's report of the device's features.
+  - **Step 5 built it, and so part 4** (the thirty-sixth session, kama-graphics `dad8fe2`; its SPEC § The renderer,
+    § Render targets and § Tests): `Antialiasing` and the property pair; the tone-mapped resolve, a pass of its own reading the
+    shaded pass's stored samples as a `texture_multisampled_2d<f32>`; pipelines kept per count, and a target's
+    multisampled scene and depth made again when the count changes. One renderer draws a box turned 30 degrees into one
+    float target, its method changed between renders, and each texel is held to what its method makes of k of its 4
+    samples, worked in float64: at one sample of four on (20, 4, 1) over a dark clear, red 0.38 by the tone-mapped
+    resolve where the GPU's gives 5.04. The goldens `anti-aliasing-msaa4-tone-mapped`, `anti-aliasing-msaa4` and
+    `anti-aliasing-none`, WARP's two legs agreeing. Every test written before step 5 keeps the GPU's resolve, so no
+    golden moved. 299 cases natively, in Firefox and in Chrome for Testing, 286 in Edge, each debug and release; 24 of 24
+    mutations caught, among them a luma weight and the older tests left on the default. The one expected to be
+    equivalent, a target's record of its count not kept, is caught too: a method set back then keeps the other count's
+    textures.
+    - **Settled while building, and reported:**
+      - the tone-mapped resolve is held within two half-float steps: it rounds twice, the samples stored and the texel
+        written, and undoing the weight multiplies the first by 1/(1 − the mean's brightest channel). WARP measured 1.1
+        steps at one sample of four, every channel about 5.5e-4 of itself low, where a luma weight would read 0.87, a
+        weight never undone 0.27 and the GPU's resolve 5.04;
+      - two guards, each a texel the weight alone would spoil: a sample stored as infinity is taken as 65504, so its edge
+        is a number, never NaN (a box whose shader squares 10^30 holds it on every GPU, since WARP stores a finite
+        overflow as 65504); and the brightest channel is taken at 0 or above in the weight and its undoing alike, so a
+        negative clear colour comes back as it was. Writing that case found the undoing unfloored, which turned a texel
+        all clear to the clear colour over 1.25, fixed before the step was committed;
+      - the multisampled scene is a `TextureBinding` under every method: WebGPU's core has no transient attachment the
+        GPU's resolve alone could take instead, so the usage costs nothing a method without it would save.

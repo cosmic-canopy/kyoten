@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-18, the thirty-fifth session's end)
+## Where it stands (2026-11-18, the thirty-sixth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -100,8 +100,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 288 cases natively, in Firefox and in Chrome for Testing, 278 in Edge, since part 4's step 4 (the
-     thirty-fifth session); 285 and 276 at its start. Its gate also asks Edge for WARP, which it does not offer, and
+   - `@kama/graphics`': 299 cases natively, in Firefox and in Chrome for Testing, 286 in Edge, since part 4's step 5 (the
+     thirty-sixth session); 288 and 278 at its start. Its gate also asks Edge for WARP, which it does not offer, and
      holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
@@ -122,9 +122,12 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-fifth session's end the range held 10 commits, to 0.9.981 (`3e8591b8`), none that kyoten needs:
+     By the thirty-sixth session the range held 16 commits, to 0.9.983 (`00707b6f`), none that kyoten needs:
      0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
-     io_uring watcher (KR-412). A bump is optional until something kyoten needs lands.
+     io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
+     (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
+     compiles. kama rebased its last commit during the session (`3e8591b8`, KR-397's brief, is now `dc0a8a1f`); the pin
+     is still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -267,7 +270,7 @@ the design doc it settles before building on it.
 
         WARP draws the same lit bytes natively and in Firefox. 266 cases on each golden leg, 258 in Edge, each debug and
         release; 7 of 7 mutations caught. Found and fixed first: a leg whose device never opened panicked.
-      - **Part 4, the frame, is under way** (the depth prepass, 4x MSAA, the 16-bit float target and AgX). Its three
+      - **Part 4, the frame, is built** (the depth prepass, 4x MSAA, the 16-bit float target and AgX). Its three
         questions were decided at the thirty-third session's end (rendering § Decided): 4x MSAA resolves by a ladder, a
         tone-mapped resolve best; AgX is both, Blender's the default; exposure is on each camera in EV100. The
         thirty-fourth session added three decisions, each the owner's (A) (rendering § Decided): tone mapping is on each
@@ -289,13 +292,22 @@ the design doc it settles before building on it.
         - **Step 4, 4x MSAA resolved by the GPU, is built** (kama-graphics `c1a9f51`): on by default, the count the
           renderer's, no public switch yet; the four goldens with edges written again; 288 cases, 278 in Edge; 6 of 7
           caught, the seventh (the samples stored) equivalent.
-        - **Next, step 5: the tone-mapped resolve** (part 4's question 1, the ladder's best rung): a full-screen pass
-          reading the 4x scene (`texture_multisampled_2d`, so the samples are stored, not discarded), each sample
-          weighted by 1/(1 + its brightness), averaged, the weight undone; its own golden; and the method's choice on
-          the renderer, which the presets set (rendering § Decided, part 4's question 1 and the thirty-fourth session's
-          "the anti-aliasing method stays on the renderer"). Read the code for any public-API question before building,
-          and ask it in full. Then part 5, pipelines compiled off the frame and the quality presets, then part 6,
-          `examples/cube`.
+        - **How a program chooses the method is decided** (the owner, 2026-11-18, "A (Recommended)"; rendering §
+          Decided, kyoten `d2e6d2c`): one list of whole methods on the renderer, `Antialiasing`, the tone-mapped resolve
+          the default; later methods (8x natively, TAA, SMAA, FXAA) join the same list.
+        - **Step 5 is built, and so part 4** (kama-graphics `dad8fe2`): `Msaa4ToneMapped`, `Msaa4` and `None`, set by
+          `antialiasingMut()` and taking effect at the next render; the tone-mapped resolve, a pass of its own reading
+          the stored samples, with two guards (a sample stored as infinity, a negative clear colour), the second found
+          while writing its case; the older tests kept on the GPU's resolve, so no golden moved; three goldens, one a
+          method; 299 cases, 286 in Edge; 24 of 24 mutations caught.
+        - **Next, part 5: pipelines compiled off the frame, and the quality presets** (rendering § Decided, area 3's
+          item 3 and area 4's question 1), then part 6, `examples/cube`. Read the code for any public-API question
+          before building, and ask it in full. Two met already: three.js r187 compiles inside `render` (a hitch) and
+          asynchronously only in `compileAsync`, skipping an object whose pipeline is not ready (`Pipelines.isReady`),
+          where the decision says never a hitch, so a first frame, a test or a screenshot would draw nothing until its
+          pipelines are ready: how a program waits for them is a question. And part 5 meets rendering question 11
+          (KYR-78, shaders built ahead or at run time, the game's choice), so the two are asked together.
+          `@kama/gpu`'s `createRenderPipelineAsync`, polled, natively on its own isolates, is what compiles them.
       - **Part 4's evidence** is machine-local:
         - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
         - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
@@ -309,6 +321,10 @@ the design doc it settles before building on it.
           and when it loads the DLL; `gpu/` (GPU-16's runners, `mutate.py`, `list1.py`) and `kg/` (`native.sh`,
           `native-m.sh`, `mutate.py`, `mutate-m.py`, `list1.py`, `list2.py`); `unlink_worktree.py`. Every session
           worktree is removed.
+        - `.scratch/s36/`: `suites.sh` (the start's run and its logs); `k1.py`, the one-sample texel worked exactly;
+          `kg/`: `native.sh`, `native-m.sh`, `mutate.py` and `mutate-m.py` (which now take paired replacements, a tuple
+          for `old` and `new`), `list1.py` (step 5's 25), `mutations1.out`, `gate.log`, `update-goldens.log` and the
+          goldens enlarged 8x; the edit scripts; `unlink_worktree.py`. Both session worktrees are removed.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -369,6 +385,18 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-sixth session** (2026-11-18). Nothing new on any origin at the start, and kama's range held nothing kyoten
+needs, so no bump.
+- **Every suite was green on 0.9.978 at the start,** at the thirty-fifth session's counts.
+- **One question in plan mode, answered "A (Recommended)":** how a program chooses its anti-aliasing. Reading the code
+  for step 5 found that step 4 had left the sample count a private 4, and nothing had decided how a program names the
+  method. Recorded as its own commit (kyoten `d2e6d2c`) before the build.
+- **Built:** part 4's step 5 (kama-graphics `dad8fe2`), test-first and mutated, in a worktree with a second for the
+  mutations; so part 4 is built. Found on the way: the tone-mapped resolve rounds to half floats twice, so it is held
+  within two steps where the others hold one (WARP measured 1.1); WARP stores a finite overflow as 65504, so the
+  infinity guard needed a shader that makes a real infinity (10^30 squared); and the undoing of the weight needed the
+  floor the weight has, or a negative clear colour came back over 1.25.
 
 **The thirty-fifth session** (2026-11-17 and 18). Nothing came from the Mac for kyoten; `@kama/audio`'s AUD-2 slot table
 was pulled into this machine's clone.
