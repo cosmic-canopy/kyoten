@@ -2,7 +2,7 @@
 
 **The order of work, and nothing else.** One row per item, a one-line summary, and a link to its reasoning.
 
-Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-78**
+Ids are `KYR-<n>`, permanent, never reused or renumbered. **Next id: KYR-79**
 
 **Everything the vision asks for has a row, at the owner's request (2026-11-01),** so this file is the record of what is
 wanted, including what is far off. A row past NOW is a place in the order, not a decision. Its design questions are
@@ -67,6 +67,7 @@ Its kickoff brief, with the order of work and the hello cube's checks, is [FIRST
 | KYR-19 | **Steamworks as a feature package**: sign-in, achievements, the overlay, invites and Steam networking. From target-platforms question 4 (2026-11-07): kyoten's store-services interface (achievements, leaderboards, cloud saves, presence), with achievements as records and unlocking an Output effect, designed here with Steam its first backend; a Steam-only feature (the Workshop) imported by a game directly, behind a capability | [target-platforms.md](design/target-platforms.md) |
 | KYR-20 | **Steam Deck**: the Linux build, the controller, and the Deck's own checks | [target-platforms.md](design/target-platforms.md) |
 | KYR-21 | **Shipping a game**: release builds, crash reports, licence notices, and bundles for Steam on Windows, Linux and a notarized macOS, plus a web release | [target-platforms.md](design/target-platforms.md) |
+| KYR-78 | **Shaders built ahead or at run time, the game's choice** (the owner, 2026-11-18: "shouldn't that be a choice for the game? Pre-compiling shaders is pretty typical"): a game ships its materials' shaders built, or compiles them while it runs for dynamic needs (hot reload, modding, an editor). The web always compiles WGSL in the browser; natively DXIL waits on wgpu-native passing it through. Questions only | [rendering.md](design/rendering.md) question 11 |
 | KYR-22 | **Parallel work inside a phase**: a job pool (kama's, or kyoten's until kama's lands), when a measurement asks for one | [frame-phases.md](design/frame-phases.md) |
 | KYR-23 | **Live tuning and asset hot reload** | [ai-first-api.md](design/ai-first-api.md) · [tools](design/human-tools.md) |
 | KYR-49 | **2D, as layers**: sprites, shapes, text and a 2D camera, rendered onto a screen layer (over a 3D scene or alone) or into a texture. For 2D games such as FFD's port, HUDs, and screens inside a 3D world | [rendering.md](design/rendering.md) · [examples](design/examples.md) |

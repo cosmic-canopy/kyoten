@@ -92,6 +92,24 @@
     the same simulation state, with agents changing the world through the project database *(inferred)*. What should
     the engine keep true until then so that one can be added: state explicit enough to condition a model on, and an
     Output phase that a renderer other than the rasterizer can fill?
+11. **When shaders are compiled is the game's choice** (KYR-78; the owner, 2026-11-18: "Who said we should compile
+    shaders while the game runs? shouldn't that be a choice for the game? Pre-compiling shaders is pretty typical and I
+    would say probably the most common unless you have dynamic shader needs?"). The direction is the owner's; how is
+    this question's.
+    - **Where it stands:** GFX-1's part 3 (2026-11-15) took a material as a typed node graph compiled at run time,
+      three.js's model, and its decision 3 compiles pipelines off the frame, `renderer.compile(scene:)` ahead and a
+      pipeline cache on disk later natively. Whether a game may ship its shaders built was never asked.
+    - **What limits it today:** on the web a page hands WGSL to the browser, which always compiles it, so a game can
+      build its WGSL ahead but never its DXIL. Natively, wgpu-native v29 takes WGSL or SPIR-V and compiles them itself
+      (naga to HLSL, then DXC or FXC on D3D12); its feature that takes a backend's own shader, DXIL on D3D12, is
+      commented out in its header (`WGPUNativeFeature_PassthroughShaders`), and its pipeline cache is Vulkan's alone
+      (DX12 and Metal unimplemented). So until wgpu-native passes DXIL through, a game on `@kama/gpu` needs DXC (or FXC)
+      beside it on Windows even if it builds every material ahead. The driver's own compile, from DXIL to the GPU's
+      code, happens at run time either way, which is why Unreal precaches pipelines too.
+    - **To decide when the row comes up:** how a game says which (its manifest, or per material); what is built ahead
+      (WGSL from its material records by the `kyoten` tool; DXIL once wgpu-native passes it through, DXC then running on
+      the developer's machine); what a dynamic need keeps at run time (hot reload, modding, an editor, the kama builder);
+      the pipeline cache on disk natively; and how the goldens hold both paths to the same pixels.
 
 ## Decided
 
@@ -1354,3 +1372,28 @@
       inside the DLL under Visual Studio's licence, read before building: the fallback if (A) cannot build. (C) As
       Firefox, Microsoft's runtime DLLs shipped beside the program. The Build Tools install allowed on 2026-11-17 waits
       on (B).
+  - **Decided on 2026-11-18, the owner: `@kama/gpu` fetches Microsoft's own DXC release, as wgpu and Bevy do** ("ya it
+    sounds like we fetch it", after asking "How do others do this? Direct X is meant to be used... why are we trying to
+    work around things?"). It replaces both amendments above.
+    - **(A) needs patches** (the probe, `.scratch/s35/dxc/FINDINGS.md`): DXC takes its Windows path only under
+      `_MSC_VER`, and that path includes Microsoft's ATL, which only Visual Studio ships; 130 of its files use ATL's
+      types. Under mingw-w64 it falls back to its own stand-in for Windows' types, and LLVM's Windows code then clashes
+      with the real headers. Hexops' fork did it in 2023 (21 commits over 44 files, built by Zig, against a DXC two
+      years older), now in its graveyard organisation.
+    - **How others ship it:** wgpu's and Bevy's documentation have a game ship `dxcompiler.dll` and `dxil.dll` from
+      Microsoft's DXC releases, FXC the fallback when they are missing, and wgpu offers a static DXC built from Hexops'
+      fork; Chrome and Firefox build DXC with Microsoft's toolchain; Godot translates its shaders to DXIL through Mesa's
+      NIR. FXC needs no DLL because it is part of Windows; DXC is not.
+    - **Measured:** Microsoft's v1.9.2609 `dxcompiler.dll` and `dxil.dll` import only Windows' DLLs (its runtime linked
+      statically), and with them beside the program native D3D12 offers 44 features with `shader-f16`, on the Radeon
+      880M and on WARP, against FXC's 33. Its terms (`LICENSE-MS.txt` in the release) are Microsoft's for distributable
+      code: an application that ships it adds significant primary functionality, has its distributors and end users
+      agree to terms that protect it and Microsoft at least as much (a game's EULA), and indemnifies Microsoft except
+      for claims based solely on the unmodified code. Not legal advice.
+    - **How:** the package fetches the release pinned by URL and SHA-256 at setup, as it fetches wgpu-native's SDK, and
+      never commits it, so kyoten distributes none of Microsoft's code; whoever ships a game obtains the DLLs from
+      Microsoft under those terms, as a Bevy game's developer does, and the package's documentation says so. FXC stays
+      the next method down when they are missing, reported. Steam's common redistributables (Visual C++, .NET, DirectX
+      9, OpenAL, XNA, PhysX) do not include DXC, so it goes in a game's own depot beside the program, as the Agility SDK
+      does. WARP's two legs are held to agree on every golden with Microsoft's build before r187's golden is written:
+      last session's agreement was measured with Firefox's.
