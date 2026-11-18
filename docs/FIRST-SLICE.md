@@ -373,6 +373,13 @@ backlog, and nothing to kyoten.
 - **Two questions mid-build:** WARP's two legs disagreed on r187's ramp, FXC natively against Firefox's DXC; the owner
   took DXC natively (A), then, once Microsoft's prebuilt binaries were found to carry Microsoft's distribution terms
   (corrected and asked again), DXC built from source as Firefox does (A), and step 3 committed before it (A).
+- **The owner asked once more at the end** whether there was another way than EaryChow's unlicensed repository, and
+  whether we could build our own: answered and recorded under the AgX decision (nothing from it ships; our code is
+  written from its method; each alternative loses Blender's image or its licence; publishing on the credit alone stays
+  the owner's to choose).
+- **Pushed at the owner's word** ("Yes push what you need. and get ready for next session"): kyoten, rebased onto the
+  Mac's pin commit (`69697c8`), and kama-graphics, nothing new on its origin. kama-window, kama-gpu and kama-image did
+  not change.
 
 **The thirty-third session** (2026-11-17). kama's range since the pin held one commit, `cf04df19` (docs), so no bump.
 Nothing came from the Mac for kyoten. Its `@kama/audio` work is on its origin, which this machine's clone has not pulled.
