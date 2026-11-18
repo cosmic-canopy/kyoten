@@ -1330,7 +1330,27 @@
     1. `@kama/gpu` builds DXC from its open source at a pinned tag (v1.9.2609), as Firefox does, under the NCSA licence
        and its components' notices, with a build script as `@kama/window` has for SDL3. DXC's Windows build needs Visual
        Studio 2022's Build Tools (the C++ workload) and the Windows SDK 10.0.26100, which the owner allowed installing on
-       this machine. Set aside: Microsoft's prebuilt DLL under its terms; FXC kept.
+       this machine. Set aside: Microsoft's prebuilt DLL under its terms; FXC kept. **Amended on 2026-11-18, below:**
+       built with msys2's clang, not Visual Studio's tools.
     2. Part 4's step 3 is committed before DXC lands, with Blender's AgX goldens. r187's `AgX` is held on every leg by
        its swatches, within a step of its float64 formulas, and its golden, `tone-mapping-agx`, is written once WARP's two
        legs agree under DXC.
+  - **Amended on 2026-11-18, the owner: DXC is built with msys2's clang, so nothing of Microsoft's ships (A)** ("All as
+    recommended", asked in full in the chat at the thirty-fifth session's start, before anything was installed).
+    - **Found first:** Firefox's `dxcompiler.dll`, built by clang against a Visual Studio sysroot (Mozilla's
+      `taskcluster/scripts/misc/build-dxc.sh`), imports `MSVCP140.dll`, `VCRUNTIME140.dll` and `VCRUNTIME140_1.dll`
+      (`objdump -p`): Microsoft's Visual C++ runtime, which Windows does not include and Firefox ships in its own folder.
+      `@kama/gpu`'s `wgpu_native.dll` imports only Windows' own DLLs, and kama links mingw's C++ runtime into every
+      Windows program statically (kama's `docs/targets.md`). Built as Firefox builds it, DXC would add Microsoft's runtime
+      to every game, under Visual Studio's terms for distributable code. Those terms were not read: Microsoft's page
+      loaded without them. Not legal advice.
+    - **(A):** DXC v1.9.2609 is built in msys2's UCRT64 by clang, the compiler kama drives on Windows, with its C++
+      runtime linked statically as kama links its own. The DLL then imports only Windows' DLLs and carries DXC's NCSA
+      licence, its components' notices and the mingw-w64 runtime's, which every kama program on Windows already
+      carries. Nothing from Visual Studio is installed. It is probed first: Microsoft's build documentation assumes
+      Visual Studio, and Hexops' mach-dxcompiler (2024) built DXC with Zig's clang against mingw-w64 only with patches.
+      A build that needs patches the package would have to keep comes back to the owner with the measurement.
+    - **Set aside for now:** (B) Visual Studio's Build Tools with the static runtime (`/MT`), Microsoft's runtime code
+      inside the DLL under Visual Studio's licence, read before building: the fallback if (A) cannot build. (C) As
+      Firefox, Microsoft's runtime DLLs shipped beside the program. The Build Tools install allowed on 2026-11-17 waits
+      on (B).
