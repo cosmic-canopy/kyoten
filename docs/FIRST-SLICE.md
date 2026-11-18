@@ -145,9 +145,9 @@ the design doc it settles before building on it.
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac rebuilds its pin at `ca0e88e7`** (it is on 0.9.960, kyoten `a3dbe18`), from a clean clone, and runs
-     `tools/test.sh` there, whose legs now run in both builds. A probe of `@kama/audio`'s that calls `run` needs
-     `pace:`; its committed code has none.
+   - **The Mac's pin is on 0.9.966 (`ca0e88e7`) too** (kyoten `69697c8`), rebuilt from a clean clone, and its
+     `tools/test.sh` green with Windows's counts, every wasm leg in both builds. A bump to 0.9.977 rebuilds both. A probe
+     of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
