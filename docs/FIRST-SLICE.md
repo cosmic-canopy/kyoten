@@ -391,6 +391,8 @@ was pulled into this machine's clone.
   it; the playable FPS v1 (KYR-65) beyond those, with audio, UI, physics and bots. Two ways to bring the cube closer,
   offered and not yet decided: the join's steps 7 and 8 in parallel (they need `@kama/window`, which is built), on the
   Mac or a second track; or GFX-1's part 5 after the cube, since A1's checks do not depend on it.
+- **Pushed at the owner's word** ("yes you can push and get things ready for the next session"), nothing new on any
+  origin: kyoten, kama-gpu and kama-graphics. kama-window and kama-image did not change.
 
 **The thirty-fourth session** (2026-11-17). kama's range since the pin held three docs commits (KR-378 ruled and claimed
 by this machine, KR-397 filed), so no bump. The Mac pushed `@kama/audio`'s decisions 32 to 35 and AUD-1's ring and
