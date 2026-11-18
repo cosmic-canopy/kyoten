@@ -143,9 +143,10 @@ the design doc it settles before building on it.
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.966 (`ca0e88e7`)** (kyoten `69697c8`), rebuilt from a clean clone, and its
-     `tools/test.sh` green with Windows's counts, every wasm leg in both builds. Rebuilding it at 0.9.978 (`5e542c55`)
-     joins the two machines again. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) too** (kyoten `9c7704b`, 2026-11-18), rebuilt from a clean clone at the
+     owner's word, its `tools/test.sh` green with Windows's counts, every wasm leg in both builds. KY-3 is narrowed
+     there: a program builds for `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls
+     `run` needs `pace:`; its committed code has none.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
