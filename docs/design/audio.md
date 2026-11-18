@@ -172,3 +172,11 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **"A little ahead" is a call's own time** (decision 32). kyoten passes it as `start(when:)` or as an automation
     event's `startTime:`, and the node keeps it. A call with no time of its own applies in the quantum it lands in. A
     time that has already passed by then takes effect at once, and the package counts it as late.
+- **2026-11-18, the owner: `@kama/audio` takes the program's memory as callbacks** (its `AGENTS.audio.md` § Decided,
+  36). This settles how kyoten hands audio the block its Budget record sizes (2026-11-13, above):
+  - **as `AudioMemory.inArena(arena:)`,** over the std `Arena` kyoten sizes from the record. The arena outlives every
+    context made from it, as it outlives its containers;
+  - **every byte the package allocates is drawn through it,** the context's state included, and only on the program's
+    side, at a make or a hand-back;
+  - **no type names the allocator,** so kyoten's audio module writes `GainNode` and `OfflineAudioContext` as MDN does.
+    A plain type parameter would have put it into every type and every make, and kama infers it at no make.
