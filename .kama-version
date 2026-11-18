@@ -346,5 +346,24 @@
 # engine/kama.json`; fps native and on wasm in both builds; vr checked. 3 min 46 s at a load of 3.8 to 4.5 (2 min 58 s
 # on 0.9.960, before the release legs). Emscripten 7.0.0's Closure runs natively on the M4
 # (google-closure-compiler-macos, arm64), so no Java is needed.
-KAMA_VERSION=0.9.966
-KAMA_BUILD=gca0e88e7
+#
+# 2026-11-18, Windows: 0.9.966 -> 0.9.978 (5e542c55), kama's dev HEAD, from a clean clone (.scratch/kama-pin-src-978);
+# the 0.9.966 binary is kept in .scratch/kama-pin-0.9.966. The pin was on kama's history (merge-base). What moved:
+#   0.9.967 KR-378: a program under `kama run` asks its runner for trusted input, which @kama/window's WIN-24 waited on.
+#   0.9.968 KR-409 and 0.9.978 KR-398: a fiber on the loop's isolate runs between ticks, and its I/O ends a window
+#           package's wait, on Windows too since 0.9.978.
+#   0.9.969, 0.9.970 (KR-281, KR-410): iOS's triple names its minimum, `DARWIN` names the Apple family, and a package's
+#           csources may hold `.swift`.
+#   0.9.971 to 0.9.976 (KR-399 to KR-402, KR-405, KR-406): `try new` covers a `Shared`'s whole block (@kama/audio's
+#           KAUD-8), `Shared.from(owned:)` and every other same-element hand-off refused, a leaf going wherever its
+#           root's contract is asked for, three `try new` defects fixed, and serde's `virtual` node read back.
+#   Probed first, on the staged pin: every manifest passed `kama check` (the engine and its tests, the tool and its
+#   tests, the four packages with their tests and examples, fps, vr, the frame guard), so KR-405 refuses nothing kyoten
+#   or its packages write. Green on it with no other change, at 0.9.966's counts, each debug and release: tools/test.sh
+#   (engine 164 natively and on wasm, the frame guard, the tool's 211, kyoten check, fps, vr checked), @kama/window's
+#   (249, 163 under node, 253 in Edge and Firefox, 264 through the driver), @kama/gpu's (339, 313 in Edge, 316 in
+#   Firefox and Chrome for Testing, both examples), @kama/image's (1,401, the sweep's 197), @kama/graphics' (285
+#   natively, in Firefox and in Chrome for Testing, 276 in Edge). KY-40, KY-45 and KY-58 re-checked, unchanged. The
+#   Mac's pin is 0.9.966 until it is rebuilt there.
+KAMA_VERSION=0.9.978
+KAMA_BUILD=g5e542c55
