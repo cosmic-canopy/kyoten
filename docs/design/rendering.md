@@ -1269,6 +1269,16 @@
       - the named exposures and `ev100For(exposure:)`, which turns three.js's `toneMappingExposure` into EV100, are
         functions, as std names its constants (`pi()`);
       - the output pass is the frame's, so `info()` does not count it.
+  - **Step 3 built tone mapping** (kama-graphics `3899adb`; its SPEC § The camera, § The renderer and § Tests):
+    `ToneMapping::BlenderAgX`, the default, through a 57³ table a renderer makes once from the ported formulas
+    (`blenderAgxTable()`, 87 ms natively at release, not a measurement) and reads tetrahedrally, as OpenColorIO reads
+    Blender's; and `ToneMapping::AgX`, r187's. Twelve of Blender's entries are held within half a half float's step;
+    eighteen swatches through each curve, Blender's within a step of what Blender 5.3 shows, worked from its own table;
+    the `tone-mapping-blender-agx` golden on WARP and SwiftShader. 285 cases natively, in Firefox and in Chrome for
+    Testing, 276 in Edge, each debug and release; 17 of 17 mutations caught. r187's golden waits on DXC natively.
+    - **Settled, and reported:** the earlier tests set their cameras' tone mapping to `None`, so each golden and face
+      check holds its own feature and the curves are held by their own cases; the table is stored as half floats, which
+      move 3 % of its entries one step on the display, within the decided step.
 
 - **2026-11-17, the owner: natively on Windows, `@kama/gpu` compiles shaders with DXC (A)** ("A: DXC natively
   (Recommended)", asked in full in the chat at the thirty-fourth session, when part 4's tone-mapping goldens could not be

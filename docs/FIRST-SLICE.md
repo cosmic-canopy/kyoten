@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-17, the thirty-third session's end)
+## Where it stands (2026-11-17, the thirty-fourth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -96,9 +96,9 @@ the design doc it settles before building on it.
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 266 natively, in Firefox and in Chrome for Testing, 258 in Edge, since part 3's step 4 (the
-     thirty-third session); 259 and 254 before it. Its gate also asks Edge for WARP, which it does not offer, and holds
-     the run to failing cleanly.
+   - `@kama/graphics`': 285 cases natively, in Firefox and in Chrome for Testing, 276 in Edge, since part 4's step 3 (the thirty-fourth session); 266 and 258 at its start.
+     Its gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly. Once `@kama/gpu`
+     ships DXC, each package's gate puts `dxcompiler.dll` on the native legs' path, as it does wgpu-native's.
    - **The release legs cost the five gates 39 % more time, not double** (measured with kama quiet, the thirty-third
      session; rendering.md § Decided): 17.2 minutes before, 23.8 with them, from +13 % for kyoten's to +63 % for
      `@kama/window`'s. Building and the native legs were already debug and release.
@@ -115,8 +115,9 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor ca0e88e7 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirty-third session's end the range still held one commit, `cf04df19`: kama's brief for KR-378, trusted
-     input for a program under `kama run`, measured, which `@kama/window`'s WIN-24 waits on. Docs alone.
+     At the thirty-fourth session's end the range held three commits, docs alone: `cf04df19`, `7e108d07` (KR-378,
+     trusted input for a program under `kama run`, ruled as written and claimed by this machine; KR-397 filed, input on
+     an Android device) and `a15887ca` (KR-378's build map). `@kama/window`'s WIN-24 waits on KR-378.
    - **The pin is on 0.9.966** (`ca0e88e7`) since the thirty-second session's start (`.kama-version`), at the owner's
      word ("Yes you can bump kama"), every suite green on it at the same counts. Before it, 0.9.965 since the thirtieth
      session. `.kama-version` says what moved:
@@ -258,25 +259,38 @@ the design doc it settles before building on it.
 
         WARP draws the same lit bytes natively and in Firefox. 266 cases on each golden leg, 258 in Edge, each debug and
         release; 7 of 7 mutations caught. Found and fixed first: a leg whose device never opened panicked.
-      - **Next, part 4: the frame** (the depth prepass, 4x MSAA, the 16-bit float target and AgX), where three.js's
-        `max(0)` on every output becomes visible and is built and held. **Its three questions are decided** (the owner,
-        at the thirty-third session's end, each (A) and confirmed as the production answers; rendering § Decided):
-        - 4x MSAA resolves by a ladder, a tone-mapped resolve best and the GPU's own next, the presets choosing;
-        - AgX is both, r187's as `AgX` and Blender's under its own name, Blender's the default;
-        - exposure is on each camera in EV100, its default three.js's exposure of 1.
-
-        Settled under area 3's prepass, and reported: the main pass tests depth Equal with writes off, the position
-        `@invariant` in both passes, as Godot does. **Start part 4 with its two checks:** that naga and Tint each honour
-        `@invariant`, and that Blender's AgX formulas, ported from the generator of Blender's table, match that table
-        within a step. Bring either one back to the owner if it fails.
-      - **Part 4's evidence** is in `.scratch/s33/` (machine-local):
-        - `part4-sources/` holds the survey's sources, pinned: three.js r187, Bevy 0.20.1, Godot 4.7.2, Filament 1.81.0,
-          Unity's Graphics and the WebGPU spec;
-        - `part4/` holds the measurements, `agx_compare.py` and `resolve_edge.py`.
-
-        Step 4's runners are `native.sh`, `golden.sh` (only the lit verdicts), `nodevice.sh`, `mutate.py` and `list4.py`,
-        defaulting to a `../kama-graphics-s33` worktree, which is removed now. `measure.sh` times every gate against
-        older commits.
+      - **Part 4, the frame, is under way** (the depth prepass, 4x MSAA, the 16-bit float target and AgX). Its three
+        questions were decided at the thirty-third session's end (rendering § Decided): 4x MSAA resolves by a ladder, a
+        tone-mapped resolve best; AgX is both, Blender's the default; exposure is on each camera in EV100. The
+        thirty-fourth session added three decisions, each the owner's (A) (rendering § Decided): tone mapping is on each
+        camera too; Blender's AgX is a table the renderer makes from the formulas, sampled as OpenColorIO does, its
+        generator credited and a licence asked for; and `@kama/gpu` compiles with DXC natively, built from DXC's source.
+        - **Its two checks:** `@invariant` holds on every Windows leg (a prepass and an Equal pass shade exactly one
+          pass's texels); Blender's formulas reproduce all 185,193 of its table's entries, but Blender shows the table
+          interpolated, up to 22 steps from the formulas, hence the table (`.scratch/s34/FINDINGS.md`).
+        - **Step 1, the depth prepass, is built** (kama-graphics `43bd19a`): 267 cases, 259 in Edge; 12 of 13
+          mutations caught, the 13th (GreaterEqual for Equal) equivalent.
+        - **Step 2, the HDR frame, is built** (kama-graphics `81c3127`): the 16-bit float scene and the output pass,
+          exposure in EV100 and pre-exposed, `max(0)`, `RenderTarget.withFormat`; 279 cases, 271 in Edge; 13 of 13
+          caught. The lit goldens were written again, half floats moving 2 to 44 texels a step.
+        - **Step 3, tone mapping, is built** (kama-graphics `3899adb`): `ToneMapping::BlenderAgX`, the default,
+          and r187's `AgX`; 285 cases natively, in Firefox and in Chrome for Testing, 276 in Edge; 17 of 17 caught. Blender's golden is written; **r187's golden,
+          `tone-mapping-agx`, waits on DXC**: natively FXC and Firefox's DXC round 2 of its 2,048 texels a step apart.
+        - **Next, `@kama/gpu`'s DXC row, brought forward:** install Visual Studio 2022 Build Tools (C++) and the Windows
+          SDK 10.0.26100 through winget (the owner allowed it; it raises one administrator prompt, so say so first);
+          build DXC v1.9.2609 from source with a pinned script, as `@kama/window` builds SDL3, its NCSA notices in the
+          package; put it on each gate's path (wgpu-native already uses `dxcompiler.dll` when it finds it); report FXC
+          when the DLL is missing; hold it by `shader-f16`, which D3D12 offers only under DXC (44 features against 33,
+          `.scratch/s34/dxc/probe/`). Then write r187's golden with WARP's two legs agreeing, then step 4, 4x MSAA with
+          the GPU's resolve, then step 5, the tone-mapped resolve.
+      - **Part 4's evidence** is machine-local:
+        - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
+        - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
+          generator at `ab7415e`, colour-science 0.4.3, and the port and its comparisons in `agx/tools/`;
+          `agx/licence-request.md`, the request for EaryChow, not posted; `dxc/`, the FXC-against-DXC probes and DXC
+          v1.9.2609's release, read for its licence; `kg-tools/`, the runners (`native.sh`, `native-m.sh`, `native-b.sh`,
+          `native-dxc.sh`, `warp2.sh`, `gate*.sh`), `mutate.py` and `list1.py` to `list3.py`. The worktrees
+          `../kama-graphics-s34b` and `-s34m` are removed (`kg-tools/unlink_worktree.py`).
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -309,7 +323,9 @@ the design doc it settles before building on it.
      - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
-   - **Waiting on the owner:** a comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+   - **Waiting on the owner:** posting `.scratch/s34/agx/licence-request.md` as an issue on EaryChow/AgX_LUT_Gen, asking
+     for a permissive licence on the generator Blender's AgX table comes from (rendering § Decided); `@kama/graphics`'
+     first publish waits on the answer. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
@@ -333,6 +349,20 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-fourth session** (2026-11-17). kama's range since the pin held three docs commits (KR-378 ruled and claimed
+by this machine, KR-397 filed), so no bump. The Mac pushed `@kama/audio`'s decisions 32 to 35 and AUD-1's ring and
+backlog, and nothing to kyoten.
+- **Every suite was green on 0.9.966 at the start,** at the thirty-third session's counts.
+- **One question asked in plan mode and decided at once:** tone mapping on each camera (A).
+- **Part 4's two checks ran first:** `@invariant` passed; Blender's AgX against its table failed as worded, and the
+  owner took a table the renderer makes (A), its unlicensed generator credited and a licence asked for (A), after asking
+  "I find it hard to believe we must rely on an unlicenced repo to make this work?". The answer: what is taken is the
+  method, our own code written from it, and only Blender's GPL file could not be shipped.
+- **Steps 1 to 3 built** in worktrees, each test-first and mutated, and committed one by one.
+- **Two questions mid-build:** WARP's two legs disagreed on r187's ramp, FXC natively against Firefox's DXC; the owner
+  took DXC natively (A), then, once Microsoft's prebuilt binaries were found to carry Microsoft's distribution terms
+  (corrected and asked again), DXC built from source as Firefox does (A), and step 3 committed before it (A).
 
 **The thirty-third session** (2026-11-17). kama's range since the pin held one commit, `cf04df19` (docs), so no bump.
 Nothing came from the Mac for kyoten. Its `@kama/audio` work is on its origin, which this machine's clone has not pulled.
