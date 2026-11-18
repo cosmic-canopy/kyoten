@@ -1414,3 +1414,44 @@
       the seam printing one line, once, when an adapter answers on Direct3D 12 without `dxcompiler.dll` loaded; the
       fallback adapter held to `ShaderF16` natively; and the gate needing the DLL on Windows, with one run without it
       held to FXC. `dxil.dll` turned out not to be needed. WARP's two legs agreed on every golden under Microsoft's DLL.
+
+- **2026-11-18, the owner: how a program chooses its anti-aliasing, (A) one list of whole methods on the renderer** ("A
+  (Recommended)", asked in full in the chat at the thirty-sixth session's start, before part 4's step 5 was built).
+  Reading the code for step 5 found that part 4's question 1 decided the ladder and the thirty-fourth session settled the
+  method on the renderer, but nothing had decided how a program names it: step 4 left the sample count a private 4.
+  - **The problem:** a program could not turn anti-aliasing off, as a pixel-art game or a program running its own wants,
+    nor choose a resolve, and a game's graphics menu changes the method while the game runs. The sample count is built
+    into every pipeline and a target's textures, so a change means new ones at the next render. The shape decides what a
+    program can get wrong and where the later methods go: 8x natively, TAA, SMAA, FXAA (FEATURES.md's anti-aliasing
+    row).
+  - **Prior art** (`.scratch/s33/part4-sources/`): three.js r187 takes `antialias` and `samples` when the renderer is
+    made, `samples` a getter only after (`Renderer.js`); Bevy 0.20.1's `Msaa { Off, Sample2, Sample4, Sample8 }` is a
+    component on a camera, changed at any time, with FXAA, SMAA and TAA separate components (`bevy_render/src/view/mod.rs`);
+    Godot 4.7.2's `viewport_set_msaa_3d` (disabled, 2x, 4x, 8x) changes at any time, with screen-space AA and TAA
+    separate; Filament 1.81.0's `MultiSampleAntiAliasingOptions` is `enabled`, `sampleCount` and `customResolve`
+    (`Options.h`); Unreal's is one method list (None, FXAA, TAA, MSAA, TSR), from its documentation.
+  - **(A):** `@nonExhaustive type enum Antialiasing { Msaa4ToneMapped, Msaa4, None }`, a property pair on the renderer,
+    `antialiasing()` and `antialiasingMut()`, as `clearColor`. `Msaa4ToneMapped`, the tone-mapped resolve, is the
+    default, as the presets for desktop and the web take it; `Msaa4` is the GPU's resolve; `None` draws one sample a
+    texel. Every value is valid. A change takes effect at the next render, its pipelines and a target's textures made
+    at the new count, and the pipelines kept per count, so switching back compiles nothing. Later methods join the same
+    list as the ladder's rungs, each naming the GPU features it needs, the next one down taken and reported when one is
+    missing: 8x natively where the adapter has it (WebGPU's core allows only 1 and 4), TAA, SMAA, FXAA. It is area 4's
+    model as it stands: one technique, one ladder, a preset picking one method.
+  - **Its cost:** a combination, such as MSAA with SMAA, is a method of its own when one is wanted, as in Unreal's list;
+    a changed method compiles at the next render, a hitch until part 5 compiles pipelines off the frame.
+  - **Set aside:** (B) two settings, a sample count and a resolve, as Bevy and Filament: a resolve set with MSAA off means
+    nothing, and the post-process methods would add a third setting, so one ladder becomes three; (C) chosen when the
+    renderer is made and fixed after, as three.js r187: a settings menu would need a new renderer, which compiles every
+    pipeline again anyway.
+  - **Settled with it, laid out with the question and reported:**
+    - the tests written before step 5 keep the GPU's resolve, so their goldens keep their bytes, as step 3 set those
+      tests' tone mapping to `None`; new goldens hold the tone-mapped resolve and `None`;
+    - the weight is a sample's brightest channel, Lottes' reversible form as Filament's `customResolve`: each sample
+      `c / (1 + max3(c))`, averaged, then `c / (1 − max3(c))`, the form part 4's question 1 measured with
+      (`.scratch/s33/part4/resolve_edge.py`; a luma weight, Unity HDRP's, agrees on grey). Alpha is averaged plainly,
+      as the GPU's resolve averages it;
+    - the resolve is a pass of its own writing the linear scene, as the decision says, so later effects read it; `info()`
+      does not count it, as it does not count the output pass;
+    - `antialiasing()` says the method asked for. Both rungs are core WebGPU, so nothing falls back yet; the report of
+      the method chosen comes with part 5's report of the device's features.
