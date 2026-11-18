@@ -293,7 +293,7 @@ the design doc it settles before building on it.
           renderer's, no public switch yet; the four goldens with edges written again; 288 cases, 278 in Edge; 6 of 7
           caught, the seventh (the samples stored) equivalent.
         - **How a program chooses the method is decided** (the owner, 2026-11-18, "A (Recommended)"; rendering §
-          Decided, kyoten `d2e6d2c`): one list of whole methods on the renderer, `Antialiasing`, the tone-mapped resolve
+          Decided, kyoten `a2c9c41`): one list of whole methods on the renderer, `Antialiasing`, the tone-mapped resolve
           the default; later methods (8x natively, TAA, SMAA, FXAA) join the same list.
         - **Step 5 is built, and so part 4** (kama-graphics `dad8fe2`): `Msaa4ToneMapped`, `Msaa4` and `None`, set by
           `antialiasingMut()` and taking effect at the next render; the tone-mapped resolve, a pass of its own reading
@@ -391,7 +391,7 @@ needs, so no bump.
 - **Every suite was green on 0.9.978 at the start,** at the thirty-fifth session's counts.
 - **One question in plan mode, answered "A (Recommended)":** how a program chooses its anti-aliasing. Reading the code
   for step 5 found that step 4 had left the sample count a private 4, and nothing had decided how a program names the
-  method. Recorded as its own commit (kyoten `d2e6d2c`) before the build.
+  method. Recorded as its own commit (kyoten `a2c9c41`) before the build.
 - **Built:** part 4's step 5 (kama-graphics `dad8fe2`), test-first and mutated, in a worktree with a second for the
   mutations; so part 4 is built. Found on the way: the tone-mapped resolve rounds to half floats twice, so it is held
   within two steps where the others hold one (WARP measured 1.1); WARP stores a finite overflow as 65504, so the
