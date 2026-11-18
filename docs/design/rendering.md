@@ -1155,6 +1155,9 @@
        name. It is held to the lookup table Blender ships, its formulas ported from the generator that table is made
        from, so the web downloads no table.
      - It is the default because glTF art comes from Blender, and what an artist sees there is what the program shows.
+       **Amended by the owner at the thirty-fourth session's end:** Blender's AgX stays the default, but Blender is not
+       the source of truth: "We have no idea what tools artists will use... and if we use ai tools it can be just
+       about anything". It is the default as a good, widely used curve (Blender's and Godot's), not to match one tool.
      - **The problem:** the two differ by up to 45 steps on saturated colours and 10 at mid-grey. A linear (1, 0, 0) is
        (221, 92, 73) under r187's and (222, 64, 28) under Blender's (`agx_compare.py`, measured against Godot 4.7's
        approximation of Blender's, not Blender's table).
@@ -1254,6 +1257,14 @@
       curve of the library's own design would not look like Blender, which is why Blender's is the default. Godot's
       precedent, and the author's help in its proposal, make an issue unlikely; the request only removes doubt, and the
       owner may publish on the credit alone (option B) whenever they choose.
+    - **The owner's concern is legal ambiguity** ("The main thing I was trying to avoid was legal ambiguity"). Every
+      AgX shares it: Filament's (Apache-2.0) says its "matrices [are] taken from Blender's implementation of AgX",
+      citing `EaryChow/AgX_LUT_Gen/AgXBaseRec2020.py`, and three.js's (MIT) is Filament's, so switching to r187's AgX
+      would move the ambiguity, not remove it. The generator in turn builds on Troy Sobotka's sigmoid and SB2383
+      settings, whose repositories state no licence either. So two requests are drafted for the owner to post, to
+      EaryChow and to Troy Sobotka (`.scratch/s34/agx/licence-request.md`, `licence-request-sobotka.md`); the curves with
+      no AgX lineage are Khronos's PBR Neutral, ACES and Reinhard. If no answer has come by the first publish, the
+      owner decides then: publish on the precedent, or a clean curve as the default with AgX out of the package.
   - **Step 1 built the depth prepass** (2026-11-17, the thirty-fourth session, kama-graphics `43bd19a`; its SPEC § The
     renderer and § The compiler): each material's pipeline has a depth-only twin, its own vertex stage with no fragment
     stage, culling the same faces; `render` draws every mesh into depth, then shades it where its depth is the prepass's,

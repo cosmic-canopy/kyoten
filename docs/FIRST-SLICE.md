@@ -333,9 +333,10 @@ the design doc it settles before building on it.
      - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
-   - **Waiting on the owner:** posting `.scratch/s34/agx/licence-request.md` as an issue on EaryChow/AgX_LUT_Gen, asking
-     for a permissive licence on the generator Blender's AgX table comes from (rendering § Decided); `@kama/graphics`'
-     first publish waits on the answer. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
+   - **Waiting on the owner:** posting two requests for a permissive licence, which every AgX's lineage lacks
+     (rendering § Decided): `.scratch/s34/agx/licence-request.md` on EaryChow/AgX_LUT_Gen, and
+     `licence-request-sobotka.md` on Troy Sobotka's AgX or SB2383-Configuration-Generation. `@kama/graphics`' first
+     publish waits on the answers. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
      drafted in the fourteenth session's chat. Nothing has been posted to gfx-rs. An issue for gfx-rs/wgpu, drafted in
      the nineteenth session (`.scratch/gpu4-part3/wgpu-issue.md`, on this machine): wgpu takes alpha to coverage at
      one sample, natively and in Firefox, where WebGPU refuses it. Another, drafted in the twenty-second session
