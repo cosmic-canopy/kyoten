@@ -94,6 +94,9 @@ or rebuilt from here.
   it with no other change, then update `.kama-version` with what moved and re-check `docs/KAMA_GAPS.md`'s entries.
 - **The packages' suites take `KAMA`,** so run them on kyoten's pin:
   `KAMA=$PWD/.kama-pin/kama.exe ../kama-gpu/tools/test.sh`.
+- **On Windows, `@kama/gpu`'s and `@kama/graphics`' gates need DXC** (rendering.md § Decided, 2026-11-18): run
+  `../kama-gpu/tools/fetch-dxc.sh` once on a machine, which puts Microsoft's pinned `dxcompiler.dll` in
+  `../kama-gpu/third_party/dxc/<platform>/`, git-ignored, where both gates look.
 
 **`tools/test.sh` is the suite** (§ Rules). It runs `kama check` on the engine and its tests program, then the
 engine's tests (`engine/tests/`, one program), native debug and release and on wasm under node, debug and release,

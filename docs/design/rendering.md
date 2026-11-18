@@ -1318,6 +1318,19 @@
     - **Settled, and reported:** the earlier tests set their cameras' tone mapping to `None`, so each golden and face
       check holds its own feature and the curves are held by their own cases; the table is stored as half floats, which
       move 3 % of its entries one step on the display, within the decided step.
+  - **r187's golden, `tone-mapping-agx`, is written** (2026-11-18, the thirty-fifth session, kama-graphics `61c5661`), once
+    `@kama/gpu` shipped DXC natively (kama-gpu `b123a03`, below): `tools/legs.sh` puts its `dxcompiler.dll` on the native
+    legs' PATH, and `update-goldens.sh` wrote the golden with WARP's two legs agreeing. Held by mutation: DXC left off
+    the PATH fails it natively by FXC's 2 texels. 286 cases natively, in Firefox and in Chrome for Testing, 276 in Edge.
+  - **Step 4 built 4x MSAA, resolved by the GPU** (the same session, kama-graphics `c1a9f51`; its SPEC § The renderer,
+    § Render targets and § Tests), the ladder's second rung: both passes at 4 samples a texel, on by default, the GPU
+    averaging the linear scene into the scene's texture and discarding the samples. A white box turned 30 degrees holds
+    an edge's texels to a quarter, a half and three quarters, linear in a float target and 137, 188 and 225 in an 8-bit
+    one; three earlier colour checks now take an edge's texel as the resolve of 4 samples of the scene's colours. The
+    four goldens with edges were written again. 288 cases natively, in Firefox and in Chrome for Testing, 278 in Edge,
+    Edge's real GPU giving the same quarters; 6 of 7 mutations caught, the seventh (the samples stored) equivalent.
+    - **Settled, and reported:** the sample count is the renderer's, fixed at 4 until the presets set the method (part
+      5), with no public switch yet, so step 5's tone-mapped resolve and the method's choice arrive together.
 
 - **2026-11-17, the owner: natively on Windows, `@kama/gpu` compiles shaders with DXC (A)** ("A: DXC natively
   (Recommended)", asked in full in the chat at the thirty-fourth session, when part 4's tone-mapping goldens could not be
@@ -1397,3 +1410,7 @@
       9, OpenAL, XNA, PhysX) do not include DXC, so it goes in a game's own depot beside the program, as the Agility SDK
       does. WARP's two legs are held to agree on every golden with Microsoft's build before r187's golden is written:
       last session's agreement was measured with Firefox's.
+    - **Built the same day as `@kama/gpu`'s GPU-16** (kama-gpu `b123a03`, its AGENTS.gpu.md item 16): `tools/fetch-dxc.sh`;
+      the seam printing one line, once, when an adapter answers on Direct3D 12 without `dxcompiler.dll` loaded; the
+      fallback adapter held to `ShaderF16` natively; and the gate needing the DLL on Windows, with one run without it
+      held to FXC. `dxil.dll` turned out not to be needed. WARP's two legs agreed on every golden under Microsoft's DLL.

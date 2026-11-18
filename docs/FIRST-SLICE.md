@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-17, the thirty-fourth session's end)
+## Where it stands (2026-11-18, the thirty-fifth session's end)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -54,6 +54,9 @@ the design doc it settles before building on it.
   map no longer ends the program.
 - **`queue.writeTexture` is built** (the thirtieth session, below; kama-gpu `27760aa`, its AGENTS.gpu.md item 14), brought
   forward from GPU-8 at the owner's word for `@kama/graphics`' DFG table, by WebGPU's full description.
+- **GPU-16, DXC natively on Windows, is built** (the thirty-fifth session, below; kama-gpu `b123a03`, its item 16):
+  Microsoft's `dxcompiler.dll`, fetched pinned by `tools/fetch-dxc.sh` and never committed, and one line printed when
+  Direct3D 12 falls back to FXC.
 
   No question is open in either package.
 - **`@kama/image` is seeded** (the twenty-second session, `../kama-image`, KYR-77): image codecs, PNG first, a package
@@ -84,21 +87,25 @@ the design doc it settles before building on it.
 
 **The join waits on Track 1. Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.966+gca0e88e7`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.978+g5e542c55`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
-   twice on each leg. The closing counts, on 0.9.966:
+   twice on each leg. The closing counts, on 0.9.978:
    - tools/test.sh: engine 164 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 211; kyoten check; fps native, and on wasm in both builds; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
-   - `@kama/gpu`'s: 339, 313 in Edge, 316 in Firefox and Chrome for Testing, both examples on every leg;
+   - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
+     Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 285 cases natively, in Firefox and in Chrome for Testing, 276 in Edge, since part 4's step 3 (the thirty-fourth session); 266 and 258 at its start.
-     Its gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly. Once `@kama/gpu`
-     ships DXC, each package's gate puts `dxcompiler.dll` on the native legs' path, as it does wgpu-native's.
+   - `@kama/graphics`': 288 cases natively, in Firefox and in Chrome for Testing, 278 in Edge, since part 4's step 4 (the
+     thirty-fifth session); 285 and 276 at its start. Its gate also asks Edge for WARP, which it does not offer, and
+     holds the run to failing cleanly.
+   - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
+     `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
+     in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
    - **The release legs cost the five gates 39 % more time, not double** (measured with kama quiet, the thirty-third
      session; rendering.md § Decided): 17.2 minutes before, 23.8 with them, from +13 % for kyoten's to +63 % for
      `@kama/window`'s. Building and the native legs were already debug and release.
@@ -111,26 +118,17 @@ the design doc it settles before building on it.
      beside a suite.
    - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
      emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
-   - **Read `../kama`'s log since `ca0e88e7`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor ca0e88e7 HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `5e542c55`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirty-fourth session's start the range held three docs commits; by its end, 23 commits, to 0.9.977
-     (`8ba16981`), read then but not yet bumped to:
-     - **0.9.967 (`20ead95a`): KR-378 is built.** A program under `kama run` asks `std::app::runner` for trusted input,
-       which `@kama/window`'s WIN-24 (its driver retired) waited on;
-     - 0.9.968: a fiber on the loop's isolate runs between ticks (KR-409); 0.9.969 and 0.9.970: iOS's triple, the
-       `DARWIN` flag and `.swift` csources (KR-281, KR-410);
-     - **0.9.971 to 0.9.976: `Shared` and handle hand-offs change:** `try new` covers a `Shared`'s whole block (KR-399,
-       which answers `@kama/audio`'s KAUD-8), `Shared.from(owned:)`, and "every other same-element hand-off is refused"
-       (KR-405), a leaf going wherever its root's contract is asked for (KR-406), and three `try new` defects
-       (KR-400 to KR-402). KY-58 (KR-395) is not among them.
-
-     **Propose the bump to 0.9.977 at the next session's start,** as its own commit: stage a clean pin, probe the
-     packages on it first (KR-405 may refuse a hand-off they make), run every suite, then decide.
-   - **The pin is on 0.9.966** (`ca0e88e7`) since the thirty-second session's start (`.kama-version`), at the owner's
-     word ("Yes you can bump kama"), every suite green on it at the same counts. Before it, 0.9.965 since the thirtieth
-     session. `.kama-version` says what moved:
+     By the thirty-fifth session's end the range held 10 commits, to 0.9.981 (`3e8591b8`), none that kyoten needs:
+     0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
+     io_uring watcher (KR-412). A bump is optional until something kyoten needs lands.
+   - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
+     word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
+     staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
+     can be built.** Before it, 0.9.966 since the thirty-second session. `.kama-version` says what moved:
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
@@ -145,14 +143,13 @@ the design doc it settles before building on it.
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.966 (`ca0e88e7`) too** (kyoten `69697c8`), rebuilt from a clean clone, and its
-     `tools/test.sh` green with Windows's counts, every wasm leg in both builds. A bump to 0.9.977 rebuilds both. A probe
-     of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
+   - **The Mac's pin is on 0.9.966 (`ca0e88e7`)** (kyoten `69697c8`), rebuilt from a clean clone, and its
+     `tools/test.sh` green with Windows's counts, every wasm leg in both builds. Rebuilding it at 0.9.978 (`5e542c55`)
+     joins the two machines again. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its committed code has none.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
-       worked around in GFX-1's part 2;
-     - kama's KR-378.
+       worked around in GFX-1's part 2.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -274,7 +271,8 @@ the design doc it settles before building on it.
         tone-mapped resolve best; AgX is both, Blender's the default; exposure is on each camera in EV100. The
         thirty-fourth session added three decisions, each the owner's (A) (rendering § Decided): tone mapping is on each
         camera too; Blender's AgX is a table the renderer makes from the formulas, sampled as OpenColorIO does, its
-        generator credited and a licence asked for; and `@kama/gpu` compiles with DXC natively, built from DXC's source.
+        generator credited and a licence asked for; and `@kama/gpu` compiles with DXC natively. The thirty-fifth settled
+        how: Microsoft's own release, fetched, as wgpu and Bevy have a game ship it (rendering § Decided, 2026-11-18).
         - **Its two checks:** `@invariant` holds on every Windows leg (a prepass and an Equal pass shade exactly one
           pass's texels); Blender's formulas reproduce all 185,193 of its table's entries, but Blender shows the table
           interpolated, up to 22 steps from the formulas, hence the table (`.scratch/s34/FINDINGS.md`).
@@ -284,15 +282,19 @@ the design doc it settles before building on it.
           exposure in EV100 and pre-exposed, `max(0)`, `RenderTarget.withFormat`; 279 cases, 271 in Edge; 13 of 13
           caught. The lit goldens were written again, half floats moving 2 to 44 texels a step.
         - **Step 3, tone mapping, is built** (kama-graphics `3899adb`): `ToneMapping::BlenderAgX`, the default,
-          and r187's `AgX`; 285 cases natively, in Firefox and in Chrome for Testing, 276 in Edge; 17 of 17 caught. Blender's golden is written; **r187's golden,
-          `tone-mapping-agx`, waits on DXC**: natively FXC and Firefox's DXC round 2 of its 2,048 texels a step apart.
-        - **Next, `@kama/gpu`'s DXC row, brought forward:** install Visual Studio 2022 Build Tools (C++) and the Windows
-          SDK 10.0.26100 through winget (the owner allowed it; it raises one administrator prompt, so say so first);
-          build DXC v1.9.2609 from source with a pinned script, as `@kama/window` builds SDL3, its NCSA notices in the
-          package; put it on each gate's path (wgpu-native already uses `dxcompiler.dll` when it finds it); report FXC
-          when the DLL is missing; hold it by `shader-f16`, which D3D12 offers only under DXC (44 features against 33,
-          `.scratch/s34/dxc/probe/`). Then write r187's golden with WARP's two legs agreeing, then step 4, 4x MSAA with
-          the GPU's resolve, then step 5, the tone-mapped resolve.
+          and r187's `AgX`; 285 cases natively, in Firefox and in Chrome for Testing, 276 in Edge; 17 of 17 caught.
+        - **r187's golden, `tone-mapping-agx`, is written** (kama-graphics `61c5661`), once `@kama/gpu` shipped DXC
+          (kama-gpu `b123a03`): the native legs put its `dxcompiler.dll` on the PATH, and WARP's two legs agree.
+        - **Step 4, 4x MSAA resolved by the GPU, is built** (kama-graphics `c1a9f51`): on by default, the count the
+          renderer's, no public switch yet; the four goldens with edges written again; 288 cases, 278 in Edge; 6 of 7
+          caught, the seventh (the samples stored) equivalent.
+        - **Next, step 5: the tone-mapped resolve** (part 4's question 1, the ladder's best rung): a full-screen pass
+          reading the 4x scene (`texture_multisampled_2d`, so the samples are stored, not discarded), each sample
+          weighted by 1/(1 + its brightness), averaged, the weight undone; its own golden; and the method's choice on
+          the renderer, which the presets set (rendering § Decided, part 4's question 1 and the thirty-fourth session's
+          "the anti-aliasing method stays on the renderer"). Read the code for any public-API question before building,
+          and ask it in full. Then part 5, pipelines compiled off the frame and the quality presets, then part 6,
+          `examples/cube`.
       - **Part 4's evidence** is machine-local:
         - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
         - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
@@ -301,6 +303,11 @@ the design doc it settles before building on it.
           v1.9.2609's release, read for its licence; `kg-tools/`, the runners (`native.sh`, `native-m.sh`, `native-b.sh`,
           `native-dxc.sh`, `warp2.sh`, `gate*.sh`), `mutate.py` and `list1.py` to `list3.py`. The worktrees
           `../kama-graphics-s34b` and `-s34m` are removed (`kg-tools/unlink_worktree.py`).
+        - `.scratch/s35/`: `suites.sh` and `bump.sh` (the start and the bump); `dxc/FINDINGS.md`, the clang build's probe
+          and why it needs patches, with DXC's source and build; `dxc/probe2/modes.c`, which compiler wgpu-native uses
+          and when it loads the DLL; `gpu/` (GPU-16's runners, `mutate.py`, `list1.py`) and `kg/` (`native.sh`,
+          `native-m.sh`, `mutate.py`, `mutate-m.py`, `list1.py`, `list2.py`); `unlink_worktree.py`. Every session
+          worktree is removed.
       - **Since KY-57's fix, Chromium under `kama run` can take SwiftShader** (measured on 0.9.956 with `@kama/graphics`'
         tests).
         - **The settings:** Edge needs `--enable-unsafe-webgpu`. The pinned Chrome for Testing needs that,
@@ -326,9 +333,10 @@ the design doc it settles before building on it.
         shell. The probe's page runner, which works in every browser, is `.scratch/gfx1-probe/run.mjs`. **For
         `@kama/graphics`, `.scratch/gfx1-part2/tools/`** (its README): the same driver pointed there, with runners that
         hold a mutation to the gate's own checks, and part 2's mutation list; part 1's are in `.scratch/gfx1-part1/tools/`.
-   2. `@kama/window`'s WIN-24, the drivers retired, once kama gives trusted input (KR-378). Since 0.9.956 the pinned
-      Chrome for Testing loads a page under `kama run`, given `--chromium-arg --disable-features=NetworkServiceSandbox`,
-      which was WIN-24's other condition. The device scale moved to `kama run --scale 1.5` in the eighteenth session.
+   2. `@kama/window`'s WIN-24, the drivers retired, now that kama gives trusted input (KR-378, built in 0.9.967 and on the
+      pin since 0.9.978). Since 0.9.956 the pinned Chrome for Testing loads a page under `kama run`, given
+      `--chromium-arg --disable-features=NetworkServiceSandbox`, which was WIN-24's other condition. The device scale
+      moved to `kama run --scale 1.5` in the eighteenth session.
    - **Reached kama on 2026-11-14:**
      - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
      - KY-57 is fixed (0.9.956);
@@ -360,6 +368,29 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-fifth session** (2026-11-17 and 18). Nothing came from the Mac for kyoten; `@kama/audio`'s AUD-2 slot table
+was pulled into this machine's clone.
+- **Every suite was green on 0.9.966 at the start,** at the thirty-fourth session's counts.
+- **Two questions in plan mode, answered "All as recommended":** the bump, and DXC built with msys2's clang, which
+  reading Firefox's DLL had shown to be the only build route shipping none of Microsoft's runtime.
+- **The bump to 0.9.978** (kyoten `f4d545c`), probed first with `kama check` on every manifest, then every suite green
+  at the same counts.
+- **The clang route needed patches** (`.scratch/s35/dxc/FINDINGS.md`: DXC's Windows path is MSVC's and ATL's alone).
+  The owner asked "How do others do this? Direct X is meant to be used... why are we trying to work around things?";
+  answered from wgpu's, Bevy's, Firefox's, Chrome's and Godot's practice, the owner took Microsoft's own release,
+  fetched (rendering § Decided, 2026-11-18). Then: "Who said we should compile shaders while the game runs? shouldn't
+  that be a choice for the game?": nobody had decided it, so it is KYR-78 and rendering question 11, questions only;
+  on the web the browser always compiles, and natively wgpu-native v29 cannot yet take DXIL. Steam's common
+  redistributables do not include DXC.
+- **Built:** `@kama/gpu`'s GPU-16 (kama-gpu `b123a03`), after a fix found on the way, the gate installing dependencies
+  before its bindings check, as a fresh clone needs (kama-gpu `06a0946`, proved in a fresh worktree); r187's golden
+  (kama-graphics `61c5661`); part 4's step 4, 4x MSAA (kama-graphics `c1a9f51`). Each test-first and mutated.
+- **The owner asked how far the lit cube and the FPS demo are.** The answer, from the pace so far: the cube about 7 to
+  11 sessions (GFX-1's step 5, parts 5 and 6, then the join's steps 7 to 10); slice A2 and slice B some 10 to 20 after
+  it; the playable FPS v1 (KYR-65) beyond those, with audio, UI, physics and bots. Two ways to bring the cube closer,
+  offered and not yet decided: the join's steps 7 and 8 in parallel (they need `@kama/window`, which is built), on the
+  Mac or a second track; or GFX-1's part 5 after the cube, since A1's checks do not depend on it.
 
 **The thirty-fourth session** (2026-11-17). kama's range since the pin held three docs commits (KR-378 ruled and claimed
 by this machine, KR-397 filed), so no bump. The Mac pushed `@kama/audio`'s decisions 32 to 35 and AUD-1's ring and
