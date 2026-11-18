@@ -1244,3 +1244,46 @@
     - **Set aside:** (B) credited without asking; (C) r187's AgX alone, the default until a licence is in hand. r187's
       AgX (three.js, MIT, from Filament, Apache-2.0) is fully licensed, but it is not what Blender shows.
     - Not legal advice.
+  - **Step 1 built the depth prepass** (2026-11-17, the thirty-fourth session, kama-graphics `43bd19a`; its SPEC § The
+    renderer and § The compiler): each material's pipeline has a depth-only twin, its own vertex stage with no fragment
+    stage, culling the same faces; `render` draws every mesh into depth, then shades it where its depth is the prepass's,
+    the depth tested Equal and read only; the clip position is `@invariant`. Every golden is the same bytes. 267 cases
+    natively, in Firefox and in Chrome for Testing, 259 in Edge, each debug and release; 12 of 13 mutations caught, a
+    camera inside a room seeing a box outside it, new, alone catching a prepass that culls nothing; the 13th, GreaterEqual
+    for Equal, is equivalent after a full prepass, and is Bevy's choice.
+    - **Settled, and reported:** the prepass reuses each material's own vertex stage; `info()`'s `calls` and `triangles`
+      count both passes' draws, as three.js counts a shadow pass's.
+  - **Step 2 built the HDR frame** (kama-graphics `81c3127`; its SPEC § The renderer, § Render targets, § The camera,
+    § Reading a target back and § The compiler): the scene is drawn in linear HDR into a 16-bit float texture, an 8-bit
+    target's own or a 16-bit float target itself, and an output pass writes an 8-bit target from it through the camera's
+    tone mapping; exposure on each camera in EV100, its default three.js's exposure of 1, Bevy's named values;
+    `max(0)` on every material's output, as three.js r187's; `RenderTarget.withFormat` and `TargetFormat`, a float
+    target read back as an `Rgba16Float` image. 279 cases natively, in Firefox and in Chrome for Testing, 271 in Edge,
+    each debug and release; 13 of 13 mutations caught. The three lit goldens were written again: storing the scene as
+    half floats moves 2 to 44 texels of each by one step, never more.
+    - **Settled, and reported:**
+      - the scene is pre-exposed, as Filament, Bevy and Unreal: every material's output and the clear colour are scaled
+        by the exposure before they are stored, so sunlight's 100,000 lux stays within a half float. The exposure is the
+        camera's whatever its tone mapping, where three.js applies `toneMappingExposure` in its tone mapping alone, and
+        the clear colour is tone mapped with the scene, as three.js r187 tone maps its cleared frame target;
+      - the named exposures and `ev100For(exposure:)`, which turns three.js's `toneMappingExposure` into EV100, are
+        functions, as std names its constants (`pi()`);
+      - the output pass is the frame's, so `info()` does not count it.
+
+- **2026-11-17, the owner: natively on Windows, `@kama/gpu` compiles shaders with DXC (A)** ("A: DXC natively
+  (Recommended)", asked in full in the chat at the thirty-fourth session, when part 4's tone-mapping goldens could not be
+  written).
+  - **The problem:** natively, wgpu-native compiles its HLSL with FXC, its default; Firefox, Chrome and Edge compile with
+    DXC. WARP natively (FXC) and WARP in Firefox (DXC) drew r187's AgX ramp with 2 of its 2,048 texels one step apart,
+    so `tools/update-goldens.sh` refused. One golden per software GPU (GFX-1's question 3) assumed one compiler per GPU.
+    Forced onto DXC (`WGPU_DX12_COMPILER=dxc`, Firefox's `dxcompiler.dll`, an experiment), native WARP drew Firefox's
+    bytes for both tone-mapping ramps and all six earlier goldens.
+  - **Beyond the goldens:** FXC is Microsoft's legacy compiler, "old, slow, and unmaintained" in wgpu-native's own header,
+    and stops at Shader Model 5.1. wgpu-native's 64-bit integers on D3D12 are "DXC only"; wave operations, mesh shaders
+    and ray tracing on D3D12 (area 4's PR #630) need Shader Model 6, which only DXC compiles.
+  - **(A):** `@kama/gpu` vendors Microsoft's `dxcompiler.dll` from a pinned DXC release (v1.9.2609, LLVM's
+    University of Illinois/NCSA licence, in its notices) and hands it to wgpu-native. When the DLL is missing, FXC is the
+    next method down, reported, never stopping a program. Its cost is the DLL beside every native Windows program, about
+    20 MB, measured when vendored; the web build is untouched. Goldens stay one per software GPU. It is a `@kama/gpu` row
+    brought forward, as `writeTexture` was, built before part 4's step 3 writes its goldens.
+  - **Set aside:** (B) FXC kept, a golden per leg where two legs of one GPU differ, Shader Model 6 waiting.
