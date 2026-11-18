@@ -115,9 +115,19 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor ca0e88e7 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     At the thirty-fourth session's end the range held three commits, docs alone: `cf04df19`, `7e108d07` (KR-378,
-     trusted input for a program under `kama run`, ruled as written and claimed by this machine; KR-397 filed, input on
-     an Android device) and `a15887ca` (KR-378's build map). `@kama/window`'s WIN-24 waits on KR-378.
+     At the thirty-fourth session's start the range held three docs commits; by its end, 23 commits, to 0.9.977
+     (`8ba16981`), read then but not yet bumped to:
+     - **0.9.967 (`20ead95a`): KR-378 is built.** A program under `kama run` asks `std::app::runner` for trusted input,
+       which `@kama/window`'s WIN-24 (its driver retired) waited on;
+     - 0.9.968: a fiber on the loop's isolate runs between ticks (KR-409); 0.9.969 and 0.9.970: iOS's triple, the
+       `DARWIN` flag and `.swift` csources (KR-281, KR-410);
+     - **0.9.971 to 0.9.976: `Shared` and handle hand-offs change:** `try new` covers a `Shared`'s whole block (KR-399,
+       which answers `@kama/audio`'s KAUD-8), `Shared.from(owned:)`, and "every other same-element hand-off is refused"
+       (KR-405), a leaf going wherever its root's contract is asked for (KR-406), and three `try new` defects
+       (KR-400 to KR-402). KY-58 (KR-395) is not among them.
+
+     **Propose the bump to 0.9.977 at the next session's start,** as its own commit: stage a clean pin, probe the
+     packages on it first (KR-405 may refuse a hand-off they make), run every suite, then decide.
    - **The pin is on 0.9.966** (`ca0e88e7`) since the thirty-second session's start (`.kama-version`), at the owner's
      word ("Yes you can bump kama"), every suite green on it at the same counts. Before it, 0.9.965 since the thirtieth
      session. `.kama-version` says what moved:
