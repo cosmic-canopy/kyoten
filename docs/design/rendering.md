@@ -1281,9 +1281,25 @@
   - **Beyond the goldens:** FXC is Microsoft's legacy compiler, "old, slow, and unmaintained" in wgpu-native's own header,
     and stops at Shader Model 5.1. wgpu-native's 64-bit integers on D3D12 are "DXC only"; wave operations, mesh shaders
     and ray tracing on D3D12 (area 4's PR #630) need Shader Model 6, which only DXC compiles.
-  - **(A):** `@kama/gpu` vendors Microsoft's `dxcompiler.dll` from a pinned DXC release (v1.9.2609, LLVM's
-    University of Illinois/NCSA licence, in its notices) and hands it to wgpu-native. When the DLL is missing, FXC is the
-    next method down, reported, never stopping a program. Its cost is the DLL beside every native Windows program, about
-    20 MB, measured when vendored; the web build is untouched. Goldens stay one per software GPU. It is a `@kama/gpu` row
-    brought forward, as `writeTexture` was, built before part 4's step 3 writes its goldens.
+  - **(A):** `@kama/gpu` ships `dxcompiler.dll` beside native Windows programs, and wgpu-native, whose default is to
+    use it when it finds it, compiles with DXC. When the DLL is missing, FXC is the next method down, reported, never
+    stopping a program. The web build is untouched. Goldens stay one per software GPU. It is a `@kama/gpu` row brought
+    forward, as `writeTexture` was.
   - **Set aside:** (B) FXC kept, a golden per leg where two legs of one GPU differ, Shader Model 6 waiting.
+  - **Corrected the same day, and asked again:** the question said the DLL came under LLVM's University of
+    Illinois/NCSA licence. That is DXC's source. Microsoft's prebuilt binaries (v1.9.2609's `dxc_2026_09_29.zip`, 21.2 MiB
+    for x64's `dxcompiler.dll`) come under "Microsoft Software License Terms, Microsoft DirectX Shader Compiler": only
+    the listed distributables may be distributed, and whoever distributes must "require distributors and external end
+    users to agree to terms that protect it and Microsoft at least as much as this agreement" and indemnify Microsoft.
+    Firefox's `dxcompiler.dll` is Mozilla's own build from DXC's source ("1.9.0.0 (private, 00000000)", signed by Mozilla,
+    24 MB, no `dxil.dll`): an open-source build signs its shaders itself, and it ran all 276 of `@kama/graphics`' cases on
+    the Radeon 880M as well as every frame on WARP. Not legal advice.
+  - **The owner's answers (2026-11-17, "A: build from source (Recommended)" and "A: commit step 3 now
+    (Recommended)"):**
+    1. `@kama/gpu` builds DXC from its open source at a pinned tag (v1.9.2609), as Firefox does, under the NCSA licence
+       and its components' notices, with a build script as `@kama/window` has for SDL3. DXC's Windows build needs Visual
+       Studio 2022's Build Tools (the C++ workload) and the Windows SDK 10.0.26100, which the owner allowed installing on
+       this machine. Set aside: Microsoft's prebuilt DLL under its terms; FXC kept.
+    2. Part 4's step 3 is committed before DXC lands, with Blender's AgX goldens. r187's `AgX` is held on every leg by
+       its swatches, within a step of its float64 formulas, and its golden, `tone-mapping-agx`, is written once WARP's two
+       legs agree under DXC.
