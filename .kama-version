@@ -364,6 +364,15 @@
 #   (249, 163 under node, 253 in Edge and Firefox, 264 through the driver), @kama/gpu's (339, 313 in Edge, 316 in
 #   Firefox and Chrome for Testing, both examples), @kama/image's (1,401, the sweep's 197), @kama/graphics' (285
 #   natively, in Firefox and in Chrome for Testing, 276 in Edge). KY-40, KY-45 and KY-58 re-checked, unchanged. The
-#   Mac's pin is 0.9.966 until it is rebuilt there.
+#   Mac's pin is 0.9.966 until it is rebuilt there.#
+# 2026-11-18, Mac: the Mac's pin rebuilt at 0.9.978 (5e542c55) from a clean clone (.scratch/kama-pin-src-978), at the
+# owner's word ("Match Windows: 0.9.978"), so both machines run the same compiler; the 0.9.966 binary is kept in
+# .scratch/kama-pin-0.9.966. The Mac had first built 0.9.981 (dcea7449, origin's head that morning) for @kama/audio's
+# AUD-2 before Windows's bump arrived, and keeps it in .scratch/kama-pin-0.9.981; 0.9.978 already holds what AUD-2
+# needs (KR-399 to KR-402). tools/test.sh is green on it there with Windows's counts: engine 164 cases native debug and
+# release and on wasm debug and release, each release JS held to Closure; the frame guard's four legs; the tool's 211;
+# `kyoten check engine/kama.json`; fps native and on wasm in both builds; vr checked. 3 min 52 s at a load of 5.8 to
+# 7.6. @kama/audio's gate is green on it too. KY-3 is narrowed (docs/KAMA_GAPS.md): a program builds for
+# `aarch64-ios17.0-simulator` with Xcode 27.2.
 KAMA_VERSION=0.9.978
 KAMA_BUILD=g5e542c55
