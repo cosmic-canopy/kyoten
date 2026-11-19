@@ -446,7 +446,9 @@
        - geometry: virtualized clusters, then LOD meshes;
        - draws: GPU-driven with one multi-draw, GPU culling, CPU culling;
        - textures: one bindless array, then a bind group per material.
-     - **The renderer reports the device's features,** as three.js's `hasFeature` does.
+     - **The renderer reports what the device can do,** per technique, in its own terms
+       (`supportsAntialiasing(method:)`). This first said "as three.js's `hasFeature` does"; GFX-1's part 5, step 4's
+       question 2, made it per technique.
      - **Quality presets** (low, medium, high, ultra) set every technique at once, as Unreal's scalability groups do,
        and a program can set one technique directly.
      - **A missing feature never stops a program:** the renderer takes the next method down and reports the one it
@@ -1525,11 +1527,12 @@
        flip. Each later feature extends it as it arrives. Compiling everything at start from a list is question 11's.
   2. **Quality presets: a value the game owns, the library's four only starting points.**
      - `type value Quality` has one field per technique, each the technique's whole setting: the method now, and later
-       its parameters, such as a shadow map's size. `Quality.low()` to `Quality.ultra()` are the library's.
+       its parameters, such as a shadow map's size. The library's four are `Quality.make(preset:)`, `Low` to `Ultra`;
+       this first named them `Quality.low()` to `Quality.ultra()`, and kama's rule renamed them (step 4's questions).
      - A game makes as many as it likes and names them ("Steam Deck", "Quest 3"), each from one of the library's or
        from nothing. `renderer.applyQuality(quality:)` writes every technique, takes the next method down where the
-       device lacks a feature, and reports what it chose; a player's settings menu still changes one technique after
-       it. The renderer reports the device's features, area 4's item 1.
+       device lacks a feature, and hands back the `Quality` in effect; a player's settings menu still changes one
+       technique after it. The renderer answers per technique what the device can do (step 4's questions 1 and 2).
      - In kyoten a game's presets are records, and its rule, or kyoten's default rule, picks one per machine. That side
        comes with the render module's row, not part 5.
      - **Prior art,** from their documentation: Unity's quality levels are the project's, how many, their names, what
@@ -1652,3 +1655,47 @@
       released slot's way left in the table, shown equivalent, since a released slot is never drawn and one taken again
       is written, its way with it, before it is drawn. `compile` asking for the stand-in for a mesh whose material is
       refused went uncaught until that case was added.
+  - **Step 4's three questions, each (A)** (the owner, 2026-11-19: "I will take your recommendation on all", asked in
+    full at the thirty-eighth session's end). The peers' prior art was read by an agent from the pinned sources
+    (`.scratch/s33/part4-sources/`, each claim cited) and spot-checked (`.scratch/s38/step4-prior-art.md`): every engine
+    but Bevy steps down rather than fail, the step-down at most a log line, and none hands back what was asked, what was
+    chosen and why.
+    1. **`applyQuality(quality:)` hands back the `Quality` in effect,** each technique's method as chosen, and
+       `renderer.quality()` reads the same at any time, a technique set directly included. A program compares it with
+       what it asked for, and question 2's query says why one differs. Nothing is printed, since a weaker device
+       stepping down is expected, never a misuse. Godot and Unity expose what is in effect, though only as a
+       by-product; three.js's getter answers what was asked, even after it clamped.
+       - **Set aside:** (B) a report type, each technique's asked, chosen and missing feature: richer, but no engine has
+         one, and it is a second type to keep in step with `Quality`; (C) nothing handed back, a step-down printed and
+         recorded as an error, as Godot and Bevy do, though a step-down is no mistake of the program's.
+    2. **The renderer answers per technique, in the library's terms,** by the same rule `applyQuality` steps down by:
+       `renderer.supportsAntialiasing(method:)` now, and a query beside it for each technique as it arrives, as Unity's
+       per-technique `SystemInfo` and Godot's per-usage queries answer. The raw features stay `@kama/gpu`'s
+       `device.features()`. This changes area 4's item 1, which said "as three.js's `hasFeature`": whether a format
+       takes 8x MSAA natively is a per-format sample count, not a feature's name, and a list of features makes every
+       program know which features each method needs.
+       - **Its name is kama's:** the question offered `supports(antialiasing:)`, but kama has no overloading, so a later
+         `supports(shadows:)` beside it is refused ("duplicate method 'supports'… kama has no overloading", measured
+         on 0.9.978, `.scratch/s38/probe4/overload.kama`). Each technique's query names its technique, as Unity's
+         `SystemInfo.supports…` do. Settled under kama's rule while recording the answer, and reported.
+       - **Set aside:** (B) three.js's `hasFeature(feature:)` with `@kama/gpu`'s names, which cannot answer the 8x
+         question; (C) both.
+    3. **Step 4 builds what can be held now; the step-down comes with the first method a device may lack.** Every method
+       on the ladder today is core WebGPU, so nothing can step down yet. Step 4 builds `Quality`, the library's four,
+       `applyQuality`, `quality()` and `supportsAntialiasing(method:)`, true for each method on every device. The
+       step-down and the cases that hold it are built with the first method that needs a feature, on a real device: 8x
+       MSAA natively, filed as `@kama/graphics`' GFX-19, which starts in `@kama/gpu`'s GPU-17. wgpu-native v29.0.1.1's
+       C API declares the native feature 8x needs (`WGPUNativeFeature_TextureAdapterSpecificFormatFeatures`,
+       `wgpu.h:139`) but has no call that asks a format's sample counts, where Rust's wgpu has
+       `Adapter::get_texture_format_features`. GPU-17's route, a wgpu-native PR as kyoten helps land #630, or a probe of
+       an 8x texture in an error scope, is decided at its row.
+       - **Set aside:** (B) 8x MSAA natively within step 4, which grows part 5 by `@kama/gpu`'s query and a method with
+         its goldens; (C) the step-down written now and held against a pretend device, code no real device reaches, for
+         a method that does not exist yet.
+    - **Settled under kama's rule while recording the answers, and reported:** the library's four are one ctor with a
+      required parameter, `Quality.make(preset: QualityPreset::High)`, where part 5's question 2 named `Quality.low()`
+      to `Quality.ultra()`. kama's SPEC § Construction (KR-367) writes one ctor with a required parameter when only a
+      setting differs, so a settings menu's choice reaches it from a variable with no `if`. `Quality.of(antialiasing:)`
+      is the memberwise ctor, a quality built from nothing, which gains a parameter with each technique, so a program
+      building one that way states every technique. The shape compiles and runs on 0.9.978
+      (`.scratch/s38/probe4/shape.kama`).

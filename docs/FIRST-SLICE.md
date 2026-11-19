@@ -335,12 +335,56 @@ the design doc it settles before building on it.
           stand-in drawn by its general form; `RenderInfo.standIn`. Settled and reported: a refused material is never
           drawn by the stand-in; the frame's passes keep the renderer's way; a refused stand-in is reported once and its
           draws skipped. 399 cases, 386 in Edge; 26 of 28 mutations caught.
-        - **Next, step 4: `Quality`, `applyQuality` and the device's features,** its questions asked at the thirty-eighth
-          session's end (rendering § Decided, part 5's question 2, and area 4's item 1). Then part 6, `examples/cube`.
+        - **Step 4's three questions are decided** (the owner, 2026-11-19, "I will take your recommendation on all";
+          rendering § Decided), each (A): `applyQuality(quality:)` hands back the `Quality` in effect, which
+          `renderer.quality()` reads at any time, nothing printed; the renderer answers per technique in its own terms,
+          `supportsAntialiasing(method:)`, where area 4 first said three.js's `hasFeature`; step 4 builds what can be
+          held now, and the step-down comes with the first method a device may lack, 8x MSAA natively, filed as
+          `@kama/graphics`' GFX-19 on `@kama/gpu`'s GPU-17 (wgpu-native's C API cannot ask a format's sample counts).
+          Two names were settled under kama's rules while recording them, and reported: `supportsAntialiasing`, since
+          kama has no overloading and `supports(antialiasing:)` would refuse a later `supports(shadows:)`; and
+          `Quality.make(preset:)` for the library's four, KR-367's one ctor with a required parameter, where part 5's
+          question 2 named `Quality.low()` to `Quality.ultra()`.
+        - **Next, step 4: `Quality`, `applyQuality` and `supportsAntialiasing`.** It finishes part 5; then part 6,
+          `examples/cube`. Step 4's shape as the thirty-eighth session read the code (no public question met; settle and
+          report the details named), its names compiled and run on 0.9.978 (`.scratch/s38/probe4/shape.kama`):
+          - **A new `src/quality.kama`,** exporting `Quality` and `QualityPreset`, which renderer.kama imports, as it
+            imports `Antialiasing` from antialiasing.kama:
+            - `type value Quality`, one public field per technique, today `Antialiasing antialiasing`;
+              `of(antialiasing:)`, the memberwise ctor, a quality built from nothing;
+            - `make(preset:)`, the library's four, `@nonExhaustive type enum QualityPreset { Low, Medium, High,
+              Ultra }`: `Low` takes `Msaa4`, the rest `Msaa4ToneMapped`, and none `None` (part 5's question 2). A value
+              `match` lands in a plain local before the field.
+          - **On the renderer:**
+            - `applyQuality(quality:)`, a plain `fn` as `antialiasingMut()` is, writes `this.method` and returns
+              `this.quality()`;
+            - `quality()`, `const`, is `Quality.of(antialiasing: this.method)`, made from the settings at each call, so
+              a technique set directly reads back. A change takes effect at the next render, as the pair's does;
+            - `supportsAntialiasing(method:)`, `const`, a `match` true for every method today. A method a device may
+              lack answers from the device (GFX-19).
+          - **The comments that promise a step-down** (antialiasing.kama's head, and the renderer's field) say it comes
+            with the first method a device may lack.
+          - **To settle and report:** whether `Quality` takes `@generate` for an `equals`, or the cases compare its
+            field; that `antialiasing()` keeps saying what was asked and `quality()` what is in effect (part 4's
+            settled detail), the same today and apart from GFX-19.
+          - **The cases** (a run of their own, `tests/src/quality.kama`, beside `antialias.kama`'s):
+            - each of the library's four's method;
+            - `applyQuality` of each writes `antialiasing()` and hands back the same method;
+            - a game's own preset, `make(preset: Low)` with its `antialiasing` set to `None`, applied;
+            - `quality()` after `antialiasingMut()` is set directly;
+            - `supportsAntialiasing` true for each method, on every leg;
+            - one of `antialias.kama`'s switches driven through `applyQuality` instead of `antialiasingMut()`, so an
+              image holds that the next render draws by what was applied.
+          - **The mutations:** a preset's method swapped; `applyQuality` writing nothing, or handing back what it was
+            handed; `quality()` from a copy stored at `applyQuality`; `supportsAntialiasing` false for one method.
+          - **The records:** kama-graphics' SPEC § The renderer and § Tests, CHANGELOG, ROADMAP_DETAIL (the three
+            answers beside part 5's, step 4 built, part 5 done, its "Next" line), AGENTS.graphics.md's "Next, step 4"
+            (`:162`); kyoten's rendering § Decided, step 4's Built entry.
           - Step 3's evidence and runners: `.scratch/s38/kg/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate38.sh`;
             `stub.py`, `impl3.py`, `docs_src3.py` and `sharpen1.py`, the edit scripts; `red1.log`, the stub's run;
             `list3.py`, `mutations3.out` and `mutations3b.out`, the rerun with the added case; `gate4.log`, the final
-            gate), `.scratch/s38/suites.sh` with the start's logs, and `.scratch/s38/step4-prior-art.md`.
+            gate), `.scratch/s38/suites.sh` with the start's logs, `.scratch/s38/step4-prior-art.md`, and
+            `.scratch/s38/probe4/` (`overload.kama`, kama refusing a second `supports`; `shape.kama`, step 4's names).
           - Step 1's evidence and runners: `.scratch/s36/kg5/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate.sh`,
             `list1.py`, `mutations1.out`, `gate1.log` to `gate3.log`, and the edit scripts). Step 2's:
             `.scratch/s37/kg/` (the same runners, `gate37.sh`, `probe15.sh`; `list2.py` and `mutations2.out`, the run
@@ -439,9 +483,14 @@ kyoten needs; its 0.9.987 changes `@generate(zero)`, which a bump checks first (
 - **Settled and reported, for the owner to object to:** a refused material is never drawn by the stand-in (an error
   material, as Unity's magenta, would be a feature of its own); the frame's passes keep the renderer's way; a refused
   stand-in is reported once and its draws skipped; a stand-in changed between renders takes effect at the next.
-- **Step 4's questions asked at the end,** in full, with the peers' prior art read by an agent from the pinned sources
-  and spot-checked (`.scratch/s38/step4-prior-art.md`): no engine returns a structured report of what a preset could not
-  do, and wgpu-native's C API cannot yet say whether a format takes 8x MSAA.
+- **Step 4's three questions asked at the end,** in full, with the peers' prior art read by an agent from the pinned
+  sources and spot-checked (`.scratch/s38/step4-prior-art.md`): no engine returns a structured report of what a preset
+  could not do, and wgpu-native's C API cannot yet say whether a format takes 8x MSAA. The owner took all three
+  recommendations. Recording them, a probe found kama refusing a second `supports` (no overloading), so the query is
+  `supportsAntialiasing(method:)`, and kama's KR-367 made the library's four `Quality.make(preset:)`; both reported.
+  8x MSAA natively was filed as `@kama/graphics`' GFX-19 and `@kama/gpu`'s GPU-17, so it is not lost.
+- **Ready for the next session at the owner's word** ("can you get things ready for the next session?"): step 4's shape
+  went into § Where it stands, as the code reads it. kama's range was read again, unchanged since `06277e8d`.
 
 **The thirty-seventh session** (2026-11-18/19). Nothing new on any origin at the start, and kama's range, to 0.9.984,
 held nothing kyoten needs, so no bump.
