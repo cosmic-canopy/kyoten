@@ -312,7 +312,26 @@ the design doc it settles before building on it.
           where its frame drew nothing before; 322 cases, 309 in Edge; 27 of 28 mutations caught.
         - **Next, step 2: the general form** for the cull flip, a mirrored mesh's; then step 3, `StandIn` and the
           per-material override; step 4, `Quality`, `applyQuality` and the device's features; then part 6,
-          `examples/cube`. Read the code for any public-API question before building, and ask it in full.
+          `examples/cube`. Read the code for any public-API question before building, and ask it in full. Step 2's
+          shape as the thirty-sixth session read it (no public question met; settle and report these):
+          - the node builder writes a second module, `generalWgsl()` beside `wgsl()`, from one body with a flag: one
+            more varying, `@location(n) @interpolate(flat) mirrored: u32`, written by `vs` from the sign of the world
+            matrix's 3x3 determinant (as `mirroredAt` decides on the CPU); `fs` takes `@builtin(front_facing)` and
+            discards where `facing == mirrored`, **after** its shading, so a `textureSample` (the DFG table) stays in
+            uniform control flow; and `fsCull`, the same test alone, the general depth pipeline's fragment stage (no
+            colour target), since a depth-only pipeline cannot discard;
+          - its pipelines cull nothing and keep the default winding, keyed by (general WGSL, samples) alone, so one
+            serves mirrored and unmirrored meshes; `MaterialGpu` keeps both sources;
+          - `compile(scene:, camera:)` asks for each material's general form, and so does a render whose draw of it
+            misses, so the next variant finds one; `info()` gains `general`, each draw by it a miss too;
+          - the extra varying means a material with exactly 16 varyings has its own pipeline and a refused general
+            form. Report a general form's refusal only once its material's own pipeline is made, so a material refused
+            outright is not reported twice (step 1's case expects one report);
+          - the case: a scene compiled, then a mirrored copy of its box (scale x −1) added; the first render draws it by
+            the general form (`general` 1, a miss), and once its own pipeline answers, the image is held byte for byte
+            to the general form's.
+          - Step 1's evidence and runners: `.scratch/s36/kg5/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate.sh`,
+            `list1.py`, `mutations1.out`, `gate1.log` to `gate3.log`, and the edit scripts).
       - **Part 4's evidence** is machine-local:
         - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
         - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
@@ -411,6 +430,9 @@ needs, so no bump.
 - **Built:** part 5's step 1 (kama-graphics `ee90ef7`), test-first and mutated. Found on the way: under the
   synchronous call a refused material's pipeline invalidated its whole frame; each leg words the refusal its own way,
   and Firefox passes on only wgpu's first line.
+- **Pushed at the owner's word** ("you can push and get things ready for the next session"): kyoten and kama-graphics.
+  The fetch found nothing new for either; `@kama/audio`'s clone here was fast-forwarded to the Mac's four commits
+  (decision 36 and AUD-2's handle, to `01549e8`). The session's worktrees are removed.
 
 **The thirty-fifth session** (2026-11-17 and 18). Nothing came from the Mac for kyoten; `@kama/audio`'s AUD-2 slot table
 was pulled into this machine's clone.
