@@ -180,3 +180,12 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     side, at a make or a hand-back;
   - **no type names the allocator,** so kyoten's audio module writes `GainNode` and `OfflineAudioContext` as MDN does.
     A plain type parameter would have put it into every type and every make, and kama infers it at no make.
+- **2026-11-19, the owner: `@kama/audio`'s render keeps a block per node** (its `AGENTS.audio.md` § Decided, 38), which
+  is most of what kyoten's Budget record for audio must hold:
+  - **each node row has an output block, drawn with the context at the make:** a 128-frame quantum of `float32` for each
+    of the channels a node carries, `OfflineAudioContextOptions.channelCapacity` (2 by default, or the context's
+    channels when more). So the record sizes it as the node rows, plus one for the destination, times the channels
+    times 512 bytes: 1 MiB at 1,024 rows in stereo, 6 MiB at 12 channels;
+  - **it never runs out while rendering,** so the record is the whole of it: no graph a program builds asks for more.
+  - **A source's start is `start(startTime:)`** where the 2026-11-15 entry above wrote `start(when:)`: kama reserves
+    `when` (`@kama/audio`'s KAMA_GAPS.md KAUD-11), so the time takes the name Web Audio gives its other times.
