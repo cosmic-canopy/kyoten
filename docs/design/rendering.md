@@ -1620,3 +1620,35 @@
          those draws are skipped, as `General` skips while a general form compiles.
        - **Set aside:** (B) compiled when the renderer is made, ready before any draw needs it, but a compile every
          program pays at its start, one that never takes `StandIn` too.
+  - **Step 3 built** (the thirty-eighth session, kama-graphics `9f5f488`; its SPEC § The renderer, § Misuse, § The scene
+    graph and § Tests): `StandIn` and the mesh's override, as the thirty-seventh session laid them out.
+    - The mesh's way is carried by the scene's walk into its table beside the material. Each draw's way is its mesh's,
+      else the renderer's, in `render` and `compile` alike, so `waited` counts a mesh's `Wait`.
+    - `WhileCompiling` is `General`, `StandIn`, `Skip`, `Wait`. The renderer makes the stand-in in its ctor;
+      `standIn()` and `standInMut()`. It is drawn by its general form, with its own look group and the mesh's geometry
+      and record, and asked for by a miss and by `compile` where any mesh's way is `StandIn`.
+    - `RenderInfo.standIn`, each such draw also a miss.
+    - **Settled while building, and reported:**
+      - a material refused outright is not drawn by the stand-in: `StandIn` is what a draw does while it compiles,
+        and a refused material never draws (step 1). Drawing a broken material with an error material, as Unity's
+        magenta and Unreal's default material in its editor do, would be a feature of its own, offered to the owner;
+      - the frame's own passes, the resolve and the output, take the renderer's way, never a mesh's;
+      - a stand-in the compiler refuses is reported once in its compile's words, and one whose general form the device
+        refuses once as `Material`, whether or not any pipeline of its own is made; the draws that would take either
+        are skipped, never drawn by the stand-in's own pipelines for the mesh's variant;
+      - a stand-in changed between renders takes effect at the next render, as every property pair does.
+    - **Found while writing the cases:** a pipeline is the renderer's for a material's WGSL, whichever material wrote
+      it, so two plain `MeshStandardMaterial`s share every pipeline and general form, the library's grey stand-in
+      included. The cases' materials that must not share one carry nodes of their own; three first drafts held
+      nothing until they did.
+    - Red first: on the API's stub, 17 of the first 33 new cases failed, the rest holding what the stub already
+      did, for the mutations. Four came after: three for a stand-in its compile refuses, and one for a refused
+      material whose way is `StandIn`. Every case is held on the first render of a variant nothing asked for, after a
+      compile polled to `Ready`, so none races natively. 399 cases natively, in Firefox and in Chrome for Testing, 386
+      in Edge, each debug and release; every stand-in's image matched a grey `MeshStandardMaterial`'s own pipelines'
+      byte for byte on WARP, SwiftShader and Edge's GPU.
+    - 26 of 28 mutations caught (`.scratch/s38/kg/list3.py`). The two left: the stand-in drawn once its shaded pipeline
+      alone is ready, which only a race between a pair's two answers could show, since both are asked together; and a
+      released slot's way left in the table, shown equivalent, since a released slot is never drawn and one taken again
+      is written, its way with it, before it is drawn. `compile` asking for the stand-in for a mesh whose material is
+      refused went uncaught until that case was added.

@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-19, the thirty-seventh session)
+## Where it stands (2026-11-19, the thirty-eighth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -100,8 +100,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 362 cases natively, in Firefox and in Chrome for Testing, 349 in Edge, since part 5's step 2
-     (the thirty-seventh session); 322 and 309 at its start. Its gate also asks Edge for WARP, which it does not offer, and
+   - `@kama/graphics`': 399 cases natively, in Firefox and in Chrome for Testing, 386 in Edge, since part 5's
+     step 3 (the thirty-eighth session); 362 and 349 at its start. Its gate also asks Edge for WARP, which it does not offer, and
      holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
@@ -122,14 +122,21 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-seventh session's end the range held 23 commits, to `d4382eea` (0.9.985), none that kyoten needs:
+     By the thirty-eighth session's end the range held 34 commits, to `06277e8d` (0.9.993), none that kyoten needs:
      0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
      io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
      (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
      compiles; 0.9.984, trusted input on an Android device under `kama run` (KR-397); KR-414, a test's timing check;
      KR-415, filed for the Mac: on macOS a fiber's bytes do not end a window package's wait, which `@kama/window` does
      not use yet; 0.9.985, the Android app runner's glue allocating through kama's funnel; and a test's start taken
-     before its waker. The pin is still on its history. A bump is optional until something kyoten needs lands.
+     before its waker. Then, during the thirty-eighth session: 0.9.986, an enum with payloads and an `fnptr` are
+     compile-time values (KR-413); 0.9.987, `@generate(zero)` makes each field's default by the one rule for a default
+     where it wrote zero bytes (KR-416); 0.9.988 to 0.9.991, derives and serde across a class hierarchy (KR-408, KR-419);
+     0.9.992, a leaf answering its root's comparison contracts (KR-407); 0.9.993, `try new` evaluating its arguments
+     only once the box is drawn; a test's clock (KR-415); and roadmap rulings. **On a bump, check 0.9.987 first:**
+     `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
+     `src/native/seam.kama` are `@generate(zero)`. The pin is still on its history. A bump is optional until something
+     kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -323,41 +330,17 @@ the design doc it settles before building on it.
           `Optional<WhileCompiling>`, `None` meaning the renderer's, where the decision first named the material; the
           stand-in is the library's lit grey, a `MeshStandardMaterial` of #808080 a program replaces through
           `renderer.standInMut()`, drawn by its general form and compiled when its way is first in effect.
-        - **Next, step 3: `StandIn` and the mesh's override.** Then step 4, `Quality`, `applyQuality` and the device's
-          features; then part 6, `examples/cube`. Step 3's shape as the thirty-seventh session read the code (no public
-          question met; settle and report the details named):
-          - `Mesh` keeps `Optional<WhileCompiling> way`. Its pair's `Mut` calls `this.part.touched()`, as
-            `materialMut()` does, so the walk writes its record again; `walk.push` carries the way, and the scene's table
-            keeps it beside the material, cleared on release, read by a `wayAt(slot:)` beside `mirroredAt`. `WhileCompiling` is declared
-            in `renderer.kama`, and two files of one module may import each other.
-          - A draw's way is its mesh's, else the renderer's, in `render` and `compile` alike. So `now` (`Wait`) becomes
-            each draw's own, and `waited` counts a mesh's `Wait`.
-          - `WhileCompiling` gains `StandIn`, in the decision's order: `General`, `StandIn`, `Skip`, `Wait`. The
-            renderer makes the stand-in in its ctor, `MeshStandardMaterial.make()` with its colour #808080 (roughness 1 and
-            metalness 0 are its defaults); `standIn()` hands back a copy of the `Shared`, and `standInMut()` the place.
-          - A draw under `StandIn` whose own pair is not ready asks for the stand-in's general pair (`generalFor` of the
-            stand-in's general source, compiled by `compileNodes` the first time, as any material's) and draws by it
-            once both are ready: the stand-in's look group with the mesh's geometry and record. Else it is skipped.
-            `chosen`'s `-2 - g` already serves it. `RenderInfo` gains `standIn`, each such draw a miss too, as
-            `general`.
-          - `compile` asks for the stand-in's general pair when any draw's way is `StandIn`, the renderer's or a mesh's,
-            and for a material's general form only where a draw's way is `General`.
-          - **To settle and report:** a stand-in the device refuses, or whose general form it refuses, reported once as
-            `Material` and its draws skipped (or drawn by its own pipelines for the mesh's variant); a stand-in changed
-            between renders taking effect at the next render, as every property pair. kama-graphics' ROADMAP_DETAIL
-            and AGENTS.graphics.md still say "the per-material override": correct both in step 3's commit, which also
-            records the two answers in ROADMAP_DETAIL beside part 5's three.
-          - **The cases:**
-            - each way as a mesh's override over a renderer's way that differs: a mesh's `General` under a `Skip`
-              renderer drawn by its general form; a mesh's `Skip` under `General` skipped, with no general form asked;
-              a mesh's `Wait` beside a box drawn by its general form, `waited` 2;
-            - the override set back to `None` following the renderer again;
-            - `StandIn`'s first render skipping and asking, then drawing by the stand-in (`standIn` 1), its image held
-              byte for byte to the same box drawn with a grey `MeshStandardMaterial` of its own;
-            - a mirrored box by the stand-in, culled as by its own pipelines (step 2's room and flat trials);
-            - a program's stand-in, a red `MeshBasicMaterial`, drawn red;
-            - `compile` under `StandIn` polled to `Ready`, then a first render with no skip;
-            - a stand-in of 16 varyings reported once, its draws skipped.
+        - **Step 3 is built** (kama-graphics `9f5f488`, the thirty-eighth session; rendering § Decided): a mesh's own way,
+          carried by the walk into the scene's table, each draw's its mesh's else the renderer's; `StandIn`, the
+          stand-in drawn by its general form; `RenderInfo.standIn`. Settled and reported: a refused material is never
+          drawn by the stand-in; the frame's passes keep the renderer's way; a refused stand-in is reported once and its
+          draws skipped. 399 cases, 386 in Edge; 26 of 28 mutations caught.
+        - **Next, step 4: `Quality`, `applyQuality` and the device's features,** its questions asked at the thirty-eighth
+          session's end (rendering § Decided, part 5's question 2, and area 4's item 1). Then part 6, `examples/cube`.
+          - Step 3's evidence and runners: `.scratch/s38/kg/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate38.sh`;
+            `stub.py`, `impl3.py`, `docs_src3.py` and `sharpen1.py`, the edit scripts; `red1.log`, the stub's run;
+            `list3.py`, `mutations3.out` and `mutations3b.out`, the rerun with the added case; `gate4.log`, the final
+            gate), `.scratch/s38/suites.sh` with the start's logs, and `.scratch/s38/step4-prior-art.md`.
           - Step 1's evidence and runners: `.scratch/s36/kg5/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate.sh`,
             `list1.py`, `mutations1.out`, `gate1.log` to `gate3.log`, and the edit scripts). Step 2's:
             `.scratch/s37/kg/` (the same runners, `gate37.sh`, `probe15.sh`; `list2.py` and `mutations2.out`, the run
@@ -440,6 +423,25 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-eighth session** (2026-11-19). Nothing new on any origin at the start, and kama's range was the
+thirty-seventh session's, to `d4382eea` (0.9.985), so no bump. kama moved to 0.9.993 during the session, with nothing
+kyoten needs; its 0.9.987 changes `@generate(zero)`, which a bump checks first (item 1).
+- **Every suite was green on 0.9.978 at the start,** at the thirty-seventh session's counts.
+- **No question at the start:** step 3's shape, laid out by the thirty-seventh session, held against the code.
+- **Built:** part 5's step 3, `StandIn` and the mesh's override (kama-graphics `9f5f488`), test-first and mutated, in a
+  worktree with a second for the mutations. Found on the way:
+  - **a pipeline is the renderer's for a material's WGSL, whichever material wrote it,** so two plain
+    `MeshStandardMaterial`s share every pipeline and general form, the library's grey stand-in included. Three first
+    drafts of the cases held nothing until their materials carried nodes of their own;
+  - **a mutation found a gap the cases missed:** `compile` asking for the stand-in for a mesh whose material is
+    refused, which never draws. A case was added, and it is caught.
+- **Settled and reported, for the owner to object to:** a refused material is never drawn by the stand-in (an error
+  material, as Unity's magenta, would be a feature of its own); the frame's passes keep the renderer's way; a refused
+  stand-in is reported once and its draws skipped; a stand-in changed between renders takes effect at the next.
+- **Step 4's questions asked at the end,** in full, with the peers' prior art read by an agent from the pinned sources
+  and spot-checked (`.scratch/s38/step4-prior-art.md`): no engine returns a structured report of what a preset could not
+  do, and wgpu-native's C API cannot yet say whether a format takes 8x MSAA.
 
 **The thirty-seventh session** (2026-11-18/19). Nothing new on any origin at the start, and kama's range, to 0.9.984,
 held nothing kyoten needs, so no bump.
