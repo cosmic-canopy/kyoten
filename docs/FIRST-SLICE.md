@@ -100,8 +100,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 299 cases natively, in Firefox and in Chrome for Testing, 286 in Edge, since part 4's step 5 (the
-     thirty-sixth session); 288 and 278 at its start. Its gate also asks Edge for WARP, which it does not offer, and
+   - `@kama/graphics`': 322 cases natively, in Firefox and in Chrome for Testing, 309 in Edge, since part 5's step 1
+     (the thirty-sixth session); 288 and 278 at its start. Its gate also asks Edge for WARP, which it does not offer, and
      holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
@@ -300,14 +300,19 @@ the design doc it settles before building on it.
           the stored samples, with two guards (a sample stored as infinity, a negative clear colour), the second found
           while writing its case; the older tests kept on the GPU's resolve, so no golden moved; three goldens, one a
           method; 299 cases, 286 in Edge; 24 of 24 mutations caught.
-        - **Next, part 5: pipelines compiled off the frame, and the quality presets** (rendering § Decided, area 3's
-          item 3 and area 4's question 1), then part 6, `examples/cube`. Read the code for any public-API question
-          before building, and ask it in full. Two met already: three.js r187 compiles inside `render` (a hitch) and
-          asynchronously only in `compileAsync`, skipping an object whose pipeline is not ready (`Pipelines.isReady`),
-          where the decision says never a hitch, so a first frame, a test or a screenshot would draw nothing until its
-          pipelines are ready: how a program waits for them is a question. And part 5 meets rendering question 11
-          (KYR-78, shaders built ahead or at run time, the game's choice), so the two are asked together.
-          `@kama/gpu`'s `createRenderPipelineAsync`, polled, natively on its own isolates, is what compiles them.
+      - **Part 5, pipelines compiled off the frame and the quality presets, is under way:**
+        - **Its three questions are decided** (the owner, 2026-11-18, "all sounds good now as revised
+          recommendations"; rendering § Decided, kyoten `6dc5e44`), each (A) as revised after the owner asked for the
+          ubershader and pre-compiling as approaches too: every way a draw takes while its pipeline compiles, the
+          program's choice (`General`, the material's general form, by default, then `Skip`; `StandIn`; `Wait`), and
+          `compile(scene:, camera:)` ahead; presets a value the game owns, the library's four only starting points;
+          question 11 (KYR-78) scope, decided at its row.
+        - **Step 1 is built** (kama-graphics `ee90ef7`): pipelines compiled off the frame, `General` (skipping until
+          step 2), `Skip` and `Wait`, `compile`, `info()`'s misses; a material the device refuses is skipped alone,
+          where its frame drew nothing before; 322 cases, 309 in Edge; 27 of 28 mutations caught.
+        - **Next, step 2: the general form** for the cull flip, a mirrored mesh's; then step 3, `StandIn` and the
+          per-material override; step 4, `Quality`, `applyQuality` and the device's features; then part 6,
+          `examples/cube`. Read the code for any public-API question before building, and ask it in full.
       - **Part 4's evidence** is machine-local:
         - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
         - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
@@ -397,6 +402,15 @@ needs, so no bump.
   within two steps where the others hold one (WARP measured 1.1); WARP stores a finite overflow as 65504, so the
   infinity guard needed a shader that makes a real infinity (10^30 squared); and the undoing of the weight needed the
   floor the weight has, or a negative clear colour came back over 1.25.
+- **Part 5's three questions, asked in full after part 4 was built,** the owner continuing the session. The first
+  draft said Godot's ubershader could not serve a node material and that waiting could exist only natively; the owner
+  asked for the ubershader and pre-compiling as approaches ("recall that before shaders the fixed function pipeline
+  was basically an 'uber shader'") and how far a game shapes its presets. Both claims were wrong, as Godot 4.7.2's
+  source showed (its general form is each material's own shader, specializations as push constants), and the
+  questions were laid out again; answered "all sounds good now as revised recommendations" (kyoten `6dc5e44`).
+- **Built:** part 5's step 1 (kama-graphics `ee90ef7`), test-first and mutated. Found on the way: under the
+  synchronous call a refused material's pipeline invalidated its whole frame; each leg words the refusal its own way,
+  and Firefox passes on only wgpu's first line.
 
 **The thirty-fifth session** (2026-11-17 and 18). Nothing came from the Mac for kyoten; `@kama/audio`'s AUD-2 slot table
 was pulled into this machine's clone.

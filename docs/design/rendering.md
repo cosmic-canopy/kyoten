@@ -1545,3 +1545,22 @@
      keys on. Compiling everything from a list (recorded from play, as Unreal's bundled cache, or written by the tool
      from a game's records), WGSL built ahead, DXIL and the cache on disk natively are decided at question 11's row, at
      the join.
+  - **Step 1 built** (the thirty-sixth session, kama-graphics `ee90ef7`; its SPEC § The renderer, § Misuse and § Tests):
+    every pipeline a slot asked for with `@kama/gpu`'s `createRenderPipelineAsync` and polled by each render, which never
+    uses one it asked for itself; `WhileCompiling` with `General` (skipping until step 2 gives a material its general
+    form), `Skip` and `Wait`; the frame's own passes the same way, the GPU resolving while the tone-mapped resolve
+    compiles and the output pass left out while it compiles; `compile(scene:, camera:)`, a polled `CompileRequest`;
+    `info()`'s `misses`, `skipped` and `waited`. The steps after it: the general form for the cull flip, `StandIn` and
+    the per-material override, then the presets.
+    - **Found while building:** under the synchronous call, a material whose pipeline the device refuses invalidated
+      the whole frame, so the box beside it did not draw either. Off the frame it is skipped alone and reported once,
+      as `Material`, in the device's words. Each leg words it its own way: wgpu-native names
+      `max_inter_stage_shader_variables`, Dawn each location past 16, and Firefox passes on only wgpu's first line.
+    - **Settled while building, and reported:** the tests written before part 5 compile during the render (`Wait`), so
+      one render draws everything as they were written to read, as step 5 kept them on the GPU's resolve; a mesh's two
+      refusals are one report; a refusal a compile request finds is reported by `takeErrors()` or the next render; a
+      refused pipeline of the renderer's own is `GraphicsErrorKind::Pipeline`, which no case can provoke.
+    - Red first: on the API's stub, 9 of the 22 new cases failed. 322 cases natively, in Firefox and in Chrome
+      for Testing, 309 in Edge, each debug and release; 27 of 28 mutations caught, the one left a refused
+      resolve counted as a miss, a fault no case can provoke. A render's own refusals left unreported was caught only
+      once the gate counted the line a printing renderer writes, since `takeErrors()` sweeps them anyway.
