@@ -1500,7 +1500,8 @@
        reported by `takeErrors()`. It compiles general forms and stand-ins too, so a loading screen waits on it and a
        test compiles before it renders.
      - **A miss,** a draw whose pipeline is not ready (a material new at run time, a method changed), is a setting on
-       the renderer that a material may override (a hero object waits, a particle skips):
+       the renderer that a mesh may override (a hero object waits, a particle skips). This first said a material; step
+       3's question 1 made it the mesh's:
        - `General`: the material's own general form, the same graph with every option the renderer would otherwise
          compile in read from uniforms instead, so it draws the same pixels, slower. Godot 4.7.2 does this
          (`render_forward_clustered.cpp:496-531`): each material's shader is compiled a second time with its
@@ -1592,3 +1593,30 @@
       SwiftShader and Edge's GPU. 37 of 39 mutations caught, the two left shown equivalent by a run (the general depth
       pipeline running `fs`, only slower; `compile` polling nothing at its start, since its asks skip a slot already
       asked and its request polls).
+  - **Step 3's two questions, each (A)** (the owner, 2026-11-19: "I will take your recommendations", asked in full at
+    the thirty-seventh session's end):
+    1. **The override is the mesh's, not the material's.** `mesh.whileCompiling()` and `whileCompilingMut()`, an
+       `Optional<WhileCompiling>`, `None` by default, meaning the renderer's. Later drawable kinds, such as instanced
+       meshes and particles, carry the same pair, and `Material` does not change.
+       - **Why:** the decision above named the material, but its own examples are objects. A rock material shared by a
+         hero rock beside the camera and fifty in the distance cannot make the first wait and the rest skip. And kama's
+         contracts carry no default methods, so a method on `Material` costs every material a program writes.
+       - **Prior art,** read by an agent, each claim cited (Unreal's source is private, so its facts come from Epic's
+         API pages and forum posts). Unreal alone is finer than one setting: `r.PSOPrecache.ProxyCreationDelayStrategy`
+         (0 skips, 1 draws the default material) beside a C++ opt-in per component class,
+         `UPrimitiveComponent::UsePSOPrecacheRenderProxyDelay()`. No engine lets a material choose in a shipped game:
+         Unity's player always waits (its cyan placeholder is the Editor's), Godot has no setting (its general form,
+         then waiting), and Bevy skips, with a global `synchronous_pipeline_compilation`.
+       - **Set aside:** (B) on the material, as first worded; (C) both, the mesh's over the material's over the
+         renderer's, the most flexible, but two places to look.
+    2. **The stand-in is the library's lit grey, compiled when its way is first in effect.**
+       - A `MeshStandardMaterial` of #808080, roughness 1 and metalness 0, lit by the scene so the object's shape still
+         reads, as Unreal's default material, `WorldGridMaterial`, is lit. A program names its own with
+         `renderer.standIn()` and `standInMut()`, a `Shared<Material>`.
+       - It is drawn by its general form, so one pair of pipelines serves every mesh, mirrored or not. Every mesh shares
+         one vertex layout, so there is no variant it cannot cover; Unreal precaches its default material for the
+         common variants, but not for those that hang on a vertex layout.
+       - `compile()` asks for it, and so does the first render with a draw whose way is `StandIn`. Until it is ready
+         those draws are skipped, as `General` skips while a general form compiles.
+       - **Set aside:** (B) compiled when the renderer is made, ready before any draw needs it, but a compile every
+         program pays at its start, one that never takes `StandIn` too.
