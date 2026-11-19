@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-19, the thirty-eighth session)
+## Where it stands (2026-11-19, the thirty-ninth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -100,9 +100,9 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 399 cases natively, in Firefox and in Chrome for Testing, 386 in Edge, since part 5's
-     step 3 (the thirty-eighth session); 362 and 349 at its start. Its gate also asks Edge for WARP, which it does not offer, and
-     holds the run to failing cleanly.
+   - `@kama/graphics`': 414 cases natively, in Firefox and in Chrome for Testing, 401 in Edge, since part 5's
+     step 4 (the thirty-ninth session); 399 and 386 at its start. Its gate also asks Edge for WARP, which it does not
+     offer, and holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -122,7 +122,7 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-eighth session's end the range held 34 commits, to `06277e8d` (0.9.993), none that kyoten needs:
+     By the thirty-ninth session's end the range held 41 commits, to `626ac856` (0.9.997), none that kyoten needs:
      0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
      io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
      (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
@@ -133,10 +133,14 @@ the design doc it settles before building on it.
      compile-time values (KR-413); 0.9.987, `@generate(zero)` makes each field's default by the one rule for a default
      where it wrote zero bytes (KR-416); 0.9.988 to 0.9.991, derives and serde across a class hierarchy (KR-408, KR-419);
      0.9.992, a leaf answering its root's comparison contracts (KR-407); 0.9.993, `try new` evaluating its arguments
-     only once the box is drawn; a test's clock (KR-415); and roadmap rulings. **On a bump, check 0.9.987 first:**
-     `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
-     `src/native/seam.kama` are `@generate(zero)`. The pin is still on its history. A bump is optional until something
-     kyoten needs lands.
+     only once the box is drawn; a test's clock (KR-415); and roadmap rulings. Then, during the thirty-ninth session:
+     roadmap rulings (KR-403 and KR-404 claimed by kama's Windows session, KR-423 filed); 0.9.994, `~` and a shift in
+     a `comptime` folding at their operand's width, as the run time computes them; 0.9.995 to 0.9.997, a collection's
+     capacity that does not fit an `isize` trapping, and `tryReserve` and an add within capacity answering no room
+     (KR-403). `../kama` holds uncommitted KR-403 work. **On a bump, check 0.9.987 and 0.9.994 first:** `@kama/gpu`'s
+     114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in `src/native/seam.kama` are
+     `@generate(zero)`, and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The pin is
+     still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -345,41 +349,45 @@ the design doc it settles before building on it.
           kama has no overloading and `supports(antialiasing:)` would refuse a later `supports(shadows:)`; and
           `Quality.make(preset:)` for the library's four, KR-367's one ctor with a required parameter, where part 5's
           question 2 named `Quality.low()` to `Quality.ultra()`.
-        - **Next, step 4: `Quality`, `applyQuality` and `supportsAntialiasing`.** It finishes part 5; then part 6,
-          `examples/cube`. Step 4's shape as the thirty-eighth session read the code (no public question met; settle and
-          report the details named), its names compiled and run on 0.9.978 (`.scratch/s38/probe4/shape.kama`):
-          - **A new `src/quality.kama`,** exporting `Quality` and `QualityPreset`, which renderer.kama imports, as it
-            imports `Antialiasing` from antialiasing.kama:
-            - `type value Quality`, one public field per technique, today `Antialiasing antialiasing`;
-              `of(antialiasing:)`, the memberwise ctor, a quality built from nothing;
-            - `make(preset:)`, the library's four, `@nonExhaustive type enum QualityPreset { Low, Medium, High,
-              Ultra }`: `Low` takes `Msaa4`, the rest `Msaa4ToneMapped`, and none `None` (part 5's question 2). A value
-              `match` lands in a plain local before the field.
-          - **On the renderer:**
-            - `applyQuality(quality:)`, a plain `fn` as `antialiasingMut()` is, writes `this.method` and returns
-              `this.quality()`;
-            - `quality()`, `const`, is `Quality.of(antialiasing: this.method)`, made from the settings at each call, so
-              a technique set directly reads back. A change takes effect at the next render, as the pair's does;
-            - `supportsAntialiasing(method:)`, `const`, a `match` true for every method today. A method a device may
-              lack answers from the device (GFX-19).
-          - **The comments that promise a step-down** (antialiasing.kama's head, and the renderer's field) say it comes
-            with the first method a device may lack.
-          - **To settle and report:** whether `Quality` takes `@generate` for an `equals`, or the cases compare its
-            field; that `antialiasing()` keeps saying what was asked and `quality()` what is in effect (part 4's
-            settled detail), the same today and apart from GFX-19.
-          - **The cases** (a run of their own, `tests/src/quality.kama`, beside `antialias.kama`'s):
-            - each of the library's four's method;
-            - `applyQuality` of each writes `antialiasing()` and hands back the same method;
-            - a game's own preset, `make(preset: Low)` with its `antialiasing` set to `None`, applied;
-            - `quality()` after `antialiasingMut()` is set directly;
-            - `supportsAntialiasing` true for each method, on every leg;
-            - one of `antialias.kama`'s switches driven through `applyQuality` instead of `antialiasingMut()`, so an
-              image holds that the next render draws by what was applied.
-          - **The mutations:** a preset's method swapped; `applyQuality` writing nothing, or handing back what it was
-            handed; `quality()` from a copy stored at `applyQuality`; `supportsAntialiasing` false for one method.
-          - **The records:** kama-graphics' SPEC § The renderer and § Tests, CHANGELOG, ROADMAP_DETAIL (the three
-            answers beside part 5's, step 4 built, part 5 done, its "Next" line), AGENTS.graphics.md's "Next, step 4"
-            (`:162`); kyoten's rendering § Decided, step 4's Built entry.
+        - **Step 4 is built, and so part 5** (kama-graphics `aba102b`, the thirty-ninth session; rendering § Decided):
+          `Quality` (`src/quality.kama`), `Quality.of(antialiasing:)` and `Quality.make(preset:)`, `Low` taking `Msaa4`
+          and the rest `Msaa4ToneMapped`; on the renderer `applyQuality(quality:)`, handing back `quality()`, made from
+          the settings at each call, and `supportsAntialiasing(method:)`, true for each method. Settled and reported:
+          `Quality` is `@generate(Equatable)`, so a program compares what it asked for with what was handed back; and
+          `antialiasing()` says what was set, `quality()` what is in effect, the same until GFX-19. 414 cases, 401 in
+          Edge; 12 of 13 mutations caught, the one left, handing back the quality handed in, equivalent until a method
+          can step down.
+        - **Found while mutating step 4, and fixed first** (kama-graphics `a51d169`): a mesh's two refused pipelines were
+          reported twice where natively they answered at two polls, which one native run in fifteen showed as the gate's
+          printed-line count failing; a probe holding one twin's answer for its next poll reproduced it every time
+          (`.scratch/s39/kg/probe5.py`, `probe6.py`).
+      - **Next, part 6: `examples/cube` in a window, FLIP, the 150 KB measurement, and the SPEC,** which finishes GFX-1
+        (kama-graphics' ROADMAP_DETAIL § GFX-1, Done). Its steps as the thirty-ninth session read the code and the
+        decided records:
+        1. **the renderer in a window,** `Renderer.make(window:, options:)` (part 1's question 1): it asks for its own
+           adapter for the window's surface and a device, returns at once and draws nothing until they answer; a camera
+           naming no target draws into the window; the surface is configured by `@kama/gpu`'s `caps.preferred()`
+           (its sRGB view and Fifo) at the window's `framebufferSize()`, and again when that changes, with the
+           renderer's size-dependent textures made again; `NoArea` skips frames; each render into the window presents.
+           **Its two questions were asked at the thirty-ninth session's end, in full:** the camera's aspect when what it
+           draws into changes size, and where present mode (vsync) lives. Prior art read from the pinned sources,
+           each claim cited: `.scratch/s39/part6-prior-art.md`;
+        2. **`examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle: `--frames N`,
+           its last frame copied out of the window and read back, held to its golden on each software GPU's leg;
+        3. **FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s
+           mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two
+           limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
+           present, plus a margin (rendering § Decided, GFX-1's question 4);
+        4. **the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a ratchet,
+           FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7) draws
+           the hello cube through it.
+      - **Part 5's evidence** is machine-local:
+          - Step 4's evidence and runners: `.scratch/s39/kg/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate39.sh`,
+            `gate-main.sh`; `wire_main.py`; `red1.log` and `red2.log`, the stub's runs before and after the cases were
+            sharpened; `green1.log`; `list4.py` and `mutations4.out`; the split refusal's `split-red1.log` to
+            `split-red3.log` (unreproduced unaided), `probe5.py`, `probe6.py` and their `.out` files, and
+            `split_fix_only.py`; `gate-fix.log` and `gate-step4.log`), `.scratch/s39/suites.sh` with the start's logs,
+            and `.scratch/s39/probe/eq.kama`, `@generate(Equatable)` on `Quality`.
           - Step 3's evidence and runners: `.scratch/s38/kg/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate38.sh`;
             `stub.py`, `impl3.py`, `docs_src3.py` and `sharpen1.py`, the edit scripts; `red1.log`, the stub's run;
             `list3.py`, `mutations3.out` and `mutations3b.out`, the rerun with the added case; `gate4.log`, the final
@@ -467,6 +475,26 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-ninth session** (2026-11-19). Nothing new on any origin at the start, and kama's range had gained two
+roadmap commits since `06277e8d`, so no bump. kama moved to 0.9.997 during the session, with nothing kyoten needs; its
+0.9.994 changes how a `comptime` shift folds, which a bump checks with 0.9.987 (item 1).
+- **Every suite was green on 0.9.978 at the start,** at the thirty-eighth session's counts.
+- **No question at the start:** step 4's shape, laid out by the thirty-eighth session, held against the code.
+- **Built:** part 5's step 4, `Quality`, `applyQuality`, `quality()` and `supportsAntialiasing` (kama-graphics
+  `aba102b`), test-first and mutated, in a worktree with a second for the mutations, and so part 5. Found on the way:
+  - **the first draft's `applyQuality` cases passed on the stub,** since they read the method they wanted from the
+    preset, which the stub also had wrong. Each case now states its method;
+  - **a mutation run's printed-line check failed once in fifteen native runs, on code it did not touch.** It was a real
+    bug from step 1: a mesh's two refused pipelines were reported twice where natively they answered at two polls.
+    Unaided, three runs of a new case with twelve refused materials never split a pair. A probe that holds one twin's
+    answer for its next poll reproduced it every time, and the fix went in first, as its own commit (kama-graphics
+    `a51d169`), with its own gate.
+- **Settled and reported, for the owner to object to:** `Quality` is `@generate(Equatable)`; `antialiasing()` says what
+  was set and `quality()` what is in effect, the same until GFX-19; a mesh's refused pair is reported in the words of
+  whichever twin is found first, and the gate counts either.
+- **Part 6's first step's two questions asked at the end,** in full, with the peers' prior art read by an agent from the
+  pinned sources and from FLIP's repository, each claim cited (`.scratch/s39/part6-prior-art.md`).
 
 **The thirty-eighth session** (2026-11-19). Nothing new on any origin at the start, and kama's range was the
 thirty-seventh session's, to `d4382eea` (0.9.985), so no bump. kama moved to 0.9.993 during the session, with nothing

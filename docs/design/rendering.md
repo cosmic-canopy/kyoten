@@ -1699,3 +1699,30 @@
       is the memberwise ctor, a quality built from nothing, which gains a parameter with each technique, so a program
       building one that way states every technique. The shape compiles and runs on 0.9.978
       (`.scratch/s38/probe4/shape.kama`).
+  - **Step 4 built, and so part 5** (the thirty-ninth session, kama-graphics `aba102b`; its SPEC § The renderer and §
+    Tests), as the thirty-eighth session laid it out:
+    - `Quality` (`src/quality.kama`), a `type value` with one public field per technique, today `antialiasing`;
+      `Quality.of(antialiasing:)`; `Quality.make(preset:)`, `QualityPreset::Low` taking `Msaa4` and `Medium`, `High` and
+      `Ultra` `Msaa4ToneMapped`.
+    - On the renderer: `applyQuality(quality:)`, which writes the method and hands back `quality()`; `quality()`, made
+      from the settings at each call, so a method set by `antialiasingMut()` reads back there; and
+      `supportsAntialiasing(method:)`, true for each method.
+    - **Settled while building, and reported:**
+      - `Quality` is `@generate(Equatable)` (probed on 0.9.978), so a program compares what it asked for with what
+        `applyQuality` handed back by `==` and `!=`, and a technique that joins as a field joins the comparison with no
+        code;
+      - `antialiasing()` says what was set and `quality()` what is in effect, the same until a method a device may lack
+        exists (GFX-19).
+    - Red first: 14 new cases, all failing on the API's stub, and the anti-aliasing run's switch back to the tone-mapped
+      resolve routed through `applyQuality`, so an image holds that the next render draws by what was applied. Five of
+      the first draft's cases passed on the stub, since they read the method wanted from the preset, which the stub
+      also had wrong; each now states its method. 414 cases natively, in Firefox and in Chrome for Testing, 401 in
+      Edge, each debug and release. 12 of 13 mutations caught (`.scratch/s39/kg/list4.py`); the one left, `applyQuality`
+      handing back the quality it was handed, is equivalent until a method can step down, and GFX-19's cases hold it.
+  - **Found while mutating step 4, and fixed first** (kama-graphics `a51d169`): a mesh's two refused pipelines, the
+    shaded and the depth-only, were reported twice where natively they answered at two polls, the first in the
+    depth-only pipeline's words, so a program reading `takeErrors()` saw the material twice. One native run in fifteen
+    printed the depth-only line alone, which the gate's count failed. A probe holding one twin's answer for its next
+    poll reproduced it every time (`.scratch/s39/kg/probe5.py`): 24 reports for twelve meshes before the fix, 12 after,
+    and each half of the fix taken out was caught (`probe6.py`). The first found is reported and its twin never, for a
+    general form's two as well, and the gate counts either twin's words.
