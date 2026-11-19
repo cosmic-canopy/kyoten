@@ -122,7 +122,7 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-ninth session's end the range held 41 commits, to `626ac856` (0.9.997), none that kyoten needs:
+     By the thirty-ninth session's end the range held 47 commits, to `85099809` (0.9.1000), none that kyoten needs:
      0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
      io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
      (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
@@ -137,8 +137,12 @@ the design doc it settles before building on it.
      roadmap rulings (KR-403 and KR-404 claimed by kama's Windows session, KR-423 filed); 0.9.994, `~` and a shift in
      a `comptime` folding at their operand's width, as the run time computes them; 0.9.995 to 0.9.997, a collection's
      capacity that does not fit an `isize` trapping, and `tryReserve` and an add within capacity answering no room
-     (KR-403). `../kama` holds uncommitted KR-403 work. **On a bump, check 0.9.987 and 0.9.994 first:** `@kama/gpu`'s
-     114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in `src/native/seam.kama` are
+     (KR-403). Then, while the session readied the next: 0.9.998, a `SlotMap` and a `BitSet` answering no room;
+     0.9.999, a `FixedArray`'s fallible ctors (`tryWithAllocator`, `tryFilledWithAllocator`), closing KR-403; 0.9.1000,
+     `new` over a constructor that answers `AllocError` answering for its box too (KR-404); and roadmap rulings, each an
+     addition kyoten does not call. `../kama` holds no uncommitted work. **On a bump, check 0.9.987 and 0.9.994
+     first:** `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
+     `src/native/seam.kama` are
      `@generate(zero)`, and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The pin is
      still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
@@ -364,16 +368,75 @@ the design doc it settles before building on it.
       - **Next, part 6: `examples/cube` in a window, FLIP, the 150 KB measurement, and the SPEC,** which finishes GFX-1
         (kama-graphics' ROADMAP_DETAIL § GFX-1, Done). Its steps as the thirty-ninth session read the code and the
         decided records:
-        1. **the renderer in a window,** `Renderer.make(window:, options:)` (part 1's question 1): it asks for its own
-           adapter for the window's surface and a device, returns at once and draws nothing until they answer; a camera
-           naming no target draws into the window; the surface is configured by `@kama/gpu`'s `caps.preferred()`
-           (its sRGB view and Fifo) at the window's `framebufferSize()`, and again when that changes, with the
-           renderer's size-dependent textures made again; `NoArea` skips frames; each render into the window presents.
-           **Its two questions were asked at the thirty-ninth session's end, in full:** the camera's aspect when what it
-           draws into changes size, and where present mode (vsync) lives. Prior art read from the pinned sources,
-           each claim cited: `.scratch/s39/part6-prior-art.md`;
+        1. **the renderer in a window,** `Renderer.make(window:, options:)` (part 1's question 1). Prior art read from
+           the pinned sources, each claim cited: `.scratch/s39/part6-prior-art.md`.
+           - **Its two questions are decided** (the owner, 2026-11-19, "So far I think your recommendations sound good";
+             rendering § Decided), each (A): a camera's aspect follows what it draws into unless the program fixes it,
+             `aspect()` and `aspectMut()` an `Optional<float32>`, `None` meaning follow; and vsync is the renderer's
+             pair, `presentMode()` and `presentModeMut()`, `Fifo` by default, with `supportsPresentMode(mode:)`, a mode
+             the surface does not offer reported and `Fifo` kept. The five details reported with them were taken too:
+             options holding only the GPU request, an opaque window, resizing by the window's `framebufferSize()`, the
+             window's full device pixels, and the surface's sRGB view.
+           - **A third question, found while readying step 1, was asked at the thirty-ninth session's end:** how a
+             program reads the window's frame. Only a target is read today (`readRenderTargetPixels(target:)`), and a
+             case that holds the window's image, step 2's check among them, copies the frame out before it is
+             presented, which only the renderer can do. Bevy 0.20.1's `Screenshot` takes a window or an image alike,
+             captured at a later frame (`bevy_render/src/view/window/screenshot.rs:84-113`); Filament 1.81.0's
+             `Renderer::readPixels` reads the swap chain within a frame, "intended for debugging and testing"
+             (`Renderer.h:545-580`); Godot 4.7.2 reads a viewport's texture (`rendering_server.h:131`, `:562`); three.js
+             r187 reads only a target (`readRenderTargetPixelsAsync`, `Renderer.js:3576`).
+           - **Its shape as the session read the code,** the names compiled and run on 0.9.978 with stand-ins
+             (`.scratch/s39/probe6/shape.kama`). No other public question met; the details named are settled and
+             reported:
+             - **The renderer in two halves.** Every field `withDevice` makes is made from the device (45 uses of
+               `this.device` and `this.queue` in renderer.kama), and `make(window:)` returns before there is one. The
+               program's settings stay on `Renderer` (the clear colour and alpha, the method, the way, the stand-in,
+               `printErrors`, the errors, the present mode); what the device makes (the layouts, the frame buffer, the
+               DFG table, the pipeline tables and slots) moves to an internal resource, an `Optional` on the renderer,
+               which `withDevice` makes at once and `make(window:)` at the render that finds the device answered.
+             - **`RendererOptions`,** a `type value` with `defaults()`: `power` (`PowerPreference::HighPerformance`),
+               `forceFallbackAdapter` (false) and `device` (`DeviceOptions.defaults()`).
+             - **`make(window: const ref Window, options:)`** makes an `Instance` and a `Surface` on the window, which
+               holds it, and asks for an adapter `withSurface`. Each render polls that request, then reads the surface's
+               capabilities and asks for the device; until the GPU half is made a render draws nothing and reports
+               nothing, where three.js r187's `render()` throws before `init()` (`Renderer.js:1821-1825`). A failed
+               request is reported once.
+             - **Into the window:** a camera naming no target draws into it, and `NoTarget` stays a windowless
+               renderer's. Each render acquires a frame, draws and presents it, never holding a frame across renders.
+               The surface is configured from `caps.preferred()` with the renderer's present mode and an opaque alpha
+               mode, at the window's `framebufferSize()` as of the program's last `pump()`, and again when that size
+               or the present mode differs from what it was configured with, or an acquire answers `Outdated` or
+               `Lost`; `NoArea` (a minimised window) skips the render and reports nothing. The window's textures are a
+               target's without its colour, the frame's view taking its place, made again at a new size; the output
+               pass's pipelines are keyed by the view format beside the tone mapping, since natively the surface's may
+               be `BGRA8UnormSrgb`.
+             - **The camera:** `make(fovRad:, near:, far:)` and `withInfiniteFar(fovRad:, near:)`; the render hands the
+               camera the aspect of what it draws into before `viewProjection()`, through its `friend` grant. The
+               tests' 25 calls change: one whose aspect is its target's drops it, and the rest (`parts.kama:257`'s
+               projection with no render, `lights.kama:662`'s `SHOWN_WIDE`) set `aspectMut()`, so no golden moves.
+             - **Vsync:** the pair, and `supportsPresentMode(mode:)` from the surface's capabilities once read; before
+               then, and on a renderer with no window, `Fifo` alone, which every surface offers.
+           - **To settle and report:** what a following camera's `projectionMatrix()` answers before its first render
+             (the probe's 1, three.js's default aspect); the internal half's name; the `GraphicsErrorKind` a failed
+             request, a lost surface and a mode not offered take (the enum is `@nonExhaustive`); whether a program can
+             ask whether the renderer is ready; `presentMode()` saying what was set, as `antialiasing()` does.
+           - **The cases** (a run of their own, `tests/src/window.kama`, in a window opened with `quietly()`'s options,
+             never focused): a render before the GPU answers draws nothing and reports nothing, and draws once it has; a
+             camera naming no target draws into the window (`info()`); a following camera's aspect after a render into
+             a 2:1 target, a fixed one kept, `None` following again; a posted `Event::Resize`, which sets the window's
+             size, configured at the next render, and one to no area skipped; `Fifo` by default, `supportsPresentMode`
+             true for `Fifo` on every leg and false for the rest on the web, and a mode not offered reported with `Fifo`
+             kept; and, by question 3's answer, the window's frame byte for byte the same scene's in a target, on the
+             software legs. **The session's first probe:** whether a posted `Resize` moves `framebufferSize()` natively
+             and on the web, and whether a native surface takes a size its window's client area is not.
+           - **The mutations:** the aspect not followed, or followed over a fixed one; no configure at a new size, or
+             at a changed present mode; a mode not offered taken; a frame not presented; a render before the device
+             answered drawing.
+           - **The records:** kama-graphics' SPEC § The renderer and § Tests, CHANGELOG, ROADMAP_DETAIL (the answers and
+             the settled details, step 1 built), AGENTS.graphics.md's "Next, part 6"; kyoten's rendering § Decided,
+             step 1's Built entry.
         2. **`examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle: `--frames N`,
-           its last frame copied out of the window and read back, held to its golden on each software GPU's leg;
+           its last frame read back as question 3 decides, held to its golden on each software GPU's leg;
         3. **FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s
            mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two
            limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
@@ -494,7 +557,17 @@ roadmap commits since `06277e8d`, so no bump. kama moved to 0.9.997 during the s
   was set and `quality()` what is in effect, the same until GFX-19; a mesh's refused pair is reported in the words of
   whichever twin is found first, and the gate counts either.
 - **Part 6's first step's two questions asked at the end,** in full, with the peers' prior art read by an agent from the
-  pinned sources and from FLIP's repository, each claim cited (`.scratch/s39/part6-prior-art.md`).
+  pinned sources and from FLIP's repository, each claim cited (`.scratch/s39/part6-prior-art.md`). The owner took both
+  recommendations and the five details reported with them ("So far I think your recommendations sound good"), and the
+  word to push.
+- **Ready for the next session at the owner's word** ("Can we get things ready for the next session?"):
+  - both repositories pushed, kyoten rebased over the Mac's `audio.md` commit (`d9ce33e`), which touched nothing here;
+  - the two answers recorded (rendering § Decided), and step 1's shape put in § Where it stands as the code reads it,
+    its names compiled and run on the pin (`.scratch/s39/probe6/shape.kama`);
+  - kama's range read again: 0.9.998 to 0.9.1000, nothing kyoten needs;
+  - **a third question found while reading the code,** how a program reads the window's frame, which every case
+    holding the window's image needs; the peers' answers read from the pinned sources (Bevy's `Screenshot`, Filament's
+    `readPixels`, Godot's viewport texture, three.js reading targets alone), and asked at the end.
 
 **The thirty-eighth session** (2026-11-19). Nothing new on any origin at the start, and kama's range was the
 thirty-seventh session's, to `d4382eea` (0.9.985), so no bump. kama moved to 0.9.993 during the session, with nothing

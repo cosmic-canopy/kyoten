@@ -768,8 +768,9 @@
     - **change marks:** a write marks the node and each ancestor up to the first already marked, and the render walk
       enters only a subtree that moved or holds a mark, so an unchanged scene costs nothing to walk; three.js remakes
       every node's world matrix every frame;
-    - `PerspectiveCamera.make(fovRad:, aspect:, near:, far:)`, three.js's four with radians; the renderer remakes the
-      projection when the camera changed, so there is no `updateProjectionMatrix()`; reversed depth as three.js r187's
+    - `PerspectiveCamera.make(fovRad:, aspect:, near:, far:)`, three.js's four with radians (part 6's step 1 takes `aspect`
+      out, 2026-11-19: a camera follows what it draws into unless the program fixes its aspect, below); the renderer
+      remakes the projection when the camera changed, so there is no `updateProjectionMatrix()`; reversed depth as r187's
       `makePerspective` (near to 1, far to 0), an infinite far as its limit;
     - `BoxGeometry` as three.js's: faces +X, −X, +Y, −Y, +Z, −Z, counter-clockwise, a UV and a group per face,
       `withSegments`;
@@ -1726,3 +1727,48 @@
     poll reproduced it every time (`.scratch/s39/kg/probe5.py`): 24 reports for twelve meshes before the fix, 12 after,
     and each half of the fix taken out was caught (`probe6.py`). The first found is reported and its twin never, for a
     general form's two as well, and the gate counts either twin's words.
+
+- **2026-11-19, the owner: GFX-1's part 6, step 1's two questions, each (A), and its settled details** ("So far I think
+  your recommendations sound good", asked in full in the chat at the thirty-ninth session's end, once part 5 was built).
+  Step 1 puts the renderer in a window, `Renderer.make(window:, options:)` (part 1's question 1). The peers' prior art
+  was read by an agent from the pinned sources and from the same tags' files fetched for it, each claim cited
+  (`.scratch/s39/part6-prior-art.md`).
+  1. **A camera's aspect follows what it draws into, unless the program fixes it.** `aspect` leaves
+     `PerspectiveCamera.make` and `withInfiniteFar`, and `aspect()` and `aspectMut()` become an `Optional<float32>`,
+     `None` by default: at each render the renderer takes the width over height of the target or window the camera draws
+     into. A program that wants a fixed shape, a 2.39 letterbox or a split screen's half, sets one, and `None` follows
+     again. Bevy 0.20.1 (`camera_system`, `bevy_render/src/camera.rs:342-449`; `PerspectiveProjection::update`,
+     `bevy_camera/src/projection.rs:388-392`), Godot 4.7.2 (the projection made from the viewport's size each frame,
+     `renderer_scene_cull.cpp:2697-2734`) and Unity (its documentation: "automatically calculated from the screen's
+     aspect ratio") follow by default, and Unity alone keeps a program's own until `ResetAspect()`, as `None` does here.
+     - **Set aside:** (B) the program's, as three.js r187's (`PerspectiveCamera.js:29-33`; the renderer never writes it)
+       and Filament 1.81.0's: every program writes a resize handler, and one that forgets draws a stretched picture;
+       (C) always follow, with no override, as Godot: a fixed shape then needs a target of that shape.
+  2. **Vsync is a property pair on the renderer, `presentMode()` and `presentModeMut()`, with `@kama/gpu`'s
+     `PresentMode`, `Fifo` by default,** every peer's default: Bevy's `Window.present_mode` (`window.rs` L1242-1243),
+     Godot's `VSYNC_ENABLED` (`main.cpp` L2839-2842), and Filament's WebGPU backend, which always takes `Fifo`. A change
+     takes effect at the next render into the window, by configuring the surface again, and compiles nothing.
+     `supportsPresentMode(mode:)` answers from the surface: on the web `Fifo` alone, since a WebGPU canvas has no
+     present mode (the spec's `GPUCanvasConfiguration`) and the browser paces its frames; natively what the driver
+     offers. A mode the surface does not offer is a misuse, reported, and `Fifo` is kept, as Godot falls back to FIFO
+     with a warning (`rendering_device_driver_vulkan-4.7.2.cpp:3741-3770`) and Bevy's `AutoNoVsync` falls back to
+     `Fifo`.
+     - **Set aside:** (B) a field of `Quality`, as Unity's `QualitySettings.vSyncCount`: vsync is the player's display
+       choice, not a technique with a cost ladder, and Godot keeps it a display setting; (C) fixed in the creation
+       options, as Filament has no option at all: a settings menu would make a new renderer, compiling everything again.
+  - **Settled, reported with the questions, and taken with them:**
+    - **the creation options hold only the GPU request:** the power preference (`HighPerformance` by default, as Bevy's
+      `WgpuSettings`), the fallback adapter, and `@kama/gpu`'s `DeviceOptions` (limits, features, printing, compile
+      workers). Every drawing setting stays a property pair on the renderer, as Bevy's are components and Filament's are
+      per View, where three.js's options mix them (`antialias`, `samples`, `alpha`);
+    - **the window is opaque,** as Bevy's `transparent: false` and Godot's per-pixel transparency off by default. A
+      transparent window, three.js's default (`alpha: true`, a premultiplied canvas), waits for a row of its own;
+    - **resizing is automatic:** at each render into the window the renderer compares the window's `framebufferSize()`,
+      as of the program's last `pump()`, with the size it configured at, and configures again and makes its
+      size-dependent textures again when they differ, as Bevy and Godot do, where three.js waits for the program's
+      `setSize`;
+    - **it draws at the window's full device pixels,** as Bevy configures the surface at the window's physical size. A
+      render scale, Godot's `scaling_3d_scale` and URP's `renderScale`, comes later, as a row of its own;
+    - **sRGB comes from the surface's sRGB view,** `@kama/gpu`'s `caps.preferred()`, as Bevy takes one
+      (`bevy_render/src/view/window/mod.rs:400-438`), so the output pass writes into the window as it writes an 8-bit
+      target today.
