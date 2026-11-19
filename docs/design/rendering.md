@@ -98,7 +98,8 @@
     this question's.
     - **Where it stands:** GFX-1's part 3 (2026-11-15) took a material as a typed node graph compiled at run time,
       three.js's model, and its decision 3 compiles pipelines off the frame, `renderer.compile(scene:)` ahead and a
-      pipeline cache on disk later natively. Whether a game may ship its shaders built was never asked.
+      pipeline cache on disk later natively. Whether a game may ship its shaders built was never asked. Part 5
+      (2026-11-18, § Decided) builds compiling at load and leaves the rest to this row.
     - **What limits it today:** on the web a page hands WGSL to the browser, which always compiles it, so a game can
       build its WGSL ahead but never its DXIL. Natively, wgpu-native v29 takes WGSL or SPIR-V and compiles them itself
       (naga to HLSL, then DXC or FXC on D3D12); its feature that takes a backend's own shader, DXIL on D3D12, is
@@ -405,6 +406,8 @@
        - `renderer.compile(scene:)` compiles a whole scene ahead, as three.js's `compileAsync` and Unreal's precaching
          do;
        - a pipeline cache on disk comes later, natively.
+       - **Widened 2026-11-18** (part 5's question 1, below): what a draw does while its pipeline compiles is the
+         program's, the material's general form by default.
      - **Measured the same day** (research § 5): one lit-sized pipeline takes about 24 ms on one thread, a frame and a
        half at 60 Hz.
      - **Where the compiling runs:**
@@ -1479,3 +1482,66 @@
         all clear to the clear colour over 1.25, fixed before the step was committed;
       - the multisampled scene is a `TextureBinding` under every method: WebGPU's core has no transient attachment the
         GPU's resolve alone could take instead, so the usage costs nothing a method without it would save.
+
+- **2026-11-18, the owner: GFX-1's part 5, its three questions, each (A) as revised** ("all sounds good now as revised
+  recommendations", asked in full in the chat at the thirty-sixth session's end, after part 4 was built). The first
+  draft of question 1 offered compiling ahead and skipping a draw whose pipeline was not ready. It said Godot's
+  ubershader could not serve a node material, and that a renderer waiting for its pipelines could exist only natively.
+  The owner asked: "We are building a general purpose solution. Shouldn't we support the uber shader designation
+  approach? Shouldn't we also support pre-compiling all shaders as an approach? … recall that before shaders the fixed
+  function pipeline was basically an 'uber shader'." Both claims were wrong, as the sources showed, and the question was
+  laid out again. Of question 2: "How flexible are the quality settings? can developers of a game specify what falls
+  into each quality?" Of question 3: "it sounds like this is just a scope question? we build what we know and add on as
+  we go?" The sources are `.scratch/s33/part4-sources/`, and Unreal's and Unity's documentation.
+  1. **Pipelines: every way, chosen by the program.** It widens area 3's item 3, where an object drew a frame or two
+     late: a frame is still never a hitch unless a program asks for one.
+     - **Compiling ahead:** `renderer.compile(scene:, camera:)` hands back a request the program polls, as `@kama/gpu`'s
+       pipeline requests are polled: `Ready` once every pipeline the scene needs has answered, a refused material still
+       reported by `takeErrors()`. It compiles general forms and stand-ins too, so a loading screen waits on it and a
+       test compiles before it renders.
+     - **A miss,** a draw whose pipeline is not ready (a material new at run time, a method changed), is a setting on
+       the renderer that a material may override (a hero object waits, a particle skips):
+       - `General`: the material's own general form, the same graph with every option the renderer would otherwise
+         compile in read from uniforms instead, so it draws the same pixels, slower. Godot 4.7.2 does this
+         (`render_forward_clustered.cpp:496-531`): each material's shader is compiled a second time with its
+         specialization constants as push constants and culling in the shader, when a mesh loads, the loader waiting
+         for it (`:5030`). Each feature that adds such an option adds it to the general form, with a case that both
+         forms draw the same pixels. Today's one is the cull flip for a mirrored object;
+       - `StandIn`: a material the program names, the library's plain grey by default, as Unreal's
+         `r.PSOPrecache.ProxyCreationDelayStrategy` 1 draws the engine's default material;
+       - `Skip`: nothing until the pipeline is ready, as Bevy and Unreal's default (strategy 0) do;
+       - `Wait`: compiled during the frame, as three.js r187 does, and Godot when even the general form is missing
+         (`pipeline_hash_map_rd.h:193`). It is for tools, tests and cutscenes. On the web the page does not freeze,
+         but the browser's GPU process waits at the submit, so the frame is late on both legs alike.
+     - **The default is `General`, then `Skip`** when the general form is not ready or there is none, as for a graph
+       new at run time. `info()` counts the draws drawn each way, so a test or a loading screen can wait for no misses.
+     - **The fixed-function point:** a preset's settings are already values (area 3's item 2), so a thousand standard
+       materials share one pipeline. The general form carries the same idea to whatever would otherwise compile a new
+       variant.
+     - **Set aside:** (B) compiling ahead and skipping, the first draft, which left out three of the engines' ways;
+       (C) (A) without `General`, cheaper to build, but a miss then always changes what the player sees.
+     - **Part 5 builds** the setting with its four ways and the general form for the one option there is, the cull
+       flip. Each later feature extends it as it arrives. Compiling everything at start from a list is question 11's.
+  2. **Quality presets: a value the game owns, the library's four only starting points.**
+     - `type value Quality` has one field per technique, each the technique's whole setting: the method now, and later
+       its parameters, such as a shadow map's size. `Quality.low()` to `Quality.ultra()` are the library's.
+     - A game makes as many as it likes and names them ("Steam Deck", "Quest 3"), each from one of the library's or
+       from nothing. `renderer.applyQuality(quality:)` writes every technique, takes the next method down where the
+       device lacks a feature, and reports what it chose; a player's settings menu still changes one technique after
+       it. The renderer reports the device's features, area 4's item 1.
+     - In kyoten a game's presets are records, and its rule, or kyoten's default rule, picks one per machine. That side
+       comes with the render module's row, not part 5.
+     - **Prior art,** from their documentation: Unity's quality levels are the project's, how many, their names, what
+       each holds and each platform's default; Unreal's are four numbered levels per scalability group, Epic's defaults
+       in `BaseScalability.ini`, which a project overrides level by level in its `DefaultScalability.ini`
+       (`[ShadowQuality@2]`).
+     - **Set aside:** (B) four fixed levels a game fills in, Unreal's, so a Deck or Quest preset squeezes into a number;
+       (C) the library's contents, the first draft, a game only changing one technique after applying one.
+     - **The library's four hold provisional contents** until measured (timestamp queries, GPU-6; a tiled GPU at
+       GFX-5): low takes the GPU's resolve, and the rest the tone-mapped one. No preset turns anti-aliasing off.
+  3. **Question 11 is scope: part 5 builds what is known, and the rest is decided at its row.** Part 5 builds compiling
+     at load and the miss setting, and keeps the rest open: a material's WGSL is the same each time it is generated, so
+     the `kyoten` tool can generate it ahead, and a pipeline's key holds everything that made it, which a cache on disk
+     keys on. Compiling everything from a list (recorded from play, as Unreal's bundled cache, or written by the tool
+     from a game's records), WGSL built ahead, DXIL and the cache on disk natively are decided at question 11's row, at
+     the join.
