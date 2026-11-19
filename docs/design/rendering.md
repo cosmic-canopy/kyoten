@@ -1564,3 +1564,31 @@
       for Testing, 309 in Edge, each debug and release; 27 of 28 mutations caught, the one left a refused
       resolve counted as a miss, a fault no case can provoke. A render's own refusals left unreported was caught only
       once the gate counted the line a printing renderer writes, since `takeErrors()` sweeps them anyway.
+  - **Step 2 built** (the thirty-seventh session, kama-graphics `339123a`; its SPEC § The renderer, § Misuse, § The
+    compiler and § Tests): the general form, for the one option there is, the cull flip, as the thirty-sixth session
+    laid it out.
+    - `NodeBuilder.generalWgsl()`, written in the same pass as `wgsl()`: one more varying, flat, whether the object is
+      mirrored, from its world matrix's determinant; `fs` discarding a face that faces away after its shading; `fsCull`,
+      the depth prepass's fragment stage.
+    - Its two pipelines cull nothing, keyed by its WGSL and the samples a texel, so one serves mirrored meshes and
+      others. `General` draws by it while a mesh's own pipelines compile; a miss asks for it, and so does `compile`.
+    - `RenderInfo.general`, each such draw also a miss. A general form the device refuses is reported once, as
+      `Material`, once its material's own pipeline is made.
+    - **Measured on every leg:** the general form takes two of the 16 values a device passes between the stages, its
+      varying and `front_facing`, which WebGPU counts as one. So a material passing 15 or 16 has none, and one passing
+      14 has one, on wgpu-native and on Dawn (`.scratch/s37/kg/probe14.log`, `probe15.log`).
+    - **Found while building, and fixed:** natively a render could draw with a pipeline it had asked for itself, where
+      `@kama/gpu`'s threads answered before a later draw sharing it, which step 1 said could not happen. Twelve boxes by
+      turns of two materials drew five on a new scene's first render, on every native run. Every request is now polled
+      once, at the start of a render, a compile and `takeErrors()`. On the web a browser answers only between ticks, so
+      only the native leg could race.
+    - **Settled while building, and reported:** `compile` asks for general forms only under `General`, as it asks for
+      what the settings are now; the discard after the shading is held by the WGSL text alone, since natively wgpu
+      takes a sample after it too; `facing` and `fsCull` are names the compiler writes, and a function named
+      `determinant` is refused.
+    - Red first: on the API's stub, 16 of the first 36 new cases failed; the race's case failed on 3 of 3 native runs
+      before the fix, and four more cases came with it. 362 cases natively, in Firefox and in Chrome for Testing, 349 in
+      Edge, each debug and release. Every general form's image matched its own pipelines' byte for byte on WARP,
+      SwiftShader and Edge's GPU. 37 of 39 mutations caught, the two left shown equivalent by a run (the general depth
+      pipeline running `fs`, only slower; `compile` polling nothing at its start, since its asks skip a slot already
+      asked and its request polls).

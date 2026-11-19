@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-18, the thirty-sixth session)
+## Where it stands (2026-11-18, the thirty-seventh session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -100,8 +100,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 322 cases natively, in Firefox and in Chrome for Testing, 309 in Edge, since part 5's step 1
-     (the thirty-sixth session); 288 and 278 at its start. Its gate also asks Edge for WARP, which it does not offer, and
+   - `@kama/graphics`': 362 cases natively, in Firefox and in Chrome for Testing, 349 in Edge, since part 5's step 2
+     (the thirty-seventh session); 322 and 309 at its start. Its gate also asks Edge for WARP, which it does not offer, and
      holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
@@ -122,12 +122,13 @@ the design doc it settles before building on it.
      still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-sixth session the range held 16 commits, to 0.9.983 (`00707b6f`), none that kyoten needs:
+     By the thirty-seventh session the range held 21 commits, to 0.9.984 (`886fd14c`), none that kyoten needs:
      0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
      io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
      (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
-     compiles. kama rebased its last commit during the session (`3e8591b8`, KR-397's brief, is now `dc0a8a1f`); the pin
-     is still on its history. A bump is optional until something kyoten needs lands.
+     compiles; 0.9.984, trusted input on an Android device under `kama run` (KR-397); KR-414, a test's timing check;
+     and KR-415, filed for the Mac: on macOS a fiber's bytes do not end a window package's wait, which `@kama/window`
+     does not use yet. The pin is still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -310,10 +311,18 @@ the design doc it settles before building on it.
         - **Step 1 is built** (kama-graphics `ee90ef7`): pipelines compiled off the frame, `General` (skipping until
           step 2), `Skip` and `Wait`, `compile`, `info()`'s misses; a material the device refuses is skipped alone,
           where its frame drew nothing before; 322 cases, 309 in Edge; 27 of 28 mutations caught.
-        - **Next, step 2: the general form** for the cull flip, a mirrored mesh's; then step 3, `StandIn` and the
-          per-material override; step 4, `Quality`, `applyQuality` and the device's features; then part 6,
-          `examples/cube`. Read the code for any public-API question before building, and ask it in full. Step 2's
-          shape as the thirty-sixth session read it (no public question met; settle and report these):
+        - **Step 2 is built** (kama-graphics `339123a`, the thirty-seventh session; rendering § Decided): a
+          material's general form, culling in the shader, which `General` draws while a mesh's own pipelines compile;
+          `info()`'s `general`; a general form takes two of the 16 values a device passes, so a material passing 15 or
+          16 has none (measured on every leg). Found and fixed: natively a render could draw with a pipeline it had
+          asked for itself; every request is now polled once, at the start of a render. 362 cases, 349 in Edge; 37 of
+          39 mutations caught, the two left shown equivalent.
+        - **Next, step 3: `StandIn` and the per-material override,** its public-API question asked at the
+          thirty-seventh session's end (where a program overrides the renderer's way: the decision named the material,
+          and the peers' prior art and the owner's own examples name the object; and the stand-in, the library's lit
+          grey, compiled when its way is first in effect). Then step 4, `Quality`, `applyQuality` and the device's
+          features; then part 6, `examples/cube`. Step 2's shape as the thirty-sixth session read it, built as laid
+          out:
           - the node builder writes a second module, `generalWgsl()` beside `wgsl()`, from one body with a flag: one
             more varying, `@location(n) @interpolate(flat) mirrored: u32`, written by `vs` from the sign of the world
             matrix's 3x3 determinant (as `mirroredAt` decides on the CPU); `fs` takes `@builtin(front_facing)` and
@@ -331,7 +340,10 @@ the design doc it settles before building on it.
             the general form (`general` 1, a miss), and once its own pipeline answers, the image is held byte for byte
             to the general form's.
           - Step 1's evidence and runners: `.scratch/s36/kg5/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate.sh`,
-            `list1.py`, `mutations1.out`, `gate1.log` to `gate3.log`, and the edit scripts).
+            `list1.py`, `mutations1.out`, `gate1.log` to `gate3.log`, and the edit scripts). Step 2's:
+            `.scratch/s37/kg/` (the same runners, `gate37.sh`, `probe15.sh`; `list2.py` and `mutations2.out`, the run
+            that counts; `gate2.log`, the final gate; `probe14.log` and `probe15.log`; `red1.log`, the stub's run; the
+            edit scripts), and `.scratch/s37/suites.sh` with the start's logs.
       - **Part 4's evidence** is machine-local:
         - `.scratch/s33/part4-sources/` and `part4/`: the survey's pinned sources and its measurements;
         - `.scratch/s34/`: `FINDINGS.md`; `invariant/`, check 1's probe; `agx/`, Blender 5.3's config and tables, the
@@ -409,6 +421,23 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The thirty-seventh session** (2026-11-18). Nothing new on any origin at the start, and kama's range, to 0.9.984,
+held nothing kyoten needs, so no bump.
+- **Every suite was green on 0.9.978 at the start,** at the thirty-sixth session's counts.
+- **No question at the start:** step 2's shape, laid out by the thirty-sixth session, held against the code.
+- **Built:** part 5's step 2, the general form (kama-graphics `339123a`), test-first and mutated, in a worktree with a
+  second for the mutations. Found on the way:
+  - **A race in step 1:** natively a render could draw with a pipeline it had asked for itself, which a case added for
+    the general form's sample count showed now and then. A case of twelve boxes by turns of two materials showed it on
+    every run (five drawn), so the first mutation batch, whose baseline came out caught, was stopped and run again after
+    the fix: every request polled once at a render's start.
+  - **A general form's refusal went unreported** once its material's own pipelines were made, since nothing polled it;
+    the polling at a render's start covers it, and `takeErrors()` polls too.
+  - **The general form costs two values, not one:** WebGPU counts `front_facing` among the 16 values passed between the
+    stages, on wgpu-native and on Dawn alike, so a material passing 15 has none either.
+- **Step 3's question asked at the end,** in full, with the peers' prior art read by an agent and its claims kept to
+  what it could cite (Unreal's per-component opt-in, which no other engine has).
 
 **The thirty-sixth session** (2026-11-18). Nothing new on any origin at the start, and kama's range held nothing kyoten
 needs, so no bump.
