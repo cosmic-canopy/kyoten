@@ -1823,3 +1823,40 @@
     weakly, so a read the program dropped costs no pass; a renderer dropped first fails the reads it still holds, in its
     destructor, so none waits for ever; and on a renderer with no window the read answers `Failed` at its first poll,
     "the renderer has no window", where the program is looking, rather than as a `GraphicsError`.
+- **Built, GFX-1's part 6, step 1, the renderer in a window** (the fortieth session, 2026-11-19, kama-graphics `11953c7`;
+  its SPEC § The renderer, § Misuse, § The camera, § Reading the window back and § Tests), as the thirty-ninth session
+  laid it out and the three questions above decided: `Renderer.make(window:, options:)` with `RendererOptions`, the
+  power preference, the fallback adapter and `DeviceOptions`; the renderer in two halves, its settings and what its
+  device makes (`RendererGpu`, internal), made at once by `withDevice` and at the render that finds the device answered
+  by `make`; the window's surface configured at its `framebufferSize()` and present mode and again when either changes
+  or it is out of date or lost, the frame acquired, drawn with a target's textures made without a colour, and
+  presented; the camera's follow; the vsync pair; `readWindowPixels()` by Bevy's way, the output pass writing a texture
+  of the renderer's own, copied for each read held and drawn onto the frame; `~Renderer()` failing the reads it holds;
+  `GraphicsErrorKind::Device` and `Window`.
+  - **The first probes, before the build** (`.scratch/s40/`): a posted `Resize` moves `framebufferSize()` on every leg;
+    natively the surface takes that size, on WARP's Direct3D 12 and on the AMD GPU's Vulkan, which calls such a frame
+    suboptimal, while a WebGPU canvas keeps its own pixels (`probe-resize`). A page reads a WebGPU canvas exactly only in
+    the task that drew it: Chrome for Testing and Edge read zeros after the present, Firefox reads it after too
+    (`probe-canvas`). And an sRGB texture read with `textureLoad` and written through an sRGB view brings every 8-bit
+    value back, RGBA and BGRA, natively on the AMD GPU and WARP and in all three browsers (`probe-roundtrip`), which
+    settles the pass onto the window: it is a plain one, and the web cases hold the page's canvas to the read.
+  - **Settled while building, and reported** (kama-graphics' ROADMAP_DETAIL § GFX-1 has the whole list): a following
+    camera projects at 1 before its first render, three.js's default; a failed request is `Device` (no adapter, the
+    device refused) or `Window` (no surface, the adapter cannot draw into the window), reported once, and what the
+    window refuses is `Window`, reported once until a frame is shown again, a present mode not offered once until
+    another is set; an out-of-date or lost surface is configured again, no misuse; no "ready" query; `presentMode()`
+    says what was set; the read's texture is made for each frame read; only a render drives the GPU's request, so a
+    compile asked before it waits, `Pending`, for the render that finds the GPU; a suboptimal frame is drawn; the frame
+    is acquired only when the output pass will write it, so the window keeps its last frame while that pass compiles;
+    the window's format is the first with an 8-bit sRGB view.
+  - Red first on two stubs: with no GPU ever coming, the device-refused, before-the-GPU and compile cases failed;
+    with the GPU but no window read, every mode offered and no follow, the reads, the size, the target comparison,
+    the posted resize, both present-mode cases, the dropped renderer, a windowless renderer's modes and the camera's
+    follow failed, and the goldens whose cameras now follow their targets. 446 cases natively, 447 in Firefox and in
+    Chrome for Testing, 434 in Edge, each debug and release; every golden unmoved. 23 of 27 mutations caught
+    (`.scratch/s40/kg/list1.py`, `list2.py`), two on the web, where the page's canvas holds the pass onto the
+    window. The first batch found a gap, closed before the second: no case made the window refuse twice, until one
+    posted a window larger than the device allows. The four left: every frame drawn through the read's texture, a
+    cost alone, equivalent; a changed present mode not configured, which only frame pacing shows; an out-of-date
+    surface not configured again, which nothing on these legs brings about; and a frame not presented, which
+    natively nothing reads and on the web the browser presents anyway.

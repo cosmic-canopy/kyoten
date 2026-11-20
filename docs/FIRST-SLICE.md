@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-19, the thirty-ninth session)
+## Where it stands (2026-11-19, the fortieth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -100,8 +100,8 @@ the design doc it settles before building on it.
    - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
      Testing; both examples on every leg;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 414 cases natively, in Firefox and in Chrome for Testing, 401 in Edge, since part 5's
-     step 4 (the thirty-ninth session); 399 and 386 at its start. Its gate also asks Edge for WARP, which it does not
+   - `@kama/graphics`': 446 cases natively, 447 in Firefox and in Chrome for Testing, 434 in Edge, since part 6's
+     step 1 (the fortieth session); 414 and 401 at its start. Its gate also asks Edge for WARP, which it does not
      offer, and holds the run to failing cleanly.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
@@ -142,11 +142,14 @@ the design doc it settles before building on it.
      `new` over a constructor that answers `AllocError` answering for its box too (KR-404); and roadmap rulings, each an
      addition kyoten does not call. Read again at the readying's second round: nothing since `85099809`, and
      `../kama`'s working tree holds one change, to its own test `tests/app_event_wait.d` (a wake that waits for the
-     loop to go idle, for a CI run on macOS), nothing kyoten uses. **On a bump, check 0.9.987 and 0.9.994
-     first:** `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
-     `src/native/seam.kama` are
-     `@generate(zero)`, and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The pin is
-     still on its history. A bump is optional until something kyoten needs lands.
+     loop to go idle, for a CI run on macOS), nothing kyoten uses. Then, during the fortieth session, to `6174eb97`
+     (0.9.1005): that test committed; 0.9.1001 to 0.9.1005, function pointers (a static function binds as itself and
+     `Type::f` is a value; a generic function's instance is one, `twice::<int32>`, with one address; so are a built-in
+     module's function and a generic or prelude type's member; KR-420 closed); the editors' grammar pins and
+     `grammar.bnf`; and roadmap rulings (KR-423 briefed and ruled, KR-424 filed), none that kyoten needs. **On a bump,
+     check 0.9.987 and 0.9.994 first:** `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and
+     `@kama/window`'s two in `src/native/seam.kama` are `@generate(zero)`, and `webgpu.gen.kama` holds 18
+     `comptime uint64` flags made by shifts of at most 27. The pin is still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -367,112 +370,70 @@ the design doc it settles before building on it.
           reported twice where natively they answered at two polls, which one native run in fifteen showed as the gate's
           printed-line count failing; a probe holding one twin's answer for its next poll reproduced it every time
           (`.scratch/s39/kg/probe5.py`, `probe6.py`).
-      - **Next, part 6: `examples/cube` in a window, FLIP, the 150 KB measurement, and the SPEC,** which finishes GFX-1
-        (kama-graphics' ROADMAP_DETAIL § GFX-1, Done). Its steps as the thirty-ninth session read the code and the
-        decided records:
-        1. **the renderer in a window,** `Renderer.make(window:, options:)` (part 1's question 1). Prior art read from
-           the pinned sources, each claim cited: `.scratch/s39/part6-prior-art.md`.
-           - **Its two questions are decided** (the owner, 2026-11-19, "So far I think your recommendations sound good";
-             rendering § Decided), each (A): a camera's aspect follows what it draws into unless the program fixes it,
-             `aspect()` and `aspectMut()` an `Optional<float32>`, `None` meaning follow; and vsync is the renderer's
-             pair, `presentMode()` and `presentModeMut()`, `Fifo` by default, with `supportsPresentMode(mode:)`, a mode
-             the surface does not offer reported and `Fifo` kept. The five details reported with them were taken too:
-             options holding only the GPU request, an opaque window, resizing by the window's `framebufferSize()`, the
-             window's full device pixels, and the surface's sRGB view.
-           - **Its third question is decided too, by Bevy's way** (the owner, 2026-11-19, "I'm good with your rec", then
-             "yes I will go with your rec"; rendering § Decided), (A): a read of the window beside a target's,
-             `readWindowPixels()`, handing back a `PixelRead`. It was found while readying step 1: only a target is
-             read today (`readRenderTargetPixels(target:)`), and a case that holds the window's image, step 2's check
-             among them, needs the frame before it is presented, which only the renderer has. Recording the first
-             answer found that Bevy 0.20.1 does not copy the window's own texture, as the question had said, but draws
-             a frame read into a texture of its own, copies that, then draws it onto the window. Asked again, the
-             owner took Bevy's way: a frame not read costs nothing, where a copyable window costs on every frame on
-             Apple's devices (wgpu turns off `framebufferOnly`), and no surface can fail the read.
-           - **Its shape as the session read the code,** the names compiled and run on 0.9.978 with stand-ins
-             (`.scratch/s39/probe6/shape.kama`). No other public question met; the details named are settled and
-             reported:
-             - **The renderer in two halves.** Every field `withDevice` makes is made from the device (45 uses of
-               `this.device` and `this.queue` in renderer.kama), and `make(window:)` returns before there is one. The
-               program's settings stay on `Renderer` (the clear colour and alpha, the method, the way, the stand-in,
-               `printErrors`, the errors, the present mode); what the device makes (the layouts, the frame buffer, the
-               DFG table, the pipeline tables and slots) moves to an internal resource, an `Optional` on the renderer,
-               which `withDevice` makes at once and `make(window:)` at the render that finds the device answered.
-             - **`RendererOptions`,** a `type value` with `defaults()`: `power` (`PowerPreference::HighPerformance`),
-               `forceFallbackAdapter` (false) and `device` (`DeviceOptions.defaults()`).
-             - **`make(window: const ref Window, options:)`** makes an `Instance` and a `Surface` on the window, which
-               holds it, and asks for an adapter `withSurface`. Each render polls that request, then reads the surface's
-               capabilities and asks for the device; until the GPU half is made a render draws nothing and reports
-               nothing, where three.js r187's `render()` throws before `init()` (`Renderer.js:1821-1825`). A failed
-               request is reported once.
-             - **Into the window:** a camera naming no target draws into it, and `NoTarget` stays a windowless
-               renderer's. Each render acquires a frame, draws and presents it, never holding a frame across renders.
-               The surface is configured from `caps.preferred()` with the renderer's present mode and an opaque alpha
-               mode, at the window's `framebufferSize()` as of the program's last `pump()`, and again when that size
-               or the present mode differs from what it was configured with, or an acquire answers `Outdated` or
-               `Lost`; `NoArea` (a minimised window) skips the render and reports nothing. The window's textures are a
-               target's without its colour, the frame's view taking its place, made again at a new size; the output
-               pass's pipelines are keyed by the view format beside the tone mapping, since natively the surface's may
-               be `BGRA8UnormSrgb`.
-             - **The camera:** `make(fovRad:, near:, far:)` and `withInfiniteFar(fovRad:, near:)`; the render hands the
-               camera the aspect of what it draws into before `viewProjection()`, through its `friend` grant. The
-               tests' 25 calls change: one whose aspect is its target's drops it, and the rest (`parts.kama:257`'s
-               projection with no render, `lights.kama:662`'s `SHOWN_WIDE`) set `aspectMut()`, so no golden moves.
-             - **Vsync:** the pair, and `supportsPresentMode(mode:)` from the surface's capabilities once read; before
-               then, and on a renderer with no window, `Fifo` alone, which every surface offers.
-             - **The window read** (question 3, Bevy's way; `.scratch/s39/probe7/window_read.kama`, its structure
-               compiled and run on 0.9.978 with stand-ins): `readWindowPixels()` makes a `Shared` capture, waiting, and
-               hands the program a `PixelRead` holding it; the renderer keeps a `Weak` of it. The window's frame keeps
-               `caps.preferred()`'s usage, `RenderAttachment` alone. At the next render that draws into the window,
-               when a capture is still held, the output pass writes by the same pipeline into a texture of the frame's
-               size and view format (`RenderAttachment`, `CopySrc` and `TextureBinding`) instead of the frame's view;
-               the encoder copies that texture into a buffer of its own, and a full-screen pass reading each texel with
-               `textureLoad`, its pipeline keyed by the view format as the output pass's are, draws it onto the frame;
-               then the submit, the map started, each capture filled, and the present. A frame with no capture held
-               draws as it did. `PixelRead` keeps its one public face and gains a second source inside, its target's
-               buffer made at once or a capture filled later; its poll swaps a BGRA frame's channels into RGBA. A
-               renderer with no window and a renderer dropped first (its `~Renderer()`) each answer `Failed` with words
-               of their own.
-           - **To settle and report:** what a following camera's `projectionMatrix()` answers before its first render
-             (the probe's 1, three.js's default aspect); the internal half's name; the `GraphicsErrorKind` a failed
-             request, a lost surface and a mode not offered take (the enum is `@nonExhaustive`); whether a program can
-             ask whether the renderer is ready; `presentMode()` saying what was set, as `antialiasing()` does; how the
-             pass onto the window changes no byte, a case holding every 8-bit value through it on each leg or the pass
-             copying bits through plain views (rendering § Decided); whether the read's texture is kept for the next
-             read or made at each, as Bevy's is.
-           - **The cases** (a run of their own, `tests/src/window.kama`, in a window opened with `quietly()`'s options,
-             never focused): a render before the GPU answers draws nothing and reports nothing, and draws once it has; a
-             camera naming no target draws into the window (`info()`); a following camera's aspect after a render into
-             a 2:1 target, a fixed one kept, `None` following again; a posted `Event::Resize`, which sets the window's
-             size, configured at the next render, and one to no area skipped; `Fifo` by default, `supportsPresentMode`
-             true for `Fifo` on every leg and false for the rest on the web, and a mode not offered reported with `Fifo`
-             kept; and the window read: pending through a render that draws nothing, then the frame read byte for byte
-             the same scene's in a target on the software legs, two reads asked before one render each that frame, a
-             read dropped before its frame leaving the render whole, a read on a renderer with no window or one dropped
-             first answering `Failed`, and the pass onto the window changing no byte. **The session's first probes:**
-             whether a posted `Resize` moves `framebufferSize()` natively and on the web, and whether a native surface
-             takes a size its window's client area is not; and whether a page can read a WebGPU canvas back after its
-             frame is presented (`drawImage` onto a 2D canvas), so a web case holds that a frame read reached the
-             window. Natively nothing reads a window asked for `RenderAttachment` alone.
-           - **The mutations:** the aspect not followed, or followed over a fixed one; no configure at a new size, or
-             at a changed present mode; a mode not offered taken; a frame not presented; a render before the device
-             answered drawing; the read's copy taken before the output pass, or never; the pass onto the window left
-             out, held on the web if the probe finds the canvas can be read, and reported plainly where it cannot; that
-             pass reading a texel off by a row; a BGRA frame's channels left as they are; a capture filled by a render
-             that drew nothing; the destructor not failing a held read; every frame drawn through the read's texture,
-             a cost alone, shown equivalent unless a count holds it.
-           - **The records:** kama-graphics' SPEC § The renderer and § Tests, CHANGELOG, ROADMAP_DETAIL (the answers and
-             the settled details, step 1 built), AGENTS.graphics.md's "Next, part 6"; kyoten's rendering § Decided,
-             step 1's Built entry.
-        2. **`examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle: `--frames N`,
-           its last frame read back by `readWindowPixels()` (question 3), held to its golden on each software GPU's
-           leg;
-        3. **FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s
-           mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two
-           limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
-           present, plus a margin (rendering § Decided, GFX-1's question 4);
-        4. **the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a ratchet,
-           FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7) draws
-           the hello cube through it.
+      - **Part 6, `examples/cube` in a window, FLIP, the 150 KB measurement and the SPEC, is under way;** it finishes
+        GFX-1 (kama-graphics' ROADMAP_DETAIL § GFX-1, Done):
+        - **Step 1's three questions are decided** (the owner, 2026-11-19; rendering § Decided), each (A): a camera's
+          aspect follows what it draws into unless the program fixes it; vsync is the renderer's `presentMode()` pair,
+          `Fifo` by default; and `readWindowPixels()` reads the window by Bevy's way, a frame read drawn into a texture
+          of the renderer's own, copied out and drawn onto the window.
+        - **Step 1 is built** (kama-graphics `11953c7`, the fortieth session; rendering § Decided):
+          `Renderer.make(window:, options:)` with `RendererOptions`, the renderer in two halves (its settings, and
+          `RendererGpu`, what its device makes), the window's surface configured, acquired, drawn and presented, the
+          camera's follow, the vsync pair,
+          `readWindowPixels()` and its pass onto the window, `GraphicsErrorKind::Device` and `Window`. Red first on two
+          stubs, one with no GPU ever coming and one with no window read, every mode offered and no follow. 446 cases
+          natively, 447 in Firefox and in Chrome for Testing, 434 in Edge, each debug and release, every golden unmoved.
+          23 of 27 mutations caught (`.scratch/s40/kg/list1.py`, `list2.py`), two on the web, where the page's canvas
+          holds the pass onto the window. The first batch found a gap, closed before the second: no case made the
+          window refuse twice, until one posted a window larger than the device allows. The four left: every frame
+          drawn through the read's texture, a cost alone, equivalent; a changed present mode not configured, which only
+          frame pacing shows; an out-of-date surface not configured again, which nothing on these legs brings about;
+          and a frame not presented, which natively nothing reads and on the web the browser presents anyway. The first
+          probes, before the build: a posted `Resize` moves `framebufferSize()` on every leg, and
+          natively the surface takes it (WARP's Direct3D 12 and the AMD GPU's Vulkan, which calls such a frame
+          suboptimal), while a WebGPU canvas keeps its own pixels, so the window's textures take the frame's size
+          (`.scratch/s40/probe-resize`); a page reads a WebGPU canvas exactly only in the task that drew it, Chrome for
+          Testing and Edge reading zeros after the present (`.scratch/s40/probe-canvas`), so the web cases read it in the
+          tick that rendered; and an sRGB texture read with `textureLoad` and written through an sRGB view brings every
+          8-bit value back, both formats, every leg (`.scratch/s40/probe-roundtrip`), so the pass onto the window is a
+          plain one. Settled and reported, kama-graphics' ROADMAP_DETAIL § GFX-1 lists them: a following camera
+          projects at 1 before its first render; the half's name; the two kinds and what each covers, an out-of-date or
+          lost surface configured again with no report; no "ready" query; `presentMode()` saying what was set; the
+          read's texture made for each frame read; only a render driving the GPU's request, a compile asked before it
+          waiting for the render that finds it; a suboptimal frame drawn; the frame acquired only when the output pass
+          will write it; the window's format the first with an 8-bit sRGB view.
+        - **Next, step 2: `examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle
+          (its `examples/triangle`, and its gate's legs, `tools/test.sh:191-208` and `:303-310`). Its shape as the code
+          reads it:
+          - a package of its own under kama-graphics' `examples/cube/`, its `kama.json` naming `@kama/graphics` by path
+            (`../..`) and `@kama/gpu`, `@kama/window` and `@kama/image` beside it, `"webgpu": true` and a shell whose
+            `#canvas` is the window;
+          - an `App`, a step a tick: the window opened (focused only when run by hand, never under `--frames N`),
+            `Renderer.make(window:, options:)`, a `BoxGeometry` with a `MeshStandardMaterial`, a `DirectionalLight` and
+            an `AmbientLight`, a camera naming no target, so it follows the window; each tick `pump()`, Escape or close
+            to quit, the cube turned by the frame's number (a degree a frame, as the triangle), so a frame is the same
+            on every run, then `render`;
+          - `--frames N`: `compile(scene:, camera:)` polled first, so the frames counted are drawn with no miss; the
+            read asked before the last render; then `readWindowPixels()` polled, the image held to its golden where the
+            run names a software GPU, and the program's exit status 1 when it was not read, or not as drawn;
+          - the gate builds it and runs it natively and in each browser, debug and release, as the triangle is.
+          Details to settle in the build: where its golden lives and how the run names its GPU (the tests' `--golden
+          warp` and `tests/goldens/` are the precedent); what the run prints for `tools/update-goldens.sh`; how many
+          frames.
+        - **Then step 3, FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with
+          `main`'s mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its
+          two limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
+          present, plus a margin (rendering § Decided, GFX-1's question 4);
+        - **and step 4, the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a
+          ratchet, FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7)
+          draws the hello cube through it.
+      - **Part 6's evidence** is machine-local: `.scratch/s40/` (`suites.sh` and the start's logs; `probe-canvas/`,
+        `probe-resize/`, `probe-roundtrip/`, each with its `run.sh` or `run.mjs`; `probe-split/`, kama's friend fields;
+        `kg/`: `native.sh`, `native-m.sh`, `web-firefox-m.sh`, `mutate-m.py`, `gate40.sh`; the edit scripts, `split.py`
+        to `pixelread.py`, `cameras.py`, `window` cases' `wire.py`, `fix1.py` and `fix2.py`; `stub.py`, both stubs;
+        `red1.log`, `red2.log`, `green1.log` and `green2.log`; `list1.py`, `list2.py`, `mutations1.out` and
+        `mutations2.out`; `gate1.log` and `gate2.log`, the final gate; `commit-step1.txt`), and
+        `.scratch/s39/part6-prior-art.md`, `probe6/` and `probe7/`.
       - **Part 5's evidence** is machine-local:
           - Step 4's evidence and runners: `.scratch/s39/kg/` (`native.sh`, `native-m.sh`, `mutate-m.py`, `gate39.sh`,
             `gate-main.sh`; `wire_main.py`; `red1.log` and `red2.log`, the stub's runs before and after the cases were
@@ -567,6 +528,29 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The fortieth session** (2026-11-19). Nothing new on any origin at the start, and kama's range had gained 0.9.1001
+to 0.9.1004 since `85099809`, function pointers, so no bump.
+- **Every suite was green on 0.9.978 at the start,** at the thirty-ninth session's counts.
+- **No question at the start:** step 1's shape, laid out by the thirty-ninth session, held against the code, and its
+  first probes overturned nothing (`.scratch/s40/probe-resize`, `probe-canvas`, `probe-roundtrip`); they settled three
+  details: the window's textures take the frame's size, the web cases read the page's canvas in the tick that rendered,
+  and the pass onto the window is a plain `textureLoad`.
+- **Built:** part 6's step 1, the renderer in a window (kama-graphics `11953c7`), test-first, in a worktree with a second
+  for the mutations, red first on two stubs.
+  - **The renderer split in two by the code:** every field `withDevice` made is made from the device, and
+    `make(window:)` returns before one, so the device's half, `RendererGpu`, is an `Optional` on the renderer, taken out
+    for a call and put back. kama lets a `friend` grant name fields, so the renderer's code stayed where it was, reading
+    `gpu.device` for `this.device` (`.scratch/s40/probe-split`).
+  - **Found while mutating, and a case added:** no case made the window refuse twice, so a repeated refusal reported
+    every frame passed; a window posted larger than the device allows now holds it.
+  - **Settled and reported, for the owner to object to:** kama-graphics' ROADMAP_DETAIL § GFX-1 lists them, the
+    weightiest: only a render drives a windowed renderer's GPU request, so a compile asked before the GPU waits,
+    `Pending`, for the render that finds it; the two error kinds, `Device` and `Window`, and an out-of-date or lost
+    surface configured again with no report; no "ready" query; a frame the surface calls suboptimal drawn, since Vulkan
+    says so of every frame whose size is not its window's client area's.
+- **The owner asked how close the lit cube is:** the renderer draws one into a window now; `examples/cube` is step 2,
+  about a session; GFX-1 about two to three; kyoten's hello cube, after the join's steps 7 to 10, about eight to fifteen.
 
 **The thirty-ninth session** (2026-11-19). Nothing new on any origin at the start, and kama's range had gained two
 roadmap commits since `06277e8d`, so no bump. kama moved to 0.9.997 during the session, with nothing kyoten needs; its
