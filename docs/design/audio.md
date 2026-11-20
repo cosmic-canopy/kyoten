@@ -189,3 +189,16 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
   - **it never runs out while rendering,** so the record is the whole of it: no graph a program builds asks for more.
   - **A source's start is `start(startTime:)`** where the 2026-11-15 entry above wrote `start(when:)`: kama reserves
     `when` (`@kama/audio`'s KAMA_GAPS.md KAUD-11), so the time takes the name Web Audio gives its other times.
+- **2026-11-20, the owner: `@kama/audio`'s automation events live in one pool per context** (its `AGENTS.audio.md`
+  § Decided, 40 to 42). This is the second thing kyoten's Budget record for audio must hold:
+  - **`OfflineAudioContextOptions.eventCapacity`, 4,096 by default,** is how many events every parameter of the context
+    holds at once. Each event takes 64 bytes across the package's two sides. The record sizes them as the declared
+    count times 64 bytes, 256 KiB at the default. It adds 48 bytes for each node row plus one, for the parameters' own
+    state: 48 KiB at 1,024 rows (measured, `@kama/audio`'s `param` cases);
+  - **a full pool is `TooManyEvents` at the call, never while rendering.** An event leaves once the event after it has
+    begun:
+    - a game that sets a parameter every frame (`setValue(value:)`) holds one or two events for it;
+    - a ramp scheduled ahead holds itself and the event before it.
+
+    So the count kyoten declares is the events its processors schedule ahead at once, with a margin, not the events a
+    session makes.
