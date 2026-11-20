@@ -1956,7 +1956,8 @@
       `THIRD-PARTY-NOTICES.md`;
     - the port is from FLIP's `main` at `d3ab02a4` (2026-10-13), which is v1.7's C++ with PR #45's mean summed in a
       double. FLIP has no tags;
-    - whether the package is first-party is kama's to rule, as it was for `@kama/image`.
+    - whether the package is first-party is kama's to rule, as it was for `@kama/image`. kama ruled it first-party on
+      2026-11-20 (kama `b9d0e2bc`, its `docs/packages.md`), at the owner's request.
 - **2026-11-20, the owner: `@kama/imagediff`'s first build, (A) with one change: the interface is general, and the
   build is only what step 3 needs** ("A, and draft the ruling request too. We dont' need a full featured package yet
   just what we need from it now, but the interface should be general yes"). The owner asked whether the package would
@@ -1989,7 +1990,8 @@
     - the first publish, once kama has ruled and its tests are green on every target it claims.
   - **The ruling request is drafted** for the owner to relay to kama (`.scratch/s41/imagediff-ruling-request.md`). It
     covers what the package is, why it stands alone, why it is not std and not `@kama/image`, its shape, and the row
-    `docs/packages.md` would gain.
+    `docs/packages.md` would gain. The owner relayed it, and kama ruled the package first-party the same day
+    (`b9d0e2bc`).
 - **2026-11-20, the owner: how the FLIP port is held to NVIDIA's own answers, (A): our own test images with NVIDIA's
   code's maps, and NVIDIA's pair fetched, never committed** ("I think A sounds good to me", asked in full at the
   forty-second session's start). Step 3 had said the port is held to NVIDIA's outputs for FLIP's test images "once the
@@ -2109,6 +2111,11 @@
      built with and without it. Step 4 writes the rule into FEATURES.md § How to read a row and its
      `tools/check-features.sh`. Set aside: (B) a split by function name from a build with inlining turned off, whose
      numbers add up to something other than what ships and move whenever the compiler inlines differently.
+  - **The owner confirmed the reading of 2 the same day,** asked whether a hello cube above the gauge still counts as
+    done: "Yes we should not hold a slice back due to our arbitrary guage.  we likely will increase the guage and
+    determine if there is something that can be done to lower and get back into range.  but that is arbitrary." The
+    gauge is arbitrary: it is likely raised, and GFX-20 is the finding of whether anything brings the cube back into
+    range.
   - The rows' GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as GFX-1's row already said, so step 4's budgets are
     web code alone.
   - **Settled while recording it, for the owner to object to:** GFX-20 sits in `@kama/graphics`' ALONGSIDE, its

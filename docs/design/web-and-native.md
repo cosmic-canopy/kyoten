@@ -103,7 +103,8 @@ From [../research/kama-for-engines.md](../research/kama-for-engines.md) §§ 2�
       ([../research/web-baseline.md](../research/web-baseline.md) § Candidate budgets). It is tightened once the hello
       cube first builds and is measured. A gauge shows growth, and never holds a slice back: "the gauge is just a budget
       we want to identify growth" (the owner, 2026-11-20, [rendering.md](rendering.md) § Decided, GFX-1's step 4, when
-      `@kama/graphics`' cube measured 158.7 KB as a player gets it).
+      `@kama/graphics`' cube measured 158.7 KB as a player gets it). It is arbitrary, and likely raised: "we likely will
+      increase the guage and determine if there is something that can be done to lower and get back into range"
     - **The free savings first:** Closure (4.6 KB on the triangle; kama's release build does not run it, KY-6),
       `ENVIRONMENT=web`, and kyoten's own page shell (emscripten's is 12.9 KB).
     - **Assets get a budget of their own,** rendering question 6 and KYR-10's.

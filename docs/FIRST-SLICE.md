@@ -88,8 +88,8 @@ the design doc it settles before building on it.
   from NVIDIA's `FLIP.h` at `d3ab02a4` and held to NVIDIA's own code: value for value natively, within 1e-5 on wasm, and
   NVIDIA's published mean on NVIDIA's pair. **On a fresh machine run its `tools/fetch-flip.sh` once** before its gate:
   NVIDIA's test images state no licence of their own, so they are fetched, pinned, and never committed. Pushed to
-  `cosmic-canopy/kama-imagediff` at the session's end; the owner relays the ruling request to kama
-  (`.scratch/s41/imagediff-ruling-request.md`).
+  `cosmic-canopy/kama-imagediff` at the session's end, and ruled first-party by kama the same day (kama `b9d0e2bc`,
+  docs/packages.md), at the owner's request.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -175,7 +175,9 @@ the design doc it settles before building on it.
      m)`, `values()`, `entries()`, `range(from:, to:)`, each a view), and `keys()` and `SortedSet.elements()` are gone,
      a list to keep being a loop into a `DynamicArray` the caller names. **A bump past it ports 48 `.keys()` calls:** 10
      in the engine's `content` module and 1 in its tests, 36 in the `kyoten` tool and 1 in its `spin` fixture
-     (`grep -rnE '\.(keys|elements)\(\)'`, every one on a `SortedMap`); no package calls either.
+     (`grep -rnE '\.(keys|elements)\(\)'`, every one on a `SortedMap`); no package calls either. Then to `61f6507b`, no
+     code: `@kama/imagediff` ruled first-party (`b9d0e2bc`), and KR-430 filed and claimed, a keyword naming a parameter
+     (`when`, `in`, `out`), brief first; `ref`, `out` and `base` each cost the packages a rebuild.
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -491,14 +493,15 @@ the design doc it settles before building on it.
           The JS falls by 7.7 KB without the goldens (emscripten's asset loader). Of the player's 426 KB of raw code
           (`--profiling-funcs`), `@kama/graphics` holds 199 KB, the example's own 7 functions 91 KB with what `-Oz`
           inlined into them (`Cube.render` alone 59 KB, the renderer's draw among it), libc and the rest 65 KB
-          (`__floatscan` and `sscanf` 11 KB, their caller not yet found), `@kama/gpu` 39 KB, emdawnwebgpu 21 KB and kama's
-          runtime 11 KB; its data is 45 KB. The largest of the library's: the standard material's `shade` (25 KB) and the
-          node builder's `wgsl` and `spelled` (22 KB). GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as GFX-1's row
-          says, so step 4's budgets are web code alone.
+          (`__floatscan` and `sscanf` 11 KB, their caller not yet found), `@kama/gpu` 39 KB, emdawnwebgpu 21 KB and
+          kama's runtime 11 KB; its data is 45 KB. The largest of the library's: the standard material's `shade` (25 KB)
+          and the node builder's `wgsl` and `spelled` (22 KB). GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as
+          GFX-1's row says, so step 4's budgets are web code alone.
           **Its three questions are decided** (the owner, 2026-11-20, each (A), asked in full at the readying;
           rendering § Decided): 1. the ratchet measures the cube as a player gets it, its harness left out by a build
           flag; 2. the cube enters with what it measures, the gauge showing growth ("the gauge is just a budget we want
-          to identify growth"), and `@kama/graphics`' GFX-20 looks for what brings it under 150 KB; 3. the 22 rows the
+          to identify growth"; the owner confirmed it is arbitrary and likely raised), and `@kama/graphics`' GFX-20
+          finds whether anything brings it back under 150 KB; 3. the 22 rows the
           cube built share its measurement, and a later feature's budget is what it adds to the first example to use it.
           **Step 4's order:** the build flag and the player's build in the gate, its measurement the ratchet, failing on
           growth; FEATURES.md's 22 cube rows with their status (`built`, or `partial` with ✓ where a ladder's methods
@@ -585,8 +588,9 @@ the design doc it settles before building on it.
      - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
-   - **Waiting on the owner:** relaying to kama the request to rule `@kama/imagediff` first-party
-     (`.scratch/s41/imagediff-ruling-request.md`). Posting two requests for
+   - **Reached kama on 2026-11-20:** `@kama/imagediff` is ruled first-party (kama `b9d0e2bc`, docs/packages.md), at the
+     owner's request.
+   - **Waiting on the owner:** posting two requests for
      a permissive licence, which every AgX's lineage lacks
      (rendering § Decided): `.scratch/s34/agx/licence-request.md` on EaryChow/AgX_LUT_Gen, and
      `licence-request-sobotka.md` on Troy Sobotka's AgX or SB2383-Configuration-Generation. `@kama/graphics`' first
@@ -638,7 +642,9 @@ roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
   `../kama-imagediff`'s `origin`): every repository fetched, nothing incoming; kama read to `53ef8688` (0.9.1013), whose
   sorted-map change a bump must port (item 1); step 4 measured on a stand-in, and its three questions asked in full
   and decided, each (A) (rendering § Decided; part 6's Next), with GFX-20 filed in `@kama/graphics`; kyoten,
-  `@kama/graphics` and `@kama/imagediff` pushed.
+  `@kama/graphics` and `@kama/imagediff` pushed. Then the owner confirmed the gauge is arbitrary and holds no slice
+  back, and kama ruled `@kama/imagediff` first-party at the owner's request (kama read to `61f6507b`); both recorded
+  and pushed.
 
 **The forty-first session** (2026-11-19 and 20). Nothing new on any origin at the start, and kama unchanged since
 `6174eb97`, so no bump; it moved to 0.9.1011 during the session (item 1).
