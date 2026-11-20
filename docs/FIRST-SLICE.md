@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-19, the fortieth session)
+## Where it stands (2026-11-20, the forty-first session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -97,12 +97,13 @@ the design doc it settles before building on it.
    - tools/test.sh: engine 164 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 211; kyoten check; fps native, and on wasm in both builds; vr checked;
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
-   - `@kama/gpu`'s: 340 natively, debug, release and once without DXC; 313 in Edge, 316 in Firefox and Chrome for
-     Testing; both examples on every leg;
+   - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
+     Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
+     its start;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
-   - `@kama/graphics`': 446 cases natively, 447 in Firefox and in Chrome for Testing, 434 in Edge, since part 6's
-     step 1 (the fortieth session); 414 and 401 at its start. Its gate also asks Edge for WARP, which it does not
-     offer, and holds the run to failing cleanly.
+   - `@kama/graphics`': 450 cases natively, 451 in Firefox and in Chrome for Testing, 438 in Edge, and `examples/cube`
+     on every leg, since part 6's step 2 (the forty-first session); 446, 447 and 434 at its start. Its gate also asks
+     Edge for WARP, which it does not offer, and holds the run to failing cleanly. It takes about 24 minutes.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -146,10 +147,17 @@ the design doc it settles before building on it.
      (0.9.1005): that test committed; 0.9.1001 to 0.9.1005, function pointers (a static function binds as itself and
      `Type::f` is a value; a generic function's instance is one, `twice::<int32>`, with one address; so are a built-in
      module's function and a generic or prelude type's member; KR-420 closed); the editors' grammar pins and
-     `grammar.bnf`; and roadmap rulings (KR-423 briefed and ruled, KR-424 filed), none that kyoten needs. **On a bump,
-     check 0.9.987 and 0.9.994 first:** `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and
-     `@kama/window`'s two in `src/native/seam.kama` are `@generate(zero)`, and `webgpu.gen.kama` holds 18
-     `comptime uint64` flags made by shifts of at most 27. The pin is still on its history. A bump is optional until something kyoten needs lands.
+     `grammar.bnf`; and roadmap rulings (KR-423 briefed and ruled, KR-424 filed), none that kyoten needs. Then, during
+     the forty-first session, to `d76220fb` (0.9.1011): 0.9.1006 to 0.9.1008, serialization naming an entry's type and an
+     extended hierarchy's class on every back end (KR-421, KR-408); 0.9.1009, a kama value elects its default with
+     `@generate(default)`, and `@generate(zero)` is a `type extern value`'s alone, C's zero, refused on a kama value
+     (KR-418); 0.9.1010, `match` at compile time (KR-417); 0.9.1011, one message for one mistake in a compile-time
+     initializer (KR-427); the editors' grammar pins and roadmap and docs commits; and an uncommitted tree touching
+     `std::collections`' sorted map. None that kyoten needs. **On a bump, check 0.9.987, 0.9.994 and 0.9.1009 first:**
+     `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
+     `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
+     the forty-first session), and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The
+     pin is still on its history. A bump is optional until something kyoten needs lands.
    - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
      word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
      staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
@@ -402,32 +410,61 @@ the design doc it settles before building on it.
           read's texture made for each frame read; only a render driving the GPU's request, a compile asked before it
           waiting for the render that finds it; a suboptimal frame drawn; the frame acquired only when the output pass
           will write it; the window's format the first with an 8-bit sRGB view.
-        - **Next, step 2: `examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle
-          (its `examples/triangle`, and its gate's legs, `tools/test.sh:191-208` and `:303-310`). Its shape as the code
-          reads it:
-          - a package of its own under kama-graphics' `examples/cube/`, its `kama.json` naming `@kama/graphics` by path
-            (`../..`) and `@kama/gpu`, `@kama/window` and `@kama/image` beside it, `"webgpu": true` and a shell whose
-            `#canvas` is the window;
-          - an `App`, a step a tick: the window opened (focused only when run by hand, never under `--frames N`),
-            `Renderer.make(window:, options:)`, a `BoxGeometry` with a `MeshStandardMaterial`, a `DirectionalLight` and
-            an `AmbientLight`, a camera naming no target, so it follows the window; each tick `pump()`, Escape or close
-            to quit, the cube turned by the frame's number (a degree a frame, as the triangle), so a frame is the same
-            on every run, then `render`;
-          - `--frames N`: `compile(scene:, camera:)` polled first, so the frames counted are drawn with no miss; the
-            read asked before the last render; then `readWindowPixels()` polled, the image held to its golden where the
-            run names a software GPU, and the program's exit status 1 when it was not read, or not as drawn;
-          - the gate builds it and runs it natively and in each browser, debug and release, as the triangle is.
-          Details to settle in the build: where its golden lives and how the run names its GPU (the tests' `--golden
-          warp` and `tests/goldens/` are the precedent); what the run prints for `tools/update-goldens.sh`; how many
-          frames.
-        - **Then step 3, FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with
-          `main`'s mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its
-          two limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
-          present, plus a margin (rendering § Decided, GFX-1's question 4);
+        - **Step 2's question is decided** (the owner, 2026-11-19, "A (Recommended)"; rendering § Decided), found while
+          reading the code for the example: **a renderer says which GPU it draws with,** `renderer.adapterInfo()`, an
+          `Optional<AdapterInfo>`, `None` until its GPU has answered, read from `@kama/gpu`'s new `Device.adapterInfo()`
+          (WebGPU's `GPUDevice.adapterInfo`), so the example under `--golden` holds its adapter as the tests hold theirs.
+        - **Step 2 is built** (kama-gpu `7ff6ea6`, kama-graphics `60786ed`, the forty-first session; rendering §
+          Decided):
+          - `@kama/gpu`'s `Device.adapterInfo()`, read from the adapter every device holds, so it answers alike on every
+            leg; its four cases red first on an empty stub; 344 cases natively, 315 in Edge, 319 in Firefox and Chrome
+            for Testing; 2 of 2 mutations caught (its AGENTS.gpu.md item 17);
+          - `@kama/graphics`' `renderer.adapterInfo()`, its four window cases red first on a `None` stub (the two wanting
+            none held by a mutation instead: the adapter's info kept once the adapter answers, (B), set aside);
+          - **`examples/cube`,** a lit cube spun in a 640 x 400 window from one source on both legs: `--frames 60`, its
+            compile awaited first, a degree a frame, the last frame read back with `readWindowPixels()`; under `--golden
+            <gpu>` its adapter held to the GPU named and the frame byte for byte to `examples/cube/goldens/<gpu>.png`;
+            on a player's GPU, the frame the window's size with the cube at its centre;
+          - the gate runs it natively on the GPU and on WARP and in each browser, debug and release, and natively holds
+            the cube naming SwiftShader on WARP to failing on its adapter, and a run a frame short to failing its golden
+            by its texels; `tools/update-goldens.sh` writes its goldens among its own legs.
+          450 cases natively, 451 in Firefox and Chrome for Testing, 438 in Edge, each debug and release. Natively and in
+          Firefox WARP drew the window's frame to the same bytes. 17 of 18 mutations caught (`.scratch/s41/kg/list1.py`
+          to `list3.py`): the one of the example left, a hardware frame held to nothing, waits for FLIP, since no leg
+          draws a blank frame; the gate's sharpening, the frame-short run, came from planning them. Settled and
+          reported, kama-graphics' ROADMAP_DETAIL § GFX-1 has them: the goldens are the example's own assets, since kama
+          refuses an `assets` folder outside a package (`.scratch/s41/probe-assets`), where question 4 had said
+          `tests/goldens/<example>/`; the frame is the window's in device pixels, 640 x 400 on WARP at this machine's
+          scale of 1, 960 x 600 on SwiftShader at Chrome for Testing's 1.5; 60 frames; a `goldens/README.md`, since
+          emscripten's file packager refuses an empty assets folder.
+        - **Next, step 3, FLIP,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s mean
+          summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two limits,
+          the mean and the share of pixels above a threshold, set from the cube on the reference machines present, plus a
+          margin (rendering § Decided, GFX-1's question 4). **Its two questions, from the code and the prior art**
+          (`.scratch/s41/step3-prior-art.md`, an agent's, its two decisive claims checked against the primary pages):
+          1. **where FLIP lives:** the frames it compares on a player's GPU are `examples/cube`'s (natively on the GPU,
+             and Edge), a package of its own, and kama lets no package read another's files, so the tests' harness
+             cannot hold it alone, as three.js r187 keeps its `Image.compare` in its test harness; kyoten's hello cube
+             will need the same comparison at the join. Filament keeps `libs/imagediff` a library of its own on
+             `libs/image` (v1.81.0, its CMakeLists.txt), with a CLI, `tools/diffimg`, its render tests drive; wgpu calls
+             FLIP from its test harness through the `nv-flip` crate, natively only (v30.0.2, `tests/src/image.rs`);
+             Godot puts a PSNR/RMS metric on its core `Image`. FLIP itself is one header, no I/O, and reports no share of
+             pixels above a threshold, which the port adds over its error map;
+          2. **which software golden a hardware leg is held to:** natively on Windows the GPU's 640 x 400 frame meets
+             WARP's golden at its size; Edge's frame is 640 x 400 at a scale of 1, where the web's software golden,
+             SwiftShader's, is 960 x 600 at Chrome for Testing's 1.5, so either Edge runs at Chrome for Testing's scale
+             or is held to WARP's, Windows' own.
         - **and step 4, the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a
           ratchet, FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7)
           draws the hello cube through it.
-      - **Part 6's evidence** is machine-local: `.scratch/s40/` (`suites.sh` and the start's logs; `probe-canvas/`,
+      - **Part 6's evidence** is machine-local. Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
+        `probe-assets/`, kama refusing an `assets` folder outside a package; `gpu/`: `native.sh`, `gate.sh`, `mutate.py`,
+        `red1.log`, `green1.log`, `gate1.log`, `mutations1.out` and `row.patch`, `Device.adapterInfo()`'s; `kg/`:
+        `native.sh`, `cube.sh`, `cube-web.sh`, `gate41.sh`, and the mutation runners `native-m.sh`, `cube-m.sh` and
+        `cube-firefox-m.sh` with `mutate-m.py` and `anchors.py`; `red1.log`, `green1.log`, the cube's first runs
+        `cube-*.log` and frames `cube-*-first.png`, `update-goldens1.log`; `list1.py` to `list3.py` and
+        `mutations1.out` to `mutations3.out`; `gate1.log` and `gate2.log`, the final gate; `step3-prior-art.md`).
+        Step 1's: `.scratch/s40/` (`suites.sh` and the start's logs; `probe-canvas/`,
         `probe-resize/`, `probe-roundtrip/`, each with its `run.sh` or `run.mjs`; `probe-split/`, kama's friend fields;
         `kg/`: `native.sh`, `native-m.sh`, `web-firefox-m.sh`, `mutate-m.py`, `gate40.sh`; the edit scripts, `split.py`
         to `pixelread.py`, `cameras.py`, `window` cases' `wire.py`, `fix1.py` and `fix2.py`; `stub.py`, both stubs;
@@ -528,6 +565,26 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The forty-first session** (2026-11-19 and 20). Nothing new on any origin at the start, and kama unchanged since
+`6174eb97`, so no bump; it moved to 0.9.1011 during the session (item 1).
+- **Every suite was green on 0.9.978 at the start,** at the fortieth session's counts.
+- **One question at the start, decided at once:** reading the code for `examples/cube` found that a renderer requesting
+  its own GPU never said which one answered, so the example could not hold its adapter to the software GPU its leg
+  names, as the tests hold theirs. Asked in full in plan mode, (A): `renderer.adapterInfo()`, on `@kama/gpu`'s new
+  `Device.adapterInfo()` (rendering § Decided, kyoten `9dd9b6e`).
+- **Built:** `@kama/gpu`'s `Device.adapterInfo()` (kama-gpu `7ff6ea6`), then part 6's step 2, `renderer.adapterInfo()`
+  and `examples/cube` (kama-graphics `60786ed`), test-first, in a worktree with a second for the mutations. The first
+  probe planned was dropped: every `@kama/gpu` device already holds its adapter, so no leg's `device.adapterInfo` needed
+  measuring.
+  - **Found on the way:** emscripten's file packager refuses an empty assets folder, so a first golden could not be
+    printed from a browser until `goldens/README.md` kept the folder from being empty; and kama refuses an `assets`
+    folder outside a package, which puts the cube's goldens in its own package rather than `tests/goldens/cube/`.
+  - **Planning the mutations found a gap:** every frame matched its golden, so a comparison passing everything passed
+    every leg; the gate now runs the cube a frame short, which must fail by its texels.
+  - **Settled and reported, for the owner to object to:** kama-graphics' ROADMAP_DETAIL § GFX-1 lists them: the
+    goldens' place, the frame's size in device pixels (scale 1 natively here and in Firefox, 1.5 in Chrome for Testing),
+    60 frames, and a hardware frame held to being drawn alone until FLIP.
 
 **The fortieth session** (2026-11-19). Nothing new on any origin at the start, and kama's range had gained 0.9.1001
 to 0.9.1004 since `85099809`, function pointers, so no bump.

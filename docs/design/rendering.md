@@ -1899,3 +1899,24 @@
     adapter's info, as `Adapter.info()` does: WebGPU's meaning of `GPUDevice.adapterInfo`, the info of the adapter the
     device came from, answered alike on every leg with no new `webgpu.h` call, where Firefox's `device.adapterInfo` was
     not measured. It is an `AdapterInfo`, never `None`, since every device has its adapter.
+- **Built, GFX-1's part 6, step 2, `examples/cube`** (the forty-first session, 2026-11-19 and 20; kama-gpu `7ff6ea6`, its
+  AGENTS.gpu.md item 17; kama-graphics `60786ed`, its SPEC § The renderer, § The example and § Tests), as the fortieth
+  session laid it out and the question above decided: `@kama/gpu`'s `Device.adapterInfo()`; `@kama/graphics`'
+  `renderer.adapterInfo()`; `examples/cube`, a lit cube spun in a 640 x 400 window from one source on both legs, its last
+  frame read back with `readWindowPixels()`, held under `--golden <gpu>` byte for byte to its golden, its adapter held to
+  the GPU named, and on a player's GPU to being drawn; the gate running it natively on the GPU and on WARP and in every
+  browser, debug and release, and `tools/update-goldens.sh` writing its goldens among its own legs.
+  - **Settled while building, and reported** (kama-graphics' ROADMAP_DETAIL § GFX-1): the cube's goldens are its own
+    package's, `examples/cube/goldens/<gpu>.png`, where GFX-1's question 4 above had said `tests/goldens/<example>/`,
+    since kama refuses an `assets` folder outside a package ("escapes the project with `..`", `.scratch/s41/probe-assets`);
+    the frame is the window's in device pixels, 640 x 400 on WARP natively at this machine's scale of 1 and in Firefox,
+    960 x 600 on SwiftShader at Chrome for Testing's 1.5, so a native leg on a display at another scale fails its golden,
+    saying both sizes; 60 frames; a hardware frame is held to being drawn alone until FLIP; and a `goldens/README.md`,
+    since emscripten's file packager refuses an empty assets folder.
+  - **Measured:** natively and in Firefox WARP draws the window's frame to the same bytes, as it draws a target's.
+  - Red first: `Device.adapterInfo()`'s four cases on an empty stub; `renderer.adapterInfo()`'s two wanting an adapter on
+    a `None` stub; the cube's goldens on its first runs. 344 cases natively in `@kama/gpu`, 315 in Edge, 319 in Firefox
+    and Chrome for Testing; 450 in `@kama/graphics` natively, 451 in Firefox and Chrome for Testing, 438 in Edge, each
+    debug and release. Mutations: 2 of 2 in `@kama/gpu`, 17 of 18 in `@kama/graphics` (`.scratch/s41/`), the one left a
+    hardware frame held to nothing, which no leg draws blank, and which FLIP holds. Planning them found a gap first: a
+    comparison passing every frame passed every leg, so the gate runs the cube a frame short, which must fail.
