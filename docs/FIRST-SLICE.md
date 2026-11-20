@@ -473,8 +473,11 @@ the design doc it settles before building on it.
                reports nowhere. These are the two numbers GFX-1's question 4 holds a frame to;
              - FLIP's default viewing conditions, 67 pixels per degree, given through an options value.
 
-             The port is held to NVIDIA's own outputs for FLIP's test images, made by the C++ tool built at that commit,
-             once the images' licence is read. FLIP's `misc/precision.md` keeps a reference per implementation, so the
+             The port is held to NVIDIA's own answers as the owner decided at the forty-second session's start
+             (rendering § Decided, 2026-11-20, (A)), since FLIP's test images state no licence or source of their
+             own: our own test images, committed, with each map and mean written by NVIDIA's `FLIP.h` at that commit
+             in a reference program run by hand; and NVIDIA's pair fetched once per machine, pinned, never committed,
+             held to NVIDIA's published mean. FLIP's `misc/precision.md` keeps a reference per implementation, so the
              tolerance is settled from what the port measures, and recorded. HDR-FLIP, other formats and colour spaces,
              FLIP's other pooled values and the rest are rows in the package's roadmap.
           4. **The hardware legs are held by it,** in kama-graphics:

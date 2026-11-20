@@ -1990,3 +1990,43 @@
   - **The ruling request is drafted** for the owner to relay to kama (`.scratch/s41/imagediff-ruling-request.md`). It
     covers what the package is, why it stands alone, why it is not std and not `@kama/image`, its shape, and the row
     `docs/packages.md` would gain.
+- **2026-11-20, the owner: how the FLIP port is held to NVIDIA's own answers, (A): our own test images with NVIDIA's
+  code's maps, and NVIDIA's pair fetched, never committed** ("I think A sounds good to me", asked in full at the
+  forty-second session's start). Step 3 had said the port is held to NVIDIA's outputs for FLIP's test images "once the
+  images' licence is read". Read at `d3ab02a4`, it settles nothing:
+  - `images/reference.png` and `test.png` (4.0 and 5.5 MB) and NVIDIA's map `src/tests/correct_ldrflip_cpp.png`
+    (5.9 MB) carry no licence or source of their own. The README's "This work is made available under a BSD 3-Clause
+    License" may cover them, but nothing says who made the scene, and NVIDIA's own pip package leaves `images` out
+    (`pyproject.toml`'s `sdist.exclude`).
+  - NVIDIA's own test holds that pair to two things: the mean, to six decimals, and the map through the magma table,
+    which is a row of the package's roadmap. A mean over two megapixels moves little for a fault that touches some
+    pixels alone, such as a filter reading the wrong neighbour at the border; a map held per pixel does not.
+  - **So:** a script in the package makes our own small test images (edges, gradients, single points, flat areas, sizes
+    below a filter's radius), committed. NVIDIA's `FLIP.h` at `d3ab02a4`, compiled here into a small reference program
+    run by hand and never by the gate, as `@kama/image`'s libpng reference is, writes each pair's error map, value by
+    value, and its mean, committed as the expected values. NVIDIA's own pair is fetched once per machine by a script,
+    pinned by SHA-256, into a git-ignored folder, as `@kama/gpu`'s `fetch-dxc.sh` fetches DXC, never committed or
+    redistributed, and the gate holds the port to NVIDIA's published mean on it. The tolerance is what the port
+    measures against the reference program, recorded, as FLIP's `misc/precision.md` keeps one reference per
+    implementation.
+  - The owner's OK to build and run NVIDIA's FLIP C++ here came with (A).
+  - Set aside: (B) NVIDIA's images committed to the package's tests under the repository's notice, 15 MB on a
+    provenance nobody states; (C) our images alone, never held to a number NVIDIA published.
+  - **The owner asked three things with the answer, answered in the chat:**
+    - *Why a package, when images are compared already?* Only byte for byte, written twice in `@kama/graphics` (the
+      tests' `golden.kama` and the cube's `check.kama`), which the package's first part puts in one place, since kama
+      lets no package read another's files. kama has no image comparison, and std no image type; cosmic-forge's
+      render checks and `@kama/gpu`'s triangle check a few chosen texels within 2 to 8 steps; FFD and the-mallow-man
+      compare no frames. FLIP is the only new part.
+    - *Why not a CRC?* A CRC says only "the same or not". On a software GPU the byte comparison is that check, and
+      also says which pixel differs and by how much, which is what a failing golden needs. On a player's GPU no exact
+      check can pass: this machine's GPU and WARP differ at 0.29 % of pixels by one step, and the GPU and SwiftShader
+      at 0.42 %, up to 72 steps, almost all on the cube's silhouette (GFX-1's question 4). A golden per GPU model and
+      driver is what no peer keeps. A per-channel tolerance (Filament, three.js, Mozilla's reftest) wide enough for 72
+      steps on half a percent of pixels also passes a missing highlight; FLIP weighs a difference by how visible it
+      is, which is why question 4 chose it.
+    - *Is it a problem we have yet?* Yes, narrowly: on the two hardware legs, natively on the GPU and in Edge, the cube
+      is held only to being drawn (the window's size, and its centre unlike its corner), so a fault only a real GPU
+      shows passes; step 2's mutations proved it ("a hardware frame held to nothing", not caught). kyoten's hello
+      cube and every game's screenshot tests run on players' GPUs too. FLIP reaches only a program that compares
+      images, never a game's build.
