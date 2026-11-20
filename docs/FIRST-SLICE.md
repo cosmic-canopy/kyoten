@@ -87,8 +87,8 @@ the design doc it settles before building on it.
   what step 3 needs. DIFF-1, the exact comparison, on any pixel format; DIFF-2, FLIP, LDR, on 8-bit sRGB images, ported
   from NVIDIA's `FLIP.h` at `d3ab02a4` and held to NVIDIA's own code: value for value natively, within 1e-5 on wasm, and
   NVIDIA's published mean on NVIDIA's pair. **On a fresh machine run its `tools/fetch-flip.sh` once** before its gate:
-  NVIDIA's test images state no licence of their own, so they are fetched, pinned, and never committed. The owner adds
-  its remote (`cosmic-canopy/kama-imagediff`, created 2026-11-20) and relays the ruling request to kama
+  NVIDIA's test images state no licence of their own, so they are fetched, pinned, and never committed. Pushed to
+  `cosmic-canopy/kama-imagediff` at the session's end; the owner relays the ruling request to kama
   (`.scratch/s41/imagediff-ruling-request.md`).
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
@@ -169,8 +169,13 @@ the design doc it settles before building on it.
      tree committed, a sorted map or set answering no room instead of trapping at its allocator's limit, its B-tree
      rebuilt as Rust's and Abseil's are (KR-423 closed). The engine's `content` and `records` modules use `SortedMap`.
      Read again through the forty-second session, to `6574c746`: two roadmap commits, kama's Windows session claiming
-     KR-424 (an in-order walk of a sorted map's keys and entries off the global heap), whose work sits uncommitted in
-     `../kama`'s tree (`lib/std/collections/sorted_map.kama`), so a bump past it checks the engine's sorted maps.
+     KR-424 (an in-order walk of a sorted map's keys and entries off the global heap). Read again at its readying, to
+     `53ef8688` (0.9.1013), KR-424 committed and closed: **a breaking change for kyoten.** `SortedMap`'s `keys()`,
+     `values()` and `range()` no longer copy into a `DynamicArray`; a sorted map lists as `Map` does (`foreach (K k in
+     m)`, `values()`, `entries()`, `range(from:, to:)`, each a view), and `keys()` and `SortedSet.elements()` are gone,
+     a list to keep being a loop into a `DynamicArray` the caller names. **A bump past it ports 48 `.keys()` calls:** 10
+     in the engine's `content` module and 1 in its tests, 36 in the `kyoten` tool and 1 in its `spin` fixture
+     (`grep -rnE '\.(keys|elements)\(\)'`, every one on a `SortedMap`); no package calls either.
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -473,7 +478,30 @@ the design doc it settles before building on it.
           of 54 in `@kama/imagediff`, 12 of 12 in `@kama/graphics`, step 2's uncaught one among them.
         - **Next, step 4, the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a
           ratchet, FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7)
-          draws the hello cube through it.
+          draws the hello cube through it. **Measured at the forty-second session's readying, a stand-in on the pin**
+          (`.scratch/s42/size/`: `build.sh`, `player.py`, `attrib.mjs`; web-baseline.md § Method, `brotli -q 11`, the
+          release JS run through Closure):
+
+          | Build of `examples/cube` | wasm | JS | Code, brotli |
+          |---|---|---|---|
+          | as it is, its harness in (`check.kama`: PNG decoding, FLIP, the goldens) | 192.2 KB | 21.6 KB | **213.8 KB** |
+          | as a player gets it: the harness out, the window's frame still read back | 146.9 KB | 13.9 KB | **160.9 KB** |
+          | the same with `ENVIRONMENT=web` and emmalloc, the free savings left | 145.1 KB | 13.6 KB | **158.7 KB** |
+
+          The JS falls by 7.7 KB without the goldens (emscripten's asset loader). Of the player's 426 KB of raw code
+          (`--profiling-funcs`), `@kama/graphics` holds 199 KB, the example's own 7 functions 91 KB with what `-Oz`
+          inlined into them (`Cube.render` alone 59 KB, the renderer's draw among it), libc and the rest 65 KB
+          (`__floatscan` and `sscanf` 11 KB, their caller not yet found), `@kama/gpu` 39 KB, emdawnwebgpu 21 KB and kama's
+          runtime 11 KB; its data is 45 KB. The largest of the library's: the standard material's `shade` (25 KB) and the
+          node builder's `wgsl` and `spelled` (22 KB). GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as GFX-1's row
+          says, so step 4's budgets are web code alone.
+          **Three questions, asked in full at the readying (the owner's to answer):** 1. what the ratchet measures, the
+          example as built or a build with its harness compiled out (recommended: the harness out, by a flag); 2. the
+          cube is above the 150 KB gauge, so whether step 4 records what it measures as the ratchet, with a row to bring
+          it under before kyoten's hello cube is held to the gauge (recommended), or shrinks it first, or raises the
+          gauge; 3. how a row's "web code the feature adds" is split among the cube's rows, which `-Oz` inlines together
+          (recommended: the rows the cube built share its measurement, and a later feature's budget is what it adds to
+          the first example to use it).
       - **Part 6's evidence** is machine-local. Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
         `probe-assets/`, kama refusing an `assets` folder outside a package; `gpu/`: `native.sh`, `gate.sh`, `mutate.py`,
         `red1.log`, `green1.log`, `gate1.log`, `mutations1.out` and `row.patch`, `Device.adapterInfo()`'s; `kg/`:
@@ -556,8 +584,7 @@ the design doc it settles before building on it.
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
    - **Waiting on the owner:** relaying to kama the request to rule `@kama/imagediff` first-party
-     (`.scratch/s41/imagediff-ruling-request.md`), and adding `cosmic-canopy/kama-imagediff` as `../kama-imagediff`'s
-     `origin`, which the owner created on 2026-11-20. Posting two requests for
+     (`.scratch/s41/imagediff-ruling-request.md`), and step 4's three questions (part 6 above). Posting two requests for
      a permissive licence, which every AgX's lineage lacks
      (rendering § Decided): `.scratch/s34/agx/licence-request.md` on EaryChow/AgX_LUT_Gen, and
      `licence-request-sobotka.md` on Troy Sobotka's AgX or SB2383-Configuration-Generation. `@kama/graphics`' first
@@ -605,6 +632,10 @@ roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
     the `frame-png` line, Edge's tests at 1.5 with `@kama/gpu`'s `browsers.mjs` unchanged, the cube's wasm memory
     growing, `compareExact` comparing alpha too, and `@kama/imagediff`'s own (no colour space taken for sRGB, an opaque
     image taken at its word, pixels per degree at most 10,000).
+- **Readied at the owner's word** ("You can push and get things ready for the next session", having added
+  `../kama-imagediff`'s `origin`): every repository fetched, nothing incoming; kama read to `53ef8688` (0.9.1013), whose
+  sorted-map change a bump must port (item 1); step 4 measured on a stand-in, and its three questions asked in full
+  (part 6's Next); kyoten, `@kama/graphics` and `@kama/imagediff` pushed.
 
 **The forty-first session** (2026-11-19 and 20). Nothing new on any origin at the start, and kama unchanged since
 `6174eb97`, so no bump; it moved to 0.9.1011 during the session (item 1).
