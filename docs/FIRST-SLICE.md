@@ -503,10 +503,14 @@ the design doc it settles before building on it.
           to identify growth"; the owner confirmed it is arbitrary and likely raised), and `@kama/graphics`' GFX-20
           finds whether anything brings it back under 150 KB; 3. the 22 rows the
           cube built share its measurement, and a later feature's budget is what it adds to the first example to use it.
+          **Three more are decided** (the owner, 2026-11-20, each (A), asked in full at the forty-third session's start;
+          rendering § Decided, step 4's second asking), since reading the code found what the first answers assumed:
+          each row says what is true (13 of the 22 built, 7 in part, 2 not at all, which move to `level` and `shooter`);
+          every built feature keeps a golden of its own (about twelve new); and the goldens' loader is measured in,
+          since kama packs a manifest's `assets` into every build (KY-63, filed).
           **Step 4's order:** the build flag and the player's build in the gate, its measurement the ratchet, failing on
-          growth; FEATURES.md's 22 cube rows with their status (`built`, or `partial` with ✓ where a ladder's methods
-          are not all built) and the shared budget, the rule in § How to read a row and `tools/check-features.sh`; the
-          SPEC. Test-first, the gate's new checks mutated.
+          growth; the new goldens; FEATURES.md's rows with their status and the shared budget, the rule in § How to read
+          a row and `tools/check-features.sh`; the SPEC. Test-first, the gate's new checks mutated.
       - **Part 6's evidence** is machine-local. Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
         `probe-assets/`, kama refusing an `assets` folder outside a package; `gpu/`: `native.sh`, `gate.sh`, `mutate.py`,
         `red1.log`, `green1.log`, `gate1.log`, `mutations1.out` and `row.patch`, `Device.adapterInfo()`'s; `kg/`:

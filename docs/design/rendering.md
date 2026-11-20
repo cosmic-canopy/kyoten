@@ -2091,7 +2091,9 @@
   cube's 150 KB gauge. Of the player's build's 426 KB of raw code, `@kama/graphics` holds 199 KB.
   1. **The ratchet measures the cube as a player gets it.** The gate builds `examples/cube` a second time, release, with
      its harness left out by a build flag, from the same source, and measures that build's wasm plus JS, without the
-     page shell or assets, as web-and-native.md's question 4 measures every example. What is measured is what a game
+     page shell or assets, as web-and-native.md's question 4 measures every example. **A flag cannot leave the goldens'
+     loader out (kama's KY-63), so the build is measured with it in:** the second asking's question 3, below. What is
+     measured is what a game
      ships, at the cost of one more release build in the gate. Set aside: (B) the example as built, 53 KB of it test
      code no player gets, which moves whenever the harness does; (C) two programs, one measured and one held to its
      goldens, where the program checked is not the one measured and the two drift apart.
@@ -2102,7 +2104,8 @@
      dropped. The 150 KB stays the hello cube's gauge, measured at kyoten's join and reported beside its ratchet; as
      every budget, it never holds a slice back (web-and-native.md's question 4 and examples.md's A1 row point here).
      Set aside: (B) shrinking the cube before step 4 closes, which delays the hello cube; (C) raising the gauge now.
-  3. **The rows the cube built share its measurement.** FEATURES.md asks each row's budget as the web code the feature
+  3. **The rows the cube built share its measurement.** **Not all 22 were built, and each row's status is the second
+     asking's question 1, below.** FEATURES.md asks each row's budget as the web code the feature
      adds. The cube's 22 rows (the renderer, the scene graph, the camera, the box, the standard material, two lights,
      tone mapping, anti-aliasing and the rest) cannot be measured apart: no cube draws without its core, so none can be
      left out, and `-Oz` inlines them together (`Cube.render` alone is 59 KB, the renderer's draw most of it), so a
@@ -2121,3 +2124,61 @@
   - **Settled while recording it, for the owner to object to:** GFX-20 sits in `@kama/graphics`' ALONGSIDE, its
     timing the owner's call, since the gauge holds nothing back; the build flag's name, the ratchet's file and its
     words are settled in step 4's build.
+- **2026-11-20, the owner: GFX-1's part 6, step 4's second asking, three questions found by reading the code for it,
+  each (A): every cube row says what is true, every built feature keeps a golden of its own, and the goldens' loader is
+  measured in until kama gives a build a way to leave assets out** (each "A (Recommended)", asked in full in the chat
+  at the forty-third session's start, then through one pointer). The first asking's answers, above, took three things
+  for granted that the code does not hold.
+  1. **Each row says what is true.** Of the 22 rows the first asking's third answer called built by the cube:
+     - **13 are built wholly:** the renderer on the web and natively, headless rendering and readback, the scene graph,
+       size and pixel ratio, depth precision, quality presets, pipelines compiled off the frame, the perspective camera,
+       the standard material, material values without recompiling, node materials, the ambient and the directional
+       light;
+     - **7 in part:** tone mapping (Blender's AgX, r187's AgX and none; not Neutral, ACES or Reinhard); anti-aliasing
+       (both 4x MSAA resolves and none; not TAA, 8x, SMAA or FXAA); the flat core (the packed buffer; nothing an engine
+       drives it by yet); render targets (one colour target; not several at once); buffer geometry (index and groups
+       inside the box; a program cannot make its own, since its constructor is not public); primitive shapes (the box;
+       not the other ten); physical light units (exposure in EV100; lux and candela neither stated nor tested);
+     - **2 not at all:** color spaces (sRGB textures decoded when sampled; there are no image textures yet) and depth
+       textures (nothing lets a program read depth as a texture);
+     - **3 rows outside the 22 were built by GFX-1:** the unlit material, whole; slot overrides (node expressions, not
+       the WGSL escape) and exposure (manual, in EV; not automatic), in part.
+
+     A row is `built` when every method and everything it names is built, and `partial` otherwise, ✓ on the built part;
+     a row with one method has its cell split into what it names, so a ✓ can sit on the built part ("the box ✓ · the
+     other shapes"). A partial row keeps `cube`, the example that first needed it. Color spaces moves to `level`, where
+     images come, and depth textures to `shooter`, for soft particles, both `planned`. Every built or partial row whose
+     code the cube's player build holds records the cube's measurement in common, as the first asking's third answer
+     says; the unlit material, which that build leaves out at link time, reads `with editor` until its first example
+     measures it. Set aside: (B) all 22 `built`, which claims what a program cannot use (a sphere, several targets at
+     once, an sRGB texture); (C) only the 13 whole rows `built`, which loses what `partial` says and leaves built code
+     unmeasured.
+  2. **Every built feature keeps a golden of its own.** FEATURES.md's test is "the feature's golden-image test, with a
+     golden per method" (area 5, 2026-11-11), and GFX-1's row gives every feature it builds one. Parts 3 and 4 kept the
+     rule; parts 1, 2, 5 and 6 held their features by cases (texels exact against float64, counts of compiles and draws)
+     and by shared goldens (`boxes`, `readback`, `harness`, the cube's). Of the 25 rows built or in part, 6 had goldens
+     under their test's name, 4 passed `check-features.sh` only because the name is a word somewhere in `tests/`
+     (`renderer`, `nodes`, `resize`, `presets`), and 15 had nothing. Step 4 adds about twelve, each a small scene in
+     which the feature changes pixels, held byte for byte on WARP and SwiftShader: the scene graph, a render target,
+     resize, depth precision at 5 km, the perspective camera, the box with segments, a program's own node material,
+     slot overrides, the unlit material, tone mapping's none, light units and exposure. The renderer's row names the
+     cube's goldens. The four features that draw nothing of their own (the flat core, presets, pipelines compiled off
+     the frame, values without recompiling) are held by named cases, and § How to read a row says so.
+     `check-features.sh` holds a built row's test to a golden folder or a named case, never to a word anywhere. Unity's
+     and Unreal's graphics test projects keep a scene and a reference image per feature, so a failure names what broke.
+     It costs about a session before the join. Set aside: (B) a row's test as whatever holds it today, names no longer
+     unique, with no new tests; (C) (B) now, and the goldens as a row of their own before GFX-2.
+  3. **The goldens' loader is measured in, and kama's KY-63 asks for a way out.** kama packs a manifest's `assets` into
+     every build (its `src/kama.driver.cpp`, where the root manifest's `assets` is always preloaded), and no `--define`
+     or `select` value leaves them out: a `select.TARGET` value takes `preloadFiles` but not `assets`, and `std::asset`
+     reads only the `assets` record. So the first asking's flag takes the harness's code out and leaves emscripten's
+     file packager in. On the pin, KY-63's repro's flagged build has the same 780-byte wasm as a build with no `assets`,
+     and 6.8 KB more JS after brotli (8,911 B against 2,072 B). The ratchet measures the flagged build as kama makes it,
+     its record saying the loader is in, and is lowered with that reason when kama gives a way out. The gap is kama's;
+     the stopgap is the package's. Set aside: (B) a second manifest for the player's build, held equal to the first
+     but for `assets` and `@kama/imagediff`, two manifests to keep in step; (C) the loader's bytes subtracted by the
+     script.
+  - **Settled while asking, for the owner to object to:** `ENVIRONMENT=web` in the cube's manifest, a free saving
+    web-and-native.md's question 4 names, since the cube runs only in a browser; emmalloc left to GFX-20, since it
+    trades speed for size; a build under its record passes, saying to lower the record, which a script writes, as
+    `tools/update-goldens.sh` writes goldens; the player's build runs once in Edge, so the build measured draws.
