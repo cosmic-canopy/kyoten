@@ -1957,3 +1957,36 @@
     - the port is from FLIP's `main` at `d3ab02a4` (2026-10-13), which is v1.7's C++ with PR #45's mean summed in a
       double. FLIP has no tags;
     - whether the package is first-party is kama's to rule, as it was for `@kama/image`.
+- **2026-11-20, the owner: `@kama/imagediff`'s first build, (A) with one change: the interface is general, and the
+  build is only what step 3 needs** ("A, and draft the ruling request too. We dont' need a full featured package yet
+  just what we need from it now, but the interface should be general yes"). The owner asked whether the package would
+  compare many kinds of image. The step 3 recorded above was narrower than that: FLIP on "two 8-bit sRGB images" alone,
+  and HDR-FLIP waiting. So the question was asked in full in the chat: (A) a general interface from the first commit,
+  with the exact comparison on every format and FLIP whole, standard and HDR, the rest as roadmap rows; (B) every
+  metric in step 3; (C) the narrow step as recorded, a stopgap whose interface would change as it widened. Asked next
+  how the package is treated as an official kama package, the answer was kama's rule (`docs/packages.md`): a
+  first-party package stands alone, so its interface cannot be shaped around one example's frames.
+  - **The interface is general from the first commit.** It takes any `@kama/image` `Image`, whatever its pixel format,
+    alpha mode or colour space. Its options and results are types that grow without changing a call: an options value,
+    as `RendererOptions` is, and a `@nonExhaustive` error kind. An input not built for yet is refused with a typed
+    error that names what it lacks, so adding support removes a refusal and changes no program.
+  - **The build is what step 3 needs:**
+    - the exact comparison, which compares what each image stores;
+    - FLIP, standard (LDR), on 8-bit sRGB images;
+    - its error map, the mean summed in a double, and the share of pixels above a threshold, the two numbers GFX-1's
+      question 4 holds a frame to.
+  - **Rows in its roadmap,** each built when a program needs it:
+    - HDR-FLIP;
+    - FLIP on 16-bit, float, Display P3 and BT.2020 images, and on PQ and HLG HDR images. An image described only by an
+      ICC profile waits for colour management;
+    - FLIP's other pooled values and its magma error map;
+    - a per-channel tolerance with a failing-pixel share (Filament's `imagediff`, Mozilla's reftest `fuzzy`, WPT's
+      `fuzzy`);
+    - PSNR and RMSE (Godot's `compute_image_metrics`);
+    - SSIM, written from its paper, since dssim's code is AGPL;
+    - masks, and Filament's shift search;
+    - a command-line tool, as Filament's `diffimg` and NVIDIA's `flip`;
+    - the first publish, once kama has ruled and its tests are green on every target it claims.
+  - **The ruling request is drafted** for the owner to relay to kama (`.scratch/s41/imagediff-ruling-request.md`). It
+    covers what the package is, why it stands alone, why it is not std and not `@kama/image`, its shape, and the row
+    `docs/packages.md` would gain.

@@ -83,8 +83,10 @@ the design doc it settles before building on it.
   Its six details were settled under the owner's word on decision 4 (kama-image's `AGENTS.image.md` § Decided 4).
   Reading libpng's writer found two places the decoder kept chunks other than as libpng does, now fixed.
 - **`@kama/imagediff` is decided and not yet seeded** (the forty-first session, rendering § Decided, 2026-11-20): FLIP
-  and the byte-for-byte golden comparison, a package of its own on `@kama/image`. The owner creates
-  `cosmic-canopy/kama-imagediff`, and the next session seeds it as GFX-1's part 6, step 3 (below).
+  and the byte-for-byte golden comparison, a package of its own on `@kama/image`. Its interface is general from the
+  first commit, and its build is only what step 3 needs (the owner, 2026-11-20). The owner creates
+  `cosmic-canopy/kama-imagediff` and relays the ruling request to kama (`.scratch/s41/imagediff-ruling-request.md`), and
+  the next session seeds it as GFX-1's part 6, step 3 (below).
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -450,25 +452,31 @@ the design doc it settles before building on it.
           - Edge runs at Chrome for Testing's scale of 1.5 and is held to SwiftShader's golden. Natively on Windows, the
             GPU's frame is held to WARP's golden.
         - **Next, step 3, FLIP,** in this order, each part test-first and mutated:
-          1. **The package is seeded.** The owner creates `cosmic-canopy/kama-imagediff` and adds its remote. The
-             session seeds `../kama-imagediff` as `@kama/image` was seeded: its `kama.json`; `SPEC.md`, `ROADMAP.md` and
-             its detail; `AGENTS.md` from `kama agents print` and `AGENTS.imagediff.md`; the two licences and a
-             `THIRD-PARTY-NOTICES.md` with NVIDIA's notice; `tests/` as one program; and `tools/test.sh`, natively and on
-             wasm, debug and release.
-          2. **The exact comparison moves there.** It takes two `Image`s and says how many pixels differ, where the
-             first is, and both its values. A size or format that differs is answered as such (Filament's
-             `SIZE_MISMATCH`). This is what the tests' `golden.kama` and the cube's `check.kama` each say today, so both
-             call the package and their own copies go. Printing a `golden-png` line stays each program's job, since it is
-             the gate's protocol.
+          1. **The package is seeded.** The owner creates `cosmic-canopy/kama-imagediff` and adds its remote, and
+             relays the ruling request (`.scratch/s41/imagediff-ruling-request.md`) to kama. The session seeds
+             `../kama-imagediff` as `@kama/image` was seeded: its `kama.json`; `SPEC.md`, `ROADMAP.md` and its detail,
+             whose rows are the ones rendering § Decided lists (2026-11-20); `AGENTS.md` from `kama agents print` and
+             `AGENTS.imagediff.md`; the two licences and a `THIRD-PARTY-NOTICES.md` with NVIDIA's notice; `tests/` as one
+             program; and `tools/test.sh`, natively and on wasm, debug and release. **Its interface is general from the
+             first commit, and its build is only what step 3 needs** (the owner, 2026-11-20). It takes any `@kama/image`
+             `Image`. An input not built for yet is refused with a typed error naming what it lacks, so adding support
+             changes no program.
+          2. **The exact comparison moves there.** It takes two `Image`s of any format and compares what each stores. It
+             says how many pixels differ, where the first is, and both its values. A size or format that differs is
+             answered as such (Filament's `SIZE_MISMATCH`). This is what the tests' `golden.kama` and the cube's
+             `check.kama` each say today, so both call the package and their own copies go. Printing a `golden-png` line
+             stays each program's job, since it is the gate's protocol.
           3. **FLIP, LDR, is ported** from `src/cpp/FLIP.h` at `d3ab02a4`:
-             - two 8-bit sRGB images, taken to linear as NVIDIA's tool takes a PNG (`FLIPToolHelpers.h:550-553`);
-             - the error map, and its pooled values: the mean summed in a double, the tool's weighted median, quartiles,
-               min and max, and the share of pixels above a threshold, which FLIP itself reports nowhere;
-             - FLIP's default viewing conditions, 67 pixels per degree.
+             - on 8-bit sRGB images, taken to linear as NVIDIA's tool takes a PNG (`FLIPToolHelpers.h:550-553`). Any
+               other image is refused with the typed error until its row is built;
+             - the error map, the mean summed in a double, and the share of pixels above a threshold, which FLIP itself
+               reports nowhere. These are the two numbers GFX-1's question 4 holds a frame to;
+             - FLIP's default viewing conditions, 67 pixels per degree, given through an options value.
 
              The port is held to NVIDIA's own outputs for FLIP's test images, made by the C++ tool built at that commit,
              once the images' licence is read. FLIP's `misc/precision.md` keeps a reference per implementation, so the
-             tolerance is settled from what the port measures, and recorded. HDR-FLIP waits for a row that needs it.
+             tolerance is settled from what the port measures, and recorded. HDR-FLIP, other formats and colour spaces,
+             FLIP's other pooled values and the rest are rows in the package's roadmap.
           4. **The hardware legs are held by it,** in kama-graphics:
              - natively on the GPU, to WARP's golden;
              - Edge, given `--scale 1.5` by `tools/browsers.mjs` as Chrome for Testing is, to SwiftShader's golden.
@@ -566,7 +574,9 @@ the design doc it settles before building on it.
      - `@kama/image` is ruled first-party (kama `74784471`, docs/packages.md, beside every `@kama/*` package);
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
-   - **Waiting on the owner:** posting two requests for a permissive licence, which every AgX's lineage lacks
+   - **Waiting on the owner:** relaying to kama the request to rule `@kama/imagediff` first-party
+     (`.scratch/s41/imagediff-ruling-request.md`), and creating `cosmic-canopy/kama-imagediff`. Posting two requests for
+     a permissive licence, which every AgX's lineage lacks
      (rendering § Decided): `.scratch/s34/agx/licence-request.md` on EaryChow/AgX_LUT_Gen, and
      `licence-request-sobotka.md` on Troy Sobotka's AgX or SB2383-Configuration-Generation. `@kama/graphics`' first
      publish waits on the answers. A comment on wgpu-native PR #630 with the probe's results (research/graphics.md § 6),
@@ -616,6 +626,10 @@ the design doc it settles before building on it.
 - **Step 3's two questions asked at the end,** in full, with the peers' prior art (`.scratch/s41/step3-prior-art.md`).
   The owner took both recommendations ("sounds like we can do both as you recommend"): FLIP in a package of its own,
   `@kama/imagediff`, and Edge at Chrome for Testing's scale, held to SwiftShader's golden.
+- **A third question, from the owner's own:** asked whether the package would compare many kinds of image, which step 3
+  as recorded did not, and how an official kama package is treated. The owner chose (A) with one change: the interface
+  general from the first commit, the build only what step 3 needs. The ruling request was drafted for the owner to
+  relay (`.scratch/s41/imagediff-ruling-request.md`).
 - **Ready for the next session at the owner's word** ("can you also get things ready for the next sesssion?"):
   - the two answers recorded (rendering § Decided; kama-graphics' ROADMAP_DETAIL § GFX-1, `72b4a05`), and step 3's
     order put above;
