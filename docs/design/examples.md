@@ -99,7 +99,7 @@ KYR-29 and KYR-40.
 
      | Slice | Done when |
      |---|---|
-     | A1, the hello cube (KYR-14) | at most 20 non-blank lines and eight concepts; at most 150 KB of code on the web (wasm plus JS, release, brotli); the same game code on web and native, with no platform flag in it; a headless readback sees the cube |
+     | A1, the hello cube (KYR-14) | at most 20 non-blank lines and eight concepts; at most 150 KB of code on the web (wasm plus JS, release, brotli), a gauge that shows growth and holds nothing back (2026-11-20, [rendering.md](rendering.md) § Decided); the same game code on web and native, with no platform flag in it; a headless readback sees the cube |
      | A2, the level (KYR-11) | the display's rate held on the reference machines, with frame time per phase reported; A1's numbers still hold |
      | B (KYR-12) | one world hash on every leg (three operating systems, wasm, the browser), with Output on and off; the parallel hash equal to the serial one; the default rates measured in its scene and recorded |
      | C (KYR-28) | an agent's record change visible in the running game within a second, with no rebuild (a starting gauge); a human's tuning landing in the same records |

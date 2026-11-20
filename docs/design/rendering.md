@@ -2078,3 +2078,39 @@
       maps;
     - planning the mutations found a gap: a leg whose hardware golden came back empty went back to being held as drawn,
       and passed, so the gate fails a leg that holds the cube to no golden.
+- **2026-11-20, the owner: GFX-1's part 6, step 4's three questions, each (A): the ratchet measures the cube as a player
+  gets it, the cube enters with what it measures while the gauge shows growth, and the rows the cube built share its
+  measurement** ("1. A yes", "2. I think A makes sense... the guage is just a budget we want to identify growth.", "3. I
+  don't have a preference here... I will go with your rec.", asked in full in the chat at the forty-second session's
+  readying). The questions came from a stand-in measurement on the pin (`.scratch/s42/size/`, web-baseline.md §
+  Method, `brotli -q 11`, the release JS run through Closure): `examples/cube` as built is 213.8 KB of code (wasm 192.2,
+  JS 21.6); without its harness (`src/check.kama`: PNG decoding, FLIP and the goldens), 160.9 KB; with
+  `ENVIRONMENT=web` and emmalloc, the free savings web-and-native.md's question 4 names, 158.7 KB, above the hello
+  cube's 150 KB gauge. Of the player's build's 426 KB of raw code, `@kama/graphics` holds 199 KB.
+  1. **The ratchet measures the cube as a player gets it.** The gate builds `examples/cube` a second time, release, with
+     its harness left out by a build flag, from the same source, and measures that build's wasm plus JS, without the
+     page shell or assets, as web-and-native.md's question 4 measures every example. What is measured is what a game
+     ships, at the cost of one more release build in the gate. Set aside: (B) the example as built, 53 KB of it test
+     code no player gets, which moves whenever the harness does; (C) two programs, one measured and one held to its
+     goldens, where the program checked is not the one measured and the two drift apart.
+  2. **The cube enters with what it measures, and the gauge shows growth** ("the gauge is just a budget we want to
+     identify growth"). Step 4 records the player's build's measurement as the cube's ratchet, which fails only when the
+     cube grows without a written reason, as the owner's rule of 2026-11-11 holds every budget. A row of
+     `@kama/graphics`' (GFX-20) looks for what brings the cube under 150 KB, each saving measured and no feature
+     dropped. The 150 KB stays the hello cube's gauge, measured at kyoten's join and reported beside its ratchet; as
+     every budget, it never holds a slice back (web-and-native.md's question 4 and examples.md's A1 row point here).
+     Set aside: (B) shrinking the cube before step 4 closes, which delays the hello cube; (C) raising the gauge now.
+  3. **The rows the cube built share its measurement.** FEATURES.md asks each row's budget as the web code the feature
+     adds. The cube's 22 rows (the renderer, the scene graph, the camera, the box, the standard material, two lights,
+     tone mapping, anti-aliasing and the rest) cannot be measured apart: no cube draws without its core, so none can be
+     left out, and `-Oz` inlines them together (`Cube.render` alone is 59 KB, the renderer's draw most of it), so a
+     split by function name would be false. Each of those rows records the cube's measurement as theirs in common;
+     from the next example on, a feature's budget is what it adds to the first example that uses it, that example
+     built with and without it. Step 4 writes the rule into FEATURES.md § How to read a row and its
+     `tools/check-features.sh`. Set aside: (B) a split by function name from a build with inlining turned off, whose
+     numbers add up to something other than what ships and move whenever the compiler inlines differently.
+  - The rows' GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as GFX-1's row already said, so step 4's budgets are
+    web code alone.
+  - **Settled while recording it, for the owner to object to:** GFX-20 sits in `@kama/graphics`' ALONGSIDE, its
+    timing the owner's call, since the gauge holds nothing back; the build flag's name, the ratchet's file and its
+    words are settled in step 4's build.

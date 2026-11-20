@@ -495,13 +495,15 @@ the design doc it settles before building on it.
           runtime 11 KB; its data is 45 KB. The largest of the library's: the standard material's `shade` (25 KB) and the
           node builder's `wgsl` and `spelled` (22 KB). GPU time waits on `@kama/gpu`'s timestamps (GPU-6), as GFX-1's row
           says, so step 4's budgets are web code alone.
-          **Three questions, asked in full at the readying (the owner's to answer):** 1. what the ratchet measures, the
-          example as built or a build with its harness compiled out (recommended: the harness out, by a flag); 2. the
-          cube is above the 150 KB gauge, so whether step 4 records what it measures as the ratchet, with a row to bring
-          it under before kyoten's hello cube is held to the gauge (recommended), or shrinks it first, or raises the
-          gauge; 3. how a row's "web code the feature adds" is split among the cube's rows, which `-Oz` inlines together
-          (recommended: the rows the cube built share its measurement, and a later feature's budget is what it adds to
-          the first example to use it).
+          **Its three questions are decided** (the owner, 2026-11-20, each (A), asked in full at the readying;
+          rendering § Decided): 1. the ratchet measures the cube as a player gets it, its harness left out by a build
+          flag; 2. the cube enters with what it measures, the gauge showing growth ("the gauge is just a budget we want
+          to identify growth"), and `@kama/graphics`' GFX-20 looks for what brings it under 150 KB; 3. the 22 rows the
+          cube built share its measurement, and a later feature's budget is what it adds to the first example to use it.
+          **Step 4's order:** the build flag and the player's build in the gate, its measurement the ratchet, failing on
+          growth; FEATURES.md's 22 cube rows with their status (`built`, or `partial` with ✓ where a ladder's methods
+          are not all built) and the shared budget, the rule in § How to read a row and `tools/check-features.sh`; the
+          SPEC. Test-first, the gate's new checks mutated.
       - **Part 6's evidence** is machine-local. Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
         `probe-assets/`, kama refusing an `assets` folder outside a package; `gpu/`: `native.sh`, `gate.sh`, `mutate.py`,
         `red1.log`, `green1.log`, `gate1.log`, `mutations1.out` and `row.patch`, `Device.adapterInfo()`'s; `kg/`:
@@ -584,7 +586,7 @@ the design doc it settles before building on it.
      - KY-57 is fixed (0.9.956);
      - `@kama/image`'s KIMG-1 is in kama's KR-332, measured on std's own inflate, with a speed level for one package.
    - **Waiting on the owner:** relaying to kama the request to rule `@kama/imagediff` first-party
-     (`.scratch/s41/imagediff-ruling-request.md`), and step 4's three questions (part 6 above). Posting two requests for
+     (`.scratch/s41/imagediff-ruling-request.md`). Posting two requests for
      a permissive licence, which every AgX's lineage lacks
      (rendering § Decided): `.scratch/s34/agx/licence-request.md` on EaryChow/AgX_LUT_Gen, and
      `licence-request-sobotka.md` on Troy Sobotka's AgX or SB2383-Configuration-Generation. `@kama/graphics`' first
@@ -635,7 +637,8 @@ roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
 - **Readied at the owner's word** ("You can push and get things ready for the next session", having added
   `../kama-imagediff`'s `origin`): every repository fetched, nothing incoming; kama read to `53ef8688` (0.9.1013), whose
   sorted-map change a bump must port (item 1); step 4 measured on a stand-in, and its three questions asked in full
-  (part 6's Next); kyoten, `@kama/graphics` and `@kama/imagediff` pushed.
+  and decided, each (A) (rendering § Decided; part 6's Next), with GFX-20 filed in `@kama/graphics`; kyoten,
+  `@kama/graphics` and `@kama/imagediff` pushed.
 
 **The forty-first session** (2026-11-19 and 20). Nothing new on any origin at the start, and kama unchanged since
 `6174eb97`, so no bump; it moved to 0.9.1011 during the session (item 1).
