@@ -2030,3 +2030,51 @@
       shows passes; step 2's mutations proved it ("a hardware frame held to nothing", not caught). kyoten's hello
       cube and every game's screenshot tests run on players' GPUs too. FLIP reaches only a program that compares
       images, never a game's build.
+- **Built, GFX-1's part 6, step 3, FLIP** (the forty-second session, 2026-11-20; kama-imagediff `7ebd98b`, `ea40fe1` and
+  `0ab9ea5`; kama-graphics `5aef69c`), as the three decisions of 2026-11-20 above laid it out:
+  - **`@kama/imagediff` seeded** (`../kama-imagediff`, for `cosmic-canopy/kama-imagediff`), on `@kama/image`, its
+    interface general and its build what step 3 needs: its own `AGENTS.imagediff.md`, `SPEC.md`, `ROADMAP.md` (the rows
+    this record's decision of 2026-11-20 lists, ids `DIFF-<n>`), NVIDIA's notice in `THIRD-PARTY-NOTICES.md` and in the
+    port's header, `tests/` one program, and `tools/test.sh` natively and on wasm under node, debug and release.
+  - **DIFF-1, the exact comparison:** `compareExact(reference:, test:)` on any pixel format, never failing, answering in
+    order a size, a format, a colour space or an alpha mode that differs, or how many pixels differ, the first in row
+    order and both its samples. Samples compare by their bits; a colour space by its primaries and transfer, the gamma
+    under a gamma transfer, custom chromaticities and an ICC profile's bytes; alpha modes by their meaning, the same
+    picture wherever every alpha is at its maximum. 43 cases, 30 of 30 mutations caught.
+  - **DIFF-2, FLIP, LDR, on 8-bit sRGB images:** `compareFlip(reference:, test:, options:)`, a `FlipMap` of every
+    pixel's error with its mean summed in a double and the count and share above an error; any other image refused with
+    a typed `DiffError` naming what it lacks. FLIP.h's CPU path in float32 in the same order. Held to NVIDIA's own
+    answers as decided: a reference program on NVIDIA's `FLIP.h` (fetched pinned, never committed) gives NVIDIA's
+    published 0.159693 on NVIDIA's pair, and writes the maps of the package's own twelve test pairs (15 runs, three at
+    other viewing conditions). **Natively on Windows the port is FLIP.h value for value** on every run, debug and
+    release; on wasm emscripten's `powf` and `expf` move at most 13 values of a pair by at most 2.5e-6 and a mean by at
+    most 3.0e-8, so the tests hold 1e-5 a value and 1.2e-7 a mean; NVIDIA's pair, fetched once per machine by
+    `tools/fetch-flip.sh`, is held to 0.159693 on every leg. 51 cases, 53 of 54 mutations caught, the one left an image
+    of no pixel, which `@kama/image` never makes.
+  - **The hardware legs held by it** (kama-graphics): the tests' `golden.kama` and the cube's `check.kama` call
+    `compareExact`, keeping their words; `examples/cube --flip-against <gpu>` holds a frame drawn on a player's GPU to
+    that software GPU's golden by FLIP; the gate holds the GPU natively against WARP's golden and Edge, at Chrome for
+    Testing's scale of 1.5, against SwiftShader's, debug and release, and the cube stopped 30 degrees short must fail
+    both limits. 12 of 12 mutations caught, step 2's "hardware frame held to nothing" among them.
+  - **The two limits, measured** (GFX-1's question 4), from the cube on this machine's AMD Radeon 880M, the same on every
+    run, debug and release: natively against WARP's golden, a mean error of 0.00121 and no error above 0.037; in Edge at
+    1.5 against SwiftShader's, a mean of 0.00053 and 6 pixels of 576,000 above 0.1, at most 0.118, on the cube's edges.
+    The threshold is 0.1, above every error the GPU's frames hold but those six edge pixels'. Each limit is four times
+    the most measured, rounded up: **a mean of 0.005, and a share of 5e-5 above 0.1.** For scale, the cube a degree from
+    its golden's turn has a mean of 0.0117 and 2 % of its pixels above 0.1, and fails both. Raising a limit takes a
+    written reason, as every budget does.
+  - **Settled while building, and reported:**
+    - the cube's flag is `--flip-against <gpu>`, never beside `--golden`; a failing hardware frame prints itself as
+      `frame-png cube <gpu> <base64>`, which `tools/update-goldens.sh` never writes as a golden; FLIP's magma map waits
+      for its row in `@kama/imagediff`;
+    - **Edge's tests run at 1.5 too,** so one rule covers every Chromium leg in `@kama/graphics`' `browsers.mjs`;
+      `@kama/gpu`'s copy keeps Edge at 1, since its Edge leg holds no golden;
+    - the cube's wasm build may grow its memory: FLIP on a 960 x 600 frame needs about 35 MB, past emscripten's 16 MB;
+    - `compareExact` compares alpha too, which the cube's own copy did not; every golden was written from the frame's
+      four channels, so none moved;
+    - in `@kama/imagediff`: an unspecified colour space is refused, never taken for sRGB, so a program reading NVIDIA's
+      untagged PNGs says they are sRGB; an `Opaque` image is taken at its word; pixels per degree are above 0 and at
+      most 10,000; its tests are not built with `reproducible-float`, and built with it, native and wasm gave the same
+      maps;
+    - planning the mutations found a gap: a leg whose hardware golden came back empty went back to being held as drawn,
+      and passed, so the gate fails a leg that holds the cube to no golden.
