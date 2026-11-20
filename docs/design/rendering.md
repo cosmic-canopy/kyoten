@@ -1920,3 +1920,40 @@
     debug and release. Mutations: 2 of 2 in `@kama/gpu`, 17 of 18 in `@kama/graphics` (`.scratch/s41/`), the one left a
     hardware frame held to nothing, which no leg draws blank, and which FLIP holds. Planning them found a gap first: a
     comparison passing every frame passed every leg, so the gate runs the cube a frame short, which must fail.
+- **2026-11-20, the owner: GFX-1's part 6, step 3's two questions, each (A): FLIP in a package of its own,
+  `@kama/imagediff`, and Edge at Chrome for Testing's scale, held to SwiftShader's golden** ("sounds like we can do both
+  as you recommend", asked in full in the chat at the forty-first session's end). The questions came from the code and
+  the prior art (`.scratch/s41/step3-prior-art.md`, an agent's, its two decisive claims checked against Filament's and
+  wgpu's own sources). Step 3 compares a frame drawn on a player's GPU with its leg's software golden, by FLIP's two
+  numbers (GFX-1's question 4 above).
+  1. **Where FLIP lives: a package of its own, `@kama/imagediff`, on `@kama/image`,** holding FLIP and the byte-for-byte
+     golden comparison. This is how Filament keeps `libs/imagediff`, a static library of its own on `libs/image`
+     (v1.81.0, `libs/imagediff/CMakeLists.txt:1-25`), which its render tests drive through `tools/diffimg`.
+     - The frames FLIP compares on a player's GPU are `examples/cube`'s, and the example is a package of its own. kama
+       lets no package read another's files, so the tests' harness, where question 4 had put the port, cannot hold FLIP
+       alone. kyoten's hello cube needs the same comparison at the join.
+     - Step 2 wrote the byte-for-byte comparison twice (the tests' `golden.kama` and the cube's `check.kama`), and it
+       moves to the package too, so both comparisons have one place.
+     - NVIDIA's BSD-3-Clause notice reaches only a program that compares images, never one built on `@kama/graphics`
+       alone.
+     - FLIP is ported to kama, so the web leg compares too. wgpu's `nv-flip` runs natively only (v30.0.2,
+       `tests/src/image.rs:256-268`).
+     - Set aside: (B) a module of `@kama/image`, as Godot puts a PSNR/RMS metric on its core `Image` (4.7.2,
+       `core/io/image.cpp:3914`), where a published codec would carry a test metric and NVIDIA's notice; (C) a public
+       module of `@kama/graphics`, which would put a test metric in the renderer's API and its notice in every game.
+  2. **Which software golden a hardware leg is held to: Edge runs at Chrome for Testing's device scale of 1.5, and is
+     held to SwiftShader's golden, the web's.** Natively on Windows, the GPU's frame is held to WARP's golden, at the
+     same 640 x 400.
+     - This way every web leg on every operating system can be held to the web's golden, while WARP exists on Windows
+       alone.
+     - The tests draw into targets of a fixed size, so only a window's frame changes size with the scale.
+     - Set aside: (B) Edge at a scale of 1, held to WARP's golden, which uses the same Direct3D 12 path but works on
+       Windows only; (C) Chrome for Testing at a scale of 1, so that every web frame is 640 x 400, which would lose the
+       web runs' scale that is not 1, the one keeping pixel sizes apart from CSS sizes.
+  - **Settled while recording it, for the owner to object to:**
+    - the package's name is `@kama/imagediff`, Filament's, in `../kama-imagediff` and `cosmic-canopy/kama-imagediff`;
+    - its licence is MIT OR Apache-2.0, as every `@kama` package's, with NVIDIA's notice in its
+      `THIRD-PARTY-NOTICES.md`;
+    - the port is from FLIP's `main` at `d3ab02a4` (2026-10-13), which is v1.7's C++ with PR #45's mean summed in a
+      double. FLIP has no tags;
+    - whether the package is first-party is kama's to rule, as it was for `@kama/image`.

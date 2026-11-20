@@ -82,6 +82,9 @@ the design doc it settles before building on it.
 
   Its six details were settled under the owner's word on decision 4 (kama-image's `AGENTS.image.md` § Decided 4).
   Reading libpng's writer found two places the decoder kept chunks other than as libpng does, now fixed.
+- **`@kama/imagediff` is decided and not yet seeded** (the forty-first session, rendering § Decided, 2026-11-20): FLIP
+  and the byte-for-byte golden comparison, a package of its own on `@kama/image`. The owner creates
+  `cosmic-canopy/kama-imagediff`, and the next session seeds it as GFX-1's part 6, step 3 (below).
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
@@ -153,7 +156,10 @@ the design doc it settles before building on it.
      `@generate(default)`, and `@generate(zero)` is a `type extern value`'s alone, C's zero, refused on a kama value
      (KR-418); 0.9.1010, `match` at compile time (KR-417); 0.9.1011, one message for one mistake in a compile-time
      initializer (KR-427); the editors' grammar pins and roadmap and docs commits; and an uncommitted tree touching
-     `std::collections`' sorted map. None that kyoten needs. **On a bump, check 0.9.987, 0.9.994 and 0.9.1009 first:**
+     `std::collections`' sorted map. None that kyoten needs. Read again at the readying, to `25499a59` (0.9.1012): that
+     tree committed, a sorted map or set answering no room instead of trapping at its allocator's limit, its B-tree
+     rebuilt as Rust's and Abseil's are (KR-423 closed). The engine's `content` and `records` modules use `SortedMap`.
+     **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
      the forty-first session), and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The
@@ -437,23 +443,45 @@ the design doc it settles before building on it.
           `tests/goldens/<example>/`; the frame is the window's in device pixels, 640 x 400 on WARP at this machine's
           scale of 1, 960 x 600 on SwiftShader at Chrome for Testing's 1.5; 60 frames; a `goldens/README.md`, since
           emscripten's file packager refuses an empty assets folder.
-        - **Next, step 3, FLIP,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s mean
-          summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two limits,
-          the mean and the share of pixels above a threshold, set from the cube on the reference machines present, plus a
-          margin (rendering § Decided, GFX-1's question 4). **Its two questions, from the code and the prior art**
-          (`.scratch/s41/step3-prior-art.md`, an agent's, its two decisive claims checked against the primary pages):
-          1. **where FLIP lives:** the frames it compares on a player's GPU are `examples/cube`'s (natively on the GPU,
-             and Edge), a package of its own, and kama lets no package read another's files, so the tests' harness
-             cannot hold it alone, as three.js r187 keeps its `Image.compare` in its test harness; kyoten's hello cube
-             will need the same comparison at the join. Filament keeps `libs/imagediff` a library of its own on
-             `libs/image` (v1.81.0, its CMakeLists.txt), with a CLI, `tools/diffimg`, its render tests drive; wgpu calls
-             FLIP from its test harness through the `nv-flip` crate, natively only (v30.0.2, `tests/src/image.rs`);
-             Godot puts a PSNR/RMS metric on its core `Image`. FLIP itself is one header, no I/O, and reports no share of
-             pixels above a threshold, which the port adds over its error map;
-          2. **which software golden a hardware leg is held to:** natively on Windows the GPU's 640 x 400 frame meets
-             WARP's golden at its size; Edge's frame is 640 x 400 at a scale of 1, where the web's software golden,
-             SwiftShader's, is 960 x 600 at Chrome for Testing's 1.5, so either Edge runs at Chrome for Testing's scale
-             or is held to WARP's, Windows' own.
+        - **Step 3's two questions are decided** (the owner, 2026-11-20, "sounds like we can do both as you recommend";
+          rendering § Decided), each (A):
+          - FLIP lives in a package of its own, `@kama/imagediff` on `@kama/image`, with the byte-for-byte comparison
+            beside it, as Filament keeps `libs/imagediff`;
+          - Edge runs at Chrome for Testing's scale of 1.5 and is held to SwiftShader's golden. Natively on Windows, the
+            GPU's frame is held to WARP's golden.
+        - **Next, step 3, FLIP,** in this order, each part test-first and mutated:
+          1. **The package is seeded.** The owner creates `cosmic-canopy/kama-imagediff` and adds its remote. The
+             session seeds `../kama-imagediff` as `@kama/image` was seeded: its `kama.json`; `SPEC.md`, `ROADMAP.md` and
+             its detail; `AGENTS.md` from `kama agents print` and `AGENTS.imagediff.md`; the two licences and a
+             `THIRD-PARTY-NOTICES.md` with NVIDIA's notice; `tests/` as one program; and `tools/test.sh`, natively and on
+             wasm, debug and release.
+          2. **The exact comparison moves there.** It takes two `Image`s and says how many pixels differ, where the
+             first is, and both its values. A size or format that differs is answered as such (Filament's
+             `SIZE_MISMATCH`). This is what the tests' `golden.kama` and the cube's `check.kama` each say today, so both
+             call the package and their own copies go. Printing a `golden-png` line stays each program's job, since it is
+             the gate's protocol.
+          3. **FLIP, LDR, is ported** from `src/cpp/FLIP.h` at `d3ab02a4`:
+             - two 8-bit sRGB images, taken to linear as NVIDIA's tool takes a PNG (`FLIPToolHelpers.h:550-553`);
+             - the error map, and its pooled values: the mean summed in a double, the tool's weighted median, quartiles,
+               min and max, and the share of pixels above a threshold, which FLIP itself reports nowhere;
+             - FLIP's default viewing conditions, 67 pixels per degree.
+
+             The port is held to NVIDIA's own outputs for FLIP's test images, made by the C++ tool built at that commit,
+             once the images' licence is read. FLIP's `misc/precision.md` keeps a reference per implementation, so the
+             tolerance is settled from what the port measures, and recorded. HDR-FLIP waits for a row that needs it.
+          4. **The hardware legs are held by it,** in kama-graphics:
+             - natively on the GPU, to WARP's golden;
+             - Edge, given `--scale 1.5` by `tools/browsers.mjs` as Chrome for Testing is, to SwiftShader's golden.
+
+             The two limits are measured from the cube on this machine's Radeon 880M on both legs, plus a margin, and
+             recorded with their numbers (GFX-1's question 4). The tests' `golden.kama` and the cube's `check.kama` call
+             the package, and step 2's one uncaught mutation, a hardware frame held to nothing, is caught. A native
+             hardware leg off Windows is held once its operating system's software golden is measured (lavapipe on
+             Linux); the Mac's golden is measured in its own session.
+
+          **Details to settle in the build, and report:** the package's types and names; what a failing hardware frame
+          prints (its frame as a `golden-png` line, and perhaps FLIP's magma map); and whether Edge's tests run at 1.5
+          too, so that one rule covers every Chromium leg.
         - **and step 4, the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a
           ratchet, FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7)
           draws the hello cube through it.
@@ -585,6 +613,15 @@ the design doc it settles before building on it.
   - **Settled and reported, for the owner to object to:** kama-graphics' ROADMAP_DETAIL § GFX-1 lists them: the
     goldens' place, the frame's size in device pixels (scale 1 natively here and in Firefox, 1.5 in Chrome for Testing),
     60 frames, and a hardware frame held to being drawn alone until FLIP.
+- **Step 3's two questions asked at the end,** in full, with the peers' prior art (`.scratch/s41/step3-prior-art.md`).
+  The owner took both recommendations ("sounds like we can do both as you recommend"): FLIP in a package of its own,
+  `@kama/imagediff`, and Edge at Chrome for Testing's scale, held to SwiftShader's golden.
+- **Ready for the next session at the owner's word** ("can you also get things ready for the next sesssion?"):
+  - the two answers recorded (rendering § Decided; kama-graphics' ROADMAP_DETAIL § GFX-1, `72b4a05`), and step 3's
+    order put above;
+  - kama's range read again, to `25499a59` (0.9.1012), which rebuilds the sorted map's B-tree that the engine's
+    `content` and `records` modules use (item 1);
+  - kyoten, `@kama/gpu` and `@kama/graphics` pushed.
 
 **The fortieth session** (2026-11-19). Nothing new on any origin at the start, and kama's range had gained 0.9.1001
 to 0.9.1004 since `85099809`, function pointers, so no bump.
