@@ -1860,3 +1860,42 @@
     cost alone, equivalent; a changed present mode not configured, which only frame pacing shows; an out-of-date
     surface not configured again, which nothing on these legs brings about; and a frame not presented, which
     natively nothing reads and on the web the browser presents anyway.
+- **2026-11-19, the owner: GFX-1's part 6, step 2's question, (A): a renderer says which GPU it draws with** ("A
+  (Recommended)", asked in full in the chat at the forty-first session's start, found while reading the code for
+  `examples/cube`). Under `--golden <gpu>` the example holds its window's last frame to that software GPU's golden. A
+  renderer made with `make(window:, options:)` requests its adapter itself and kept nothing of it, and `@kama/gpu`'s
+  `Device` said nothing of its adapter, so the example could not tell which GPU answered. The tests can, since they
+  request their own adapter and read `adapter.info()`: its kind CPU, and "swiftshader" as its architecture exactly where
+  the leg names SwiftShader (kama-graphics' `tests/src/open.kama:104-118`). That guard keeps WARP's frame from being held
+  to SwiftShader's golden or written as it (its SPEC § Tests). A game needs the same answer for a bug report or a
+  settings screen's defaults, and so does kyoten's hello cube at the join.
+  - **`renderer.adapterInfo()` hands back an `Optional<AdapterInfo>`,** `@kama/gpu`'s type: vendor, architecture,
+    device, description, backend and kind. It is `None` until the renderer's GPU has answered, as `info()` shows the GPU
+    arriving, so a program handles the case where there is nothing to read yet.
+  - **It reads from the renderer's device, through a new `Device.adapterInfo()` in `@kama/gpu`,** WebGPU's
+    `GPUDevice.adapterInfo` (`webgpu.h`'s `wgpuDeviceGetAdapterInfo`). So a renderer made `withDevice` answers at once,
+    and a program holding only a device can ask too: one way to ask. It comes forward from `@kama/gpu`'s order as
+    `writeTexture` did, a commit of its own, test-first.
+  - **The peers** (the pinned sources, `.scratch/s33/part4-sources/`):
+    - Bevy 0.20.1's `RenderAdapterInfo`, wgpu's `AdapterInfo`, is a resource every system reads
+      (`bevy_render/src/renderer/mod.rs:154-156`, `settings.rs:190-197`), and a program bringing its own device hands
+      its info over with it (`RenderCreation::manual(device, queue, adapter_info, adapter, instance)`,
+      `settings.rs:231-247`);
+    - Godot 4.7.2's `RenderingServer.get_video_adapter_name()`, `_vendor()`, `_type()` (a CPU among its kinds) and
+      `_api_version()` (`rendering_server-4.7.2.cpp:3512-3515`, `rendering_device_enums.h:40-42`);
+    - Unity's `SystemInfo.graphicsDeviceName`, `graphicsDeviceVendor` and `graphicsDeviceType` (its documentation);
+    - three.js r187 has none of its own: its backend keeps the device (`WebGPUBackend.js:296`), and a program reads
+      WebGPU's `renderer.backend.device.adapterInfo`.
+    wgpu-native v29.0.1.1 exports `wgpuDeviceGetAdapterInfo`, and emdawnwebgpu answers it from the browser's
+    `device.adapterInfo` (`library_webgpu.js:1933-1937`).
+  - **Set aside:** (B) only a renderer made with a window keeps its adapter's info: `@kama/gpu` unchanged, but a renderer
+    on a program's own device answers `None` for good, and a program holding a device cannot ask; (C) no API, the
+    example trusting `forceFallbackAdapter` and its leg's naming, a stopgap: WARP and SwiftShader both answer a
+    fallback request, so a run naming the wrong one would compare and print a frame from the wrong GPU, which
+    `tools/update-goldens.sh`'s agreement check catches for WARP's two legs but not for SwiftShader's one.
+  - **Settled while recording it, for the owner to object to:** every `@kama/gpu` device already holds a reference on
+    the adapter it came from, an adopted one included, since a surface it configures is checked against what the
+    surface offers that adapter (its `src/gpu.kama`, `Device.adapterHandle`). So `Device.adapterInfo()` reads that
+    adapter's info, as `Adapter.info()` does: WebGPU's meaning of `GPUDevice.adapterInfo`, the info of the adapter the
+    device came from, answered alike on every leg with no new `webgpu.h` call, where Firefox's `device.adapterInfo` was
+    not measured. It is an `AdapterInfo`, never `None`, since every device has its adapter.
