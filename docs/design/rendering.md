@@ -1772,3 +1772,36 @@
     - **sRGB comes from the surface's sRGB view,** `@kama/gpu`'s `caps.preferred()`, as Bevy takes one
       (`bevy_render/src/view/window/mod.rs:400-438`), so the output pass writes into the window as it writes an 8-bit
       target today.
+- **2026-11-19, the owner: GFX-1's part 6, step 1's third question, (A), a read of the window beside a target's** ("I'm
+  good with your rec", asked in full in the chat at the thirty-ninth session's end, found while readying step 1). Only a
+  target was read (`readRenderTargetPixels(target:)`), and a render acquires, draws and presents the window's frame
+  itself, so nothing outside the renderer can copy it before it is shown. Step 1's window cases and step 2's
+  `examples/cube` hold the window's image, so both need one.
+  - **`renderer.readWindowPixels()` hands back a `PixelRead`,** the type a target's read hands back, polled until it
+    hands over its image: the window's size in device pixels, 8-bit RGBA, sRGB, top row first, as a target's, a BGRA
+    frame's channels put in that order. It is a name of its own, since kama has no overloading. It captures the next
+    frame a render draws into the window, copied out after the output pass and before the frame is presented, in the
+    same submit; a render that draws nothing (the GPU not yet answered, a window of no area) leaves it pending. Bevy
+    0.20.1's `Screenshot` takes a window or an image alike, captured at a later frame
+    (`bevy_render/src/view/window/screenshot.rs:84-113`); Filament 1.81.0's `Renderer::readPixels` reads the swap chain
+    within a frame, "intended for debugging and testing" (`Renderer.h:545-580`); Godot 4.7.2 reads a viewport's texture
+    (`rendering_server.h:131`, `:562`).
+  - **The copy is of the window's own texture:** the surface is configured with `CopySrc` beside `RenderAttachment`
+    wherever it offers it, as three.js r187 configures every canvas (`RENDER_ATTACHMENT | COPY_SRC`,
+    `webgpu/WebGPUBackend.js:361`), Filament makes a swap chain readable by its `CONFIG_READABLE` flag
+    (`SwapChain.h:167-174`), and `@kama/gpu`'s triangle reads its window (its decision 15), every leg measured offering
+    it (GPU-3). On a surface that does not, the read answers `Failed` with the reason.
+  - **Bevy's way differs, found while recording this** (the question called (A) "Bevy's model", true of its shape
+    alone): its surface asks for `RENDER_ATTACHMENT` alone (`window/mod.rs:419-423`), and a frame with a screenshot
+    pending is drawn into a texture of Bevy's own, copied, then drawn onto the window (`screenshot.rs:425-434`,
+    `:663-692`). It needs no `CopySrc` and costs a pass on each frame read. It is what a surface without `CopySrc`
+    would take, and none is met yet.
+  - **Set aside:** (B) no window read, a program drawing the same scene into a target and reading that, as three.js r187
+    reads only targets (`readRenderTargetPixelsAsync`, `Renderer.js:3576`): no case would hold what the window shows,
+    its format or its encoding; (C) Filament's explicit frame, a read between drawing and presenting: every program
+    makes more calls, and it undoes the settled rule that each render presents its frame.
+  - **Settled while recording it, for the owner to object to** (`.scratch/s39/probe7/window_read.kama`, compiled and
+    run on 0.9.978 with stand-ins): reads asked before one render each copy that frame; the renderer holds each read
+    weakly, so a read the program dropped costs no copy; a renderer dropped first fails the reads it still holds, in its
+    destructor, so none waits for ever; and on a renderer with no window the read answers `Failed` at its first poll,
+    "the renderer has no window", where the program is looking, rather than as a `GraphicsError`.

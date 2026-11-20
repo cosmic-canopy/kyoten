@@ -140,7 +140,9 @@ the design doc it settles before building on it.
      (KR-403). Then, while the session readied the next: 0.9.998, a `SlotMap` and a `BitSet` answering no room;
      0.9.999, a `FixedArray`'s fallible ctors (`tryWithAllocator`, `tryFilledWithAllocator`), closing KR-403; 0.9.1000,
      `new` over a constructor that answers `AllocError` answering for its box too (KR-404); and roadmap rulings, each an
-     addition kyoten does not call. `../kama` holds no uncommitted work. **On a bump, check 0.9.987 and 0.9.994
+     addition kyoten does not call. Read again at the readying's second round: nothing since `85099809`, and
+     `../kama`'s working tree holds one change, to its own test `tests/app_event_wait.d` (a wake that waits for the
+     loop to go idle, for a CI run on macOS), nothing kyoten uses. **On a bump, check 0.9.987 and 0.9.994
      first:** `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are
      `@generate(zero)`, and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The pin is
@@ -377,14 +379,14 @@ the design doc it settles before building on it.
              the surface does not offer reported and `Fifo` kept. The five details reported with them were taken too:
              options holding only the GPU request, an opaque window, resizing by the window's `framebufferSize()`, the
              window's full device pixels, and the surface's sRGB view.
-           - **A third question, found while readying step 1, was asked at the thirty-ninth session's end:** how a
-             program reads the window's frame. Only a target is read today (`readRenderTargetPixels(target:)`), and a
-             case that holds the window's image, step 2's check among them, copies the frame out before it is
-             presented, which only the renderer can do. Bevy 0.20.1's `Screenshot` takes a window or an image alike,
-             captured at a later frame (`bevy_render/src/view/window/screenshot.rs:84-113`); Filament 1.81.0's
-             `Renderer::readPixels` reads the swap chain within a frame, "intended for debugging and testing"
-             (`Renderer.h:545-580`); Godot 4.7.2 reads a viewport's texture (`rendering_server.h:131`, `:562`); three.js
-             r187 reads only a target (`readRenderTargetPixelsAsync`, `Renderer.js:3576`).
+           - **Its third question is decided too** (the owner, 2026-11-19, "I'm good with your rec"; rendering §
+             Decided), (A): a read of the window beside a target's, `readWindowPixels()`, handing back a `PixelRead`.
+             It was found while readying step 1: only a target is read today (`readRenderTargetPixels(target:)`), and
+             a case that holds the window's image, step 2's check among them, needs the frame copied out before it is
+             presented, which only the renderer can do. Recording it found that Bevy 0.20.1 reads a window by drawing
+             the frame into a texture of its own and then onto the window, where (A) copies the window's own texture,
+             as three.js r187 and Filament 1.81.0 make theirs readable; the decision says so, and Bevy's route is what
+             a surface without `CopySrc` would take.
            - **Its shape as the session read the code,** the names compiled and run on 0.9.978 with stand-ins
              (`.scratch/s39/probe6/shape.kama`). No other public question met; the details named are settled and
              reported:
@@ -416,6 +418,16 @@ the design doc it settles before building on it.
                projection with no render, `lights.kama:662`'s `SHOWN_WIDE`) set `aspectMut()`, so no golden moves.
              - **Vsync:** the pair, and `supportsPresentMode(mode:)` from the surface's capabilities once read; before
                then, and on a renderer with no window, `Fifo` alone, which every surface offers.
+             - **The window read** (question 3; `.scratch/s39/probe7/window_read.kama`, its structure compiled and run
+               on 0.9.978 with stand-ins): `readWindowPixels()` makes a `Shared` capture, waiting, and hands the
+               program a `PixelRead` holding it; the renderer keeps a `Weak` of it. The configure adds `CopySrc` to the
+               usage when `caps.usages()` has it, as `@kama/gpu`'s triangle does
+               (`examples/triangle/src/main.kama:329-338`). The next render that draws into the window copies the
+               frame's texture into a buffer of its own after the output pass, in the same encoder, starts its map, and
+               fills each capture still held, then presents. `PixelRead` keeps its one public face and gains a second
+               source inside, its target's buffer made at once or a capture filled later; its poll swaps a BGRA frame's
+               channels into RGBA. A surface without `CopySrc`, a renderer with no window, and a renderer dropped first
+               (its `~Renderer()`) each answer `Failed` with words of their own.
            - **To settle and report:** what a following camera's `projectionMatrix()` answers before its first render
              (the probe's 1, three.js's default aspect); the internal half's name; the `GraphicsErrorKind` a failed
              request, a lost surface and a mode not offered take (the enum is `@nonExhaustive`); whether a program can
@@ -426,17 +438,22 @@ the design doc it settles before building on it.
              a 2:1 target, a fixed one kept, `None` following again; a posted `Event::Resize`, which sets the window's
              size, configured at the next render, and one to no area skipped; `Fifo` by default, `supportsPresentMode`
              true for `Fifo` on every leg and false for the rest on the web, and a mode not offered reported with `Fifo`
-             kept; and, by question 3's answer, the window's frame byte for byte the same scene's in a target, on the
-             software legs. **The session's first probe:** whether a posted `Resize` moves `framebufferSize()` natively
-             and on the web, and whether a native surface takes a size its window's client area is not.
+             kept; and the window read: pending through a render that draws nothing, then the window's frame byte for
+             byte the same scene's in a target on the software legs, two reads asked before one render each that frame,
+             a read dropped before its frame leaving the render whole, and a read on a renderer with no window or one
+             dropped first answering `Failed`. **The session's first probe:** whether a posted `Resize` moves
+             `framebufferSize()` natively and on the web, and whether a native surface takes a size its window's client
+             area is not.
            - **The mutations:** the aspect not followed, or followed over a fixed one; no configure at a new size, or
              at a changed present mode; a mode not offered taken; a frame not presented; a render before the device
-             answered drawing.
+             answered drawing; the window's copy taken before the output pass, or never; a BGRA frame's channels left as
+             they are; a capture filled by a render that drew nothing; the destructor not failing a held read.
            - **The records:** kama-graphics' SPEC § The renderer and § Tests, CHANGELOG, ROADMAP_DETAIL (the answers and
              the settled details, step 1 built), AGENTS.graphics.md's "Next, part 6"; kyoten's rendering § Decided,
              step 1's Built entry.
         2. **`examples/cube`,** a lit spinning cube in a window on both legs, as `@kama/gpu`'s triangle: `--frames N`,
-           its last frame read back as question 3 decides, held to its golden on each software GPU's leg;
+           its last frame read back by `readWindowPixels()` (question 3), held to its golden on each software GPU's
+           leg;
         3. **FLIP in the harness,** ported from NVIDIA's FLIP v1.7 (BSD-3-Clause, `src/cpp/FLIP.h`, with `main`'s
            mean summed in a double, PR #45), comparing a hardware leg's frame with the leg's software golden; its two
            limits, the mean and the share of pixels above a threshold, set from the cube on the reference machines
@@ -568,6 +585,13 @@ roadmap commits since `06277e8d`, so no bump. kama moved to 0.9.997 during the s
   - **a third question found while reading the code,** how a program reads the window's frame, which every case
     holding the window's image needs; the peers' answers read from the pinned sources (Bevy's `Screenshot`, Filament's
     `readPixels`, Godot's viewport texture, three.js reading targets alone), and asked at the end.
+- **The third question decided, (A), and ready again at the owner's word** ("I'm good with your rec. Can you get things
+  ready for the next session"): `readWindowPixels()` recorded (rendering § Decided) and its shape, cases and mutations
+  added to step 1. Recording it found that Bevy reads a window through a texture of its own, not the surface's
+  `CopySrc`, where the question had called (A) Bevy's model; the record says so, and keeps the surface's copy, as
+  three.js and Filament read theirs. The capture's structure was compiled and run on the pin with stand-ins
+  (`.scratch/s39/probe7/window_read.kama`). kama's range unchanged; the Mac's eight `@kama/audio` commits fast-forwarded
+  its clean clone.
 
 **The thirty-eighth session** (2026-11-19). Nothing new on any origin at the start, and kama's range was the
 thirty-seventh session's, to `d4382eea` (0.9.985), so no bump. kama moved to 0.9.993 during the session, with nothing
