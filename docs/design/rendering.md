@@ -2156,9 +2156,10 @@
   2. **Every built feature keeps a golden of its own.** FEATURES.md's test is "the feature's golden-image test, with a
      golden per method" (area 5, 2026-11-11), and GFX-1's row gives every feature it builds one. Parts 3 and 4 kept the
      rule; parts 1, 2, 5 and 6 held their features by cases (texels exact against float64, counts of compiles and draws)
-     and by shared goldens (`boxes`, `readback`, `harness`, the cube's). Of the 25 rows built or in part, 6 had goldens
+     and by shared goldens (`boxes`, `readback`, `harness`, the cube's). Of the 23 rows built or in part, 6 had goldens
      under their test's name, 4 passed `check-features.sh` only because the name is a word somewhere in `tests/`
-     (`renderer`, `nodes`, `resize`, `presets`), and 15 had nothing. Step 4 adds about twelve, each a small scene in
+     (`renderer`, `nodes`, `resize`, `presets`), and 13 had nothing (the question as asked said 25 and 15, counting the
+     two rows not built; corrected while building, the same day). Step 4 adds about twelve, each a small scene in
      which the feature changes pixels, held byte for byte on WARP and SwiftShader: the scene graph, a render target,
      resize, depth precision at 5 km, the perspective camera, the box with segments, a program's own node material,
      slot overrides, the unlit material, tone mapping's none, light units and exposure. The renderer's row names the
@@ -2182,3 +2183,40 @@
     web-and-native.md's question 4 names, since the cube runs only in a browser; emmalloc left to GFX-20, since it
     trades speed for size; a build under its record passes, saying to lower the record, which a script writes, as
     `tools/update-goldens.sh` writes goldens; the player's build runs once in Edge, so the build measured draws.
+- **Built, GFX-1's part 6, step 4, and so part 6** (2026-11-20, the forty-third session; kama-graphics `e511387`,
+  `2d22905` and `8a11af9`), as both askings laid it out, in three commits each gated on its own tree:
+  1. **The ratchet.** `examples/cube --define CUBE_PLAYER`, the player's build, leaves the harness out (the goldens, PNG,
+     FLIP and the adapter hold), says `harness: out`, and refuses a run naming a golden before it draws. The gate builds
+     it for the web at `--release`, holds its JS to Closure, runs it once in a player's browser, and measures its wasm
+     plus JS at brotli quality 11 against `examples/cube/web-size.json`'s last entry for the emcc that built it:
+     **169,091 B** (wasm 148,800, JS 20,291) on kama 0.9.978 and emcc 6.0.13, two builds of one tree the same bytes. Above
+     the record the gate fails, saying by how much; below it, it passes and says to lower it; only
+     `tools/update-web-size.sh "<why>"` writes it, an entry with its reason. Against the stand-in's 158.7 KB: 6.8 KB of
+     emscripten's file packager for the goldens (KY-63), 1.9 KB of the example's own argument handling and frame read,
+     and no emmalloc (1.8 KB, left to GFX-20); `ENVIRONMENT=web` saves 0.7 KB. 16 crafted cases hold the comparison.
+  2. **A golden for each feature GFX-1 built that draws something of its own,** twelve, named as FEATURES.md names their
+     tests: `scene-graph`, `camera-perspective`, `depth-precision`, `geometry-primitives`, `render-target`, `nodes`,
+     `nodes-override`, `material-unlit`, `light-units`, `exposure`, `tone-mapping-none` and `resize`, each a small scene
+     in which the feature changes pixels, each frame looked at enlarged before `tools/update-goldens.sh` wrote it.
+  3. **FEATURES.md as built:** 14 rows built and 9 partial, color spaces moved to `level` and depth textures to
+     `shooter`, every built or partial row sharing "169.1 KB, the cube's" and the unlit material waiting `with editor`.
+     `tools/check-features.sh` holds a built row's test to its golden, an example's goldens or cases named for it, never
+     a word somewhere in `tests/`, and its budget to its example's record or `with` its own live example.
+  - **Settled while building, and reported, for the owner to object to:**
+    - the flag is `CUBE_PLAYER`, and the record `examples/cube/web-size.json` keeps an entry per emcc, since a build's
+      bytes are its toolchain's as much as its source's: Closure breaks the JS's lines with the host's line ending, and
+      the Mac's emsdk is 7.0.0 where this machine's is 6.0.13;
+    - the player's build keeps the frame read under `--frames N` and its as-drawn hold, so the run the gate makes of
+      the build it measures holds it to drawing;
+    - **the gate's last word on itself:** a run that printed a FAIL line fails, whatever its status said. A mutation
+      dropping the ratchet's status got through without it; a passing gate in any package prints none;
+    - `resize`'s golden is the window's first frame at its size in device pixels: a posted Resize cannot be one, since
+      natively the frame takes the posted size and on the web the canvas keeps its own, so WARP's two legs would differ;
+    - `light-units`' scene is a physical one (a 100,000-lux sun at EV100 15), but lux itself stays unstated and unheld,
+      so the row marks only exposure in EV100 built;
+    - buffer geometry's built part and the four features that draw nothing of their own are held by existing cases
+      named for them: `flat-core:`, `presets:`, `pipeline-cache`, `material-values:` and `geometry-buffer:`.
+  - 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, each debug and release. **Mutations:** the
+    ratchet's 24 of 24, the last once the gate's net was added; the goldens' 12 of 12, each caught by its own golden,
+    `depth-precision`'s once its nearer slab was drawn first (drawn last, a 24-bit depth gave it the overlap by order);
+    and the map's 11 new failure cases, each failing on a mutated map. Next: the join, FIRST-SLICE's step 7.

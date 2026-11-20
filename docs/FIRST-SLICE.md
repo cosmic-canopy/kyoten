@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-20, the forty-second session)
+## Where it stands (2026-11-20, the forty-third session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -93,7 +93,8 @@ the design doc it settles before building on it.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
-**The join waits on Track 1. Where the work is:**
+**`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), so the join is next. Where the work
+is:**
 
 1. **At a session's start, run the suites on kyoten's pin, `0.9.978+g5e542c55`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
@@ -111,11 +112,13 @@ the design doc it settles before building on it.
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
    - `@kama/imagediff`'s: 94 natively and on wasm under node, each debug and release, since its first build (the
      forty-second session); it fails until its `tools/fetch-flip.sh` has run once on the machine;
-   - `@kama/graphics`': 450 cases natively, 451 in Firefox and in Chrome for Testing, 438 in Edge, and `examples/cube`
-     on every leg, since part 6's step 2 (the forty-first session); 446, 447 and 434 at its start. Since step 3 (the
-     forty-second session) Edge runs at a scale of 1.5, at the same count, and the cube on the GPU, natively and in
-     Edge, is held to its software golden by FLIP. Its gate also asks Edge for WARP, which it does not offer, and holds
-     the run to failing cleanly. It took 21 and 27 minutes in the forty-second session.
+   - `@kama/graphics`': 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, and `examples/cube`
+     on every leg, since part 6's step 4 (the forty-third session); 450, 451 and 438 at its start. The cube on the GPU,
+     natively and in Edge, is held to its software golden by FLIP, and its player build (`--define CUBE_PLAYER`) is run
+     once in Edge and measured: 169,091 B of wasm and JS after brotli, its ratchet (`examples/cube/web-size.json`). Its
+     gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
+     that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
+     side by side.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -177,7 +180,10 @@ the design doc it settles before building on it.
      in the engine's `content` module and 1 in its tests, 36 in the `kyoten` tool and 1 in its `spin` fixture
      (`grep -rnE '\.(keys|elements)\(\)'`, every one on a `SortedMap`); no package calls either. Then to `61f6507b`, no
      code: `@kama/imagediff` ruled first-party (`b9d0e2bc`), and KR-430 filed and claimed, a keyword naming a parameter
-     (`when`, `in`, `out`), brief first; `ref`, `out` and `base` each cost the packages a rebuild.
+     (`when`, `in`, `out`), brief first; `ref`, `out` and `base` each cost the packages a rebuild. Then, during the
+     forty-third session, to `831614a7` (0.9.1015): 0.9.1014, a field named `copy` or `give` can be borrowed (KR-431);
+     0.9.1015, `when` and `out` may name a binding and `in` stays reserved (KR-430 closed); the editors' grammar pins.
+     None that kyoten needs; on a bump, `out` stops costing a rebuild.
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -478,9 +484,19 @@ the design doc it settles before building on it.
           and a share of 5e-5 above an error of 0.1, each four times the most measured (natively a mean of 0.00121; in
           Edge 0.00053, with 6 pixels of 576,000 above 0.1); a cube a degree off fails both. Mutations: 30 of 30 and 53
           of 54 in `@kama/imagediff`, 12 of 12 in `@kama/graphics`, step 2's uncaught one among them.
-        - **Next, step 4, the 150 KB measurement** (wasm plus JS, release, brotli; examples.md's A1 row) in the gate as a
-          ratchet, FEATURES.md's rows for the slice `built` with their budgets, and the SPEC. Then kyoten's join (step 7)
-          draws the hello cube through it. **Measured at the forty-second session's readying, a stand-in on the pin**
+        - **Step 4 is built, and so part 6** (the forty-third session; kama-graphics `e511387`, `2d22905` and `8a11af9`;
+          rendering § Decided, its Built entry), in three commits:
+          1. the ratchet: `examples/cube --define CUBE_PLAYER`, its harness left out, measured by the gate as a player
+             gets it, 169.1 KB (wasm 148.8, JS 20.3) on emcc 6.0.13, held to `examples/cube/web-size.json`, which only
+             `tools/update-web-size.sh "<why>"` writes; 6.8 KB of it is the goldens' file packager until kama's KY-63;
+          2. twelve goldens, one for each feature GFX-1 built that draws something of its own;
+          3. FEATURES.md as built, 14 rows built and 9 partial, its check holding each built row's test to its golden or
+             named cases and its budget to the record.
+
+          The gate gained a last word on itself, found by a mutation that got through: a run that printed a FAIL line
+          fails, whatever its status. **Next, kyoten's join (item 3, step 7)** draws the hello cube through the library,
+          which closes GFX-1. Before it, the record of step 4's start: **measured at the forty-second session's
+          readying, a stand-in on the pin**
           (`.scratch/s42/size/`: `build.sh`, `player.py`, `attrib.mjs`; web-baseline.md § Method, `brotli -q 11`, the
           release JS run through Closure):
 
@@ -508,10 +524,18 @@ the design doc it settles before building on it.
           each row says what is true (13 of the 22 built, 7 in part, 2 not at all, which move to `level` and `shooter`);
           every built feature keeps a golden of its own (about twelve new); and the goldens' loader is measured in,
           since kama packs a manifest's `assets` into every build (KY-63, filed).
-          **Step 4's order:** the build flag and the player's build in the gate, its measurement the ratchet, failing on
-          growth; the new goldens; FEATURES.md's rows with their status and the shared budget, the rule in § How to read
-          a row and `tools/check-features.sh`; the SPEC. Test-first, the gate's new checks mutated.
-      - **Part 6's evidence** is machine-local. Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
+          Built in that order: the build flag and the player's build in the gate, its measurement the ratchet, failing
+          on growth; the new goldens; FEATURES.md's rows with their status and the shared budget, the rule in § How to
+          read a row and `tools/check-features.sh`; the SPEC. Test-first, the gate's new checks mutated.
+      - **Part 6's evidence** is machine-local. Step 4's: `.scratch/s43/` (`suites.sh` and the start's logs; `ky63/`,
+        KY-63's repro and `run.sh`; `size/`, the probes, `probe.sh`, `names.sh` and `fdiff.mjs`, the flagged build
+        against the stand-in by function; `kg/`: `sizecases.sh`, `player.sh`, `native.sh`, `gate.sh`,
+        `update-goldens.sh`, the runners; `mutate-p.py` with `pm.sh` and `list1.py`, the ratchet's mutations
+        (`mutations1.out`, `mutations1b.out`); `mutate-g.py` and `list2.py`, the goldens' (`mutations2.out`,
+        `mutations2b.out`); `features-proof.py`, the map's failure cases (`features-proof1.out`); the edit scripts
+        `named.py`, `features.py`, `spec.py`, `docs1.py` to `docs3.py`; `frames/`, the new goldens' frames enlarged;
+        `gate1.log`, `gate-part1.log`, `gate-part2.log` and `gate2.log`, the gates; `commit-part1.txt` to
+        `commit-part3.txt`). Step 2's: `.scratch/s41/` (`suites.sh` and the start's logs;
         `probe-assets/`, kama refusing an `assets` folder outside a package; `gpu/`: `native.sh`, `gate.sh`, `mutate.py`,
         `red1.log`, `green1.log`, `gate1.log`, `mutations1.out` and `row.patch`, `Device.adapterInfo()`'s; `kg/`:
         `native.sh`, `cube.sh`, `cube-web.sh`, `gate41.sh`, and the mutation runners `native-m.sh`, `cube-m.sh` and
@@ -622,6 +646,27 @@ the design doc it settles before building on it.
    - `engine/content/`'s first records;
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
+
+**The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
+roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.
+- **Every suite was green on 0.9.978 at the start,** at the forty-second session's counts.
+- **Three questions at the start, decided at once,** each (A): reading the code for step 4 found that the first
+  answers took three things for granted (rendering § Decided, step 4's second asking, kyoten `c8771a4`). Not all 22
+  cube rows were built, so each row says what is true; FEATURES.md's test is a golden per feature, which parts 1, 2, 5
+  and 6 had not kept, so every built feature keeps one; and kama packs a manifest's `assets` into every build, so the
+  goldens' loader is measured in and KY-63 is filed. The question as asked counted 25 rows and 15 with nothing under
+  their name; there were 23 and 13, corrected in the record.
+- **Built:** step 4 in three commits (kama-graphics `e511387`, `2d22905` and `8a11af9`; item 2's part 6), each gated on
+  its own tree, three worktrees side by side.
+  - **The ratchet** measured 169.1 KB, not the stand-in's 158.7: 6.8 KB of emscripten's file packager (KY-63), 1.9 KB of
+    the example's own argument handling and frame read, no emmalloc (1.8 KB, left to GFX-20) and `ENVIRONMENT=web`
+    (0.7 KB). Each record entry names its emcc, since Closure writes CRLF here and the Mac's emsdk is 7.0.0.
+  - **Mutations found two gaps first:** a mutation dropping the ratchet's status got through, so the gate now fails any
+    run that printed a FAIL line (a passing gate in any package prints none); and `depth-precision` drew its nearer slab
+    last, so a 24-bit depth won the overlap by order until the nearer was drawn first.
+  - **Settled and reported, for the owner to object to:** rendering § Decided's Built entry lists them: the flag's name,
+    the record per emcc, the player's build keeping its frame read, the gate's net, `resize`'s golden as the window's
+    first frame, `light-units` leaving lux unmarked, and the named cases.
 
 **The forty-second session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained two
 roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
