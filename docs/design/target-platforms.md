@@ -174,7 +174,8 @@ stay outside the spike, with their roadmap rows.
          or the native folder with `@compileFor(ARCH_WASM32)`. Where the files are is a platform fact: the `Platform`
          contract's "files and paths" (question 1, above). Step 7 (KYR-8) builds the contract, the platform supplies the
          content folder, and `folderFor` and its exception are removed. Step 7's test is that the exception list is
-         empty.
+         empty. *(Since 2026-11-20 (below), the platform types are one engine module marked as such, the one place a
+         library may name a platform flag, and the check keeps no named exception.)*
        - **Considered:**
          - the refusal over a game's processor modules only, as first worded, which leaves a game's Output and app code
            free to name a platform;
@@ -203,3 +204,34 @@ stay outside the spike, with their roadmap rows.
   10. **Question 4: a game says a feature once.** Achievements are records, and "unlock `firstWin`" is an Output effect
       that each store's backend maps. A store's feature with no common interface (Steam Workshop, say) the game reaches
       by importing that package directly, in its own Input or Output code, behind a capability.
+- **2026-11-20, the owner: where the open platforms' target flags live (the first slice's step 7, KYR-8), (A).** The
+  owner: "I think A sounds good from what I can understand of your proposal." Asked in full at the forty-third session's
+  readying, after a stand-in on the pin ([../FIRST-SLICE.md](../FIRST-SLICE.md) § Where it stands, item 3;
+  `.scratch/s43/step7/`, machine-local).
+  - **The question:** question 3's item 8 puts target flags in "the libraries and the platform types", and question 1
+    puts the open platforms in kyoten. The check of 2026-11-09 refuses a platform flag anywhere in the engine's source,
+    with `folderFor` its one stopgap, and step 7's test was an empty exception list. A platform type in the engine names
+    a target: the stand-in's `OpenPlatform` is two declarations of one type, gated `ARCH_WASM32` and its negation, for
+    the content folder and for the web's ending by `quit`, since there `run` never returns. So the two could not both
+    hold as worded.
+  - **Decided:** the open platforms are one engine module, `kyoten::platform`, whose records file marks it as a platform
+    module (its key settled at step 7).
+    - The check lets a platform flag (`OS_*`, `ARCH_*`, `ABI_*` or `HOSTED`) appear only in a library's module so
+      marked. It refuses the mark in a game, which asks for capabilities and names no target, and it keeps no named
+      exception, so `folderFor` and its exception go.
+    - A private platform package marks its own module the same way.
+    - Step 7's test: the check's exception list is gone, a platform flag outside a marked module of a library is
+      refused, and a game that marks a module is refused.
+  - **Why:** both decisions hold as worded. The platform types hold the flags, and the open platforms live in kyoten
+    with no package per open platform, so building for any of them needs no setup. The check stays a rule with no
+    stopgap. Godot's layout is the same: its core names no platform, and each platform's folder under `platform/` holds
+    its differences.
+  - **Settled with it by the rules, to report:** `kyoten::platform` is tier `Module`, outside the simulation's fence, as
+    `kyoten::content` is. `kyoten::frame` must stay fenced, since a game's simulation modules import its `Time`, and a
+    `Frame`-tier module names no other engine module, while the loop names `kyoten::frame`'s `World`, `Clock` and
+    `frame`. REFERENCE's tier picture moves `run` there when it is built.
+  - **Considered:**
+    - (B) the open platforms as a package of their own, which the engine's check never reads, at the cost of question
+      1's "no package per open platform" and a dependency line in every game;
+    - (C) no flag in kyoten, each difference moved into kama's libraries first (a content folder at one path on every
+      target, `std::app` ending a web program when its loop stops): two kama gaps, with a stopgap until they land.

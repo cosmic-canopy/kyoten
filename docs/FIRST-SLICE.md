@@ -676,16 +676,17 @@ is:**
      - `engine/content/`'s first record is the engine's default `app` record: its `title`, and the window's size beside
        it, as Bevy's `WindowPlugin`, Godot's project settings and Unity's player settings each hold a title and a size;
      - the engine depends on `@kama/window` by path until the packages publish, as the examples depend on the engine.
-   - **One question, asked in full at the readying:** where the open platforms' target flags live. The check refuses
-     every platform flag in the engine's source, and step 7's test is an empty exception list, while the stand-in's
-     `OpenPlatform` names `ARCH_WASM32`: (A) one engine module marked as the platform module in its records, the only
-     place a library may name a platform flag, and never in a game; (B) the open platforms as a package of their own;
-     (C) no flag in kyoten, each difference moved into kama's libraries first.
-   - **Step 7's order, once it is answered:** the answer recorded in target-platforms § Decided; the check's rule,
-     test-first on the tool's `flags` fixture; `kyoten::platform`'s loop, test-first on a fake platform (the phases a
-     tick, the lifecycle's reset, the end); the open platforms; the generated `run` in the tool, test-first on its
-     fixtures, `spin` running through it natively and on wasm; `engine/content/`'s first record; `folderFor` and its
-     exception removed.
+   - **Its one question is decided** (the owner, 2026-11-20, (A), asked in full at the readying; target-platforms
+     § Decided): the open platforms' target flags live in one engine module, `kyoten::platform`, marked as the platform
+     module in its records file, the only place a library may name a platform flag, and never in a game. The check
+     keeps no named exception. The stand-in's `OpenPlatform` names `ARCH_WASM32`, which the check refused in the engine
+     as worded. Set aside: (B) the open platforms as a package of their own; (C) no flag in kyoten, each difference
+     moved into kama's libraries first.
+   - **Step 7's order:** the check's rule, test-first on the tool's `flags` fixture (a marked module of a library may
+     name a flag, a game's mark is refused, the exception list is gone); `kyoten::platform`'s loop, test-first on a fake
+     platform (the phases a tick, the lifecycle's reset, the end); the open platforms; the generated `run` in the tool,
+     test-first on its fixtures, `spin` running through it natively and on wasm; `engine/content/`'s first record;
+     `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
 
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
 roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.
@@ -710,7 +711,10 @@ roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bum
 - **Readied at the owner's word** ("yes push and get ready for the next session"): kyoten `b5f27c8` and kama-graphics
   `8a11af9` pushed; every repository fetched, nothing incoming; kama unchanged since `831614a7`, its tree clean, the pin
   still on its history. Step 7 laid out from the code with a stand-in on the pin (item 3), and its one question asked in
-  full: where the open platforms' target flags live.
+  full: where the open platforms' target flags live. The owner answered (A) at once ("I think A sounds good from what I
+  can understand of your proposal"), recorded in target-platforms § Decided, and asked that the thirty-third session's
+  leftover `../kama-graphics-s33` be deleted: no worktree, only seven `.kama/deps` links, each removed as a link
+  (`.scratch/s43/remove_s33.py`), the repositories they pointed into untouched.
 
 **The forty-second session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained two
 roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
