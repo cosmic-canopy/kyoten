@@ -657,9 +657,16 @@ forty-fourth). Where the work is:**
    `c8334bb`; target-platforms § Decided, its Built entry, which lists what was settled for the owner to object to and
    what no case holds yet). **Next is step 8, Input (KYR-54):** actions of every kind, bindings records, player 1 on
    the keyboard and the first gamepad through `@kama/window`, and the binding's steps over values and over time.
-   **Its four questions are asked** ([design/input.md](design/input.md), the forty-fourth session's readying): where
-   an input's time comes from, the bindings record's shape, the words for a binding's steps, and which pads drive
-   player 1. Each answer is recorded in input.md's *Decided* before the part it shapes is built.
+   **Its four questions were asked at the forty-fourth session's readying, and three are decided** (the owner,
+   2026-11-21, [design/input.md](design/input.md) § Decided): `@kama/window` gives each event its time and kyoten
+   splits by it (A); bindings keyed by action then device, an entry a control, a list or an object with its filters
+   and gestures (A, "so far"); filter and gesture in place of "adapter" (A). **Question 4 is open:** the owner wants a
+   pad to lock in ("I don't want another pad taking input control accidentally... or at the least let the game lock in
+   at some point"), to be tried with real pads; its shape is asked again.
+   **The order:** `@kama/window`'s WIN-25 (the control names, small) and WIN-26 (each event's time, which changes
+   `pollEvent` for every caller, its shape asked when it comes up) first, each in its own repository with its gate;
+   then step 8's parts in kyoten, test-first on posted events and pads; the lock-in tried by the owner with two pads in
+   a short block at the start of the session after it is built.
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
@@ -2407,7 +2414,8 @@ depth-first through the cube.
   `TripleAxis`; read in its `lib.rs`) and, from memory, Unreal's Enhanced Input (Digital, Axis1D, Axis2D, Axis3D) and
   Steam Input's digital and analog actions. Adapters (KYR-54) turn one kind into another: four `Digital` keys into a
   `Vector2`, an `Analog` trigger into a `Digital` past a threshold. The hello cube's record says `"Digital"`.
-- **Step 8, also: input over time, and a better word than "adapter".** The owner's direction (2026-11-07,
+- **Step 8, also: input over time, and a better word than "adapter"** (answered 2026-11-21: filter and gesture,
+  [design/input.md](design/input.md) § Decided). The owner's direction (2026-11-07,
   [design/components.md](design/components.md) § Decided): gestures and presses over time (a tap, a double tap, a
   hold, a sequence, a swipe), values adapted (a `Digital` as a float from X to Y), and sensors normalized (the
   accelerometer). They run before Input's hand-off, timed by the events' own timestamps, and the hand-off records

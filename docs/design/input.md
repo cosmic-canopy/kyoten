@@ -1,6 +1,6 @@
 # Input: devices into a game's actions
 
-**Status:** draft, four questions for the first slice's step 8 (KYR-54). These are questions, not decisions. What the
+**Status:** draft. Step 8's questions 1 to 3 are decided (2026-11-21); question 4 is open, to be tried with real pads. What the
 peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -94,4 +94,19 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
 
 ## Decided
 
-Nothing yet.
+- **2026-11-21, the owner, step 8's questions, asked in full at the forty-fourth session's readying:**
+  1. **(A): `@kama/window` gives each event its time** on kama's monotonic clock, the best its backend has, and kyoten
+     splits by it: each owed step takes the events in its window, the frame's last owed step everything up to the pump,
+     and a frame that owes none keeps its events for the next step. "A recommended." The package's row is WIN-26, and
+     the control names' WIN-25 (kama-window's ROADMAP).
+  2. **(A): action, then device, a device's entry a control, a list of controls, or an object with its parts, its
+     `filters` and its `gestures`.** The owner: "I think A sounds good so far. We need actions to be abstract from the
+     control method and we need to be able to specify filters and such." So far: the shape is held to that as step 8
+     builds it, and a change the build finds is asked.
+  3. **(A): a filter reshapes a value each step, and a gesture recognizes a pattern over time;** a binding lists its
+     filters, then its gestures. "Adapter" is retired. The owner: "I'm good with A... I wasn't married to the "adapter"
+     term I just needed something to describe it."
+  4. **Open: which pads drive player 1.** The owner: "I think we need to try this out. I don't want another pad taking
+     input control accidentally so it seems like you need to lock in at some point... or at the least let the game lock
+     in at some point." So a pad locks in, and (A), every pad at once, is set aside as asked. The shape to try is asked
+     again (the readying's chat, 2026-11-21) and tried with the owner's pads once built.
