@@ -1,6 +1,6 @@
 # Input: devices into a game's actions
 
-**Status:** draft. Step 8's questions 1 to 3 are decided (2026-11-21); question 4 is open, to be tried with real pads. What the
+**Status:** draft. Step 8's four questions are decided (2026-11-21); question 4's lock-in is to be tried with real pads. What the
 peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -106,7 +106,17 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   3. **(A): a filter reshapes a value each step, and a gesture recognizes a pattern over time;** a binding lists its
      filters, then its gestures. "Adapter" is retired. The owner: "I'm good with A... I wasn't married to the "adapter"
      term I just needed something to describe it."
-  4. **Open: which pads drive player 1.** The owner: "I think we need to try this out. I don't want another pad taking
-     input control accidentally so it seems like you need to lock in at some point... or at the least let the game lock
-     in at some point." So a pad locks in, and (A), every pad at once, is set aside as asked. The shape to try is asked
-     again (the readying's chat, 2026-11-21) and tried with the owner's pads once built.
+  4. **A pad locks in to player 1: the first pad pressed.** Asked twice. First the owner set aside every pad at once:
+     "I think we need to try this out. I don't want another pad taking input control accidentally so it seems like you
+     need to lock in at some point... or at the least let the game lock in at some point." Asked again with three
+     shapes, the owner chose (A), "Yes A sounds good so far":
+     - while a pad is locked, another pad does nothing for player 1;
+     - the lock lets go when that pad disconnects, and the next pad pressed takes it (WIN-4's decision 4, the console
+       pattern);
+     - a game may let go of the lock itself (a "press a button to continue" screen), and the next press locks again;
+     - the keyboard and the mouse drive player 1 throughout, and a game writes nothing to have this.
+
+     Set aside: (B) every pad until the game locks in, which leaves every pad live in a game that never does; (C) only
+     the game letting go, which strands a player whose pad dies. It changes the decided wording "the first gamepad"
+     (components § Decided, 2026-11-06). "So far": the owner tries it with two pads once it is built, in a short block
+     at the start of the session after.

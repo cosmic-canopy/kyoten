@@ -657,12 +657,12 @@ forty-fourth). Where the work is:**
    `c8334bb`; target-platforms § Decided, its Built entry, which lists what was settled for the owner to object to and
    what no case holds yet). **Next is step 8, Input (KYR-54):** actions of every kind, bindings records, player 1 on
    the keyboard and the first gamepad through `@kama/window`, and the binding's steps over values and over time.
-   **Its four questions were asked at the forty-fourth session's readying, and three are decided** (the owner,
+   **Its four questions were asked at the forty-fourth session's readying, and all are decided** (the owner,
    2026-11-21, [design/input.md](design/input.md) § Decided): `@kama/window` gives each event its time and kyoten
    splits by it (A); bindings keyed by action then device, an entry a control, a list or an object with its filters
-   and gestures (A, "so far"); filter and gesture in place of "adapter" (A). **Question 4 is open:** the owner wants a
-   pad to lock in ("I don't want another pad taking input control accidentally... or at the least let the game lock in
-   at some point"), to be tried with real pads; its shape is asked again.
+   and gestures (A, "so far"); filter and gesture in place of "adapter" (A); and, asked twice, a pad locks in to player
+   1, the first pressed, until it disconnects or the game lets go, other pads doing nothing meanwhile, the keyboard and
+   mouse throughout (A, "so far"; the owner: "I don't want another pad taking input control accidentally").
    **The order:** `@kama/window`'s WIN-25 (the control names, small) and WIN-26 (each event's time, which changes
    `pollEvent` for every caller, its shape asked when it comes up) first, each in its own repository with its gate;
    then step 8's parts in kyoten, test-first on posted events and pads; the lock-in tried by the owner with two pads in
