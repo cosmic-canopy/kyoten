@@ -106,11 +106,12 @@ type resource ActionRecord {
 }
 
 // A module's records file: the module's own record at the top, and its groups, processors, components and actions
-// keyed by name. An engine module states its tier there too.
+// keyed by name. An engine module states its tier there too, and a library's platform module says it is one.
 @generate(Serializable, Deserializable)
 type resource ModuleRecord {
     @field(name: "rate") Optional<int32> rateField = Optional::None;
     @field(name: "tier") Optional<Tier> tierField = Optional::None;
+    @field(name: "platform", default) bool platformField = false;
     @field(name: "groups", default) SortedMap<string, ProcessorGroupRecord> groupsField = SortedMap.empty();
     @field(name: "processors", default) SortedMap<string, ProcessorRecord> processorsField = SortedMap.empty();
     @field(name: "components", default) SortedMap<string, ComponentRecord> componentsField = SortedMap.empty();
@@ -123,6 +124,9 @@ type resource ModuleRecord {
     public const fn Optional<int32> rate() { return this.rateField; }
     // The engine's tier this module is in; none for a game's module (architecture § Decided, question 2, 2026-11-09).
     public const fn Optional<Tier> tier() { return this.tierField; }
+    // True for a library's platform module, the one place its code may name a platform flag (target-platforms
+    // § Decided, 2026-11-20): kyoten's open platforms, or a private platform package's. A game's module never is.
+    public const fn bool platform() { return this.platformField; }
     public const fn const ref SortedMap<string, ProcessorGroupRecord> groups() { return this.groupsField; }
     public const fn const ref SortedMap<string, ProcessorRecord> processors() { return this.processorsField; }
     public const fn const ref SortedMap<string, ComponentRecord> components() { return this.componentsField; }

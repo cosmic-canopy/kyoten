@@ -8,14 +8,15 @@
 // - **The tiers,** for a library (the engine): each module states its tier in its records file, has an `importsOnly`,
 //   and names only modules of its package in a tier above its own, so no engine module names another.
 // - **The platform flags:** no `@compileFor` names `OS_*`, `ARCH_*`, `ABI_*` or `HOSTED`, which kama derives from the
-//   target. They belong in the libraries and the platform types, and the engine and games ask for capabilities. One
-//   stopgap is excepted until step 7.
+//   target, outside a library's platform module, which its records file marks (`"platform": true`): kyoten's open
+//   platforms, or a private platform package's (target-platforms § Decided, 2026-11-20). A game marks none, and asks
+//   for capabilities. One stopgap is excepted until step 7 removes it.
 //
 // `kyoten generate` runs the fence and the flags on a game; `kyoten check` on a library runs all three.
 
 import { core::println, std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError,
          std::fs::readText, kyoten::records::Phase, kyoten::records::Tier, Manifest, Dependency, readManifest,
-         filesUnder, Records, CodeFile, Refusals, readRecords, inModule };
+         filesUnder, dirOf, Records, CodeFile, Refusals, readRecords, inModule };
 
 export { checkFence, checkFlags, checkLibrary };
 
@@ -418,18 +419,27 @@ fn void flagsIn(const ref string package, const ref string file, const ref strin
         if (flags.length() > 0 && !excepted(package: package, file: file, text: text, after: i)) {
             int64 line = lineAt(text: text, at: start);
             string first = copy flags[0];
-            no.add(where: file + ":${line}", what: "`@compileFor(${expr})` names `${first}`, a platform flag: platform code lives in the libraries and the platform types, and the engine and games ask for capabilities instead (target-platforms § Decided, question 3)");
+            no.add(where: file + ":${line}", what: "`@compileFor(${expr})` names `${first}`, a platform flag: platform code lives in a library's platform module, which its records file marks (`\"platform\": true`), and the engine's other modules and games ask for capabilities instead (target-platforms § Decided, question 3 and 2026-11-20)");
         }
         at = i;
     }
 }
 
-// The platform flags, in every source file of the package, generated ones included.
-unsafe fn void checkFlags(const ref Manifest pkg, ref Refusals no) {
+// The platform flags, in every source file of the package, generated ones included, outside a library's platform
+// module; and a game's mark, refused.
+unsafe fn void checkFlags(const ref Manifest pkg, const ref Records r, ref Refusals no) {
     string name = bareName(name: pkg.name());
+    SortedMap<string, bool> marked = SortedMap.empty();
+    foreach (const ref CodeFile f in r.code().iterConst()) {
+        if (!f.record().platform()) { continue; }
+        if (pkg.isLibrary()) { marked.put(key: copy f.module(), value: true); continue; }
+        string folder = folderOf(package: name, full: f.module());
+        no.add(where: f.file(), what: "marks module \"${folder}\" as a platform module, which only a library's module may be: a game names no target and asks for capabilities, and its platform is kyoten's or a platform package's (target-platforms § Decided, 2026-11-20)");
+    }
     DynamicArray<string> files = filesUnder(dir: pkg.sourceDir());
     foreach (const ref string rel in files.iterConst()) {
         if (!rel.endsWith(suffix: ".kama")) { continue; }
+        if (marked.contains(key: pkg.moduleOf(folder: dirOf(path: rel)))) { continue; }
         string file = "src/" + rel;
         Result<string, IoError> text = readText(path: pkg.root() + "/" + file);
         match (give text) {
@@ -445,7 +455,7 @@ unsafe fn bool checkLibrary(const ref Manifest lib) {
     Records r = readRecords(game: lib, no: no);
     checkFence(game: lib, r: r, no: no);
     checkTiers(lib: lib, r: r, no: no);
-    checkFlags(pkg: lib, no: no);
+    checkFlags(pkg: lib, r: r, no: no);
     if (no.any()) { no.print(); return false; }
     string name = copy lib.name();
     println(s: "kyoten: ${name}'s modules hold the simulation's fence, the tiers and the platform rule");

@@ -1,1 +1,1 @@
-{"processors": {"draw": {"phase": "Output"}}}
+{"platform": true, "processors": {"draw": {"phase": "Output"}}}

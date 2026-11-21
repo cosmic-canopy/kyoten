@@ -40,7 +40,7 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     DynamicArray<string> before = generatedFiles(game: game);
     checkHeaders(game: game, files: before, no: no);
     checkFence(game: game, r: records, no: no);
-    checkFlags(pkg: game, no: no);
+    checkFlags(pkg: game, r: records, no: no);
     if (no.any()) { no.print(); return false; }
 
     string actionsFile = "src/generated/actions.kama";

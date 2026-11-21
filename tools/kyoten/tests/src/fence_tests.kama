@@ -59,6 +59,12 @@ unsafe fn void fenceTests(ref Tally t, ref Setup s) {
          words: allOf(a: "src/sim/host.kama:3:", b: "`HOSTED`", c: ""));
     check(t: t, name: "flags: a build type, a declared flag and a comment are not refused",
           ok: p.code() == 1 && !p.says(what: "src/sim/sim.kama"), why: p.said());
+    // Only a library's module may be marked as a platform module (target-platforms § Decided, 2026-11-20): a game
+    // names no target, and its mark grants nothing, so the marked module's own flag is still refused.
+    says(t: t, name: "flags: a game's module marked as a platform module is refused", r: p,
+         words: allOf(a: "src/show/show.records.json:", b: "marks module \"show\" as a platform module", c: "only a library"));
+    says(t: t, name: "flags: a game's mark grants nothing: the marked module's platform flag is still refused", r: p,
+         words: allOf(a: "src/show/show.kama:3:", b: "`OS_WINDOWS`", c: ""));
 
     // A library shaped like the engine: `kyoten check` holds its tiers and its flags.
     Ran l = s.kyoten(command: "check", game: "tiers", more: none());
@@ -72,7 +78,11 @@ unsafe fn void fenceTests(ref Tally t, ref Setup s) {
     says(t: t, name: "tiers: a module with no `importsOnly` is refused", r: l,
          words: allOf(a: "module \"d\" has no `importsOnly`", b: "", c: ""));
     says(t: t, name: "tiers: a platform flag in a module of the library is refused", r: l,
-         words: allOf(a: "src/a/a.kama:3:", b: "`OS_LINUX`", c: ""));
+         words: allOf(a: "src/a/a.kama:3:", b: "`OS_LINUX`", c: "a library's platform module"));
+    // The library's module marked as its platform module may name platform flags, in its folder and in a folder below
+    // it that is no module of its own. Counted only when the run reached the flags, which `a`'s refusal shows.
+    check(t: t, name: "tiers: platform flags in the library's marked platform module, and in a folder below it, are not refused",
+          ok: l.says(what: "src/a/a.kama:3:") && !l.says(what: "src/plat/"), why: l.said());
     // A library's root module is its API, so a component record there is not refused, as a game's root's is
     // (components § Decided, 2026-11-10). Counted only when the run reached the records, which its tiers show.
     check(t: t, name: "tiers: a component record in a library's root module is not refused: a library's root is its API",

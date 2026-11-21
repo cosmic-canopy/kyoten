@@ -46,6 +46,10 @@
       "importsOnly": [
         "a"
       ]
+    },
+    "plat": {
+      "visibility": "public",
+      "importsOnly": []
     }
   }
 }

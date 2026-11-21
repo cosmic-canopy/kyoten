@@ -1,0 +1,9 @@
+// The library's platform module, marked in its records file: the one place a library may name a platform flag
+// (target-platforms § Decided, 2026-11-20).
+
+@compileFor(OS_LINUX)
+fn int32 onLinux() { return 1; }
+@compileFor(!OS_LINUX)
+fn int32 onLinux() { return 0; }
+@compileFor(HOSTED)
+fn bool hosted() { return true; }

@@ -1,0 +1,5 @@
+// A folder below the marked module that kama.json does not list, so its files are the platform module's too.
+
+file @compileFor(ARCH_WASM32);
+
+fn int32 onTheWeb() { return 1; }
