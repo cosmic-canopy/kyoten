@@ -210,6 +210,41 @@ fn void baseDt(ref Tally t) {
     t.verdict(name: "clock: its step's dt is Time::dtAt of its rate", why: ok ? "" : "the bits differ");
 }
 
+// A host resuming after a suspension, or a frame source swapped mid-session (entering VR), resets the baseline: the
+// next timestamp owes nothing however far it is, where the same gap with no reset owes the cap and counts discards.
+fn void baselineReset(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    c.advance(now: T0);
+    c.advance(now: T0 + 16666667);
+    c.resetBaseline();
+    Owed resumed = c.advance(now: T0 + 10 * NS);
+    int64 dropped = c.discarded();
+    bool ok = resumed.steps == 0 && resumed.frameDt == 0.0 && dropped == 0;
+    t.verdict(name: "clock: after resetBaseline, the next timestamp owes nothing, however far it is",
+              why: ok ? "" : "steps ${resumed.steps}, discarded ${dropped}");
+    Owed next = c.advance(now: T0 + 10 * NS + 16666667);
+    bool on = next.steps == 1 && next.first == 1;
+    t.verdict(name: "clock: and a step later one is owed, the step after the last one settled",
+              why: on ? "" : "steps ${next.steps}, first ${next.first}");
+
+    Clock h = Clock.make(hz: 60, maxSteps: 5);
+    h.advance(now: T0);
+    h.advance(now: T0 + 8333333);
+    h.resetBaseline();
+    h.advance(now: T0 + 5 * NS);
+    Owed rest = h.advance(now: T0 + 5 * NS + 8333334);
+    expectCount(t: t, name: "clock: a part of a step owed before the reset is kept, so half a step after it owes one",
+                got: rest.steps, want: 1);
+
+    Clock n = Clock.make(hz: 60, maxSteps: 5);
+    n.advance(now: T0);
+    Owed burst = n.advance(now: T0 + 10 * NS);
+    int64 lost = n.discarded();
+    bool capped = burst.steps == 5 && lost == 595;
+    t.verdict(name: "clock: with no reset, the same gap owes the cap and counts the rest discarded",
+              why: capped ? "" : "steps ${burst.steps}, discarded ${lost}");
+}
+
 fn void clockTests(ref Tally t) {
     firstFrame(t: t);
     oneSecond(t: t, hz: 60);
@@ -228,4 +263,5 @@ fn void clockTests(ref Tally t) {
     fraction(t: t);
     frameDt(t: t);
     baseDt(t: t);
+    baselineReset(t: t);
 }

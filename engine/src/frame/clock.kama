@@ -9,7 +9,8 @@
 // - **It is off the deterministic path.** It decides how many steps are owed, never what a step does. A replay or a
 //   test drives steps directly (`step` in driver.kama) and builds no clock.
 // - **Time that runs backwards or stands still owes nothing:** an NTP step, a resumed laptop. The timestamp becomes
-//   the new baseline.
+//   the new baseline. **A host resuming after a suspension resets it** (`resetBaseline`), as does a frame source swapped
+//   mid-session, such as entering VR, so the time away is never owed as a burst of steps.
 // - **At most `maxSteps` owed a frame** (the engine's default is 5). Past that, the rest is discarded, and the
 //   discarded steps are counted, exactly. Running slow for a moment beats falling further behind every frame.
 // - **Pause, slow motion and fast forward scale real time before it is owed,** by a ratio (`TimeScale`): 0/1 pauses,
@@ -137,6 +138,11 @@ type resource Clock {
         if (!to.isPaused()) { this.stepPending = false; }
         this.ratio = to;
     }
+
+    // The next timestamp becomes the baseline and owes nothing, however far it is from the last: a host resuming after
+    // a suspension (std::app's `Resumed`), or a frame source swapped mid-session. A part of a step already owed is
+    // kept, since that time was shown.
+    public fn void resetBaseline() { this.started = false; }
 
     // While paused, asks for one step on the next frame; false, and nothing asked, while running.
     public fn bool stepOnce() {
