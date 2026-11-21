@@ -647,6 +647,46 @@ is:**
    - the `Platform`'s content folder, so that `kyoten::content`'s `folderFor` and its exception in the platform-flag
      check are removed, and the check's exception list is empty (target-platforms § Decided, question 3, item 8).
 
+   **Laid out from the code at the forty-third session's readying, with a stand-in on the pin** (`.scratch/s43/step7/`,
+   machine-local: a package whose `platform` module stands in for the engine's, on the real `kyoten::frame` and
+   `@kama/window`):
+   - **The loop leaves `kyoten::frame`, as two decided rules require.** A game's simulation modules import
+     `kyoten::frame::Time`, so that module stays inside the simulation's fence, which takes none of `std::app`,
+     `std::time` or `@kama/window`. And a `Frame`-tier module names no other engine module, while the loop names
+     `kyoten::frame`'s `World`, `Clock` and `frame`. So the contract, the open platforms and the loop are a new engine
+     module, `kyoten::platform`, tier `Module`, outside the fence as `kyoten::content` is, and REFERENCE's tier picture
+     moves `run` there. Settled by the rules, to report.
+   - **The stand-in ran on both legs.** A loop generic over the world and the platform, `Play<W: World, P: Platform>`, is
+     a `std::app` `App`, boxed by `new` as an `Owned<App>`. Two declarations of one type, `OpenPlatform`, each gated to
+     its target, let the game's code name one platform and no target (`kama check`: 2 configurations OK). Natively, with
+     no display, it ran 30 frames and returned 0, the world dropped. In headless Edge the content folder was
+     `/probe/content`, 30 frames settled 28 steps at 60 Hz, and the platform ended the program with `quit(code: 0)`.
+   - **Found:** on the web `run` never returns, so the platform ends the program and the world is never dropped. A game
+     saves on `Suspended`, as std::app's docs say, never in a destructor. Natively a tick with no display takes no time,
+     so the clock owes nothing; the loop's tests feed it a fake platform's nanoseconds, as the driver's tests feed the
+     clock.
+   - **The shape, to settle at the step and report:**
+     - the contract, as far as step 7 needs it: `contentFolder()`; the window, opened on the first tick and pumped each
+       tick, its closing ending the loop; `now()`, the frame's timestamp, `std::time`'s monotonic clock read at the tick
+       as Bevy's and Godot's are, where an XR platform answers its predicted display time; the lifecycle, where
+       `Resumed` after a suspension resets the clock's baseline, which frame-phases left to step 7; and the end;
+     - the generated `run` makes the platform (`OpenPlatform.make(game:, native:)`, both given as `folderFor` takes
+       them), opens the content at `platform.contentFolder()`, reads it, loads the prefabs, places the first scene and
+       calls `play(world:, platform:)`. A refusal at load prints and returns 1 before the loop;
+     - `engine/content/`'s first record is the engine's default `app` record: its `title`, and the window's size beside
+       it, as Bevy's `WindowPlugin`, Godot's project settings and Unity's player settings each hold a title and a size;
+     - the engine depends on `@kama/window` by path until the packages publish, as the examples depend on the engine.
+   - **One question, asked in full at the readying:** where the open platforms' target flags live. The check refuses
+     every platform flag in the engine's source, and step 7's test is an empty exception list, while the stand-in's
+     `OpenPlatform` names `ARCH_WASM32`: (A) one engine module marked as the platform module in its records, the only
+     place a library may name a platform flag, and never in a game; (B) the open platforms as a package of their own;
+     (C) no flag in kyoten, each difference moved into kama's libraries first.
+   - **Step 7's order, once it is answered:** the answer recorded in target-platforms § Decided; the check's rule,
+     test-first on the tool's `flags` fixture; `kyoten::platform`'s loop, test-first on a fake platform (the phases a
+     tick, the lifecycle's reset, the end); the open platforms; the generated `run` in the tool, test-first on its
+     fixtures, `spin` running through it natively and on wasm; `engine/content/`'s first record; `folderFor` and its
+     exception removed.
+
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
 roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.
 - **Every suite was green on 0.9.978 at the start,** at the forty-second session's counts.
@@ -667,6 +707,10 @@ roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bum
   - **Settled and reported, for the owner to object to:** rendering § Decided's Built entry lists them: the flag's name,
     the record per emcc, the player's build keeping its frame read, the gate's net, `resize`'s golden as the window's
     first frame, `light-units` leaving lux unmarked, and the named cases.
+- **Readied at the owner's word** ("yes push and get ready for the next session"): kyoten `b5f27c8` and kama-graphics
+  `8a11af9` pushed; every repository fetched, nothing incoming; kama unchanged since `831614a7`, its tree clean, the pin
+  still on its history. Step 7 laid out from the code with a stand-in on the pin (item 3), and its one question asked in
+  full: where the open platforms' target flags live.
 
 **The forty-second session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained two
 roadmap commits since `25499a59` (`5040b117`, `6574c746`), no code, so no bump.
