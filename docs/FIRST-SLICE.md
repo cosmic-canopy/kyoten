@@ -183,7 +183,9 @@ is:**
      (`when`, `in`, `out`), brief first; `ref`, `out` and `base` each cost the packages a rebuild. Then, during the
      forty-third session, to `831614a7` (0.9.1015): 0.9.1014, a field named `copy` or `give` can be borrowed (KR-431);
      0.9.1015, `when` and `out` may name a binding and `in` stays reserved (KR-430 closed); the editors' grammar pins.
-     None that kyoten needs; on a bump, `out` stops costing a rebuild.
+     None that kyoten needs; on a bump, `out` stops costing a rebuild. Read again at the forty-fourth session's start,
+     to `97d55b38`: two roadmap commits, no code, KR-432 filed, claimed by kama's Windows session and briefed, which is
+     kyoten's KY-63 (a build cannot leave a manifest's `assets` out).
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -682,10 +684,18 @@ is:**
      keeps no named exception. The stand-in's `OpenPlatform` names `ARCH_WASM32`, which the check refused in the engine
      as worded. Set aside: (B) the open platforms as a package of their own; (C) no flag in kyoten, each difference
      moved into kama's libraries first.
+   - **Its second question is decided** (the owner, 2026-11-20, (A), asked in full at the forty-fourth session's start;
+     target-platforms § Decided), found while reading the code for the plan: as laid out, `spin` run through the
+     generated `run` could not end, could not open a window under node, and owed no steps natively. The open platforms
+     read Godot's three options from the command line, which every game gets with no code: `--headless` (a headless
+     window, no system window, no page, no focus), `--quit-after N` (the run ends after N frames with 0, a window
+     taking no focus) and `--fixed-fps F` (each frame's timestamp moves by exactly 1/F second). Set aside: (B) the loop
+     tested only through a fake platform; (C) environment variables, which a page cannot set.
    - **Step 7's order:** the check's rule, test-first on the tool's `flags` fixture (a marked module of a library may
      name a flag, a game's mark is refused, the exception list is gone); `kyoten::platform`'s loop, test-first on a fake
-     platform (the phases a tick, the lifecycle's reset, the end); the open platforms; the generated `run` in the tool,
-     test-first on its fixtures, `spin` running through it natively and on wasm; `engine/content/`'s first record;
+     platform (the phases a tick, the lifecycle's reset, the end), with the three options' reader; the open platforms;
+     the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
+     `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
 
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one

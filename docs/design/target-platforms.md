@@ -235,3 +235,43 @@ stay outside the spike, with their roadmap rows.
       1's "no package per open platform" and a dependency line in every game;
     - (C) no flag in kyoten, each difference moved into kama's libraries first (a content folder at one path on every
       target, `std::app` ending a web program when its loop stops): two kama gaps, with a stopgap until they land.
+- **2026-11-20, the owner: how a game's run ends, runs without a window and steps at a fixed rate (the first slice's
+  step 7, KYR-8), (A).** The owner: "A (Recommended)". Asked in full at the forty-fourth session's start, found while
+  reading the code for step 7's plan.
+  - **The question:** a game's `main` calls the generated `run()` with no arguments, and the loop ends when the window
+    closes. Step 7 runs the `spin` fixture through that `run` natively and under node, debug and release, and as laid
+    out it could not: nothing ends a test's run, and a test never takes the focus; under node `@kama/window` refuses a
+    window with no page, so the run would end with 1 at once; and natively a tick with nothing to present takes no
+    time, so 30 frames by the real clock owe almost no steps, and a test could not hold what the world did. The hello
+    cube's check in CI (the first slice's step 10) and CI itself (KYR-13) meet the same.
+  - **Decided:** the open platforms read three options from the command line, Godot's, which every game gets with no
+    code; on the web from the page's query and under node from its arguments, as kama's `args()` gives them:
+    - `--headless`: a headless window of the app's size (`@kama/window`'s `Window.headless`), so no system window, no
+      page and no focus; Output runs as usual;
+    - `--quit-after N`: the run ends after N frames with status 0, and a window it opens takes no focus;
+    - `--fixed-fps F`: each frame's timestamp moves by exactly 1/F second instead of reading the clock, so N frames
+      owe an exact count of steps.
+  - **Why:** the generated `run` and the open platforms are then run in a test on every leg, as a player runs them:
+    the content folder on the web, the window, the web's ending. A game needs no test `main`, so the hello cube's
+    two-line `main` is the one CI runs. Godot's names are known to its users, and a movie written frame by frame
+    (Godot's `--write-movie`) is built on the same two.
+  - **What the peers do,** read on their docs on 2026-11-20:
+    - Godot 4.7's command line: `--headless`, "Enable headless mode (`--display-driver headless --audio-driver
+      Dummy`). Useful for servers and with `--script`."; `--quit-after`, "Quit after the given number of iterations.
+      Set to 0 to disable."; `--fixed-fps <fps>`, "Force a fixed number of frames per second. This setting disables
+      real-time synchronization."
+    - Unity 6's player: `-batchmode`, "the application doesn't display anything or accept user input"; `-nographics`,
+      no graphics device. A built player has no option that quits after some frames.
+    - Bevy drives an app by hand in a test: `ScheduleRunnerPlugin`'s `run_once` and `run_loop`, and
+      `TimeUpdateStrategy::ManualDuration`, "Time will be incremented by the specified Duration each frame."
+    - `@kama/graphics`' `examples/cube`: `--frames N` draws N frames and exits, opening without the focus, and on the
+      web the page passes it.
+  - **Settled with it, to report:** the platform reads only its three options and leaves the rest of the command line
+    to the game; a malformed value (`--quit-after x`) is printed and ends the run with 2 before the loop; the hello
+    cube's readback in CI uses `--quit-after` with a real window, unfocused, in a headless browser, as `examples/cube`
+    does, never `--headless`.
+  - **Considered:**
+    - (B) no options, the loop tested only through a fake platform: the generated `run` and the open platforms would
+      never run in a test, and the hello cube's check in CI would need a test `main` of its own;
+    - (C) environment variables, as `@kama/window`'s tests' `KAMA_WINDOW_NO_DISPLAY`: a browser page cannot set one,
+      so the web leg would have no way.
