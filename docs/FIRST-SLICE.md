@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-20, the forty-fourth session)
+## Where it stands (2026-11-21, the forty-fifth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -112,7 +112,9 @@ forty-fourth). Where the work is:**
      session's start. It took 14 minutes alone after step 7, where it took about 6 before: every program on the
      engine now builds `@kama/window`, whose vendored SDL3 compiles from source on Windows, and kama keeps no object
      cache for a `kama run` (a `kama run` of the spin fixture takes 80.6 s, a warm `kama build` 5.7 s: KY-64, filed);
-   - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
+   - `@kama/window`'s: 304, 204 under node, 311 in Edge and Firefox, 322 through the driver, and a program reaching none
+     of the package linked natively and on wasm, since WIN-25 and WIN-26 (the forty-fifth session); 249, 163, 253 and
+     264 at its start;
    - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
      Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
      its start;
@@ -122,7 +124,8 @@ forty-fourth). Where the work is:**
    - `@kama/graphics`': 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, and `examples/cube`
      on every leg, since part 6's step 4 (the forty-third session); 450, 451 and 438 at its start. The cube on the GPU,
      natively and in Edge, is held to its software golden by FLIP, and its player build (`--define CUBE_PLAYER`) is run
-     once in Edge and measured: 169,091 B of wasm and JS after brotli, its ratchet (`examples/cube/web-size.json`). Its
+     once in Edge and measured: 169,655 B of wasm and JS after brotli since WIN-26 (169,091 B before), its ratchet
+     (`examples/cube/web-size.json`). Its
      gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
      that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
      side by side.
@@ -196,7 +199,11 @@ forty-fourth). Where the work is:**
      (0.9.1017): 0.9.1016, the reserved-word guards; tree-sitter fixtures and the editors' pins; KR-432 ruled and built,
      any `select` value taking `assets`, **which fixes KY-63 upstream**; and KR-433 filed with its brief, which is
      kyoten's KY-64 (`kama run` keeps no object cache). **Proposed: one bump once KR-433 lands,** bringing both fixes,
-     the gate back near its 6 minutes, and the 48 `.keys()` calls ported in the same bump.
+     the gate back near its 6 minutes, and the 48 `.keys()` calls ported in the same bump. Read again at the
+     forty-fifth session's start, unchanged; then during it, to `575a9cc6` (0.9.1018): KR-433 ruled as recommended,
+     claimed by kama's Windows session and built, a project's `kama run` building where `kama build` does and two
+     kamas building one project taking turns, **which fixes KY-64 upstream**; and KR-434, a test fixture's port. **So
+     the bump proposed above can be made,** to 0.9.1018 or later, with both fixes.
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -231,7 +238,13 @@ forty-fourth). Where the work is:**
      - KY-63, filed 2026-11-20, kama's KR-432 the same day: a build cannot leave a manifest's `assets` out;
      - KY-64, filed 2026-11-20 (the forty-fourth session): `kama run` keeps no object cache, so every `kyoten run` of a
        game on the engine compiles `@kama/window`'s vendored SDL3 again on Windows, about a minute a run, and the gate
-       took 14 minutes where it took 6.
+       took 14 minutes where it took 6; fixed upstream in 0.9.1018 (KR-433), not on the pin;
+     - KY-65 and KY-66, filed 2026-11-21 (the forty-fifth session): a `return` with a value in a function that returns
+       nothing passes `kama check` (its value dropped, or C that does not compile); `Instant + Duration` traps on a
+       negative `Duration`;
+     - KY-67 and KY-68, filed the same day, both from an `expose fn` in a library: its C is linked into a program that
+       reaches none of its kama while the `expose fn` is not, and the host header kama writes for it shadows the
+       program's own header of the program's name. `@kama/window` has no `expose fn` since (kama-window `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -667,11 +680,18 @@ forty-fourth). Where the work is:**
    and gestures (A, "so far"); filter and gesture in place of "adapter" (A); and, asked twice, a pad locks in to player
    1, the first pressed, until it disconnects or the game lets go, other pads doing nothing meanwhile, the keyboard and
    mouse throughout (A, "so far"; the owner: "I don't want another pad taking input control accidentally").
-   **The order:** `@kama/window`'s WIN-25 (the control names, small) and WIN-26 (each event's time, which changes
-   `pollEvent` for every caller; its shape decided (A), the owner, 2026-11-21, "so far": `pollEvent()` hands back the
-   event with its time, `t.event` and `t.at`, and `post(event:, at:)` takes one; kama-window's ROADMAP_DETAIL) first, each in its own repository with its gate;
-   then step 8's parts in kyoten, test-first on posted events and pads; the lock-in tried by the owner with two pads in
-   a short block at the start of the session after it is built.
+   **`@kama/window`'s WIN-25 and WIN-26 are built** (the forty-fifth session; kama-window `642d116`, `663689e` and
+   `fedfc75`), and their callers ported (kama-gpu `dc7d711`, kama-graphics `80c9e5f`, kyoten `c51a474`):
+   - WIN-25: `Key`, `PadButton`, `PadAxis` and `PointerButton` read and written by their case names, a misspelling
+     refused with every name listed;
+   - WIN-26: `pollEvent()` hands back a `TimedEvent`, `t.event` and `t.at` (an `Instant` on kama's monotonic clock), as
+     decided (A); `post(event:, at:)` and `postPad(slot:, pad:, at:)` take the time they post at (the owner, 2026-11-21,
+     (A), asked at the session's start). Natively the moment GLFW's callback ran and the moment the pump read a pad; on
+     the web the DOM event's `timeStamp` and a pad's `Gamepad.timestamp`, held to the pumps and in order. Natively a
+     pad's time is the pump's, a stopgap until SDL's stamp for a reading can be held by a test.
+
+   **Next: step 8's parts in kyoten,** test-first on posted events and pads, the events' times now in hand; the lock-in
+   tried by the owner with two pads in a short block at the start of the session after it is built.
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
@@ -764,6 +784,30 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The forty-fifth session** (2026-11-21). Nothing new on any origin at the start, and kama unchanged since `3aefd09d`,
+so no bump; it moved to 0.9.1018 during the session, closing KR-433 (item 1).
+- **Every suite was green on 0.9.978 at the start,** at the forty-fourth session's counts.
+- **One question at the start, decided at once** (A): WIN-26's `postPad` takes a time too, `postPad(slot:, pad:, at:)`,
+  as `post` does (kama-window `421b8da`).
+- **Built:** WIN-25 (kama-window `642d116`; 4 of 4 mutations caught) and WIN-26 (`663689e`; 46 of 47 caught, the 47th
+  shown equivalent), then the callers in each repository with its gate (item 3).
+  - **Found by the callers' gates and fixed in the package** (`fedfc75`): WIN-26 first read kama's clock in its C
+    through an `expose fn`, which kyoten's frame guard could not link (the fixture reaches none of the package), and
+    whose generated host header shadowed `@kama/gpu`'s and `@kama/graphics`' tests' own headers on the web. Its C
+    reads `kama_now_mono_ns` (kama's `kama_time.h`, the function `std::time` reads) since, and a program reaching none
+    of the package is held to link (KY-67, KY-68).
+  - **Found by the web cases:** a pad's time was raised to the pump's by the empty slots before it; the floor that
+    keeps times in order now applies where records are stored.
+  - **The cube's web-size record** rose 564 B with its reason (kama-graphics `80c9e5f`): 163 B of it is brotli packing
+    two changed bytes (WIN-25's comments moved two trap sites' line numbers in an equal-size wasm), the rest WIN-26's
+    code. A brotli ratchet moves by about that much with no code changed.
+  - **Settled and reported, for the owner to object to:** each time's source per backend; the order floor on the web;
+    a call's releases at the call's time; natively a pad at the pump's moment (SDL's own stamp as the refinement); the
+    C reading kama's clock through `kama_time.h`.
+  - **kama gaps filed:** KY-65, KY-66, KY-67 and KY-68 (item 1), each reproduced on the pin and on 0.9.1018.
+- **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
+  baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 
 **The forty-fourth session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained two
 roadmap commits since `831614a7` (`518a572d` and `97d55b38`: KR-432 filed, claimed and briefed, which is kyoten's

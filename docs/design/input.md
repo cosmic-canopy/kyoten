@@ -98,7 +98,7 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   1. **(A): `@kama/window` gives each event its time** on kama's monotonic clock, the best its backend has, and kyoten
      splits by it: each owed step takes the events in its window, the frame's last owed step everything up to the pump,
      and a frame that owes none keeps its events for the next step. "A recommended." The package's row is WIN-26, and
-     the control names' WIN-25 (kama-window's ROADMAP).
+     the control names' WIN-25, both built in the forty-fifth session (kama-window `642d116`, `663689e` and `fedfc75`).
   2. **(A): action, then device, a device's entry a control, a list of controls, or an object with its parts, its
      `filters` and its `gestures`.** The owner: "I think A sounds good so far. We need actions to be abstract from the
      control method and we need to be able to specify filters and such." So far: the shape is held to that as step 8
