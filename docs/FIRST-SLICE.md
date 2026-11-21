@@ -192,7 +192,11 @@ forty-fourth). Where the work is:**
      0.9.1015, `when` and `out` may name a binding and `in` stays reserved (KR-430 closed); the editors' grammar pins.
      None that kyoten needs; on a bump, `out` stops costing a rebuild. Read again at the forty-fourth session's start,
      to `97d55b38`: two roadmap commits, no code, KR-432 filed, claimed by kama's Windows session and briefed, which is
-     kyoten's KY-63 (a build cannot leave a manifest's `assets` out).
+     kyoten's KY-63 (a build cannot leave a manifest's `assets` out). Read again at its readying, to `3aefd09d`
+     (0.9.1017): 0.9.1016, the reserved-word guards; tree-sitter fixtures and the editors' pins; KR-432 ruled and built,
+     any `select` value taking `assets`, **which fixes KY-63 upstream**; and KR-433 filed with its brief, which is
+     kyoten's KY-64 (`kama run` keeps no object cache). **Proposed: one bump once KR-433 lands,** bringing both fixes,
+     the gate back near its 6 minutes, and the 48 `.keys()` calls ported in the same bump.
      **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
      `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
      `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
@@ -664,7 +668,7 @@ forty-fourth). Where the work is:**
    1, the first pressed, until it disconnects or the game lets go, other pads doing nothing meanwhile, the keyboard and
    mouse throughout (A, "so far"; the owner: "I don't want another pad taking input control accidentally").
    **The order:** `@kama/window`'s WIN-25 (the control names, small) and WIN-26 (each event's time, which changes
-   `pollEvent` for every caller, its shape asked when it comes up) first, each in its own repository with its gate;
+   `pollEvent` for every caller; its shape asked at the readying, three options in kama-window's ROADMAP_DETAIL) first, each in its own repository with its gate;
    then step 8's parts in kyoten, test-first on posted events and pads; the lock-in tried by the owner with two pads in
    a short block at the start of the session after it is built.
 
@@ -787,7 +791,9 @@ KY-63), no code, so no bump.
   had moved two commits past `97d55b38` (`0833052b`, tree-sitter fixtures; `fe6a64ae`, 0.9.1016, the reserved-word
   guards), neither touching kyoten. Step 8 was laid out from the code with a probe on the pin, two research passes
   ([research/input.md](research/input.md), re-checked where a question rests on it) and a new design doc
-  ([design/input.md](design/input.md)) holding its four questions, asked in full (item 3).
+  ([design/input.md](design/input.md)) holding its four questions, asked in full and answered the same day, the
+  fourth asked twice (item 3). `@kama/window` gained WIN-25 and WIN-26 for them (kama-window `c414937`), and WIN-26's
+  shape was asked. kama read again to `3aefd09d` (0.9.1017): KY-63 fixed upstream, KY-64 filed as KR-433 (item 1).
 
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
 roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.
