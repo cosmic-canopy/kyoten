@@ -656,8 +656,48 @@ forty-fourth). Where the work is:**
 3. **The join is under way, and step 7, the platform seam, is built** (the forty-fourth session; kyoten `fd8a130` to
    `c8334bb`; target-platforms § Decided, its Built entry, which lists what was settled for the owner to object to and
    what no case holds yet). **Next is step 8, Input (KYR-54):** actions of every kind, bindings records, player 1 on
-   the keyboard and the first gamepad through `@kama/window`, and the binding steps; its questions are decided when the
-   row comes up (§ Questions the owner answers). Step 7 built, as laid out below:
+   the keyboard and the first gamepad through `@kama/window`, and the binding's steps over values and over time.
+   **Its four questions are asked** ([design/input.md](design/input.md), the forty-fourth session's readying): where
+   an input's time comes from, the bindings record's shape, the words for a binding's steps, and which pads drive
+   player 1. Each answer is recorded in input.md's *Decided* before the part it shapes is built.
+
+   **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
+   (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
+   - **What the code has:** `kyoten::input::Digital` (`held`, `pressed`, `released`, set by nothing); the generated
+     `Actions`, a `player` and a `Digital` per action; `BindingRecord`, one control name per device, read and used by
+     nothing; an empty `pass_input`; and the open platforms' `pumpOn`, which drains the window's events and keeps only
+     `CloseRequested`. `@kama/window`'s events carry no time.
+   - **Where each part lives, settled by the rules, to report:**
+     - **The kinds move to the frame tier, `kyoten::frame`** (REFERENCE's tier picture already puts the input record
+       there), with `std::math`'s `Vec2`, `Vec3` and `Quat` for `Vector2`, `Vector3` and `Pose`: a game's generated
+       `Actions` is fenced and imports them, the module that binds devices reads `@kama/window` and cannot be fenced,
+       and a `Module`-tier module names no other.
+     - **The frame tier also holds what the platform hands in,** a device-neutral sample (a device, a control's number,
+       its value and its time: a key by its USB HID usage id, a pad's button and axis by the W3C standard gamepad's
+       index, as `@kama/window` numbers them), **and each step's hand-off,** every player's action values in the
+       generated order, which the `World` contract's `input` takes beside its `Time`. The generated `pass_input` copies
+       each entity's `Actions` from its player's values.
+     - **The platform translates its devices into samples** (the open platforms from `@kama/window`, a console's from
+       its own), so `kyoten::input`, the engine module, names no target and no window's events: it reads the bindings
+       records and the samples and makes each owed step's hand-off. The generated `run` builds it from the content and
+       hands it to `play`.
+   - **Found in the probe:** kama's generated JSON reader reads an enum with explicit values by its case name and
+     refuses a misspelling, listing the names (`Arrowup` is not a `Key` … expected `KeyA`, `KeyW`, `Space` or
+     `ArrowUp`). So `@kama/window` generating `Serializable, Deserializable` on `Key`, `PadButton`, `PadAxis` and
+     `PointerButton` lets a bindings record read the package's own names with no second table (a package row, settled,
+     to report). A `type value` holds a fixed buffer of codepoints and copies, so `Text` fits a value `Actions`: a
+     step's typed text up to a fixed count, the rest carried to the next step.
+   - **Edges, settled as the decided rule reads, to report:** each processor sees a press and a release once, on its
+     first run at or after the step it lands in, whatever its rate (Godot hands a press to exactly one physics tick,
+     the next; research/input.md); a press and its release in one step show the press, held, on that step and the
+     release on the next, so a reader of `held` never misses a tap.
+   - **Also settled, to report:** `Pose` is built and bound by nothing until XR brings a device (KYR-34); the filters
+     and gestures built are every one the peers offer that a device kyoten reads can drive; a gesture's result is a
+     value the action reads each step, not an event; a pad button bound to a `Digital` is pressed at `@kama/window`'s
+     own `PressedAt` unless a filter sets a threshold; and the recorded log, which comes with slice B, takes the
+     hand-off as it is.
+
+   Step 7 built, as laid out below:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
@@ -734,7 +774,13 @@ KY-63), no code, so no bump.
   - **The examples' locks** take `@kama/window` through the engine, committed in their own repositories
     (kyoten-example-fps `5b159eb`, kyoten-example-vr `730ebdc`), and `@kama/window` tracks its own, empty, which
     installing kyoten's workspace now writes (kama-window `0ed45b0`), as kama-gpu, kama-graphics and kama-imagediff
-    track theirs. None of the three repositories is pushed yet.
+    track theirs.
+- **Readied at the owner's word** ("yes push and get ready for the next session"): nothing incoming on any origin;
+  pushed kyoten `fdc5bdf`, kama-window `0ed45b0`, kyoten-example-fps `5b159eb` and kyoten-example-vr `730ebdc`. kama
+  had moved two commits past `97d55b38` (`0833052b`, tree-sitter fixtures; `fe6a64ae`, 0.9.1016, the reserved-word
+  guards), neither touching kyoten. Step 8 was laid out from the code with a probe on the pin, two research passes
+  ([research/input.md](research/input.md), re-checked where a question rests on it) and a new design doc
+  ([design/input.md](design/input.md)) holding its four questions, asked in full (item 3).
 
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
 roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.
