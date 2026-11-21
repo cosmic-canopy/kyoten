@@ -1,0 +1,352 @@
+// kyoten::platform (the first slice's step 7, KYR-8; target-platforms § Decided, 2026-11-20): the run's three options,
+// read from a command line, and the loop, driven by hand on every leg as std::app would drive it, with a world and a
+// platform of the test's own (dependencies are injected): the phases a tick from the platform's timestamps, the window
+// asked for once on `SurfaceReady`, `Resumed` after `Suspended` owing no burst, and each way the run ends.
+
+import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory::Shared, kyoten::frame::World,
+         kyoten::frame::Time, kyoten::platform::Platform, kyoten::platform::RunOptions,
+         kyoten::platform::RunOptionError, kyoten::platform::Ending, kyoten::platform::Play,
+         kyoten::platform::play, kyoten::platform::fixedTimestamp };
+
+export { platformTests };
+
+comptime int64 STEP = 16666667;     // a 60 Hz step's nanoseconds, rounded up
+comptime int64 T0 = 5000000000;     // an arbitrary first timestamp
+
+// What the test's platform and world were asked, and what the platform answers: shared with the test, since the loop
+// owns both.
+type resource Log {
+    DynamicArray<string> argList = DynamicArray.empty();
+    DynamicArray<int64> timeList = DynamicArray.empty();
+    bool openAnswer = true;
+    int32 closeAt = 0;              // `pumped()` is false from this pump on; 0 never
+    int32 openCount = 0;
+    string openedAs = "";
+    int32 pumpCount = 0;
+    int32 nowCount = 0;
+    int32 endCount = 0;
+    int32 endCode = -1;
+    int64 outputCount = 0;
+
+    public ctor make() { }
+
+    public fn void takeArgs(DynamicArray<string> args) { this.argList = give args; }
+    public fn void takeTimes(DynamicArray<int64> times) { this.timeList = give times; }
+    public fn void refuseWindow() { this.openAnswer = false; }
+    public fn void closeOnPump(int32 at) { this.closeAt = at; }
+
+    public const fn DynamicArray<string> args() { return copy this.argList; }
+    public fn bool open(const ref string title, int32 width, int32 height, bool headless, bool focused) {
+        this.openCount = this.openCount + 1;
+        string h = headless ? "headless" : "windowed";
+        string f = focused ? "focused" : "unfocused";
+        this.openedAs = "${title} ${width}x${height} ${h} ${f}";
+        return this.openAnswer;
+    }
+    public fn bool pump() {
+        this.pumpCount = this.pumpCount + 1;
+        return this.closeAt == 0 || this.pumpCount < this.closeAt;
+    }
+    // Each answer in turn, then the last again; 0 with none.
+    public fn int64 time() {
+        isize n = this.timeList.length();
+        isize at = cast<isize>(this.nowCount);
+        this.nowCount = this.nowCount + 1;
+        if (n == 0) { return 0; }
+        if (at >= n) { return this.timeList[n - 1]; }
+        return this.timeList[at];
+    }
+    public fn void end(uint8 code) {
+        this.endCount = this.endCount + 1;
+        this.endCode = cast<int32>(code);
+    }
+    public fn void output() { this.outputCount = this.outputCount + 1; }
+
+    public const fn int64 openings() { return cast<int64>(this.openCount); }
+    public const fn string opened() { return copy this.openedAs; }
+    public const fn int64 pumps() { return cast<int64>(this.pumpCount); }
+    public const fn int64 nows() { return cast<int64>(this.nowCount); }
+    public const fn int64 endings() { return cast<int64>(this.endCount); }
+    public const fn int64 endedWith() { return cast<int64>(this.endCode); }
+    public const fn int64 outputs() { return this.outputCount; }
+}
+
+type resource FakePlatform implements Platform {
+    Shared<Log> log;
+
+    public ctor make(Shared<Log> log) { this.log = give log; }
+
+    public const fn string contentFolder(const ref string package, const ref string native) { return copy native; }
+    public const fn DynamicArray<string> arguments() { return this.log.deref().args(); }
+    public fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused) {
+        return this.log.derefMut().open(title: title, width: width, height: height, headless: headless, focused: focused);
+    }
+    public fn bool pumped() { return this.log.derefMut().pump(); }
+    public fn int64 now() { return this.log.derefMut().time(); }
+    public fn void ended(uint8 code) { this.log.derefMut().end(code: code); }
+}
+
+// Counts its Output runs into the log; the steps are the loop's clock's to count.
+type resource Counter implements World {
+    Shared<Log> log;
+
+    public ctor make(Shared<Log> log) { this.log = give log; }
+
+    public fn void input(const ref Time time) { }
+    public fn void update(const ref Time time) { }
+    public fn void constraints(const ref Time time) { }
+    public fn void output(const ref Time time) { this.log.derefMut().output(); }
+}
+
+fn void expectCount(ref Tally t, const ref string name, int64 got, int64 want) {
+    if (got == want) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "got ${got}, want ${want}"); }
+}
+
+// A command line from its words, split at each space.
+fn DynamicArray<string> argsOf(const ref string line) {
+    DynamicArray<string> made = DynamicArray.empty();
+    isize start = 0;
+    isize n = line.length();
+    while (start < n) {
+        isize end = match (line.findFrom(substring: " ", start: start)) { case Some(value: v): v; case None: n; };
+        if (end > start) { made.add(item: line.substring(start: start, end: end)); }
+        start = end + 1;
+    }
+    return made;
+}
+
+// The options read from `line`, or the refusal's words prefixed "refused: ".
+fn string readFrom(const ref string line) {
+    DynamicArray<string> args = argsOf(line: line);
+    Result<RunOptions, RunOptionError> r = RunOptions.fromArguments(args: args);
+    match (give r) {
+        case Ok(value: o): {
+            string h = o.headless ? "headless" : "windowed";
+            int64 q = o.quitAfter;
+            int32 f = o.fixedFps;
+            return "${h} quit-after ${q} fixed-fps ${f}";
+        }
+        case Err(error: e): { string w = e.message(); return "refused: " + w; }
+    };
+}
+
+fn void expectRead(ref Tally t, const ref string name, const ref string line, const ref string want) {
+    string got = readFrom(line: line);
+    if (got == want) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "`${line}` read as `${got}`, want `${want}`"); }
+}
+
+fn void expectRefused(ref Tally t, const ref string name, const ref string line, const ref string words) {
+    string got = readFrom(line: line);
+    bool ok = got.startsWith(prefix: "refused: ") && got.contains(substring: words);
+    t.verdict(name: name, why: ok ? "" : "`${line}` read as `${got}`, want a refusal naming `${words}`");
+}
+
+fn void optionCases(ref Tally t) {
+    expectRead(t: t, name: "options: none given is a window, no limit and the host's clock", line: "",
+               want: "windowed quit-after 0 fixed-fps 0");
+    expectRead(t: t, name: "options: the three read, in any order", line: "--fixed-fps 60 --quit-after 30 --headless",
+               want: "headless quit-after 30 fixed-fps 60");
+    expectRead(t: t, name: "options: the game's own arguments are left to it", line: "--level 3 --headless map.json",
+               want: "headless quit-after 0 fixed-fps 0");
+    expectRead(t: t, name: "options: `--quit-after 0` is no limit, as Godot's", line: "--quit-after 0",
+               want: "windowed quit-after 0 fixed-fps 0");
+    expectRefused(t: t, name: "options: `--quit-after` with no number is refused", line: "--quit-after",
+                  words: "`--quit-after` wants a number after it");
+    expectRefused(t: t, name: "options: `--quit-after` with a word is refused", line: "--quit-after x",
+                  words: "`--quit-after x`: the frames to run");
+    expectRefused(t: t, name: "options: a negative `--quit-after` is refused", line: "--quit-after -1",
+                  words: "`--quit-after -1`");
+    expectRefused(t: t, name: "options: `--fixed-fps 0` is refused", line: "--fixed-fps 0", words: "`--fixed-fps 0`");
+    expectRefused(t: t, name: "options: a `--fixed-fps` past a million is refused", line: "--fixed-fps 1000001",
+                  words: "`--fixed-fps 1000001`");
+    expectRead(t: t, name: "options: `--fixed-fps 1000000` is read", line: "--fixed-fps 1000000",
+               want: "windowed quit-after 0 fixed-fps 1000000");
+    expectRefused(t: t, name: "options: an option written with `=` is refused, naming the two-argument form",
+                  line: "--quit-after=30", words: "two arguments");
+}
+
+fn void timestampCases(ref Tally t) {
+    expectCount(t: t, name: "fixed timestamps: the first frame is at 0", got: fixedTimestamp(index: 0, fps: 60), want: 0);
+    expectCount(t: t, name: "fixed timestamps: a frame at 60 fps is a 60th of a second, rounded up",
+                got: fixedTimestamp(index: 1, fps: 60), want: STEP);
+    expectCount(t: t, name: "fixed timestamps: 60 frames at 60 fps are exactly a second",
+                got: fixedTimestamp(index: 60, fps: 60), want: 1000000000);
+    expectCount(t: t, name: "fixed timestamps: a frame whose nanoseconds times the index would overflow does not",
+                got: fixedTimestamp(index: 60000000000, fps: 60), want: 1000000000000000000);
+}
+
+// A loop on the test's world and platform, as `play` makes it, the options read from `line`.
+fn Play<Counter, FakePlatform> loopOn(Shared<Log> log, const ref string line) {
+    Result<RunOptions, RunOptionError> r = RunOptions.fromArguments(args: argsOf(line: line));
+    RunOptions o = RunOptions.empty();
+    match (give r) { case Ok(value: v): { o = v; } case Err(error: e): { } };
+    Shared<Log> forWorld = copy log;
+    Shared<Log> forPlatform = give log;
+    Shared<Ending> ending = new Ending.make();
+    return Play.make(world: Counter.make(log: give forWorld),
+                     platform: FakePlatform.make(log: give forPlatform), options: o, hz: 60,
+                     title: "probe", width: 640, height: 400, ending: give ending);
+}
+
+// The host's start, as every host says it before the first tick.
+fn void hostStarts(ref Play<Counter, FakePlatform> p) {
+    p.lifecycle(event: Lifecycle::Resumed);
+    p.lifecycle(event: Lifecycle::SurfaceReady);
+}
+
+fn void windowCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    expectCount(t: t, name: "loop: no window is asked for before the host says surfaces may be made",
+                got: log.deref().openings(), want: 0);
+    hostStarts(p: p);
+    p.lifecycle(event: Lifecycle::SurfaceReady);
+    expectCount(t: t, name: "loop: the window is asked for once, on SurfaceReady", got: log.deref().openings(), want: 1);
+    string opened = log.deref().opened();
+    t.verdict(name: "loop: with no option, the app's window is a system window that takes the focus",
+              why: opened == "probe 640x400 windowed focused" ? "" : "asked for `${opened}`");
+
+    Shared<Log> quiet = new Log.make();
+    Play<Counter, FakePlatform> q = loopOn(log: copy quiet, line: "--headless --quit-after 5");
+    hostStarts(p: q);
+    string asked = quiet.deref().opened();
+    t.verdict(name: "loop: under `--headless --quit-after`, the window is headless and takes no focus",
+              why: asked == "probe 640x400 headless unfocused" ? "" : "asked for `${asked}`");
+    Shared<Log> unfocused = new Log.make();
+    Play<Counter, FakePlatform> u = loopOn(log: copy unfocused, line: "--quit-after 5");
+    hostStarts(p: u);
+    string shown = unfocused.deref().opened();
+    t.verdict(name: "loop: under `--quit-after` alone, a system window that takes no focus",
+              why: shown == "probe 640x400 windowed unfocused" ? "" : "asked for `${shown}`");
+}
+
+fn void phaseCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 3 * STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    bool going = p.tick() && p.tick() && p.tick();
+    t.verdict(name: "loop: a tick goes on while the window is open", why: going ? "" : "a tick ended the run");
+    expectCount(t: t, name: "loop: each tick is a frame on the platform's timestamp, 3 steps owed over 3 frames",
+                got: p.stepsSettled(), want: 3);
+    expectCount(t: t, name: "loop: each tick reads the platform's timestamp once", got: log.deref().nows(), want: 3);
+    expectCount(t: t, name: "loop: and pumps its window once", got: log.deref().pumps(), want: 3);
+    expectCount(t: t, name: "loop: and runs the world's Output once", got: log.deref().outputs(), want: 3);
+}
+
+fn void lifecycleCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 10000000000);
+    times.add(item: T0 + 10000000000 + STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    p.tick();
+    p.tick();
+    p.lifecycle(event: Lifecycle::Suspended);
+    p.lifecycle(event: Lifecycle::Resumed);
+    p.tick();
+    expectCount(t: t, name: "loop: Resumed after Suspended owes nothing for the time away", got: p.stepsSettled(), want: 1);
+    p.tick();
+    expectCount(t: t, name: "loop: and a step later one is owed again", got: p.stepsSettled(), want: 2);
+
+    Shared<Log> plain = new Log.make();
+    DynamicArray<int64> gap = DynamicArray.empty();
+    gap.add(item: T0);
+    gap.add(item: T0 + STEP);
+    gap.add(item: T0 + 10000000000);
+    plain.derefMut().takeTimes(times: give gap);
+    Play<Counter, FakePlatform> r = loopOn(log: copy plain, line: "");
+    hostStarts(p: r);
+    r.tick();
+    r.tick();
+    r.lifecycle(event: Lifecycle::Resumed);
+    r.tick();
+    expectCount(t: t, name: "loop: a Resumed with no Suspended before it resets nothing, so the gap owes the cap",
+                got: r.stepsSettled(), want: 6);
+}
+
+fn void endCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    log.derefMut().closeOnPump(at: 3);
+    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    bool one = p.tick();
+    bool two = p.tick();
+    bool three = p.tick();
+    bool closed = one && two && !three;
+    t.verdict(name: "loop: the window closing ends the run", why: closed ? "" : "ticks ${one} ${two} ${three}");
+    expectCount(t: t, name: "loop: with status 0, said to the platform", got: log.deref().endedWith(), want: 0);
+    expectCount(t: t, name: "loop: and the frame it closed on runs nothing", got: log.deref().outputs(), want: 2);
+
+    Shared<Log> refused = new Log.make();
+    refused.derefMut().refuseWindow();
+    Play<Counter, FakePlatform> r = loopOn(log: copy refused, line: "");
+    hostStarts(p: r);
+    bool ran = r.tick();
+    t.verdict(name: "loop: a window that could not be opened ends the run at the first tick",
+              why: ran ? "the tick went on" : "");
+    expectCount(t: t, name: "loop: with status 1", got: refused.deref().endedWith(), want: 1);
+    expectCount(t: t, name: "loop: and runs no frame", got: refused.deref().outputs(), want: 0);
+
+    Shared<Log> counted = new Log.make();
+    Play<Counter, FakePlatform> c = loopOn(log: copy counted, line: "--quit-after 3");
+    hostStarts(p: c);
+    bool a = c.tick();
+    bool b = c.tick();
+    bool last = c.tick();
+    bool quitting = a && b && !last;
+    t.verdict(name: "loop: `--quit-after 3` ends the run on its third frame", why: quitting ? "" : "ticks ${a} ${b} ${last}");
+    expectCount(t: t, name: "loop: with status 0", got: counted.deref().endedWith(), want: 0);
+    expectCount(t: t, name: "loop: after running all three", got: counted.deref().outputs(), want: 3);
+    expectCount(t: t, name: "loop: and says the end once", got: counted.deref().endings(), want: 1);
+}
+
+fn void fixedCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "--headless --fixed-fps 60 --quit-after 30");
+    hostStarts(p: p);
+    while (p.tick()) { }
+    expectCount(t: t, name: "loop: under `--fixed-fps 60 --quit-after 30`, 30 frames run", got: log.deref().outputs(), want: 30);
+    expectCount(t: t, name: "loop: owing exactly 29 steps at 60 Hz, the first frame setting the baseline",
+                got: p.stepsSettled(), want: 29);
+    expectCount(t: t, name: "loop: and reading no host clock", got: log.deref().nows(), want: 0);
+
+    Shared<Log> half = new Log.make();
+    Play<Counter, FakePlatform> h = loopOn(log: copy half, line: "--fixed-fps 30 --quit-after 11");
+    hostStarts(p: h);
+    while (h.tick()) { }
+    expectCount(t: t, name: "loop: under `--fixed-fps 30`, each frame owes two 60 Hz steps", got: h.stepsSettled(), want: 20);
+}
+
+// `play` itself, before its loop: a malformed option ends the run with 2, and asks for no window.
+fn void playCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    log.derefMut().takeArgs(args: argsOf(line: "--quit-after soon"));
+    Shared<Log> forWorld = copy log;
+    Shared<Log> forPlatform = copy log;
+    uint8 code = play(world: Counter.make(log: give forWorld), platform: FakePlatform.make(log: give forPlatform), hz: 60,
+                      title: "probe", width: 640, height: 400);
+    expectCount(t: t, name: "play: a malformed option ends the run with 2", got: cast<int64>(code), want: 2);
+    expectCount(t: t, name: "play: before its loop, so no window is asked for", got: log.deref().openings(), want: 0);
+}
+
+fn void platformTests(ref Tally t) {
+    optionCases(t: t);
+    timestampCases(t: t);
+    windowCases(t: t);
+    phaseCases(t: t);
+    lifecycleCases(t: t);
+    endCases(t: t);
+    fixedCases(t: t);
+    playCases(t: t);
+}

@@ -1,0 +1,66 @@
+// The three options every game's run reads from its command line (target-platforms § Decided, 2026-11-20), as Godot
+// names them, so a test or CI runs a game as a player does, with no code of its own:
+//
+// - `--headless`: a headless window of the app's size, so no system window, no page and no focus; Output runs as usual;
+// - `--quit-after N`: the run ends after N frames with status 0, and a window it opens takes no focus; 0 is no limit;
+// - `--fixed-fps F`: each frame's timestamp moves by exactly 1/F second instead of reading the host's clock, so N
+//   frames owe an exact count of steps.
+//
+// Every other argument is the game's. A malformed option is refused, and the run prints it and ends with 2 before its
+// loop starts.
+
+import { std::collections::DynamicArray, std::fmt::Parseable, std::fmt::ParseError };
+
+export { RunOptions, RunOptionError };
+
+// What a run was asked for.
+type value RunOptions {
+    public bool headless = false;
+    public int64 quitAfter = 0;
+    public int32 fixedFps = 0;
+
+    // No option given: a window, no limit, the host's clock.
+    public ctor empty() { }
+
+    // The options among `args`, the command line after the program's name; the rest is left to the game.
+    public ctor Result<RunOptions, RunOptionError> fromArguments(const ref DynamicArray<string> args) {
+        RunOptions o = RunOptions.empty();
+        isize i = 0;
+        while (i < args.length()) {
+            string a = copy args[i];
+            i = i + 1;
+            if (a == "--headless") { o.headless = true; continue; }
+            if (a == "--quit-after" || a == "--fixed-fps") {
+                if (i >= args.length()) { return Result::Err(error: RunOptionError.of(words: "`" + a + "` wants a number after it")); }
+                string given = copy args[i];
+                i = i + 1;
+                Result<int64, ParseError> n = Parseable::<int64>.parse(text: given);
+                int64 v = -1;
+                match (n) { case Ok(value: x): { v = x; } case Err(error: e): { } };
+                if (a == "--quit-after") {
+                    if (v < 0) { return Result::Err(error: RunOptionError.of(words: "`--quit-after " + given + "`: the frames to run before the run ends, a whole number, 0 for no limit")); }
+                    o.quitAfter = v;
+                } else {
+                    if (v < 1 || v > 1000000) { return Result::Err(error: RunOptionError.of(words: "`--fixed-fps " + given + "`: the frames a second each frame's time moves by, a whole number from 1 to 1000000")); }
+                    o.fixedFps = cast<int32>(v);
+                }
+                continue;
+            }
+            if (a.startsWith(prefix: "--quit-after=") || a.startsWith(prefix: "--fixed-fps=") || a.startsWith(prefix: "--headless=")) {
+                return Result::Err(error: RunOptionError.of(words: "`" + a + "`: write the option and its number as two arguments, `--quit-after 30`"));
+            }
+        }
+        return Result::Ok(value: o);
+    }
+}
+
+// What a malformed option said, which the run prints before it ends with 2.
+type resource RunOptionError implements Error {
+    string words = "";
+
+    friend RunOptions::fromArguments[of];
+
+    ctor of(string words) { this.words = give words; }
+
+    public const fn string message() { return copy this.words; }
+}

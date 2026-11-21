@@ -1,0 +1,146 @@
+// The loop: a game's world run on std::app, one display frame a tick, on a platform (the first slice's step 7; the
+// frame's phases are kyoten::frame's `frame`, frame-phases § Decided).
+//
+// - **The world and the platform are injected,** and the loop owns both once it runs: on the web std::app's `run` never
+//   returns, so the loop is what keeps them alive (std::app's docs). A test drives `tick` and `lifecycle` by hand with
+//   a world and a platform of its own.
+// - **The window is asked for on `SurfaceReady`,** which every host says once before the first tick, and where Android
+//   says surfaces may be made: portable code opens its window there (std::app's docs).
+// - **`Resumed` after `Suspended` resets the clock's baseline,** so the time away is never owed as a burst of steps.
+//   A game saves on `Suspended`, never in a destructor: on the web the world is never dropped.
+// - **The run's three options** (`RunOptions`) are read once, before the loop: a malformed one ends the run with 2.
+//   `--quit-after` and `--fixed-fps` are the loop's, so every platform takes them alike; `--headless` is handed to the
+//   platform with the window it opens.
+// - **How it ends:** the window closing ends it with 0, `--quit-after`'s last frame with 0, a window that could not be
+//   opened with 1. Natively `play` returns that status, which the loop leaves in an `Ending` both hold.
+
+import { core::println, std::app::App, std::app::Lifecycle, std::app::Pace, std::app::run, std::memory::Owned,
+         std::memory::Shared, std::collections::DynamicArray, kyoten::frame::World, kyoten::frame::Clock,
+         kyoten::frame::Owed, kyoten::frame::frame, Platform, RunOptions, RunOptionError };
+
+export { Ending, Play, play, fixedTimestamp };
+
+comptime int64 NS = 1000000000;
+
+// The status a run ended with, which the loop writes and `play` reads once std::app's `run` returns. 1 until the loop
+// says otherwise, so a loop that ends unasked is a failure.
+type resource Ending {
+    uint8 status = 1;
+    bool said = false;
+
+    public ctor make() { }
+
+    public const fn uint8 code() { return this.status; }
+    // Whether the loop ended the run itself.
+    public const fn bool ended() { return this.said; }
+    public fn void endWith(uint8 code) {
+        this.status = code;
+        this.said = true;
+    }
+}
+
+// Frame `index`'s timestamp under `--fixed-fps fps`: index / fps seconds, in nanoseconds, rounded up, so with fps at
+// the base rate each frame after the first owes exactly one step. Split by a division first, so it never overflows.
+fn int64 fixedTimestamp(int64 index, int32 fps) {
+    int64 f = cast<int64>(fps);
+    int64 whole = (index / f) * NS;
+    int64 part = (index % f) * NS;      // below fps × 10^9, which fits
+    return whole + (part + f - 1) / f;
+}
+
+// The loop, a std::app `App`: the world and the platform, the clock the world's base rate sets, and the window's ask.
+type resource Play<W: World, P: Platform> implements App {
+    W world;
+    P platform;
+    Clock clock;
+    RunOptions options;
+    string title = "";
+    int32 width = 0;
+    int32 height = 0;
+    Shared<Ending> ending;
+    int64 frames = 0;
+    bool asked = false;
+    bool refused = false;
+    bool away = false;
+
+    // `hz` is the world's base rate (the generated world's `baseHz`); `title`, `width` and `height` the window's, from
+    // the app record.
+    public ctor make(W world, P platform, RunOptions options, int32 hz, string title, int32 width, int32 height,
+                     Shared<Ending> ending) {
+        this.world = give world;
+        this.platform = give platform;
+        this.clock = Clock.make(hz: hz, maxSteps: 5);
+        this.options = options;
+        this.title = give title;
+        this.width = width;
+        this.height = height;
+        this.ending = give ending;
+    }
+
+    public fn void lifecycle(Lifecycle event) {
+        match (event) {
+            case SurfaceReady: {
+                if (!this.asked) {
+                    this.asked = true;
+                    bool focused = this.options.quitAfter == 0;
+                    this.refused = !this.platform.openWindow(title: this.title, width: this.width, height: this.height,
+                                                             headless: this.options.headless, focused: focused);
+                }
+            }
+            case Suspended: { this.away = true; }
+            case Resumed: {
+                if (this.away) {
+                    this.away = false;
+                    this.clock.resetBaseline();
+                }
+            }
+            case _: { }
+        };
+    }
+
+    public fn bool tick() {
+        if (this.refused) { return this.end(code: 1); }
+        if (!this.platform.pumped()) { return this.end(code: 0); }
+        int64 now = 0;
+        if (this.options.fixedFps > 0) { now = fixedTimestamp(index: this.frames, fps: this.options.fixedFps); }
+        else { now = this.platform.now(); }
+        Owed owed = frame(world: this.world, clock: this.clock, now: now);
+        this.frames = this.frames + 1;
+        if (this.options.quitAfter > 0 && this.frames >= this.options.quitAfter) { return this.end(code: 0); }
+        return true;
+    }
+
+    // The frames run so far, and the steps the clock has settled.
+    public const fn int64 framesRun() { return this.frames; }
+    public const fn int64 stepsSettled() { return this.clock.settled(); }
+
+    fn bool end(uint8 code) {
+        this.ending.derefMut().endWith(code: code);
+        this.platform.ended(code: code);
+        return false;
+    }
+}
+
+// Runs `world` on `platform` until the window closes or the run's options end it, `hz` the world's base rate and the
+// window `width` × `height`, titled `title`. Natively it returns the status the run ended with; on the web std::app's
+// `run` never returns, and the platform ends the program. A malformed option is printed, and the run ends with 2
+// before its loop starts.
+fn uint8 play<W: World, P: Platform>(W world, P platform, int32 hz, string title, int32 width, int32 height) {
+    DynamicArray<string> args = platform.arguments();
+    Result<RunOptions, RunOptionError> read = RunOptions.fromArguments(args: args);
+    RunOptions options = RunOptions.empty();
+    match (read) {
+        case Ok(value: o): { options = o; }
+        case Err(error: e): {
+            string why = e.message();
+            println(s: "kyoten: " + why);
+            return 2;
+        }
+    };
+    Shared<Ending> ending = new Ending.make();
+    Shared<Ending> held = copy ending;
+    Owned<App> app = new Play<W, P>.make(world: give world, platform: give platform, options: options, hz: hz,
+                                         title: give title, width: width, height: height, ending: give held);
+    run(app: give app, pace: Pace::EveryRefresh);
+    return ending.deref().code();
+}

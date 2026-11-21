@@ -1,0 +1,40 @@
+// kyoten::platform — the platform seam (target-platforms § Decided, questions 1 and 2 of 2026-11-07, and 2026-11-20;
+// the first slice's step 7, KYR-8): the `Platform` contract the engine runs a game through, the loop that runs the
+// game's world on std::app (`play`), the three options every game's run reads from its command line, and the open
+// platforms, one declaration per target.
+//
+// - **It is the engine's platform module,** which its records file marks (`"platform": true`), so the one place in the
+//   engine whose code may name a platform flag. A game names none, and asks for capabilities.
+// - **Tier `Module`, outside the simulation's fence,** as `kyoten::content` is: the loop reads the host's clock, the
+//   window and the command line, which no simulation module may. It names `kyoten::frame` alone of the engine, so
+//   `kyoten::frame` stays fenced for the `Time` a game's processors take.
+// - **Calls are resolved at compile time:** `play` is generic over the world and the platform, so kama writes a copy
+//   for each and calls it directly (target-platforms question 2). A closed platform is a private package's type
+//   implementing the same contract, with its own module marked as this one is.
+
+import { std::collections::DynamicArray };
+
+export { Platform };
+
+// What the engine asks of a platform, as far as the first slice's step 7 needs it: the content folders, the command
+// line, the window, the frame's timestamp and the end. Capabilities, the GPU, audio and input devices join it at the
+// steps that need them.
+type contract Platform for resource {
+    // Where a package's content folder is in this build. `native` is the folder the generator found, which a native
+    // development build reads; on the web, where the package's `preloadFiles` packed it, `/<package>/content`.
+    const fn string contentFolder(const ref string package, const ref string native);
+    // The command line after the program's name: on the web the page's query. The run reads its three options from it
+    // (`RunOptions`), and leaves the rest to the game.
+    const fn DynamicArray<string> arguments();
+    // The game's window, `width` × `height` logical, titled `title`: a headless one when `headless` says so, taking the
+    // focus only when `focused` says so. False when it cannot be opened, with why printed.
+    fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused);
+    // The window's events since the last tick: false once it is closing.
+    fn bool pumped();
+    // This frame's timestamp, in nanoseconds from any fixed start: the host's frame time, where an XR platform answers
+    // its predicted display time.
+    fn int64 now();
+    // The run ends with `code`, from inside the loop. Natively `run` then returns it; on the web, where `run` never
+    // returns, the platform ends the program.
+    fn void ended(uint8 code);
+}
