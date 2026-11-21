@@ -10,7 +10,7 @@
 // - **The platform flags:** no `@compileFor` names `OS_*`, `ARCH_*`, `ABI_*` or `HOSTED`, which kama derives from the
 //   target, outside a library's platform module, which its records file marks (`"platform": true`): kyoten's open
 //   platforms, or a private platform package's (target-platforms § Decided, 2026-11-20). A game marks none, and asks
-//   for capabilities. One stopgap is excepted until step 7 removes it.
+//   for capabilities. The check keeps no named exception.
 //
 // `kyoten generate` runs the fence and the flags on a game; `kyoten check` on a library runs all three.
 
@@ -389,16 +389,6 @@ fn int64 lineAt(const ref string text, isize at) {
     return line;
 }
 
-// The one exception, a stopgap (target-platforms § Decided, question 3, item 8): `kyoten::content`'s `folderFor`
-// chooses the web's preloaded content folder or the native one. Where the files are is the `Platform`'s to say, and
-// step 7 (KYR-8) builds it; then `folderFor` and this exception are removed, and this list is empty.
-fn bool excepted(const ref string package, const ref string file, const ref string text, isize after) {
-    if (package != "kyoten" || file != "src/content/source.kama") { return false; }
-    isize end = match (text.findFrom(substring: "{", start: after)) { case Some(value: v): v; case None: text.length(); };
-    string declared = text.substring(start: after, end: end);
-    return declared.contains(substring: "fn string folderFor(");
-}
-
 fn void flagsIn(const ref string package, const ref string file, const ref string text, ref Refusals no) {
     string marker = "@compileFor(";
     isize at = 0;
@@ -416,7 +406,7 @@ fn void flagsIn(const ref string package, const ref string file, const ref strin
         isize close = depth == 0 ? i - 1 : i;
         string expr = text.substring(start: open, end: close);
         DynamicArray<string> flags = platformFlags(expr: expr);
-        if (flags.length() > 0 && !excepted(package: package, file: file, text: text, after: i)) {
+        if (flags.length() > 0) {
             int64 line = lineAt(text: text, at: start);
             string first = copy flags[0];
             no.add(where: file + ":${line}", what: "`@compileFor(${expr})` names `${first}`, a platform flag: platform code lives in a library's platform module, which its records file marks (`\"platform\": true`), and the engine's other modules and games ask for capabilities instead (target-platforms § Decided, question 3 and 2026-11-20)");

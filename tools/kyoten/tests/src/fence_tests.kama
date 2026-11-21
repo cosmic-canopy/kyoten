@@ -95,8 +95,9 @@ unsafe fn void fenceTests(ref Tally t, ref Setup s) {
     ranAs(t: t, name: "tiers: a library has nothing generated, and `kyoten generate` on one says so", r: gen, want: 2,
           says: "is a library");
 
-    // The engine itself: its lists hold the fence and the tiers, and its one platform flag is the stopgap step 7
-    // removes, so `kyoten check` passes it on to kama.
+    // The engine itself: its lists hold the fence and the tiers, and its platform flags are all in kyoten::platform,
+    // its marked platform module, with no exception (target-platforms § Decided, 2026-11-20), so `kyoten check` passes
+    // it on to kama.
     DynamicArray<string> argv = DynamicArray.empty();
     argv.add(item: "check");
     argv.add(item: s.fixture(at: "../../../../engine/kama.json"));

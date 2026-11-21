@@ -14,7 +14,7 @@
 // A refusal at any step leaves every file as it was.
 
 import { core::println, core::eprintln, std::collections::DynamicArray, std::io::IoError, std::fs::removeDir,
-         std::fs::exists, std::fs::canonicalPath, std::fs::removeDirAll, Kama, Manifest, Refusals, Records, Index,
+         std::fs::exists, std::fs::canonicalPath, std::fs::removeDirAll, Kama, Manifest, Dependency, Refusals, Records, Index,
          StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
          worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, checkFence, checkFlags, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile };
@@ -92,8 +92,16 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
         Result<string, IoError> c = canonicalPath(path: game.root() + "/content");
         contentDir = match (give c) { case Ok(value: p): give p; case Err(error: e): game.root() + "/content"; };
     }
+    // The engine's content, the lowest layer (project-database § Decided, 2026-11-08): `engine/content/`, found where the
+    // game's manifest has the engine.
+    string engineDir = "";
+    foreach (const ref Dependency d in game.deps().iterConst()) {
+        if (d.name() != "kyoten" || !exists(path: d.root() + "/content")) { continue; }
+        Result<string, IoError> e = canonicalPath(path: d.root() + "/content");
+        engineDir = match (give e) { case Ok(value: p): give p; case Err(error: x): d.root() + "/content"; };
+    }
     writeIfChanged(path: game.root() + "/" + loader, text: loaderKama(game: gameName, families: families, idx: idx,
-                                                                       contentDir: contentDir));
+                                                                       contentDir: contentDir, engineDir: engineDir));
     written.add(item: give loader);
     foreach (const ref string f in before.iterConst()) {
         if (!written.contains(item: f)) { removeFile(path: game.root() + "/" + f); }

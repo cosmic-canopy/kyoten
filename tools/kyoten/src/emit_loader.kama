@@ -1,7 +1,11 @@
-// The loader's game-shaped half, written into the game's root module as `src/<game>.generated.kama` (components
-// § Decided, the loader's four questions of 2026-11-09): where the game's content is, each family's prefabs laid from
-// it through kyoten::content, and the first scene's placements made rows. The root module sits outside the
-// simulation's fence, where reading files belongs; the generated `run` (step 7) will call it, and tests call it now.
+// The loader's game-shaped half and the game's `run`, written into the game's root module as
+// `src/<game>.generated.kama` (components § Decided, the loader's four questions of 2026-11-09; target-platforms
+// § Decided, 2026-11-20): the content opened at the platform's folders, the engine's below the game's, each family's
+// prefabs laid from it through kyoten::content, the first scene's placements made rows, and `run`, which a game's
+// `main` calls. The root module sits outside the simulation's fence, where reading files and running a loop belong.
+//
+// - **`run` names `OpenPlatform` and no target:** kyoten::platform declares it once per target (the first slice's
+//   step 7), so a check analyzes the game once per configuration and its code names no platform flag.
 //
 // - **A component with a `default ctor` starts from it;** one without is read whole from its first subtree. Each is
 //   laid in kyoten::content's order: its prefab chain's base first, each prefab's layers lowest first. A prefab's value
@@ -34,24 +38,42 @@ fn string familyKeysName(const ref Family f) { return "keys_" + f.root(); }
 fn string prefabFn(const ref Family f) { return "prefab_" + f.root(); }
 fn string placeFn(const ref Family f) { return "place_" + f.root(); }
 
-// `contentDir` is the game's content folder, made absolute, or "" when the game has none.
+// The text that pushes a content folder onto `stack`: `package`'s, at the folder the platform says, `native` the one the
+// generator found. A folder that cannot be opened is refused into `no`, naming where the platform looked.
+fn string pushFolder(const ref string package, const ref string native, const ref string label, const ref string local) {
+    string t = "    string " + local + " = platform.contentFolder(package: " + literal(s: package) + ", native: " + literal(s: native) + ");\n";
+    t = t + "    Result<FolderSource, IoError> " + local + "Opened = FolderSource.open(root: " + local + ", label: " + literal(s: label) + ");\n";
+    t = t + "    match (give " + local + "Opened) {\n";
+    t = t + "        case Ok(value: folder): { Owned<RecordSource> boxed = give folder; stack.push(source: give boxed); }\n";
+    t = t + "        case Err(error: e): { string why = e.message(); no.add(where: " + local + ", what: \"cannot be opened: \" + why); }\n";
+    t = t + "    };\n";
+    return t;
+}
+
+// `contentDir` is the game's content folder, made absolute, or "" when the game has none; `engineDir` the engine's, or
+// "" when its package has none.
 fn string loaderKama(const ref string game, const ref DynamicArray<Family> families, const ref Index idx,
-                     const ref string contentDir) {
+                     const ref string contentDir, const ref string engineDir) {
     ImportSet names = ImportSet.make(module: copy game);
-    names.declare(name: "contentFolder");
     names.declare(name: "openContent");
     names.declare(name: "loadPrefabs");
     names.declare(name: "placeFirstScene");
+    names.declare(name: "refusedAtLoad");
+    names.declare(name: "run");
+    names.add(path: "core::println");
     names.add(path: "std::collections::DynamicArray");
     names.add(path: "kyoten::content::LayerStack");
     names.add(path: "kyoten::content::Content");
     names.add(path: "kyoten::content::LoadRefusals");
-    if (!contentDir.isEmpty()) {
+    names.add(path: "kyoten::content::readContent");
+    names.add(path: "kyoten::platform::Platform");
+    names.add(path: "kyoten::platform::OpenPlatform");
+    names.add(path: "kyoten::platform::play");
+    if (!contentDir.isEmpty() || !engineDir.isEmpty()) {
         names.add(path: "std::io::IoError");
         names.add(path: "std::memory::Owned");
         names.add(path: "kyoten::content::RecordSource");
         names.add(path: "kyoten::content::FolderSource");
-        names.add(path: "kyoten::content::folderFor");
     }
     names.add(path: game + "::generated::Prefabs");
     names.add(path: game + "::GameWorld");
@@ -73,39 +95,24 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     if (anyWhole) { names.add(path: "kyoten::content::readWhole"); }
 
     string t = headerLine() + "\n";
-    t = t + "// The loader's game-shaped half (components § Decided, the loader's four questions of 2026-11-09): where the\n";
-    t = t + "// game's content is, each family's prefabs laid from it through kyoten::content, and the first scene's placements\n";
-    t = t + "// made rows. The generated `run` (step 7) calls it.\n\n";
+    t = t + "// The loader's game-shaped half and the game's `run` (components § Decided, the loader's four questions of\n";
+    t = t + "// 2026-11-09; target-platforms § Decided, 2026-11-20): the content opened at the platform's folders, each family's\n";
+    t = t + "// prefabs laid from it through kyoten::content, the first scene's placements made rows, and the loop.\n\n";
     t = t + names.block();
-    t = t + "export { contentFolder, openContent, loadPrefabs, placeFirstScene };\n\n";
+    t = t + "export { openContent, loadPrefabs, placeFirstScene, run };\n\n";
 
-    // Where the content is.
-    t = t + "// The game's content: natively the folder the generator found, on the web where `preloadFiles` packed it.\n";
-    if (contentDir.isEmpty()) {
-        t = t + "// This game has no `content/`.\n";
-        t = t + "fn string contentFolder() { return \"\"; }\n\n";
-        t = t + "// The game's content as a stack: none, since it has no `content/`.\n";
-        t = t + "fn Result<LayerStack, LoadRefusals> openContent() { return Result::Ok(value: LayerStack.make()); }\n\n";
-    } else {
-        // The choice per target is the engine's (`folderFor`), so this file names no target and a check analyzes the game
-        // once.
-        t = t + "fn string contentFolder() { return folderFor(game: " + literal(s: game) + ", native: " + literal(s: contentDir) + "); }\n\n";
-        t = t + "// The game's content as a stack: its folder, the one layer until the engine's content joins below it.\n";
-        t = t + "fn Result<LayerStack, LoadRefusals> openContent() {\n";
-        t = t + "    LayerStack stack = LayerStack.make();\n";
-        t = t + "    Result<FolderSource, IoError> opened = FolderSource.open(root: contentFolder(), label: \"content\");\n";
-        t = t + "    match (give opened) {\n";
-        t = t + "        case Ok(value: folder): { Owned<RecordSource> boxed = give folder; stack.push(source: give boxed); }\n";
-        t = t + "        case Err(error: e): {\n";
-        t = t + "            LoadRefusals no = LoadRefusals.make();\n";
-        t = t + "            string why = e.message();\n";
-        t = t + "            no.add(where: contentFolder(), what: \"cannot be opened: \" + why);\n";
-        t = t + "            return Result::Err(error: give no);\n";
-        t = t + "        }\n";
-        t = t + "    };\n";
-        t = t + "    return Result::Ok(value: give stack);\n";
-        t = t + "}\n\n";
-    }
+    // Where the content is: the platform says, so this file names no target.
+    t = t + "// The content as a stack, lowest first: the engine's, then the game's, each at the folder the platform says (natively\n";
+    t = t + "// the one the generator found, on the web where its package's `preloadFiles` packed it). A folder that cannot be\n";
+    t = t + "// opened is refused, naming where the platform looked.\n";
+    t = t + "fn Result<LayerStack, LoadRefusals> openContent<P: Platform>(const ref P platform) {\n";
+    t = t + "    LayerStack stack = LayerStack.make();\n";
+    t = t + "    LoadRefusals no = LoadRefusals.make();\n";
+    if (!engineDir.isEmpty()) { t = t + pushFolder(package: "kyoten", native: engineDir, label: "kyoten/content", local: "engineAt"); }
+    if (!contentDir.isEmpty()) { t = t + pushFolder(package: game, native: contentDir, label: "content", local: "gameAt"); }
+    t = t + "    if (no.any()) { return Result::Err(error: give no); }\n";
+    t = t + "    return Result::Ok(value: give stack);\n";
+    t = t + "}\n\n";
 
     // The keys each component is matched by.
     foreach (const ref Family f in families.iterConst()) {
@@ -231,6 +238,37 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "    }\n";
     t = t + "    if (no.any()) { return Result::Err(error: give no); }\n";
     t = t + "    return Result::Ok(value: placed);\n";
+    t = t + "}\n\n";
+
+    // The game's run.
+    t = t + "fn void refusedAtLoad(const ref LoadRefusals no) {\n";
+    t = t + "    foreach (const ref string l in no.lines().iterConst()) { println(s: \"kyoten: refused at load: \" + l); }\n";
+    t = t + "}\n\n";
+    t = t + "// The game's run, which its `main` calls (target-platforms § Decided, questions 1 and 2, and 2026-11-20): the build's\n";
+    t = t + "// open platform, the content read at its folders, the prefabs loaded and the first scene placed, then kyoten's loop\n";
+    t = t + "// until the window closes or the run's options end it. A refusal at load is printed, and the run ends with 1.\n";
+    t = t + "fn uint8 run() {\n";
+    t = t + "    OpenPlatform platform = OpenPlatform.make();\n";
+    t = t + "    Result<LayerStack, LoadRefusals> opened = openContent(platform: platform);\n";
+    t = t + "    LayerStack stack = LayerStack.make();\n";
+    t = t + "    match (give opened) { case Ok(value: s): { stack = give s; } case Err(error: e): { refusedAtLoad(no: e); return 1; } };\n";
+    t = t + "    LoadRefusals no = LoadRefusals.make();\n";
+    t = t + "    Content content = readContent(stack: stack, no: no);\n";
+    t = t + "    if (no.any()) { refusedAtLoad(no: no); return 1; }\n";
+    t = t + "    Result<Prefabs, LoadRefusals> loaded = loadPrefabs(content: content);\n";
+    t = t + "    Prefabs prefabs = match (give loaded) { case Ok(value: p): give p; case Err(error: e): { refusedAtLoad(no: e); return 1; } };\n";
+    t = t + "    GameWorld world = GameWorld.make();\n";
+    t = t + "    Result<isize, LoadRefusals> placed = placeFirstScene(world: world, prefabs: prefabs, content: content);\n";
+    t = t + "    match (give placed) { case Ok(value: n): { } case Err(error: e): { refusedAtLoad(no: e); return 1; } };\n";
+    t = t + "    int32 width = content.windowWidth();\n";
+    t = t + "    int32 height = content.windowHeight();\n";
+    t = t + "    if (width < 1 || height < 1) {\n";
+    t = t + "        println(s: \"kyoten: refused at load: no content layer sets the window's size, `app.window`: the engine's content does, so it was not read\");\n";
+    t = t + "        return 1;\n";
+    t = t + "    }\n";
+    t = t + "    string title = content.windowTitle(fallback: " + literal(s: game) + ");\n";
+    t = t + "    return play(world: give world, platform: give platform, hz: GameWorld::baseHz, title: give title, width: width,\n";
+    t = t + "                height: height);\n";
     t = t + "}\n";
     return t;
 }

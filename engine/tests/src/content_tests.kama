@@ -6,7 +6,7 @@
 import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, kyoten::content::LayerStack,
          kyoten::content::Content, kyoten::content::Placement, kyoten::content::Subtree,
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
-         kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree, kyoten::content::folderFor,
+         kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree,
          kyoten::world::Transform,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
@@ -383,20 +383,6 @@ fn void subtrees(ref Tally t) {
               why: refusedExtra && unknown == "unknown field `playr`" ? "" : "said `${unknown}`");
 }
 
-// Where a game's content folder is in this build: `/<game>/content` on the web, where its manifest's `preloadFiles`
-// line packs it, and the folder the generator found natively.
-@compileFor(ARCH_WASM32)
-fn string expectedFolder() { return "/hello/content"; }
-@compileFor(!ARCH_WASM32)
-fn string expectedFolder() { return "C:/games/hello/content"; }
-
-fn void folders(ref Tally t) {
-    string at = folderFor(game: "hello", native: "C:/games/hello/content");
-    string want = expectedFolder();
-    t.verdict(name: "folderFor: the content folder of the build being made, the engine's choice per target",
-              why: at == want ? "" : "`${at}`, wanted `${want}`");
-}
-
 // The app record's window, laid over across layers field by field: the engine's content, the lowest layer, holds the
 // defaults (engine/content/app.records.json), and a game's record lays its own over them.
 fn void appWindow(ref Tally t) {
@@ -435,7 +421,6 @@ fn void appWindow(ref Tally t) {
 }
 
 unsafe fn void contentTests(ref Tally t) {
-    folders(t: t);
     folderSource(t: t);
     layers(t: t);
     spelling(t: t);

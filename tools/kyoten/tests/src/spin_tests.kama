@@ -48,6 +48,27 @@ fn DynamicArray<string> releaseWeb(const ref string js) {
 
 // `main` loads the content after the turns by hand, and prints this line before the placed world's Output.
 fn string placedMarker() { return "spin: placed world"; }
+// And this one before it calls the generated `run`.
+fn string runMarker() { return "spin: the run"; }
+
+// The run's three options, as a test passes them: no window, a 60th of a second a frame, 30 frames.
+fn DynamicArray<string> runOptions() {
+    DynamicArray<string> o = DynamicArray.empty();
+    o.add(item: "--headless");
+    o.add(item: "--fixed-fps");
+    o.add(item: "60");
+    o.add(item: "--quit-after");
+    o.add(item: "30");
+    return o;
+}
+
+// `kyoten run`'s arguments for the game's own command line, after kama's flags: `--` and the run's options.
+fn DynamicArray<string> toTheGame(DynamicArray<string> flags, const ref DynamicArray<string> options) {
+    DynamicArray<string> more = give flags;
+    more.add(item: "--");
+    foreach (const ref string o in options.iterConst()) { more.add(item: copy o); }
+    return more;
+}
 
 // The text before `marker`, or all of it; and the text from it on, or "".
 fn string before(const ref string text, const ref string marker) {
@@ -61,7 +82,7 @@ fn string after(const ref string text, const ref string marker) {
 // variant over its base; the first scene's placements made rows, a placement's values over its prefab's, which the
 // placed world's Output shows; and a mod's content, held in memory, refused at load by its file, prefab and component.
 fn void loaded(ref Tally t, const ref string leg, const ref Ran r) {
-    string said = copy r.said();
+    string said = before(text: r.said(), marker: runMarker());
     check(t: t, name: "spin: ${leg}: the loader lays each prefab's components over their defaults, a variant over its base",
           ok: r.says(what: "loaded: cube rate 2 player 1, fastCube rate 4, bigCube rate 2 size 2"), why: said);
     string placed = after(text: said, marker: placedMarker());
@@ -107,6 +128,35 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
     t.verdict(name: "spin: ${leg}: 60 steps of the generated world turn each cube as `turn` does by hand, bit for bit", why: why);
     check(t: t, name: "spin: ${leg}: the base clock is 60 Hz, the one rate its processors run at",
           ok: r.says(what: "spin: base 60 Hz"), why: said);
+}
+
+// The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's
+// content and the game's read at the platform's folders, the first scene placed, and the loop's 30 frames, which owe
+// exactly 29 steps, each cube turned by its own rate as `turn` turns it by hand, bit for bit.
+fn void throughRun(ref Tally t, const ref string leg, const ref Ran r) {
+    string said = after(text: r.said(), marker: runMarker());
+    string expectedText = after(text: r.said(), marker: placedMarker());
+    DynamicArray<string> shown = linesAfter(text: said, prefix: "shown: ");
+    DynamicArray<string> expected = linesAfter(text: expectedText, prefix: "expect run: ");
+    isize n = shown.length();
+    int64 status = r.code();
+    check(t: t, name: "spin: ${leg}: `run` runs Output once a frame for 30 frames, three cubes each",
+          ok: n == 90 && status == 0, why: "${n} shown lines, status ${status}: " + said);
+    string why = "";
+    if (n < 3 || expected.length() != 3) {
+        isize e = expected.length();
+        why = "${n} shown and ${e} expected lines: " + said;
+    } else {
+        isize k = 0;
+        while (k < 3) {
+            string got = copy shown[n - 3 + k];
+            string want = copy expected[k];
+            if (got != want && why.isEmpty()) { why = "shown `${got}`, by hand `${want}`"; }
+            k = k + 1;
+        }
+    }
+    t.verdict(name: "spin: ${leg}: `run`'s last frame shows each placed cube after 29 steps, as `turn` turns it by hand, bit for bit",
+              why: why);
 }
 
 unsafe fn void spinTests(ref Tally t, ref Setup s) {
@@ -177,11 +227,34 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
               && reformatted.says(what: "components of glow: asked") && reformatted.says(what: "components of kyoten: cached"),
           why: warm.said() + "\n" + reformatted.said() + "\n" + answer);
 
-    Ran ran = s.kyoten(command: "run", game: "spin", more: none());
+    Ran ran = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: none(), options: runOptions()));
     ranAs(t: t, name: "spin: `kyoten run`, whose main reads every generated name", r: ran, want: 0,
           says: "spin: player 1, faster held false, cube spin 1, big cube size 1 glow 1, ids true true");
     sameTurns(t: t, leg: "native", r: ran);
     loaded(t: t, leg: "native", r: ran);
+    throughRun(t: t, leg: "native", r: ran);
+    DynamicArray<string> malformed = DynamicArray.empty();
+    malformed.add(item: "--quit-after");
+    malformed.add(item: "soon");
+    Ran refusedRun = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: none(), options: malformed));
+    ranAs(t: t, name: "spin: native: a malformed option ends the run with 2, saying which", r: refusedRun, want: 2,
+          says: "kyoten: `--quit-after soon`: the frames to run");
+    // A refusal at load: `run` prints it and ends with 1, before its loop. The game's app record asks for a window 0
+    // wide, which the loader refuses, naming the game's file.
+    string broken = s.fixture(at: "spin/content/broken.records.json");
+    write(path: broken, text: "{ \"app\": { \"window\": { \"width\": 0 } } }");
+    Ran refusedLoad = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: none(), options: runOptions()));
+    erase(path: broken);
+    ranAs(t: t, name: "spin: native: a refusal at load ends `run` with 1, printed with the game's file", r: refusedLoad,
+          want: 1, says: "kyoten: refused at load: content/broken.records.json: `app.window.width` is 0");
+    check(t: t, name: "spin: native: and the loop never starts", ok: !after(text: refusedLoad.said(), marker: runMarker()).contains(substring: "shown: "),
+          why: refusedLoad.said());
+    // The engine's content is the lowest layer, opened first (project-database § Decided, 2026-11-08).
+    string loader = read(path: s.fixture(at: "spin/src/spin.generated.kama"));
+    isize engineAt = match (loader.find(substring: "label: \"kyoten/content\"")) { case Some(value: v): v; case None: -1; };
+    isize gameAt = match (loader.find(substring: "label: \"content\"")) { case Some(value: v): v; case None: -1; };
+    check(t: t, name: "spin: the generated `run` opens the engine's content, then the game's above it",
+          ok: engineAt >= 0 && gameAt > engineAt, why: "the engine's layer at ${engineAt}, the game's at ${gameAt}");
     // The world, its tables and its passes drive the simulation, so they sit outside its fence, in the app's root module
     // beside `main` (components § Decided, step 6's question 1 of 2026-11-09). The fenced `generated` keeps what
     // processors import: `Actions` and the prefab types.
@@ -204,11 +277,12 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
           why: tables + "\n" + world);
     DynamicArray<string> release = DynamicArray.empty();
     release.add(item: "--release");
-    Ran ranRelease = s.kyoten(command: "run", game: "spin", more: release);
+    Ran ranRelease = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: give release, options: runOptions()));
     ranAs(t: t, name: "spin: `kyoten run --release` passes its flag to kama", r: ranRelease, want: 0,
           says: "spin: player 1, faster held false");
     sameTurns(t: t, leg: "native release", r: ranRelease);
     loaded(t: t, leg: "native release", r: ranRelease);
+    throughRun(t: t, leg: "native release", r: ranRelease);
     if (s.wasm()) {
         string js = s.fixture(at: "spin/out/web/spin.js");
         DynamicArray<string> web = DynamicArray.empty();
@@ -220,11 +294,29 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
         ranAs(t: t, name: "spin: `kyoten build --target WASM`", r: built, want: 0, says: "");
         DynamicArray<string> node = DynamicArray.empty();
         node.add(item: "spin.js");
+        foreach (const ref string o in runOptions().iterConst()) { node.add(item: copy o); }
         Ran underNode = s.runProgramIn(program: "node", argv: node, dir: s.fixture(at: "spin/out/web"));
         ranAs(t: t, name: "spin: the web build runs under node", r: underNode, want: 0,
               says: "spin: player 1, faster held false");
         sameTurns(t: t, leg: "wasm under node", r: underNode);
         loaded(t: t, leg: "wasm under node", r: underNode);
+        throughRun(t: t, leg: "wasm under node", r: underNode);
+        DynamicArray<string> nodeMalformed = DynamicArray.empty();
+        nodeMalformed.add(item: "spin.js");
+        nodeMalformed.add(item: "--fixed-fps");
+        nodeMalformed.add(item: "0");
+        Ran refusedUnderNode = s.runProgramIn(program: "node", argv: nodeMalformed, dir: s.fixture(at: "spin/out/web"));
+        ranAs(t: t, name: "spin: wasm under node: a malformed option ends the run with 2 before its loop, saying which",
+              r: refusedUnderNode, want: 2, says: "kyoten: `--fixed-fps 0`");
+        // With no `--headless`, node has no page for a window: the loop ends the run with 1 from inside, which on the web,
+        // where std::app's `run` never returns, only the platform's `quit` can do.
+        DynamicArray<string> windowed = DynamicArray.empty();
+        windowed.add(item: "spin.js");
+        windowed.add(item: "--quit-after");
+        windowed.add(item: "3");
+        Ran noPage = s.runProgramIn(program: "node", argv: windowed, dir: s.fixture(at: "spin/out/web"));
+        ranAs(t: t, name: "spin: wasm under node: with no page for a window, the loop ends the run with 1, through the platform's quit",
+              r: noPage, want: 1, says: "kyoten: no window:");
 
         // The release web build, which a game ships, under Closure.
         string releaseJs = s.fixture(at: "spin/out/web-release/spin.js");
@@ -236,6 +328,7 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
               says: "spin: player 1, faster held false");
         sameTurns(t: t, leg: "wasm release under node", r: releaseUnderNode);
         loaded(t: t, leg: "wasm release under node", r: releaseUnderNode);
+        throughRun(t: t, leg: "wasm release under node", r: releaseUnderNode);
     }
 
     // The naming rule's clearing (2026-11-07): each run deletes what it did not write, if it carries the header.

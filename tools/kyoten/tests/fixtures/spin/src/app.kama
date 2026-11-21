@@ -1,7 +1,9 @@
 // The fixture's own main. It reads every name the first pass generates, so a missing or misshapen one fails the build;
 // then it builds the generated world, creates two cubes by hand, one with `faster` held, steps it 60 times through
 // the frame's driver, and runs Output, whose `show` prints each cube. Beside that it prints what `turn` gives when the
-// same turns are made by hand, for the tool's tests to compare bit for bit. Last, it loads the content (step 5.5).
+// same turns are made by hand, for the tool's tests to compare bit for bit. Then it loads the content (step 5.5), and
+// last it calls the generated `run`, as a game's `main` does (step 7), which the tests run under
+// `--headless --fixed-fps 60 --quit-after 30`.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
          kyoten::frame::step, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
@@ -9,7 +11,8 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow,
          spin::cube::Spin, spin::cube::Size, spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
-         spin::generated::Prefabs, GameWorld, openContent, loadPrefabs, placeFirstScene };
+         spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
+         placeFirstScene, run };
 
 // A mod's content, held in memory: a source the loader is handed like the game's folder (dependencies are injected).
 type resource MemorySource implements RecordSource {
@@ -34,7 +37,8 @@ fn void refused(const ref LoadRefusals no) {
 // The loader (step 5.5): the game's content folder through the stack, each family's prefabs laid in layer order, and
 // the first scene's placements made rows in a world of their own, whose Output shows them.
 fn void load() {
-    Result<LayerStack, LoadRefusals> opened = openContent();
+    OpenPlatform platform = OpenPlatform.make();
+    Result<LayerStack, LoadRefusals> opened = openContent(platform: platform);
     LayerStack stack = LayerStack.make();
     match (give opened) { case Ok(value: s): { stack = give s; } case Err(error: no): { refused(no: no); return; } };
     LoadRefusals no = LoadRefusals.make();
@@ -99,6 +103,23 @@ fn void expect(uint32 slot, bool held, float32 dt, int64 steps) {
     println(s: "expect: slot ${slot} rate ${r} rotation ${x} ${y} ${z} ${w} at ${last}");
 }
 
+// What `run` shows of a placed cube at `rate` after `steps` steps, its `faster` never held, by hand: `show`'s line.
+fn void expectRun(uint32 slot, float32 rate, float32 dt, int64 steps) {
+    Transform t = Transform.default();
+    int64 i = 0;
+    while (i < steps) {
+        t.rotateY(by: rate * dt);
+        i = i + 1;
+    }
+    uint32 r = bitcast<uint32>(rate);
+    uint32 x = bitcast<uint32>(t.rotation.x);
+    uint32 y = bitcast<uint32>(t.rotation.y);
+    uint32 z = bitcast<uint32>(t.rotation.z);
+    uint32 w = bitcast<uint32>(t.rotation.w);
+    int64 last = steps - 1;
+    println(s: "expect run: slot ${slot} rate ${r} rotation ${x} ${y} ${z} ${w} at ${last}");
+}
+
 fn uint8 main() {
     Actions a = Actions.forPlayer(player: 1);
     int32 player = a.player;
@@ -136,5 +157,9 @@ fn uint8 main() {
     println(s: "spin: base ${baseHz} Hz");
     load();
     loadMod();
-    return 0;
+    expectRun(slot: 0, rate: 2, dt: dt, steps: 29);
+    expectRun(slot: 1, rate: 5, dt: dt, steps: 29);
+    expectRun(slot: 2, rate: 4, dt: dt, steps: 29);
+    println(s: "spin: the run");
+    return run();
 }
