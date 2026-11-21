@@ -397,6 +397,43 @@ fn void folders(ref Tally t) {
               why: at == want ? "" : "`${at}`, wanted `${want}`");
 }
 
+// The app record's window, laid over across layers field by field: the engine's content, the lowest layer, holds the
+// defaults (engine/content/app.records.json), and a game's record lays its own over them.
+fn void appWindow(ref Tally t) {
+    MemorySource low = MemorySource.make(label: "kyoten/content");
+    low.put(path: "app.records.json", text: "{ \"app\": { \"title\": \"Low\", \"window\": { \"width\": 1280, \"height\": 720 } } }");
+    MemorySource high = MemorySource.make(label: "content");
+    high.put(path: "app.records.json", text: "{ \"app\": { \"title\": \"Towers\", \"window\": { \"width\": 800 } } }");
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stackOf(low: give low, high: Optional::Some(value: give high)), no: no);
+    string title = c.windowTitle(fallback: "towers");
+    int32 w = c.windowWidth();
+    int32 h = c.windowHeight();
+    t.verdict(name: "readContent: the app's window is laid over layer by layer, field by field (800 over 1280, 720 kept)",
+              why: w == 800 && h == 720 && !no.any() ? "" : "${w} x ${h}, " + all(no: no));
+    t.verdict(name: "readContent: the app's title is the highest layer's", why: title == "Towers" ? "" : "`${title}`");
+
+    MemorySource bare = MemorySource.make(label: "content");
+    bare.put(path: "cube.records.json", text: "{ \"prefabs\": { } }");
+    LoadRefusals none = LoadRefusals.make();
+    Content b = readContent(stack: stackOf(low: give bare, high: Optional::None), no: none);
+    string named = b.windowTitle(fallback: "towers");
+    int32 bw = b.windowWidth();
+    t.verdict(name: "readContent: with no layer naming a title, the window takes the fallback, the game's name",
+              why: named == "towers" ? "" : "`${named}`");
+    t.verdict(name: "readContent: with no layer sizing the window, its width is 0, which the run refuses",
+              why: bw == 0 ? "" : "width ${bw}");
+
+    MemorySource small = MemorySource.make(label: "content");
+    small.put(path: "app.records.json", text: "{ \"app\": { \"window\": { \"width\": 0, \"height\": -4 } } }");
+    LoadRefusals refused = LoadRefusals.make();
+    Content s = readContent(stack: stackOf(low: give small, high: Optional::None), no: refused);
+    t.verdict(name: "readContent: a window's width below 1 is refused, naming its file",
+              why: said(no: refused, line: "content/app.records.json: `app.window.width` is 0: a window is at least 1 wide"));
+    t.verdict(name: "readContent: a window's height below 1 is refused, naming its file",
+              why: said(no: refused, line: "content/app.records.json: `app.window.height` is -4: a window is at least 1 high"));
+}
+
 unsafe fn void contentTests(ref Tally t) {
     folders(t: t);
     folderSource(t: t);
@@ -407,4 +444,5 @@ unsafe fn void contentTests(ref Tally t) {
     scenes(t: t);
     sceneRefusals(t: t);
     subtrees(t: t);
+    appWindow(t: t);
 }

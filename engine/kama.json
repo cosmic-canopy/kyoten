@@ -5,6 +5,7 @@
   "kind": "library",
   "kama": ">=0.9.876",
   "reproducible-float": true,
+  "preloadFiles": ["content@/kyoten/content"],
   "cflags": [
     { "flag": "-Wframe-larger-than=32768", "compileFor": ["!OS_WINDOWS"] },
     { "flag": "-Werror=frame-larger-than", "compileFor": ["!OS_WINDOWS"] }
@@ -19,6 +20,10 @@
                  "importsOnly": ["std::fs", "std::io", "std::memory", "std::collections", "std::serialization::text::json",
                                  "records"] },
     "platform": { "visibility": "public",
-                  "importsOnly": ["core", "std::app", "std::fmt", "std::memory", "std::collections", "frame"] }
+                  "importsOnly": ["core", "core::env", "std::app", "std::fmt", "std::memory", "std::collections", "std::time", "frame",
+                                  "window"] }
+  },
+  "dependencies": {
+    "@kama/window": { "path": "../../kama-window" }
   }
 }

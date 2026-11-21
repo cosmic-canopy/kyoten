@@ -1,6 +1,7 @@
 {
   "projects": {
     "engine": { "optional": false },
-    "tools/kyoten": { "optional": false }
+    "tools/kyoten": { "optional": false },
+    "../kama-window": { "optional": false }
   }
 }

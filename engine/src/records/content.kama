@@ -3,19 +3,35 @@
 // kyoten::content's `ContentFile`, whose prefabs are kept as JSON since a game's components are its own (REFERENCE.md
 // § Records and their files; components § Decided, the loader's question 2 of 2026-11-09).
 
-export { AppRecord, BindingRecord };
+export { AppRecord, WindowRecord, BindingRecord };
+
+// The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
+// lays its own over, field by field.
+@generate(Serializable, Deserializable)
+type value WindowRecord {
+    @field(name: "width") Optional<int32> widthField = Optional::None;
+    @field(name: "height") Optional<int32> heightField = Optional::None;
+
+    public default ctor make() { }
+
+    public const fn Optional<int32> width() { return this.widthField; }
+    public const fn Optional<int32> height() { return this.heightField; }
+}
 
 @generate(Serializable, Deserializable)
 type resource AppRecord {
     @field(name: "firstScene") Optional<string> firstSceneField = Optional::None;
     @field(name: "title") Optional<string> titleField = Optional::None;
+    @field(name: "window") Optional<WindowRecord> windowField = Optional::None;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
 
     // None: the only scene is the first.
     public const fn const ref Optional<string> firstScene() { return this.firstSceneField; }
+    // None: the game's name.
     public const fn const ref Optional<string> title() { return this.titleField; }
+    public const fn Optional<WindowRecord> window() { return this.windowField; }
     public const fn const ref string note() { return this.noteField; }
 }
 

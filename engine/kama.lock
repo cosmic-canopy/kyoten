@@ -1,4 +1,6 @@
 {
   "lockVersion": 1,
-  "packages": {}
+  "packages": {
+    "@kama/window": { "source": "path", "path": "../../kama-window", "dependencies": [] }
+  }
 }

@@ -6,7 +6,7 @@
 import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory::Shared, kyoten::frame::World,
          kyoten::frame::Time, kyoten::platform::Platform, kyoten::platform::RunOptions,
          kyoten::platform::RunOptionError, kyoten::platform::Ending, kyoten::platform::Play,
-         kyoten::platform::play, kyoten::platform::fixedTimestamp };
+         kyoten::platform::play, kyoten::platform::fixedTimestamp, kyoten::platform::OpenPlatform };
 
 export { platformTests };
 
@@ -340,6 +340,22 @@ fn void playCases(ref Tally t) {
     expectCount(t: t, name: "play: before its loop, so no window is asked for", got: log.deref().openings(), want: 0);
 }
 
+// Where a package's content folder is in this build: `/<package>/content` on the web, where its manifest's
+// `preloadFiles` packs it, and the folder the generator found natively. The tests may name a target; the engine's code
+// names one only in kyoten::platform.
+@compileFor(ARCH_WASM32)
+fn string expectedFolder() { return "/hello/content"; }
+@compileFor(!ARCH_WASM32)
+fn string expectedFolder() { return "C:/games/hello/content"; }
+
+fn void openCases(ref Tally t) {
+    OpenPlatform here = OpenPlatform.make();
+    string at = here.contentFolder(package: "hello", native: "C:/games/hello/content");
+    string want = expectedFolder();
+    t.verdict(name: "OpenPlatform: a package's content folder in the build being made, the platform's per target",
+              why: at == want ? "" : "`${at}`, wanted `${want}`");
+}
+
 fn void platformTests(ref Tally t) {
     optionCases(t: t);
     timestampCases(t: t);
@@ -349,4 +365,5 @@ fn void platformTests(ref Tally t) {
     endCases(t: t);
     fixedCases(t: t);
     playCases(t: t);
+    openCases(t: t);
 }

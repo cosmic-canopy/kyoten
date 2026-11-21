@@ -1,6 +1,7 @@
 {
   "lockVersion": 1,
   "packages": {
-    "kyoten": { "source": "path", "path": "../../../engine", "dependencies": [] }
+    "@kama/window": { "source": "path", "path": "../../../../kama-window", "dependencies": [] },
+    "kyoten": { "source": "path", "path": "../../../engine", "dependencies": ["@kama/window"] }
   }
 }

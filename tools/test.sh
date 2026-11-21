@@ -89,7 +89,9 @@ for mode in debug release; do
         [ "$mode" = release ] && flag="--release"
         if "$KAMA" build "$TESTS/kama.json" $flag --target WASM -o "$OUT/wasm-$mode/kyotentests.js" \
                 > "$OUT/build-wasm-$mode.log" 2>&1; then
-            node "$OUT/wasm-$mode/kyotentests.js" || failed=1
+            # Under node, emscripten looks for a program's `.data` (the engine's content, which its manifest's
+            # `preloadFiles` packs into every program on it) in the working directory, so node runs from the build's folder.
+            (cd "$OUT/wasm-$mode" && node kyotentests.js) || failed=1
             if [ "$mode" = release ]; then closured "$OUT/wasm-$mode/kyotentests.js" "engine tests, wasm, release"; fi
         else
             tail -n 20 "$OUT/build-wasm-$mode.log"
@@ -185,7 +187,7 @@ run_example() {
     fi
 }
 native() { "$1"; }
-under_node() { node "$1"; }
+under_node() { (cd "$(dirname "$1")" && node "$(basename "$1")"); }   # node finds the `.data` in its working directory
 
 for game in fps vr; do
     step "$GAMES/$game"

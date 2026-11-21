@@ -1,0 +1,2 @@
+{ "app": { "window": { "width": 1280, "height": 720 },
+           "note": "the engine's defaults, the lowest content layer: a game's app record lays its own over them, field by field" } }

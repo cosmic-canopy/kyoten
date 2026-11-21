@@ -8,6 +8,8 @@
 //   first, and within each prefab of the chain its layers, lowest first. Only one layer, the game's, exists until
 //   `engine/content/` holds a record (the first slice's step 7).
 // - **Within one layer a prefab or a placement is written once;** a higher layer merges over it by key.
+// - **The app record is laid over layer by layer, field by field:** the engine's content sets the window's size, and a
+//   game's record its title and whatever of the size it changes.
 // - **The first scene** is the one `app.firstScene` names, else the only folder under `scenes/`. Its zone files hold its
 //   placements. Only the zone at the origin, one layer `main` and no layer groups are built yet (KYR-61), so anything
 //   else is refused, in the same words the `kyoten` tool uses at build.
@@ -128,8 +130,11 @@ type resource Content {
     SortedMap<string, DynamicArray<Subtree>> prefabTrees = SortedMap.empty();
     string sceneName = "";
     DynamicArray<Placement> placementList = DynamicArray.empty();
+    Optional<string> titleSet = Optional::None;
+    int32 widthSet = 0;
+    int32 heightSet = 0;
 
-    friend readContent[prefabTrees];
+    friend readContent[prefabTrees, titleSet, widthSet, heightSet];
     friend fillScene[sceneName, placementList];
 
     public ctor make() { }
@@ -145,6 +150,14 @@ type resource Content {
         if (n == 0) { return ""; }
         return copy this.prefabTrees.getRef(key: prefab)[n - 1].file();
     }
+
+    // The window's title: the highest layer's `app.title`, else `fallback`, the game's name.
+    public const fn string windowTitle(const ref string fallback) {
+        return match (this.titleSet) { case Some(value: s): copy s; case None: copy fallback; };
+    }
+    // The window's size in logical pixels, the highest layer's of each; 0 when no layer sets it.
+    public const fn int32 windowWidth() { return this.widthSet; }
+    public const fn int32 windowHeight() { return this.heightSet; }
 
     // The first scene, or "" when there is none.
     public const fn const ref string scene() { return this.sceneName; }
@@ -340,6 +353,26 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
             match (cf.app()) {
                 case Some(value: a): {
                     match (a.firstScene()) { case Some(value: s): { firstScene = copy s; firstSceneFile = copy file; } case None: { } };
+                    match (a.title()) { case Some(value: s): { c.titleSet = Optional::Some(value: copy s); } case None: { } };
+                    match (a.window()) {
+                        case Some(value: w): {
+                            match (w.width()) {
+                                case Some(value: n): {
+                                    if (n < 1) { no.add(where: file, what: "`app.window.width` is ${n}: a window is at least 1 wide"); }
+                                    else { c.widthSet = n; }
+                                }
+                                case None: { }
+                            };
+                            match (w.height()) {
+                                case Some(value: n): {
+                                    if (n < 1) { no.add(where: file, what: "`app.window.height` is ${n}: a window is at least 1 high"); }
+                                    else { c.heightSet = n; }
+                                }
+                                case None: { }
+                            };
+                        }
+                        case None: { }
+                    };
                 }
                 case None: { }
             };

@@ -1,0 +1,110 @@
+// The open platforms (target-platforms § Decided, question 1, 2026-11-07, and 2026-11-20): the web, and the native
+// desktops (Windows, Linux, macOS), one declaration of `OpenPlatform` per target, each gated to it, so a game's
+// generated `run` names `OpenPlatform` and no target, and a check analyzes the game once per configuration. Android
+// (the Quest) and iOS join with their legs (KYR-34, KYR-32).
+//
+// - **The content folders:** natively the folder the generator found, which a development build reads in place; on
+//   the web where each package's `preloadFiles` packed it, `/<package>/content` (project-database § Decided,
+//   2026-11-08).
+// - **The window is `@kama/window`'s:** natively a system window, on the web the page's `#canvas`, and under
+//   `--headless` a headless window, which needs no display and no page.
+// - **The frame's timestamp is `std::time`'s monotonic clock,** read at the tick, as Bevy and Godot read theirs.
+// - **The end:** natively `run` returns and the program ends with the status; on the web, where `run` never returns,
+//   std::app's `quit` ends it.
+
+import { core::println, core::env::args, std::app::quit, std::time::Instant, std::time::monotonicNow,
+         std::collections::DynamicArray, window::Window, window::WindowOptions, window::WindowError, window::Event,
+         Platform };
+
+export { OpenPlatform };
+
+// The web: the page's canvas, the content `preloadFiles` packed, and std::app's `quit` at the end.
+@compileFor(ARCH_WASM32)
+type resource OpenPlatform implements Platform {
+    Optional<Window> window = Optional::None;
+    Instant began = monotonicNow();
+
+    public ctor make() { }
+
+    public const fn string contentFolder(const ref string package, const ref string native) {
+        return "/" + package + "/content";
+    }
+    public const fn DynamicArray<string> arguments() { return commandLine(); }
+    public unsafe fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused) {
+        return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
+                      focused: focused);
+    }
+    public unsafe fn bool pumped() { return pumpOn(slot: this.window); }
+    public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
+    public fn void ended(uint8 code) { quit(code: code); }
+}
+
+// A native desktop: a system window, the content in place, and `run` returning at the end.
+@compileFor(!ARCH_WASM32)
+type resource OpenPlatform implements Platform {
+    Optional<Window> window = Optional::None;
+    Instant began = monotonicNow();
+
+    public ctor make() { }
+
+    public const fn string contentFolder(const ref string package, const ref string native) { return copy native; }
+    public const fn DynamicArray<string> arguments() { return commandLine(); }
+    public unsafe fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused) {
+        return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
+                      focused: focused);
+    }
+    public unsafe fn bool pumped() { return pumpOn(slot: this.window); }
+    public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
+    public fn void ended(uint8 code) { }
+}
+
+// The command line after the program's name: on the web the page's query, as kama's runtime hands it.
+fn DynamicArray<string> commandLine() {
+    DynamicArray<string> made = DynamicArray.empty();
+    foreach (string a in args()) { made.add(item: give a); }
+    return made;
+}
+
+// The window into `slot`: headless, or the system's (the page's canvas on the web).
+unsafe fn bool openOn(ref Optional<Window> slot, const ref string title, int32 width, int32 height, bool headless,
+                      bool focused) {
+    if (headless) {
+        Window quiet = Window.headless(width: width, height: height);
+        slot = Optional::Some(value: give quiet);
+        return true;
+    }
+    WindowOptions options = WindowOptions.make();
+    options.focused = focused;
+    Result<Window, WindowError> opened = Window.openWith(title: title, width: width, height: height, options: options);
+    match (give opened) {
+        case Ok(value: w): {
+            slot = Optional::Some(value: give w);
+            return true;
+        }
+        case Err(error: e): {
+            string why = e.message();
+            println(s: "kyoten: no window: " + why);
+            return false;
+        }
+    };
+}
+
+// The window's events since the last tick: false once one asks it to close.
+unsafe fn bool pumpOn(ref Optional<Window> slot) {
+    bool open = true;
+    match (slot) {
+        case Some(value: w): {
+            w.pump();
+            bool more = true;
+            while (more) {
+                Optional<Event> e = w.pollEvent();
+                match (e) {
+                    case Some(value: ev): { match (ev) { case CloseRequested: { open = false; } case _: { } }; }
+                    case None: { more = false; }
+                };
+            }
+        }
+        case None: { }
+    };
+    return open;
+}
