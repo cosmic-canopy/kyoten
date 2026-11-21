@@ -8,12 +8,16 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-20, the forty-third session)
+## Where it stands (2026-11-20, the forty-fourth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
 - the tool checks both at build;
 - the tool holds every module's list to the simulation's fence, the engine's tiers and the platform rule.
+
+**The join's step 7, the platform seam, is built** (KYR-8, the forty-fourth session; item 3): `kyoten::platform`, the
+open platforms on `@kama/window`, the engine's content layer and the generated `run`, which a game's `main` calls and
+the spin fixture runs headless on every leg.
 
 **Track 1 is under way, and each package keeps its own order** (`SPEC.md`, `ROADMAP.md`, its detail, and for
 `@kama/gpu` `COVERAGE.md`, 96 of webgpu.h's 206 functions called):
@@ -93,8 +97,8 @@ the design doc it settles before building on it.
 - **Audio started on the Mac Mini** (the nineteenth session): `@kama/audio`, seeded in `../kama-audio` and pushed, is
   designed and built there in parallel, from its `AGENTS.audio.md` ([design/audio.md](design/audio.md) § Decided).
 
-**`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), so the join is next. Where the work
-is:**
+**`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), and the join's step 7 (the
+forty-fourth). Where the work is:**
 
 1. **At a session's start, run the suites on kyoten's pin, `0.9.978+g5e542c55`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
@@ -103,8 +107,11 @@ is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.978:
-   - tools/test.sh: engine 164 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 211; kyoten check; fps native, and on wasm in both builds; vr checked;
+   - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 228; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
+     session's start. It took 14 minutes alone after step 7, where it took about 6 before: every program on the
+     engine now builds `@kama/window`, whose vendored SDL3 compiles from source on Windows, and kama keeps no object
+     cache for a `kama run` (a `kama run` of the spin fixture takes 80.6 s, a warm `kama build` 5.7 s: KY-64, filed);
    - `@kama/window`'s: 249, 163 under node, 253 in Edge and Firefox, 264 through the driver;
    - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
      Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
@@ -216,7 +223,11 @@ is:**
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
-       worked around in GFX-1's part 2.
+       worked around in GFX-1's part 2;
+     - KY-63, filed 2026-11-20, kama's KR-432 the same day: a build cannot leave a manifest's `assets` out;
+     - KY-64, filed 2026-11-20 (the forty-fourth session): `kama run` keeps no object cache, so every `kyoten run` of a
+       game on the engine compiles `@kama/window`'s vendored SDL3 again on Windows, about a minute a run, and the gate
+       took 14 minutes where it took 6.
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -496,8 +507,8 @@ is:**
              named cases and its budget to the record.
 
           The gate gained a last word on itself, found by a mutation that got through: a run that printed a FAIL line
-          fails, whatever its status. **Next, kyoten's join (item 3, step 7)** draws the hello cube through the library,
-          which closes GFX-1. Before it, the record of step 4's start: **measured at the forty-second session's
+          fails, whatever its status. **Next, kyoten's join (item 3)**, whose step 7 is built (the forty-fourth session),
+          draws the hello cube through the library at its steps 9 and 10, which closes GFX-1. Before it, the record of step 4's start: **measured at the forty-second session's
           readying, a stand-in on the pin**
           (`.scratch/s42/size/`: `build.sh`, `player.py`, `attrib.mjs`; web-baseline.md § Method, `brotli -q 11`, the
           release JS run through Closure):
@@ -642,7 +653,11 @@ is:**
      - Firefox 160 takes a colour attachment's depth slice of 2^32 - 2 on a 2D view, where it refuses a slice of 0
        there, and WebGPU refuses both (kama-gpu's `--unchecked-depth-slice`);
      - Firefox 160 delivers no second uncaptured validation error whose words repeat an earlier one's.
-3. **Then the join.** Step 7, the platform seam, builds:
+3. **The join is under way, and step 7, the platform seam, is built** (the forty-fourth session; kyoten `fd8a130` to
+   `c8334bb`; target-platforms § Decided, its Built entry, which lists what was settled for the owner to object to and
+   what no case holds yet). **Next is step 8, Input (KYR-54):** actions of every kind, bindings records, player 1 on
+   the keyboard and the first gamepad through `@kama/window`, and the binding steps; its questions are decided when the
+   row comes up (§ Questions the owner answers). Step 7 built, as laid out below:
    - the generated `run`, on the `Platform` contract and `@kama/window`. `run` calls `openContent`, `readContent`,
      `loadPrefabs` and `placeFirstScene`;
    - `engine/content/`'s first records;
@@ -697,6 +712,29 @@ is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The forty-fourth session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained two
+roadmap commits since `831614a7` (`518a572d` and `97d55b38`: KR-432 filed, claimed and briefed, which is kyoten's
+KY-63), no code, so no bump.
+- **Every suite was green on 0.9.978 at the start,** at the forty-third session's counts.
+- **One question at the start, decided at once** (A): reading the code for step 7's plan found that `spin`, run
+  through the generated `run`, could not end, could not open a window under node, and owed no steps natively. Every
+  game's run reads Godot's `--headless`, `--quit-after N` and `--fixed-fps F` (target-platforms § Decided, kyoten
+  `90a6162`).
+- **Built:** step 7 in five commits, each gated by `tools/test.sh` (item 3): the platform mark (`fd8a130`),
+  `Clock.resetBaseline()` (`4b32cd0`), `kyoten::platform`'s loop (`820b887`), the open platforms and the engine's
+  content (`6556102`) and the generated `run` with `folderFor` removed (`c8334bb`). Two worktrees beside the main
+  checkout (`../kyoten-s44`, `../kyoten-s44b`) carried the next part's build and the mutations while the gate ran.
+  - **Mutations:** 6 of 6, 2 of 2, 20 of 20 (one by kama's overflow trap in debug, by name in release), 8 of 8 (one
+    after the case was sharpened) and 8 of 8 (the web's ending by `quit` caught only by the case added while planning them).
+  - **Found:** kama admits a path dependency below the top level only between two members of one workspace, so
+    kyoten's `kama_workspace.json` lists `../kama-window`; every program on the engine now has a `.data`, and node
+    finds it only in its working directory, so the gate runs node from the build's folder (its first run failed
+    there); and the gate's time (item 1).
+  - **The examples' locks** take `@kama/window` through the engine, committed in their own repositories
+    (kyoten-example-fps `5b159eb`, kyoten-example-vr `730ebdc`), and `@kama/window` tracks its own, empty, which
+    installing kyoten's workspace now writes (kama-window `0ed45b0`), as kama-gpu, kama-graphics and kama-imagediff
+    track theirs. None of the three repositories is pushed yet.
 
 **The forty-third session** (2026-11-20). Nothing new on any origin at the start, and kama's range had gained one
 roadmap commit since `61f6507b` (`50f708ad`, KR-430's brief), no code, so no bump.

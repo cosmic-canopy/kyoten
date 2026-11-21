@@ -829,7 +829,8 @@ run can both hold.
     - **The input is the frame's timestamp,** not the time since the last frame. rAF, vsync and XR's predicted
       display time each give a timestamp, and "time that runs backwards" only means anything for one. The first frame
       sets the baseline and owes nothing. A source swapped mid-session, such as entering VR, needs the baseline reset;
-      step 7 adds that with the lifecycle.
+      step 7 adds that with the lifecycle. *(Built 2026-11-20: `Clock.resetBaseline()`, which kyoten::platform's loop
+      calls on `Resumed` after `Suspended`; target-platforms § Decided, step 7's Built entry.)*
     - **Nothing overflows, and the discards are counted exactly.** This replaces the line above, "elapsed time is
       clamped to the cap before it is multiplied". Clamping first would lose the exact discard count. Instead, each
       product is split by a division first: whole seconds times the rate, plus the remainder times the rate, and

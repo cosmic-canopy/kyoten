@@ -64,9 +64,16 @@ components (a prefab, a placement's values) are generated per game.
 the folder source and the layer stack, which read files, as no simulation module may. The game-shaped part, prefab
 values and a zone's placements, is generated into the game's root module beside `run`, which calls it.
 
+**The platform seam is its own module, `kyoten::platform`,** outside the simulation's fence (*decided* 2026-11-20,
+[design/target-platforms.md](design/target-platforms.md) § Decided; built at the first slice's step 7): the `Platform`
+contract, the open platforms (one declaration of `OpenPlatform` per target) and the loop, `play`, which runs a world on
+std::app and reads the run's three options (`--headless`, `--quit-after N`, `--fixed-fps F`). Its records file marks it
+as the engine's platform module, the one place engine code may name a target. It names `kyoten::frame` alone of the
+engine, so `kyoten::frame` stays fenced for the `Time` a game's processors take. The generated `run` calls `play`.
+
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
- │ 1 frame   phases · the clock · scheduler · input record · World contract · run │
+ │ 1 frame   phases · the clock · scheduler · input record · World contract       │
  ├───────────────────────────────────────────────────────────────────────────────┤
  │ 2 world   engine components (Transform, Mesh…) · table, chunk, side-store,     │
  │           command and lookup types · query contracts (a raycast, a nav path)   │
@@ -103,7 +110,8 @@ kyoten's `Platform` contract. The open ones (the web, Windows, Linux, macOS, And
 its libraries, picked per build target by `@compileFor`. A console's is a private package that the game's manifest
 names for that build only, and the generated `run` passes it in, so the engine never names it and every call is
 direct. Engine modules and games ask for **capabilities**, never platforms, and only in Input and Output; OS flags
-stay in the libraries and the platform types. Features (XR, store services such as achievements) are interfaces
+stay in the libraries and the platform types, and a library's platform module, which its records file marks, is the
+only place one may name them (*decided* 2026-11-20). Features (XR, store services such as achievements) are interfaces
 kyoten defines, with a backend per platform or store in **feature packages** a game opts into.
 
 **Rendering** (*decided*, rendering questions 1, 2 and 4, 2026-11-07). The bar is Three.js's ease of use on every
@@ -422,7 +430,7 @@ content/
 
 | Record | Fields, with their defaults |
 |---|---|
-| App | `firstScene` (the only scene); `title` |
+| App | `firstScene` (the only scene); `title` (the game's name); `window`: `width` and `height` in logical pixels (the engine's, 1280 x 720), each laid over the layer below's |
 | Prefab | an entry per component it has, keyed by its type name (`"Turret"`, or `"towers::Turret"` where two share it) and holding that component's values; the components present make its archetype. `from`: another prefab it starts from, as a variant (none). `layer`: where it is placed and created (a placement's `main`, a created entity's its creator's) |
 | Bindings | per action, a control per device: `keyboard`, `mouse`, `gamepad` |
 | Scene | `inBuild` (true); `zoneSize` in whole metres (64); `zoneShape`, `Square` or `Cube` (Square); `layers`; `limits`; `bounds`, `{from, to}` in zones (the box around its zone files; none with a world generator); `worldGenerator`, a function by kama path (none) |

@@ -275,3 +275,71 @@ stay outside the spike, with their roadmap rows.
       never run in a test, and the hello cube's check in CI would need a test `main` of its own;
     - (C) environment variables, as `@kama/window`'s tests' `KAMA_WINDOW_NO_DISPLAY`: a browser page cannot set one,
       so the web leg would have no way.
+- **2026-11-20, built: the platform seam, the first slice's step 7 (KYR-8),** in five commits (`fd8a130`, `4b32cd0`,
+  `820b887`, `6556102` and `c8334bb`), test-first on kyoten's pin, `0.9.978+g5e542c55`, each gated by `tools/test.sh`.
+  - **The platform mark:** a module's records file says `"platform": true` (kyoten::records' `ModuleRecord`). The
+    check holds a platform flag (`OS_*`, `ARCH_*`, `ABI_*`, `HOSTED`) everywhere but a library's marked module and the
+    folders below it, refuses a game's mark (which grants nothing), and keeps no named exception: `folderFor` and its
+    exception are gone, and the engine's flags are all in `kyoten::platform`.
+  - **`Clock.resetBaseline()`:** the next timestamp owes nothing however far it is, a part of a step already owed
+    kept, the steps settled going on.
+  - **`kyoten::platform`,** tier `Module`, marked, outside the fence, naming `kyoten::frame` alone of the engine:
+    - the `Platform` contract as far as step 7 needs it: `contentFolder(package:, native:)`, `arguments()`,
+      `openWindow(title:, width:, height:, headless:, focused:)`, `pumped()`, `now()` and `ended(code:)`;
+    - `Play<W, P>`, a std::app `App`: the window asked for once on `SurfaceReady`; `Resumed` after `Suspended`
+      resetting the clock's baseline; a tick that pumps the window, ends with 0 when it closes, and runs
+      kyoten::frame's `frame` on the platform's timestamp or, under `--fixed-fps F`, frame k's at k / F seconds
+      rounded up; a refused window ending the run with 1 at the first tick; `--quit-after N` ending it with 0;
+    - `play(world:, platform:, hz:, title:, width:, height:)`: the options read first (`RunOptions.fromArguments`), a
+      malformed one ending the run with 2 before the loop; natively the status returned, held in an `Ending` the loop
+      and `play` share, with no module `static`;
+    - `OpenPlatform`, two declarations gated `ARCH_WASM32` and its negation: a package's content folder (natively the
+      generator's, on the web `/<package>/content`), the command line through kama's `args()` (on the web the page's
+      query), `@kama/window`'s window (a system window, the page's `#canvas`, or under `--headless` a headless one),
+      `std::time`'s monotonic clock read at the tick, and on the web std::app's `quit` at the end.
+  - **The engine's content:** `engine/content/app.records.json`, the window's size, 1280 x 720; the engine's manifest
+    packs it for the web (`"preloadFiles": ["content@/kyoten/content"]`), which reaches every program on the engine, as
+    probed on the pin (`.scratch/s44/probe-preload/`). The app record gains `window` (`width`, `height`), and each
+    layer's app record is laid over the one below, field by field; a size below 1 is refused, naming its file.
+  - **The generated `run`,** beside `main` in `src/<game>.generated.kama`: `OpenPlatform.make()`; `openContent`, now
+    generic over the platform, opening the engine's folder, then the game's, at the platform's folders; the content
+    read, the prefabs loaded and the first scene placed, a refusal printed (`kyoten: refused at load: …`) and the run
+    ending with 1; then `play` with the generated world's base rate and the app record's window, its title the game's
+    `app.title` else its name. The generated `contentFolder()` is gone.
+  - **The spin fixture runs through it,** `main` ending `return run();`, natively and under node, debug and release,
+    under `--headless --fixed-fps 60 --quit-after 30`: 30 frames of Output, three cubes each, and the last frame's
+    rotations after exactly 29 steps, bit for bit with `turn` by hand. Also held: a malformed option ending the run
+    with 2 (natively and under node), a refusal at load ending it with 1 before the loop, the engine's layer opened
+    below the game's, and under node with no `--headless` the window refused for want of a page and the run ended
+    with 1 from inside the loop by the platform's `quit`.
+  - **Counts:** the engine's tests 218 cases (164 at the start), the tool's 228 (211), on every leg.
+  - **Mutations:** 6 of 6 (the mark), 2 of 2 and the no-op stub (the reset), 20 of 20 (the loop and the options; the
+    unsplit timestamp traps on kama's overflow check in a debug build and fails by name in a release build), 8 of 8
+    (the open platform's folder and the app record's window; the first layer's title winning was caught only once the
+    case's lower layer named a title too), and 8 of 8 (the generated `run`, held on spin's legs; a case for the
+    web's ending by `quit` was added while planning them, since nothing held it).
+  - **Found on the way:** the gate's first run of the fourth commit failed its node legs, since every program on the
+    engine now has a `.data` (the engine's content) and emscripten's loader finds it in node's working directory, so
+    `tools/test.sh` runs node from the build's folder for the engine's tests and the fps example, as spin's legs did.
+  - **Settled and reported, for the owner to object to:**
+    1. the mark's key, `"platform"`, beside `"tier"`;
+    2. the window asked for once, on `SurfaceReady`, where the stand-in asked on the first tick (std::app's docs:
+       portable code opens its window there); Android's `SurfaceLost` and a second `SurfaceReady` come with its
+       platform (KYR-34);
+    3. `--quit-after` and `--fixed-fps` applied by the loop, read through the platform's `arguments()`, so a private
+       platform takes them with no code; `--headless` handed to the platform with the window;
+    4. an option written with `=` refused, naming the two-argument form; `--fixed-fps` from 1 to 1,000,000; and
+       frame k's fixed timestamp rounded up, so at the base rate each frame after the first owes exactly one step;
+    5. the run's status in a `Shared<Ending>`, since the rules allow no module `static`, where the stand-in kept one;
+    6. the engine's path dependency on `@kama/window` admitted by listing `../kama-window` in kyoten's
+       `kama_workspace.json`, kama's rule for a path dependency below the top level, where `@kama/graphics`' tests
+       repeat each path in their own manifest; it goes when the packages publish;
+    7. the window's default size, 1280 x 720, Bevy's; its title the game's name when no record names one, as Godot
+       and Unity title a window with the project's name;
+    8. the engine's layer named `kyoten/content` in a refusal, the game's `content`;
+    9. nothing of the lifecycle reaches the world yet: a game saves on `Suspended`, never in a destructor (on the web
+       the world is never dropped), which comes with saves.
+  - **Not held by a case yet:** the system window's path (natively a window, on the web the page's canvas) and its
+    close ending the run with 0, which no headless run reaches and no test may open with the focus; the hello cube's
+    readback in CI (the first slice's step 10) runs it in a headless browser with `--quit-after`. And the run's guard
+    on a window size of 0, which only a missing engine content reaches.

@@ -29,8 +29,8 @@ compare and measure, then ask.
 
 | Path | What it is |
 |---|---|
-| `kama_workspace.json` | the engine's workspace. It names no game, by rule |
-| `engine/` | the engine, package `kyoten` (`import { kyoten::… }`): one package with modules, and a package of its own for anything standalone or gated (architecture question 2). Each tier is a module, one folder under `engine/src/` (`frame/` is `kyoten::frame`) |
+| `kama_workspace.json` | the engine's workspace. It names no game, by rule. It lists `../kama-window` as a member, since the engine depends on `@kama/window` by path until the packages publish, and kama admits a path dependency below the top level only between two members of one workspace: clone `kama-window` beside kyoten |
+| `engine/` | the engine, package `kyoten` (`import { kyoten::… }`): one package with modules, and a package of its own for anything standalone or gated (architecture question 2). Each tier is a module, one folder under `engine/src/` (`frame/` is `kyoten::frame`). `engine/content/` is the engine's content layer, the lowest of the stack, packed for the web by the engine's own `preloadFiles` |
 | `engine/tests/` | the engine's tests, one program depending on the engine by path |
 | `engine/THIRD-PARTY-NOTICES.md` | the notices of code compiled into every program built on kyoten (musl's, through `reproducible-float`) |
 | `tools/test.sh` | the whole suite, the gate before every commit |

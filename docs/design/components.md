@@ -2235,7 +2235,8 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
        which is asynchronous, so `RecordSource` is shaped for a pack to fit behind it: the loader is handed sources
        already open and runs once they are ready.
      - `engine/content/` starts when its first record does (step 7's window); the stack takes the engine's source
-       first once it exists. REFERENCE's "the world tier's loader" now names `kyoten::content`.
+       first once it exists. *(Built 2026-11-20: the app record's window, 1280 x 720, the engine's layer opened first
+       by the generated `run`; target-platforms § Decided, step 7's Built entry.)* REFERENCE's "the world tier's loader" now names `kyoten::content`.
      - **Considered:** building the loader with the platform seam at step 7, which leaves step 5 ending without one;
        and widening `kyoten::world`'s fence, which breaks the simulation rule.
   2. **A record is laid over a component as a subtree, with `mergeFrom`, in layer order.** Each content file's prefabs
