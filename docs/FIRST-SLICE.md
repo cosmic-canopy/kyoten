@@ -153,9 +153,11 @@ forty-fourth). Where the work is:**
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
      **At the bump `b2f627b0` was on kama's origin** (2026-11-22), so the Mac can rebuild at it, and the range was
-     empty. What 0.9.979 to 0.9.1026 brought, read session by session from the thirty-fifth, is `.kama-version`'s
-     entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
-     lands, and checks first what a release in the range says it changes.
+     empty. Read again at the readying after it, the same day: nothing new on kama's origin, and its tree on this
+     machine one roadmap commit ahead of it (`98a48e19`), KR-437's last two decisions ruled (KY-67). What 0.9.979 to
+     0.9.1026 brought, read session by session from the thirty-fifth, is `.kama-version`'s entries for the bumps, and
+     this item's history in the git log. A bump is optional until something kyoten needs lands, and checks first what a
+     release in the range says it changes.
    - **The pin is on 0.9.1026** (`b2f627b0`) since 2026-11-22, the forty-fifth session's readying (`.kama-version`), at
      the owner's word ("yes you can bump first A"), every suite green on it at 0.9.1018's counts with nothing changed
      but the cube's web-size record. Before it, 0.9.1018 since the forty-fifth session, at the owner's word ("we can
@@ -199,9 +201,9 @@ forty-fourth). Where the work is:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-67, filed 2026-11-21 (the forty-fifth session), kama's KR-437, ruled A and not yet built: a library's C is
-       linked into a program that reaches none of its kama while its `expose fn` is not. `@kama/window` has no
-       `expose fn` since (kama-window `fedfc75`).
+     - KY-67, filed 2026-11-21 (the forty-fifth session), kama's KR-437, its three decisions ruled and not yet built:
+       a library's C is linked into a program that reaches none of its kama while its `expose fn` is not.
+       `@kama/window` has no `expose fn` since (kama-window `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -647,9 +649,10 @@ forty-fourth). Where the work is:**
      the web the DOM event's `timeStamp` and a pad's `Gamepad.timestamp`, held to the pumps and in order. Natively a
      pad's time is the pump's, a stopgap until SDL's stamp for a reading can be held by a test.
 
-   **First, `@kama/window`'s WIN-27** (filed at the bump to 0.9.1026, kama-window `ec5cf96`), once the owner answers its
-   question (a key that is no Unicode scalar value types nothing, or U+FFFD): since 0.9.1023 a lone surrogate from a
-   page's own key event ends the program in `cast<char>`, and step 8's `Text` action reads those events.
+   **First, `@kama/window`'s WIN-27** (filed at the bump to 0.9.1026, kama-window `ec5cf96`): since 0.9.1023 a lone
+   surrogate from a page's own key event ends the program in `cast<char>`, and step 8's `Text` action reads those
+   events. Decided (A) on 2026-11-22 (kama-window `e3d15b0`): a key that is no Unicode scalar value types nothing, as
+   GLFW on Windows already makes it natively; the seam passes no such value, and `eventOf` reads with `try cast<char>`.
    **Next: step 8's parts in kyoten,** test-first on posted events and pads, the events' times now in hand; the lock-in
    tried by the owner with two pads in a short block at the start of the session after it is built. **Beside it, in
    `@kama/graphics`:** the cube's goldens can move into a `select` value its player's build leaves out, since KY-63's
@@ -791,7 +794,11 @@ so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and th
     the same counts with nothing changed but `@kama/graphics`' cube, 92 B over its record for `cast<char>`'s new check in
     `@kama/window`'s text events and raised with that reason (kama-graphics `7de75ab`); KY-65, KY-66 and KY-68
     removed; `@kama/window`'s tests drop `back(at:, nanos:)` (kama-window `6ac2f4b`); and the new check found WIN-27,
-    a lone surrogate from a page's synthetic key event ending the program, filed with its question for the owner.
+    a lone surrogate from a page's synthetic key event ending the program, filed with its question for the owner;
+  - **WIN-27 decided (A)** at the readying after the bump (the owner, 2026-11-22: "I assume A is the production answer
+    for WIN-27? if so we can go with that"): a key that is no Unicode scalar value types nothing, which is what GLFW on
+    Windows already gives natively, so every platform gives it alike (kama-window `e3d15b0`). kama read again: nothing
+    new on its origin, KR-437's decisions 2 and 3 ruled in its tree on this machine (item 1, KY-67).
 - **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
   baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 
