@@ -108,12 +108,14 @@ forty-fourth). Where the work is:**
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1018, as on 0.9.978 before the bump:
    - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 228; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
-     session's start. It takes 12 min 56 s alone on 0.9.1018, whose `kama run` keeps its compiled C in the project's
-     `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every `kyoten run` compiling
-     `@kama/window`'s vendored SDL3 again. Of the tool's 526 s, about 4 minutes is spin's fresh-clone case, which
-     erases `spin/out` and so the cache: its first `kyoten run` in each build compiles SDL3 again (102 s and 115 s,
-     where a warm run takes 10 s), and its first web build takes 63 s;
+     the tool's 229; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
+     session's start. It takes 10 min 25 s alone on 0.9.1018, warm (12 min 6 s on the first run after the change
+     below), whose `kama run` keeps its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took
+     14 minutes on 0.9.978, every `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case
+     keeps kama's build cache** (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
+     kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
+     526 s, SDL3 compiled again in each build (102 s and 115 s, 11 s and 10 s warm) and the web build from nothing
+     (63 s, 49 s warm);
    - `@kama/window`'s: 304, 204 under node, 311 in Edge and Firefox, 322 through the driver, and a program reaching none
      of the package linked natively and on wasm, since WIN-25 and WIN-26 (the forty-fifth session); 249, 163, 253 and
      264 at its start;
@@ -771,7 +773,11 @@ so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and th
   - KY-23, KY-63 and KY-64 fixed on the pin and removed; KY-40, KY-45, KY-58 and KY-65 to KY-68 unchanged;
   - **the cube's record raised 2,671 B with its reason** (kama-graphics `2865c36`): no source changed, and clang inlines
     kama's code differently (`Cube.render` 59.7 KB to 68.2 KB raw, small helpers folded into it), with kama's array
-    growth route changed in the range (0.9.995, 0.9.996) and its emitter too, the split between them not measured.
+    growth route changed in the range (0.9.995, 0.9.996) and its emitter too, the split between them not measured;
+  - **the spin fixture's fresh-clone case keeps kama's build cache** (the owner, 2026-11-21, (A)): it erases
+    `out/kyoten/` and the generated sources, what kyoten makes, and leaves the rest of `out/`, since a fresh compile is
+    kama's to test. Its new case, a marker beside kama's cache that must survive the erase, went red on the old erase
+    and green on the new, so the tool's cases are 229 (item 1); kyoten's gate takes 10 min 25 s alone, warm.
 - **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
   baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 

@@ -176,13 +176,20 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     Ran installed = s.kamaRun(argv: install);
     ranAs(t: t, name: "spin: kama pkg install", r: installed, want: 0, says: "");
 
-    // A fresh clone has nothing generated, so kama alone cannot even resolve the game's imports (KY-28), and no `out/`,
-    // where the tool caches what kama said of each dependency.
+    // A fresh clone has nothing generated, so kama alone cannot even resolve the game's imports (KY-28), and no
+    // `out/kyoten/`, where the tool caches what kama said of each dependency. The rest of `out/` is kama's build cache,
+    // kept: a fresh compile is kama's to test, and erasing it cost about 4 minutes a suite, the fixture's SDL 3 compiled
+    // again, debug and release, and its web build from nothing (the owner, 2026-11-21).
+    string keptByKama = s.fixture(at: "spin/out/kept-by-the-fresh-clone");
+    write(path: keptByKama, text: "stands for kama's build cache, which the fresh clone case keeps\n");
     eraseDir(path: gen);
     erase(path: moduleFile);
-    eraseDir(path: s.fixture(at: "spin/out"));
+    eraseDir(path: s.fixture(at: "spin/out/kyoten"));
     Ran fresh = s.kyoten(command: "check", game: "spin", more: none());
     ranAs(t: t, name: "spin: on a fresh clone, `kyoten check` generates, then kama checks", r: fresh, want: 0, says: "OK");
+    check(t: t, name: "spin: the fresh clone erases what kyoten makes and keeps kama's build cache in `out/`",
+          ok: has(path: keptByKama), why: "`out/` was erased whole");
+    erase(path: keptByKama);
     string actionsText = read(path: actions);
     string prefabsText = read(path: prefabs);
     check(t: t, name: "spin: actions.kama and prefabs.kama open with the header",
