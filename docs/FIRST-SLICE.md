@@ -106,7 +106,7 @@ forty-fourth). Where the work is:**
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
-   twice on each leg. The closing counts, on 0.9.1018, as on 0.9.978 before the bump:
+   twice on each leg. The closing counts, on 0.9.1026, as on 0.9.1018 and 0.9.978 before:
    - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 229; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
      session's start. It takes 10 min 25 s alone on 0.9.1018, warm (12 min 6 s on the first run after the change
@@ -148,35 +148,29 @@ forty-fourth). Where the work is:**
      beside a suite.
    - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
      emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
-   - **Read `../kama`'s log since `575a9cc6`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 575a9cc6 HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `b2f627b0`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor b2f627b0 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     **At the bump `575a9cc6` and its parent `1e3e30a2` were on `../kama`'s `dev` alone;** kama pushed them the same
-     evening (its origin's `dev` holds `575a9cc6`), so the Mac can rebuild at it. The range was empty at the bump (the
-     forty-fifth session). Read again at its readying, to `b2f627b0` (0.9.1026, 2026-11-22), on kama's origin:
-     - kama filed the session's four gaps as KR-435 to KR-438 the day they were filed, and has fixed three: 0.9.1019
-       refuses a `return` with a value in a `void` function (KR-435, **KY-65**); 0.9.1020 lets a negative `Duration`
-       move an `Instant` back, `now + (-d)` in Go's spelling, with no `Instant - Duration` (KR-436, **KY-66**), so
-       `@kama/window`'s `back(at:, nanos:)` in `tests/src/times.kama` goes once the pin carries it; and 0.9.1021 names
-       the host header `<project>.kama.h` (KR-438, **KY-68**). Each is verified on a build of `b2f627b0`.
-     - KR-437 (KY-67) is ruled A, a package's C linked only with its kama, and counted (`b4ee6b4d`): no program on this
-       box calls a dependency's C while reaching none of its kama, so a forcing reach is recommended a non-goal. Its
-       follow-on, KR-440, would give a package's C a generated header for its own `expose fn`s. Not yet built.
-     - The rest: a TCP connect to itself is refused (KR-439, 0.9.1022), `cast<char>` traps on a value that is no
-       Unicode scalar value (KR-441, 0.9.1023), a kbin reader answers a malformed stream with `Err` (KR-442,
-       0.9.1025), and an emitter fix and a bare-metal runtime fix (0.9.1024, 0.9.1026).
-     - **Every manifest of kyoten's and its packages' checks clean on 0.9.1026,** fps and vr too, so a bump to it needs
-       no port.
-
-     What 0.9.979 to 0.9.1018 brought, read session by session from the thirty-fifth, is `.kama-version`'s entry for
-     the bump, and this item's history in the git log. A bump is optional until something kyoten needs lands, and
-     checks first what a release in the range says it changes.
-   - **The pin is on 0.9.1018** (`575a9cc6`) since the forty-fifth session's end (`.kama-version`), at the owner's word
-     ("we can bump now"), every suite green on it at 0.9.978's counts with the 48 `.keys()` calls ported. Every
-     manifest passed `kama check` on the staged pin first but for those calls. Before it, 0.9.978 since the
-     thirty-fifth session, whose 0.9.967 brought KR-378, so `@kama/window`'s WIN-24 can be built; and 0.9.966 since the
-     thirty-second. `.kama-version` says what moved:
+     **At the bump `b2f627b0` was on kama's origin** (2026-11-22), so the Mac can rebuild at it, and the range was
+     empty. What 0.9.979 to 0.9.1026 brought, read session by session from the thirty-fifth, is `.kama-version`'s
+     entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
+     lands, and checks first what a release in the range says it changes.
+   - **The pin is on 0.9.1026** (`b2f627b0`) since 2026-11-22, the forty-fifth session's readying (`.kama-version`), at
+     the owner's word ("yes you can bump first A"), every suite green on it at 0.9.1018's counts with nothing changed
+     but the cube's web-size record. Before it, 0.9.1018 since the forty-fifth session, at the owner's word ("we can
+     bump now"), with the 48 `.keys()` calls ported; 0.9.978 since the thirty-fifth session, whose 0.9.967 brought
+     KR-378, so `@kama/window`'s WIN-24 can be built; and 0.9.966 since the thirty-second. `.kama-version` says what
+     moved:
+     - **0.9.1019 to 0.9.1026:** kama fixed three of the forty-fifth session's four gaps the day after they were filed,
+       each now removed: a `return` with a value in a `void` function is refused (KR-435, KY-65); a negative `Duration`
+       moves an `Instant` back, `now + (-d)` (KR-436, KY-66), so `@kama/window`'s tests dropped their
+       `back(at:, nanos:)` (kama-window `6ac2f4b`); and the host header is `<project>.kama.h` (KR-438, KY-68). KR-437
+       (KY-67) is ruled A and counted, not yet built. `cast<char>` now traps on a value that is no Unicode scalar value
+       (KR-441, 0.9.1023), and `@kama/window` reads a text event's code point with one: the cube is 92 B larger for the
+       check (kama-graphics `7de75ab`), and a lone surrogate from a page's synthetic key event now ends the program,
+       which is `@kama/window`'s WIN-27. The rest is none that kyoten calls: a TCP connect to itself, a kbin reader's
+       malformed stream, an emitter fix and the bare-metal runtime.
      - **0.9.1013 to 0.9.1018:** a `SortedMap` lists as `Map` does (`foreach (K k in m)`), its `keys()` gone (KR-424);
        any `select` value takes `assets` (KR-432), which fixes KY-63; a project's `kama run` builds where `kama build`
        does and shares its object cache (KR-433), which fixes KY-64; and since 0.9.980 a method may be named `spawn`
@@ -196,7 +190,7 @@ forty-fourth). Where the work is:**
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `575a9cc6`,** which kama has pushed. It was rebuilt
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `b2f627b0`,** on kama's origin. It was rebuilt
      at 0.9.978 on 2026-11-18 (kyoten `9c7704b`) from a clean clone at the owner's word, its `tools/test.sh` green
      with Windows's counts, every wasm leg in both builds. KY-3 is narrowed there: a program builds for
      `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its
@@ -205,14 +199,9 @@ forty-fourth). Where the work is:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-65, KY-66 and KY-68, filed 2026-11-21 (the forty-fifth session), kama's KR-435, KR-436 and KR-438 the same
-       day, **each fixed upstream (0.9.1019, 0.9.1020, 0.9.1021) and not on the pin:** a `return` with a value in a
-       function that returns nothing passes `kama check` (its value dropped, or C that does not compile); `Instant +
-       Duration` traps on a negative `Duration`; and the host header kama writes for a dependency's `expose fn`
-       shadows the program's own header of the program's name. A bump to 0.9.1026 or later removes all three;
-     - KY-67, filed the same day, kama's KR-437, ruled A and not yet built: a library's C is linked into a program that
-       reaches none of its kama while its `expose fn` is not. `@kama/window` has no `expose fn` since (kama-window
-       `fedfc75`).
+     - KY-67, filed 2026-11-21 (the forty-fifth session), kama's KR-437, ruled A and not yet built: a library's C is
+       linked into a program that reaches none of its kama while its `expose fn` is not. `@kama/window` has no
+       `expose fn` since (kama-window `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -658,6 +647,9 @@ forty-fourth). Where the work is:**
      the web the DOM event's `timeStamp` and a pad's `Gamepad.timestamp`, held to the pumps and in order. Natively a
      pad's time is the pump's, a stopgap until SDL's stamp for a reading can be held by a test.
 
+   **First, `@kama/window`'s WIN-27** (filed at the bump to 0.9.1026, kama-window `ec5cf96`), once the owner answers its
+   question (a key that is no Unicode scalar value types nothing, or U+FFFD): since 0.9.1023 a lone surrogate from a
+   page's own key event ends the program in `cast<char>`, and step 8's `Text` action reads those events.
    **Next: step 8's parts in kyoten,** test-first on posted events and pads, the events' times now in hand; the lock-in
    tried by the owner with two pads in a short block at the start of the session after it is built. **Beside it, in
    `@kama/graphics`:** the cube's goldens can move into a `select` value its player's build leaves out, since KY-63's
@@ -794,7 +786,12 @@ so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and th
   - **kama read again on 2026-11-22** (item 1), to `b2f627b0` (0.9.1026): KY-65, KY-66 and KY-68 fixed upstream, each
     verified on a build of it, on which every manifest checks clean; KY-67 counted by kama, still open. Nothing came
     in on kyoten's, the packages' or the examples' origins but `@kama/audio`'s four commits from the Mac (`0d0df68`,
-    decisions 40 to 45 and AudioParam), fast-forwarded here, its tests' dependencies installed and checked.
+    decisions 40 to 45 and AudioParam), fast-forwarded here, its tests' dependencies installed and checked;
+  - **the pin bumped to 0.9.1026** (item 1) at the owner's word ("yes you can bump first A"): every gate green on it at
+    the same counts with nothing changed but `@kama/graphics`' cube, 92 B over its record for `cast<char>`'s new check in
+    `@kama/window`'s text events and raised with that reason (kama-graphics `7de75ab`); KY-65, KY-66 and KY-68
+    removed; `@kama/window`'s tests drop `back(at:, nanos:)` (kama-window `6ac2f4b`); and the new check found WIN-27,
+    a lone surrogate from a page's synthetic key event ending the program, filed with its question for the owner.
 - **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
   baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 

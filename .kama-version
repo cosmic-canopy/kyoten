@@ -413,5 +413,30 @@
 #   315 in Edge, 319 in Firefox and Chrome for Testing), @kama/image's (1,401, the sweep's 197), @kama/imagediff's (94)
 #   and @kama/graphics' (475 natively, 476 in Firefox and Chrome for Testing, 451 in Edge), its ratchet raised as above.
 #   KY-40, KY-45, KY-58 and KY-65 to KY-68 re-checked, unchanged. The Mac's pin is 0.9.978 until it is rebuilt there.
-KAMA_VERSION=0.9.1018
-KAMA_BUILD=g575a9cc6
+#
+# 2026-11-22: 0.9.1018 -> 0.9.1026 (b2f627b0), kama's dev HEAD with a clean tree, on its origin, at the owner's word
+# ("yes you can bump first A"); 0.9.1018 kept in .scratch/kama-pin-0.9.1018. What moved, for kyoten:
+#   0.9.1019 KR-435: a `return` with a value in a function that returns nothing is refused, so KY-65 is fixed and removed.
+#   0.9.1020 KR-436: a negative `Duration` moves an `Instant` or a `BootInstant` back (`now + (-d)`), panicking only
+#           when the reading would leave its clock's range, and the `hash()` of a negative `Duration`, a pre-1970
+#           `Timestamp` and a pre-1970 `Date` no longer trap, so KY-66 is fixed and removed; @kama/window's tests drop
+#           their `back(at:, nanos:)` (kama-window 6ac2f4b), their manifest needing 0.9.1020.
+#   0.9.1021 KR-438: the host header is `<project>.kama.h`, so KY-68 is fixed and removed; no code of kyoten's or its
+#           packages' has an `expose fn`.
+#   0.9.1023 KR-441: `cast<char>` traps on a value that is no Unicode scalar value. @kama/window reads a text event's
+#           code point with one, so @kama/graphics' cube is 92 B larger after brotli with no source changed (Cube.pumped,
+#           where it is inlined, 291 B larger before), its record raised with that reason (kama-graphics 7de75ab);
+#           and a lone surrogate from a page's synthetic key event now ends the program: @kama/window's WIN-27.
+#   The rest of 0.9.1019 to 0.9.1026, none that kyoten calls: a TCP connect to itself refused (KR-439), a kbin reader
+#           answering a malformed stream with Err (KR-442), a return type in error no longer read as `void`, and the
+#           bare-metal runtime. KR-437 (KY-67) is ruled A and counted by kama, not yet built.
+#   Every manifest passed `kama check` on it before the bump, fps and vr too. Green on it with nothing else changed but
+#   the cube's record, at 0.9.1018's counts, every leg debug and release: tools/test.sh (engine 218 natively and on
+#   wasm, the frame guard, the tool's 229, kyoten check, fps native and on wasm, vr checked; 15 min beside the packages'
+#   gates), @kama/window's (304, 204 under node, 311 in Edge and Firefox, 322 through the driver, the unreached fixture
+#   linked), @kama/gpu's (344, 315 in Edge, 319 in Firefox and Chrome for Testing), @kama/image's (1,401, the sweep's
+#   197), @kama/imagediff's (94) and @kama/graphics' (475 natively, 476 in Firefox and Chrome for Testing, 451 in Edge),
+#   its ratchet raised as above. KY-35, KY-40, KY-45, KY-58 and KY-67 re-checked, unchanged. The Mac's pin is 0.9.978
+#   until it is rebuilt at b2f627b0.
+KAMA_VERSION=0.9.1026
+KAMA_BUILD=gb2f627b0
