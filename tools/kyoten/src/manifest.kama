@@ -199,7 +199,9 @@ unsafe fn Optional<Manifest> readManifest(const ref string path, ref string why)
 unsafe fn DynamicArray<string> filesUnder(const ref string dir) {
     SortedMap<string, bool> found = SortedMap.empty();
     walkInto(dir: dir, rel: "", found: found);
-    return found.keys();
+    DynamicArray<string> files = DynamicArray.empty();
+    foreach (string f in found) { files.add(item: give f); }
+    return files;
 }
 
 unsafe fn void walkInto(const ref string dir, const ref string rel, ref SortedMap<string, bool> found) {

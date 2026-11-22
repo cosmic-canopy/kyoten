@@ -310,7 +310,8 @@ type resource Level {
         SortedMap<string, bool> placed = SortedMap.empty();
         SortedMap<string, bool> keys = SortedMap.empty();
         foreach (const ref string n in this.nodes.iterConst()) { keys.put(key: copy n, value: true); }
-        DynamicArray<string> byKey = keys.keys();
+        DynamicArray<string> byKey = DynamicArray.empty();
+        foreach (string k in keys) { byKey.add(item: give k); }
         DynamicArray<string> order = DynamicArray.empty();
         while (order.length() < byKey.length()) {
             string next = "";
@@ -592,13 +593,14 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
     // The component records: world components, and what is not built yet.
     SortedMap<string, bool> world = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> names = f.record().components().keys();
-        foreach (const ref string c in names.iterConst()) {
+        foreach (string c in f.record().components()) {
             componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
                             idx: idx, world: world, no: no);
         }
     }
-    s.worldList = world.keys();
+    DynamicArray<string> worldList = DynamicArray.empty();
+    foreach (string w in world) { worldList.add(item: give w); }
+    s.worldList = give worldList;
     foreach (const ref Family fam in families.iterConst()) {
         foreach (const ref Component c in fam.components().iterConst()) {
             if (!world.contains(key: c.path())) { continue; }
@@ -622,8 +624,7 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
             }
             case None: { }
         };
-        DynamicArray<string> names = f.record().groups().keys();
-        foreach (const ref string g in names.iterConst()) {
+        foreach (string g in f.record().groups()) {
             string path = inModule(module: f.module(), name: g);
             if (groupFile.contains(key: path)) {
                 no.add(where: f.file(), what: "processor group `${g}` is declared in two records files of its module: one layer holds a key once");
@@ -639,8 +640,7 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
     SortedMap<string, string> groupOf = SortedMap.empty();
     SortedMap<string, string> recordOf = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> names = f.record().processors().keys();
-        foreach (const ref string key in names.iterConst()) {
+        foreach (string key in f.record().processors()) {
             string module = copy f.module();
             if (key.contains(substring: "::") && moduleOfPath(path: key) != module) {
                 no.add(where: f.file(), what: "processor `${key}`: a processor of another module, tuned from this one, is not built yet: it comes with the engine's own processors (step 9)");
@@ -696,8 +696,7 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
         }
         // The stated orders, each between siblings.
         foreach (const ref CodeFile f in r.code().iterConst()) {
-            DynamicArray<string> gnames = f.record().groups().keys();
-            foreach (const ref string gname in gnames.iterConst()) {
+            foreach (string gname in f.record().groups()) {
                 string me = keyOf(isGroup: true, path: inModule(module: f.module(), name: gname));
                 if (!top.has(key: me)) { continue; }
                 string label = "processor group " + gname;
@@ -710,8 +709,7 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
                                label: label, phase: ph, file: f.file(), no: no);
                 }
             }
-            DynamicArray<string> pnames = f.record().processors().keys();
-            foreach (const ref string pname in pnames.iterConst()) {
+            foreach (string pname in f.record().processors()) {
                 string path = inModule(module: f.module(), name: pname);
                 isize at = s.processorAt(path: path);
                 if (at < 0) { continue; }
@@ -743,8 +741,7 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
         DynamicArray<string> order = top.sorted(circle: circle);
         if (circle.length() > 0) { refuseCircle(circle: circle, phase: ph, recordOf: recordOf, groupFile: groupFile, no: no); }
         s.orders.put(key: copy ph, value: give order);
-        DynamicArray<string> groupPaths = inner.keys();
-        foreach (const ref string gp in groupPaths.iterConst()) {
+        foreach (string gp in inner) {
             DynamicArray<string> ring = DynamicArray.empty();
             DynamicArray<string> members = inner.getRef(key: gp).sorted(circle: ring);
             if (ring.length() > 0) { refuseCircle(circle: ring, phase: ph, recordOf: recordOf, groupFile: groupFile, no: no); }
@@ -770,7 +767,8 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
     // The base clock: the least common multiple of every simulation rate.
     SortedMap<int32, bool> rates = SortedMap.empty();
     foreach (const ref Processor p in s.processorList.iterConst()) { if (p.rate() > 0) { rates.put(key: p.rate(), value: true); } }
-    DynamicArray<int32> distinct = rates.keys();
+    DynamicArray<int32> distinct = DynamicArray.empty();
+    foreach (int32 hz in rates) { distinct.add(item: hz); }
     int64 shared = 0;
     foreach (int32 hz in distinct) { shared = shared == 0 ? cast<int64>(hz) : Rate::baseOf(a: shared, b: cast<int64>(hz)); }
     if (shared == 0) { shared = cast<int64>(Rate::defaultHz); }

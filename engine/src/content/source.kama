@@ -47,7 +47,9 @@ type resource FolderSource implements RecordSource {
         };
         SortedMap<string, bool> found = SortedMap.empty();
         walk(root: root, rel: "", found: found);
-        return Result::Ok(value: FolderSource.of(root: copy root, label: copy label, files: found.keys()));
+        DynamicArray<string> files = DynamicArray.empty();
+        foreach (string f in found) { files.add(item: give f); }
+        return Result::Ok(value: FolderSource.of(root: copy root, label: copy label, files: give files));
     }
 
     public const fn string name() { return copy this.label; }

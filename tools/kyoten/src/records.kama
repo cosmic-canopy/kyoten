@@ -75,7 +75,11 @@ type resource Records {
     // Each action's declaring module, by name.
     public const fn const ref SortedMap<string, string> actions() { return this.actionModules; }
     public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
-    public const fn DynamicArray<string> prefabNames() { return this.prefabDecls.keys(); }
+    public const fn DynamicArray<string> prefabNames() {
+        DynamicArray<string> names = DynamicArray.empty();
+        foreach (string p in this.prefabDecls) { names.add(item: give p); }
+        return names;
+    }
     // The scene `app.firstScene` names, or "" when no app record names one; and the file that names it.
     public const fn const ref string firstScene() { return this.sceneFirst; }
     public const fn const ref string firstSceneFile() { return this.sceneFirstFile; }
@@ -111,8 +115,7 @@ type resource Records {
                 case None: { }
             };
         }
-        DynamicArray<string> bound = c.bindings().keys();
-        foreach (const ref string b in bound.iterConst()) {
+        foreach (string b in c.bindings()) {
             if (this.bindingFiles.contains(key: b)) {
                 string other = copy this.bindingFiles.getRef(key: b);
                 no.add(where: file, what: "the bindings of `${b}` are in ${other} too: one content layer holds a key once");
@@ -120,8 +123,7 @@ type resource Records {
                 this.bindingFiles.put(key: copy b, value: copy file);
             }
         }
-        DynamicArray<string> names = c.prefabs().keys();
-        foreach (const ref string p in names.iterConst()) {
+        foreach (string p in c.prefabs()) {
             if (this.prefabDecls.contains(key: p)) {
                 string other = copy this.prefabDecls.getRef(key: p).where();
                 no.add(where: file, what: "prefab `${p}` is in ${other} too: one content layer holds a key once");
@@ -135,14 +137,13 @@ type resource Records {
 
     // Each binding names an action, and each variant a prefab, with no circle of variants.
     unsafe fn void crossCheck(ref Refusals no) {
-        DynamicArray<string> bound = this.bindingFiles.keys();
-        foreach (const ref string b in bound.iterConst()) {
+        foreach (string b in this.bindingFiles) {
             if (!this.actionModules.contains(key: b)) {
                 string file = copy this.bindingFiles.getRef(key: b);
                 no.add(where: file, what: "the bindings of `${b}` name no action: an action is declared in a module's records file");
             }
         }
-        DynamicArray<string> names = this.prefabDecls.keys();
+        DynamicArray<string> names = this.prefabNames();
         foreach (const ref string p in names.iterConst()) {
             string origin = copy this.prefabDecls.getRef(key: p).from();
             if (!origin.isEmpty() && !this.prefabDecls.contains(key: origin)) {
@@ -218,13 +219,11 @@ unsafe fn PrefabDecl declare(const ref string name, const ref JsonValue value, c
 // file there is refused, pointing to a module folder. True when one was.
 fn bool refusedInRoot(const ref ModuleRecord record, const ref string file, ref Refusals no) {
     bool any = false;
-    DynamicArray<string> ps = record.processors().keys();
-    foreach (const ref string p in ps.iterConst()) {
+    foreach (string p in record.processors()) {
         no.add(where: file, what: "processor `${p}` is in the root module, which holds `main` and the generated code, outside the simulation: move it, with its code, to a module folder (`src/<module>/`)");
         any = true;
     }
-    DynamicArray<string> cs = record.components().keys();
-    foreach (const ref string c in cs.iterConst()) {
+    foreach (string c in record.components()) {
         no.add(where: file, what: "component `${c}` is in the root module, which holds `main` and the generated code, outside the simulation: move it, with its type, to a module folder (`src/<module>/`)");
         any = true;
     }
@@ -243,8 +242,7 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
         ModuleRecord m = ModuleRecord.make();
         string why = mergeFile(path: game.root() + "/" + file, into: m);
         if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
-        DynamicArray<string> actions = m.actions().keys();
-        foreach (const ref string a in actions.iterConst()) {
+        foreach (string a in m.actions()) {
             ActionKind kind = m.actions().getRef(key: a).kind();
             match (kind) {
                 case Digital: { r.addAction(name: a, module: module, file: file, no: no); }

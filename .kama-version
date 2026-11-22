@@ -364,7 +364,8 @@
 #   (249, 163 under node, 253 in Edge and Firefox, 264 through the driver), @kama/gpu's (339, 313 in Edge, 316 in
 #   Firefox and Chrome for Testing, both examples), @kama/image's (1,401, the sweep's 197), @kama/graphics' (285
 #   natively, in Firefox and in Chrome for Testing, 276 in Edge). KY-40, KY-45 and KY-58 re-checked, unchanged. The
-#   Mac's pin is 0.9.966 until it is rebuilt there.#
+#   Mac's pin is 0.9.966 until it is rebuilt there.
+#
 # 2026-11-18, Mac: the Mac's pin rebuilt at 0.9.978 (5e542c55) from a clean clone (.scratch/kama-pin-src-978), at the
 # owner's word ("Match Windows: 0.9.978"), so both machines run the same compiler; the 0.9.966 binary is kept in
 # .scratch/kama-pin-0.9.966. The Mac had first built 0.9.981 (dcea7449, origin's head that morning) for @kama/audio's
@@ -374,5 +375,42 @@
 # `kyoten check engine/kama.json`; fps native and on wasm in both builds; vr checked. 3 min 52 s at a load of 5.8 to
 # 7.6. @kama/audio's gate is green on it too. KY-3 is narrowed (docs/KAMA_GAPS.md): a program builds for
 # `aarch64-ios17.0-simulator` with Xcode 27.2.
-KAMA_VERSION=0.9.978
-KAMA_BUILD=g5e542c55
+#
+# 2026-11-21, Windows: 0.9.978 -> 0.9.1018 (575a9cc6), at the owner's word ("we can bump now"), from a clean clone of
+# ../kama (.scratch/kama-pin-src-1018); the 0.9.978 binary is kept in .scratch/kama-pin-0.9.978. The pin was on kama's
+# history (merge-base). 575a9cc6 and its parent 1e3e30a2 were on ../kama's dev and not yet on its origin, so the Mac
+# rebuilds at 575a9cc6 once kama pushes it, comparing the trees if a rebase gave it another hash. What moved, for kyoten:
+#   0.9.1013 KR-424: a SortedMap lists as Map does (`foreach (K k in m)`, `values()`, `entries()`, `range(from:, to:)`,
+#           each a view), and `keys()` and `SortedSet.elements()` are gone. The bump ports kyoten's 48 `.keys()` calls,
+#           the staged pin's only refusals: a loop that only reads the map iterates it, and a list kept (returned,
+#           stored, passed on, or its owner changed inside the loop) is a loop into a DynamicArray, each key moved in
+#           with `give`. No package called either.
+#   0.9.1018 KR-433: a project's `kama run` builds where `kama build` does and shares its object cache, so KY-64 is
+#           fixed and removed: its repro's first `kama run` took 61.2 s and the next two 0.94 s and 0.88 s, where
+#           every run took about 62 s on 0.9.978.
+#   0.9.1017 KR-432: any `select` value takes `assets`, so KY-63 is fixed and removed; @kama/graphics' cube can move
+#           its goldens into a value its player's build leaves out.
+#   0.9.980 KR-337: `spawn` may name a method, so KY-23 is fixed and removed.
+#   0.9.995 and 0.9.996 (KR-422, KR-403): an array's growth checks its bytes before any allocator is asked, and
+#           DynamicArray's growTo is no longer a function of its own. With the emitter's changes in the range, clang
+#           inlines kama's code differently, and @kama/graphics' cube is 2,671 B larger after brotli with no source
+#           changed, its record raised with that reason (kama-graphics 2865c36).
+#   Checked first, as FIRST-SLICE item 1 asked: 0.9.1009 refuses `@generate(zero)` on a kama value, and every one in
+#           the packages' sources is on a `type extern value` (@kama/gpu's webgpu.gen.kama, @kama/window's seam);
+#           0.9.994 folds a `comptime` shift at its operand's width, and webgpu.gen.kama's 18 flags shift by at most 27;
+#           0.9.987's `@generate(zero)` defaults and 0.9.1012's B-tree, under the engine's `content` and `records`,
+#           change nothing the gates hold. Every manifest passed `kama check` on the staged pin but for the 48 calls.
+#   The rest of 0.9.979 to 0.9.1016, none that kyoten calls: Android's app fibers and trusted input, Linux's io_uring,
+#           compile-time values (a fixed array of values, an enum with payloads, a function pointer, `match`), derives
+#           and serde across a class hierarchy, `try new`, the collections answering no room (KR-403, KR-404,
+#           KR-423), function pointers (KR-420), `@generate(default)` (KR-418), a field named `copy` or `give`
+#           (KR-431), `when` and `out` as names (KR-430), and the reserved-word guards.
+#   Green on it with the port alone, at 0.9.978's counts, every leg debug and release: tools/test.sh (engine 218
+#   natively and on wasm, the frame guard, the tool's 228, kyoten check, fps native and on wasm, vr checked; 21 min
+#   beside @kama/graphics' gate, where the session's start took 33 on 0.9.978, and 12 min 56 s alone), @kama/window's (304,
+#   204 under node, 311 in Edge and Firefox, 322 through the driver, the unreached fixture linked), @kama/gpu's (344,
+#   315 in Edge, 319 in Firefox and Chrome for Testing), @kama/image's (1,401, the sweep's 197), @kama/imagediff's (94)
+#   and @kama/graphics' (475 natively, 476 in Firefox and Chrome for Testing, 451 in Edge), its ratchet raised as above.
+#   KY-40, KY-45, KY-58 and KY-65 to KY-68 re-checked, unchanged. The Mac's pin is 0.9.978 until it is rebuilt there.
+KAMA_VERSION=0.9.1018
+KAMA_BUILD=g575a9cc6

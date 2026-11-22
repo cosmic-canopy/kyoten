@@ -21,13 +21,12 @@ fn string actionsKama(const ref Records r) {
     string t = headerLine() + "\n";
     t = t + "// The game's actions, a `Digital` each, in the field its name gives (components § Decided). The Input phase\n";
     t = t + "// fills them from the player the entity names (step 8).\n\n";
-    DynamicArray<string> names = r.actions().keys();
-    if (names.length() > 0) { t = t + "import { kyoten::input::Digital };\n\n"; }
+    if (r.actions().length() > 0) { t = t + "import { kyoten::input::Digital };\n\n"; }
     t = t + "export { Actions };\n\n";
     t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
     t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
     t = t + "    @field public int32 player;\n";
-    foreach (const ref string a in names.iterConst()) {
+    foreach (string a in r.actions()) {
         string module = copy r.actions().getRef(key: a);
         t = t + "    // Declared by " + module + ".\n";
         t = t + "    @skip public Digital " + a + " = Digital.default();\n";
@@ -73,14 +72,13 @@ fn string prefabsKama(const ref string game, const ref DynamicArray<Family> fami
         }
     }
     SortedMap<string, int32> uses = SortedMap.empty();
-    DynamicArray<string> paths = named.keys();
-    foreach (const ref string p in paths.iterConst()) {
+    foreach (string p in named) {
         string n = copy named.getRef(key: p);
         int32 seen = uses.contains(key: n) ? uses.getRef(key: n) : 0;
         uses.put(key: give n, value: seen + 1);
     }
     string imports = "";
-    foreach (const ref string p in paths.iterConst()) {
+    foreach (string p in named) {
         string n = copy named.getRef(key: p);
         string entry = "";
         if (p == actionsPath) { entry = "Actions"; }

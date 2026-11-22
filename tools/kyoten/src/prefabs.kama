@@ -136,14 +136,18 @@ unsafe fn void resolveOwn(const ref Records r, const ref Index idx, ref SortedMa
             }
             spelled.put(key: copy path, value: copy k);
         }
-        added.put(key: copy p, value: spelled.keys());
+        DynamicArray<string> addedPaths = DynamicArray.empty();
+        foreach (string s in spelled) { addedPaths.add(item: give s); }
+        added.put(key: copy p, value: give addedPaths);
         SortedMap<string, bool> gone = SortedMap.empty();
         DynamicArray<string> nulls = copy r.prefabs().getRef(key: p).dropped();
         foreach (const ref string k in nulls.iterConst()) {
             string path = resolveKey(idx: idx, key: k, subject: subject, file: file, no: no);
             if (!path.isEmpty()) { gone.put(key: copy path, value: true); }
         }
-        dropped.put(key: copy p, value: gone.keys());
+        DynamicArray<string> gonePaths = DynamicArray.empty();
+        foreach (string g in gone) { gonePaths.add(item: give g); }
+        dropped.put(key: copy p, value: give gonePaths);
     }
 }
 
@@ -153,8 +157,7 @@ unsafe fn void resolveOwn(const ref Records r, const ref Index idx, ref SortedMa
 unsafe fn SortedMap<string, DynamicArray<string>> requirements(const ref Records r, const ref Index idx, ref Refusals no) {
     SortedMap<string, bool> world = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> names = f.record().components().keys();
-        foreach (const ref string c in names.iterConst()) {
+        foreach (string c in f.record().components()) {
             match (f.record().components().getRef(key: c).store()) {
                 case World: { world.put(key: inModule(module: f.module(), name: c), value: true); }
                 case _: { }
@@ -163,8 +166,7 @@ unsafe fn SortedMap<string, DynamicArray<string>> requirements(const ref Records
     }
     SortedMap<string, DynamicArray<string>> made = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> names = f.record().components().keys();
-        foreach (const ref string c in names.iterConst()) {
+        foreach (string c in f.record().components()) {
             DynamicArray<string> wanted = copy f.record().components().getRef(key: c).requires();
             if (wanted.length() == 0) { continue; }
             string path = inModule(module: f.module(), name: c);
@@ -203,7 +205,8 @@ unsafe fn DynamicArray<string> listedOf(const ref string p, const ref Records r,
     }
     foreach (const ref string c in added.getRef(key: p).iterConst()) { s.put(key: copy c, value: true); }
     foreach (const ref string c in dropped.getRef(key: p).iterConst()) { Optional<bool> was = s.remove(key: c); }
-    DynamicArray<string> made = s.keys();
+    DynamicArray<string> made = DynamicArray.empty();
+    foreach (string c in s) { made.add(item: give c); }
     memo.put(key: copy p, value: copy made);
     return made;
 }
@@ -229,7 +232,9 @@ fn DynamicArray<string> closed(const ref DynamicArray<string> listed,
         }
         i = i + 1;
     }
-    return have.keys();
+    DynamicArray<string> withRequired = DynamicArray.empty();
+    foreach (string c in have) { withRequired.add(item: give c); }
+    return withRequired;
 }
 
 // The base of a prefab's family: itself, unless it is a variant with its base's components.
@@ -264,8 +269,7 @@ unsafe fn DynamicArray<Family> resolveFamilies(const ref Records r, const ref In
             no.add(where: file, what: "prefab `${p}` drops `${d}`, but `${who}` requires it: drop `${who}` too, or keep `${d}`");
         }
         // A requirement adds a component from its defaults, so one without must be listed (question 8, 2026-11-06).
-        DynamicArray<string> required = by.keys();
-        foreach (const ref string a in required.iterConst()) {
+        foreach (string a in by) {
             if (idx.defaultAt(path: a)) { continue; }
             string who = copy by.getRef(key: a);
             no.add(where: file, what: "prefab `${p}` lacks `${a}`, which `${who}` requires and which elects no `default ctor`: list it in the prefab, with its values");
@@ -283,8 +287,7 @@ unsafe fn DynamicArray<Family> resolveFamilies(const ref Records r, const ref In
         }
         if (p != root) { membersOf.getRefMut(key: root).add(item: copy p); }
     }
-    DynamicArray<string> roots = membersOf.keys();
-    foreach (const ref string root in roots.iterConst()) {
+    foreach (string root in membersOf) {
         string file = copy r.prefabs().getRef(key: root).where();
         SortedMap<string, string> byField = SortedMap.empty();
         SortedMap<string, string> nameOf = SortedMap.empty();
@@ -304,8 +307,7 @@ unsafe fn DynamicArray<Family> resolveFamilies(const ref Records r, const ref In
             nameOf.put(key: copy field, value: give name);
         }
         DynamicArray<Component> parts = DynamicArray.empty();
-        DynamicArray<string> fields = byField.keys();
-        foreach (const ref string f in fields.iterConst()) {
+        foreach (string f in byField) {
             string path = copy byField.getRef(key: f);
             string by = requirers.getRef(key: root).contains(key: path) ? copy requirers.getRef(key: root).getRef(key: path) : "";
             parts.add(item: Component.make(path: give path, name: copy nameOf.getRef(key: f), field: copy f, requiredBy: give by));

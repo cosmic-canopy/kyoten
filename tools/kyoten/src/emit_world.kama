@@ -97,10 +97,9 @@ type resource ImportSet {
 
     // The file's import block, or "" when it imports nothing.
     public const fn string block() {
-        DynamicArray<string> all = this.paths.keys();
-        if (all.length() == 0) { return ""; }
+        if (this.paths.length() == 0) { return ""; }
         string entries = "";
-        foreach (const ref string p in all.iterConst()) {
+        foreach (string p in this.paths) {
             string name = this.nameOf(path: p);
             string bare = lastSegment(path: p);
             string written = moduleSegment(path: p) == this.own ? copy bare : copy p;
@@ -345,8 +344,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
         foreach (const ref Processor p in s.processors().iterConst()) {
             if (p.phase() == phase && p.rate() > 0) { rates.put(key: p.rate(), value: true); }
         }
-        DynamicArray<int32> hzs = rates.keys();
-        foreach (int32 hz in hzs) {
+        foreach (int32 hz in rates) {
             t = t + "    " + rateType + " r${hz} = " + rateType + ".of(hz: ${hz}, over: " + world + "::baseHz);\n";
         }
         DynamicArray<string> order = s.orderOf(phase: phase);

@@ -114,9 +114,8 @@ type resource Placement {
     // Refuse each `values` key that names no component of its prefab's family, whose spellings the generated half
     // hands in.
     public const fn void checkValues(const ref DynamicArray<string> spellings, ref LoadRefusals no) {
-        DynamicArray<string> keys = this.valueTrees.keys();
         string family = componentList(spellings: spellings);
-        foreach (const ref string k in keys.iterConst()) {
+        foreach (string k in this.valueTrees) {
             if (spellings.contains(item: k)) { continue; }
             string placed = copy this.placedName;
             string prefab = copy this.prefabName;
@@ -140,7 +139,11 @@ type resource Content {
     public ctor make() { }
 
     // Every prefab some layer writes, by name.
-    public const fn DynamicArray<string> prefabNames() { return this.prefabTrees.keys(); }
+    public const fn DynamicArray<string> prefabNames() {
+        DynamicArray<string> names = DynamicArray.empty();
+        foreach (string p in this.prefabTrees) { names.add(item: give p); }
+        return names;
+    }
     public const fn bool hasPrefab(const ref string prefab) { return this.prefabTrees.contains(key: prefab); }
 
     // The file of the highest layer that writes the prefab, or "" when none does.
@@ -376,8 +379,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
                 }
                 case None: { }
             };
-            DynamicArray<string> names = cf.prefabs().keys();
-            foreach (const ref string p in names.iterConst()) {
+            foreach (string p in cf.prefabs()) {
                 if (writtenHere.contains(key: p)) {
                     string other = copy writtenHere.getRef(key: p);
                     no.add(where: file, what: "prefab `${p}` is in ${other} too: one content layer holds a key once");
@@ -391,7 +393,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
         }
         i = i + 1;
     }
-    DynamicArray<string> prefabs = c.prefabTrees.keys();
+    DynamicArray<string> prefabs = c.prefabNames();
     fillScene(stack: stack, c: c, prefabs: prefabs, firstScene: firstScene, firstSceneFile: firstSceneFile, no: no);
     return c;
 }
@@ -426,10 +428,10 @@ fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicAr
         if (scenes.contains(key: firstScene)) { c.sceneName = copy firstScene; }
         else { no.add(where: firstSceneFile, what: "`app.firstScene` names `${firstScene}`, which is no folder under `scenes/`"); }
     } else if (scenes.length() == 1) {
-        DynamicArray<string> only = scenes.keys();
-        c.sceneName = copy only[0];
+        foreach (string only in scenes) { c.sceneName = give only; }
     } else if (scenes.length() > 1) {
-        DynamicArray<string> all = scenes.keys();
+        DynamicArray<string> all = DynamicArray.empty();
+        foreach (string s in scenes) { all.add(item: give s); }
         string named = listed(items: all);
         no.add(where: topLabel, what: "the scenes ${named} are there, and no `app.firstScene` names the first: name it in the app record");
     }
@@ -462,8 +464,7 @@ fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicAr
             ZoneFile zone = ZoneFile.make();
             string why = mergeText::<ZoneFile>(text: body, into: zone);
             if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
-            DynamicArray<string> keys = zone.place().keys();
-            foreach (const ref string k in keys.iterConst()) {
+            foreach (string k in zone.place()) {
                 if (placedHere.contains(key: k)) {
                     string other = copy placedHere.getRef(key: k);
                     no.add(where: file, what: "placement `${k}` is in ${other} too: one content layer holds a key once");
@@ -495,8 +496,7 @@ fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicAr
                 Placement p = match (give lower) { case Some(value: was): give was; case None: Placement.of(file: copy file, placed: copy k, prefab: copy prefab); };
                 p.fileName = copy file;
                 p.prefabName = copy prefab;
-                DynamicArray<string> components = rec.values().keys();
-                foreach (const ref string comp in components.iterConst()) {
+                foreach (string comp in rec.values()) {
                     if (!p.valueTrees.contains(key: comp)) { p.valueTrees.put(key: copy comp, value: DynamicArray.empty()); }
                     p.valueTrees.getRefMut(key: comp).add(item: Subtree.of(file: copy file, subject: "placement `" + k + "`",
                                                                            tree: copy rec.values().getRef(key: comp)));
@@ -506,7 +506,8 @@ fn void fillScene(const ref LayerStack stack, ref Content c, const ref DynamicAr
         }
         i = i + 1;
     }
-    DynamicArray<string> order = placed.keys();
+    DynamicArray<string> order = DynamicArray.empty();
+    foreach (string k in placed) { order.add(item: give k); }
     foreach (const ref string k in order.iterConst()) {
         Optional<Placement> taken = placed.remove(key: k);
         match (give taken) { case Some(value: p): { c.placementList.add(item: give p); } case None: { } };

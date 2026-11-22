@@ -145,16 +145,14 @@ type resource Graph {
     // module out of it, the reason, which names the next module of a chain.
     public const fn SortedMap<string, bool> fenced(ref SortedMap<string, string> why) {
         SortedMap<string, bool> kept = SortedMap.empty();
-        DynamicArray<string> listed = this.lists.keys();
-        foreach (const ref string m in listed.iterConst()) { kept.put(key: copy m, value: true); }
-        DynamicArray<string> every = this.packageOf.keys();
-        foreach (const ref string m in every.iterConst()) {
+        foreach (string m in this.lists) { kept.put(key: copy m, value: true); }
+        foreach (string m in this.packageOf) {
             if (!this.lists.contains(key: m)) { why.put(key: copy m, value: "has no `importsOnly`"); }
         }
         bool changed = true;
         while (changed) {
             changed = false;
-            foreach (const ref string m in listed.iterConst()) {
+            foreach (string m in this.lists) {
                 if (!kept.getRef(key: m)) { continue; }
                 string pkg = copy this.packageOf.getRef(key: m);
                 foreach (const ref string e in this.lists.getRef(key: m).iterConst()) {
@@ -216,15 +214,13 @@ fn string phaseWord(Phase p) {
 fn SortedMap<string, string> simulationModules(const ref Records r) {
     SortedMap<string, Phase> groups = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> gs = f.record().groups().keys();
-        foreach (const ref string g in gs.iterConst()) {
+        foreach (string g in f.record().groups()) {
             groups.put(key: f.module() + "::" + g, value: f.record().groups().getRef(key: g).phase());
         }
     }
     SortedMap<string, string> sims = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
-        DynamicArray<string> ps = f.record().processors().keys();
-        foreach (const ref string p in ps.iterConst()) {
+        foreach (string p in f.record().processors()) {
             string word = "";
             match (f.record().processors().getRef(key: p).phase()) {
                 case Some(value: ph): { word = phaseWord(p: ph); }
@@ -255,8 +251,7 @@ unsafe fn void checkFence(const ref Manifest game, const ref Records r, ref Refu
     SortedMap<string, bool> kept = g.fenced(why: why);
     string pkg = bareName(name: game.name());
     string pure = pureNames();
-    DynamicArray<string> modules = sims.keys();
-    foreach (const ref string m in modules.iterConst()) {
+    foreach (string m in sims) {
         if (kept.contains(key: m) && kept.getRef(key: m)) { continue; }
         string folder = folderOf(package: pkg, full: m);
         string holds = copy sims.getRef(key: m);
