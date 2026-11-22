@@ -100,18 +100,20 @@ the spin fixture runs headless on every leg.
 **`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), and the join's step 7 (the
 forty-fourth). Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.978+g5e542c55`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.1018+g575a9cc6`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s, `@kama/imagediff`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
-   twice on each leg. The closing counts, on 0.9.978:
+   twice on each leg. The closing counts, on 0.9.1018, as on 0.9.978 before the bump:
    - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 228; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
-     session's start. It took 14 minutes alone after step 7, where it took about 6 before: every program on the
-     engine now builds `@kama/window`, whose vendored SDL3 compiles from source on Windows, and kama keeps no object
-     cache for a `kama run` (a `kama run` of the spin fixture takes 80.6 s, a warm `kama build` 5.7 s: KY-64, filed);
+     session's start. It takes 12 min 56 s alone on 0.9.1018, whose `kama run` keeps its compiled C in the project's
+     `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every `kyoten run` compiling
+     `@kama/window`'s vendored SDL3 again. Of the tool's 526 s, about 4 minutes is spin's fresh-clone case, which
+     erases `spin/out` and so the cache: its first `kyoten run` in each build compiles SDL3 again (102 s and 115 s,
+     where a warm run takes 10 s), and its first web build takes 63 s;
    - `@kama/window`'s: 304, 204 under node, 311 in Edge and Firefox, 322 through the driver, and a program reaching none
      of the package linked natively and on wasm, since WIN-25 and WIN-26 (the forty-fifth session); 249, 163, 253 and
      264 at its start;
@@ -124,8 +126,8 @@ forty-fourth). Where the work is:**
    - `@kama/graphics`': 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, and `examples/cube`
      on every leg, since part 6's step 4 (the forty-third session); 450, 451 and 438 at its start. The cube on the GPU,
      natively and in Edge, is held to its software golden by FLIP, and its player build (`--define CUBE_PLAYER`) is run
-     once in Edge and measured: 169,655 B of wasm and JS after brotli since WIN-26 (169,091 B before), its ratchet
-     (`examples/cube/web-size.json`). Its
+     once in Edge and measured: 172,326 B of wasm and JS after brotli since the bump to 0.9.1018 (169,655 B on 0.9.978
+     since WIN-26, 169,091 B before), its ratchet (`examples/cube/web-size.json`). Its
      gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
      that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
      side by side.
@@ -144,75 +146,25 @@ forty-fourth). Where the work is:**
      beside a suite.
    - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
      emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
-   - **Read `../kama`'s log since `5e542c55`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 5e542c55 HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `575a9cc6`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 575a9cc6 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     By the thirty-ninth session's end the range held 47 commits, to `85099809` (0.9.1000), none that kyoten needs:
-     0.9.979, an Android app's loop fibers (KR-411); 0.9.980, `spawn` may name a method (KR-337); 0.9.981, Linux's
-     io_uring watcher (KR-412); 0.9.982, a `static` or `comptime` of a value type holding a fixed array of values
-     (`Mat3`) builds; 0.9.983, the emitter's pruning keeps a runtime macro line, so a `comptime` fixed array of values
-     compiles; 0.9.984, trusted input on an Android device under `kama run` (KR-397); KR-414, a test's timing check;
-     KR-415, filed for the Mac: on macOS a fiber's bytes do not end a window package's wait, which `@kama/window` does
-     not use yet; 0.9.985, the Android app runner's glue allocating through kama's funnel; and a test's start taken
-     before its waker. Then, during the thirty-eighth session: 0.9.986, an enum with payloads and an `fnptr` are
-     compile-time values (KR-413); 0.9.987, `@generate(zero)` makes each field's default by the one rule for a default
-     where it wrote zero bytes (KR-416); 0.9.988 to 0.9.991, derives and serde across a class hierarchy (KR-408, KR-419);
-     0.9.992, a leaf answering its root's comparison contracts (KR-407); 0.9.993, `try new` evaluating its arguments
-     only once the box is drawn; a test's clock (KR-415); and roadmap rulings. Then, during the thirty-ninth session:
-     roadmap rulings (KR-403 and KR-404 claimed by kama's Windows session, KR-423 filed); 0.9.994, `~` and a shift in
-     a `comptime` folding at their operand's width, as the run time computes them; 0.9.995 to 0.9.997, a collection's
-     capacity that does not fit an `isize` trapping, and `tryReserve` and an add within capacity answering no room
-     (KR-403). Then, while the session readied the next: 0.9.998, a `SlotMap` and a `BitSet` answering no room;
-     0.9.999, a `FixedArray`'s fallible ctors (`tryWithAllocator`, `tryFilledWithAllocator`), closing KR-403; 0.9.1000,
-     `new` over a constructor that answers `AllocError` answering for its box too (KR-404); and roadmap rulings, each an
-     addition kyoten does not call. Read again at the readying's second round: nothing since `85099809`, and
-     `../kama`'s working tree holds one change, to its own test `tests/app_event_wait.d` (a wake that waits for the
-     loop to go idle, for a CI run on macOS), nothing kyoten uses. Then, during the fortieth session, to `6174eb97`
-     (0.9.1005): that test committed; 0.9.1001 to 0.9.1005, function pointers (a static function binds as itself and
-     `Type::f` is a value; a generic function's instance is one, `twice::<int32>`, with one address; so are a built-in
-     module's function and a generic or prelude type's member; KR-420 closed); the editors' grammar pins and
-     `grammar.bnf`; and roadmap rulings (KR-423 briefed and ruled, KR-424 filed), none that kyoten needs. Then, during
-     the forty-first session, to `d76220fb` (0.9.1011): 0.9.1006 to 0.9.1008, serialization naming an entry's type and an
-     extended hierarchy's class on every back end (KR-421, KR-408); 0.9.1009, a kama value elects its default with
-     `@generate(default)`, and `@generate(zero)` is a `type extern value`'s alone, C's zero, refused on a kama value
-     (KR-418); 0.9.1010, `match` at compile time (KR-417); 0.9.1011, one message for one mistake in a compile-time
-     initializer (KR-427); the editors' grammar pins and roadmap and docs commits; and an uncommitted tree touching
-     `std::collections`' sorted map. None that kyoten needs. Read again at the readying, to `25499a59` (0.9.1012): that
-     tree committed, a sorted map or set answering no room instead of trapping at its allocator's limit, its B-tree
-     rebuilt as Rust's and Abseil's are (KR-423 closed). The engine's `content` and `records` modules use `SortedMap`.
-     Read again through the forty-second session, to `6574c746`: two roadmap commits, kama's Windows session claiming
-     KR-424 (an in-order walk of a sorted map's keys and entries off the global heap). Read again at its readying, to
-     `53ef8688` (0.9.1013), KR-424 committed and closed: **a breaking change for kyoten.** `SortedMap`'s `keys()`,
-     `values()` and `range()` no longer copy into a `DynamicArray`; a sorted map lists as `Map` does (`foreach (K k in
-     m)`, `values()`, `entries()`, `range(from:, to:)`, each a view), and `keys()` and `SortedSet.elements()` are gone,
-     a list to keep being a loop into a `DynamicArray` the caller names. **A bump past it ports 48 `.keys()` calls:** 10
-     in the engine's `content` module and 1 in its tests, 36 in the `kyoten` tool and 1 in its `spin` fixture
-     (`grep -rnE '\.(keys|elements)\(\)'`, every one on a `SortedMap`); no package calls either. Then to `61f6507b`, no
-     code: `@kama/imagediff` ruled first-party (`b9d0e2bc`), and KR-430 filed and claimed, a keyword naming a parameter
-     (`when`, `in`, `out`), brief first; `ref`, `out` and `base` each cost the packages a rebuild. Then, during the
-     forty-third session, to `831614a7` (0.9.1015): 0.9.1014, a field named `copy` or `give` can be borrowed (KR-431);
-     0.9.1015, `when` and `out` may name a binding and `in` stays reserved (KR-430 closed); the editors' grammar pins.
-     None that kyoten needs; on a bump, `out` stops costing a rebuild. Read again at the forty-fourth session's start,
-     to `97d55b38`: two roadmap commits, no code, KR-432 filed, claimed by kama's Windows session and briefed, which is
-     kyoten's KY-63 (a build cannot leave a manifest's `assets` out). Read again at its readying, to `3aefd09d`
-     (0.9.1017): 0.9.1016, the reserved-word guards; tree-sitter fixtures and the editors' pins; KR-432 ruled and built,
-     any `select` value taking `assets`, **which fixes KY-63 upstream**; and KR-433 filed with its brief, which is
-     kyoten's KY-64 (`kama run` keeps no object cache). **Proposed: one bump once KR-433 lands,** bringing both fixes,
-     the gate back near its 6 minutes, and the 48 `.keys()` calls ported in the same bump. Read again at the
-     forty-fifth session's start, unchanged; then during it, to `575a9cc6` (0.9.1018): KR-433 ruled as recommended,
-     claimed by kama's Windows session and built, a project's `kama run` building where `kama build` does and two
-     kamas building one project taking turns, **which fixes KY-64 upstream**; and KR-434, a test fixture's port. **So
-     the bump proposed above can be made,** to 0.9.1018 or later, with both fixes.
-     **On a bump, check 0.9.987, 0.9.994, 0.9.1009 and 0.9.1012 first:**
-     `@kama/gpu`'s 114 `extern` structs in `src/native/webgpu.gen.kama` and `@kama/window`'s two in
-     `src/native/seam.kama` are `@generate(zero)`, every one a `type extern value`, so 0.9.1009 refuses none (counted
-     the forty-first session), and `webgpu.gen.kama` holds 18 `comptime uint64` flags made by shifts of at most 27. The
-     pin is still on its history. A bump is optional until something kyoten needs lands.
-   - **The pin is on 0.9.978** (`5e542c55`) since the thirty-fifth session's start (`.kama-version`), at the owner's
-     word ("All as recommended"), every suite green on it at 0.9.966's counts. Every manifest passed `kama check` on the
-     staged pin first, so KR-405 refuses nothing kyoten writes. **0.9.967's KR-378 is on it, so `@kama/window`'s WIN-24
-     can be built.** Before it, 0.9.966 since the thirty-second session. `.kama-version` says what moved:
+     **At the bump `575a9cc6` and its parent `1e3e30a2` were on `../kama`'s `dev` alone, not yet on its origin,** so
+     the Mac rebuilds at it once kama pushes them, and checks first that the pushed commit is the same. The range
+     was empty at the bump (the forty-fifth session); what 0.9.979 to 0.9.1018 brought, read session by session from
+     the thirty-fifth, is `.kama-version`'s entry for the bump, and this item's history in the git log. A bump is
+     optional until something kyoten needs lands, and checks first what a release in the range says it changes.
+   - **The pin is on 0.9.1018** (`575a9cc6`) since the forty-fifth session's end (`.kama-version`), at the owner's word
+     ("we can bump now"), every suite green on it at 0.9.978's counts with the 48 `.keys()` calls ported. Every
+     manifest passed `kama check` on the staged pin first but for those calls. Before it, 0.9.978 since the
+     thirty-fifth session, whose 0.9.967 brought KR-378, so `@kama/window`'s WIN-24 can be built; and 0.9.966 since the
+     thirty-second. `.kama-version` says what moved:
+     - **0.9.1013 to 0.9.1018:** a `SortedMap` lists as `Map` does (`foreach (K k in m)`), its `keys()` gone (KR-424);
+       any `select` value takes `assets` (KR-432), which fixes KY-63; a project's `kama run` builds where `kama build`
+       does and shares its object cache (KR-433), which fixes KY-64; and since 0.9.980 a method may be named `spawn`
+       (KR-337), which fixes KY-23. All three are removed. Clang inlines kama's code differently since 0.9.995's growth
+       route and the range's emitter changes, so `@kama/graphics`' cube is 2,671 B larger with no source changed.
      - **0.9.958:** `run(app:, pace:)` takes a required `Pace`; the five calls say `Pace::EveryRefresh`, as they ran
        (kama-gpu `542789b`, kama-window `dfe07c4`, kama-graphics `5f494fa`), their manifests needing 0.9.958. A window
        package may install its own wait for an app on demand (`setEventWait`), which `@kama/window` does not do yet; it
@@ -227,18 +179,15 @@ forty-fourth). Where the work is:**
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.978 (`5e542c55`) too** (kyoten `9c7704b`, 2026-11-18), rebuilt from a clean clone at the
-     owner's word, its `tools/test.sh` green with Windows's counts, every wasm leg in both builds. KY-3 is narrowed
-     there: a program builds for `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls
-     `run` needs `pace:`; its committed code has none.
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `575a9cc6`,** once kama pushes it. It was rebuilt
+     at 0.9.978 on 2026-11-18 (kyoten `9c7704b`) from a clean clone at the owner's word, its `tools/test.sh` green
+     with Windows's counts, every wasm leg in both builds. KY-3 is narrowed there: a program builds for
+     `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its
+     committed code has none.
    - **Still open with kama:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-63, filed 2026-11-20, kama's KR-432 the same day: a build cannot leave a manifest's `assets` out;
-     - KY-64, filed 2026-11-20 (the forty-fourth session): `kama run` keeps no object cache, so every `kyoten run` of a
-       game on the engine compiles `@kama/window`'s vendored SDL3 again on Windows, about a minute a run, and the gate
-       took 14 minutes where it took 6; fixed upstream in 0.9.1018 (KR-433), not on the pin;
      - KY-65 and KY-66, filed 2026-11-21 (the forty-fifth session): a `return` with a value in a function that returns
        nothing passes `kama check` (its value dropped, or C that does not compile); `Instant + Duration` traps on a
        negative `Duration`;
@@ -691,7 +640,9 @@ forty-fourth). Where the work is:**
      pad's time is the pump's, a stopgap until SDL's stamp for a reading can be held by a test.
 
    **Next: step 8's parts in kyoten,** test-first on posted events and pads, the events' times now in hand; the lock-in
-   tried by the owner with two pads in a short block at the start of the session after it is built.
+   tried by the owner with two pads in a short block at the start of the session after it is built. **Beside it, in
+   `@kama/graphics`:** the cube's goldens can move into a `select` value its player's build leaves out, since KY-63's
+   fix is on the pin, which takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
@@ -786,7 +737,8 @@ forty-fourth). Where the work is:**
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
 
 **The forty-fifth session** (2026-11-21). Nothing new on any origin at the start, and kama unchanged since `3aefd09d`,
-so no bump; it moved to 0.9.1018 during the session, closing KR-433 (item 1).
+so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and the pin was bumped to it at the end
+(item 1).
 - **Every suite was green on 0.9.978 at the start,** at the forty-fourth session's counts.
 - **One question at the start, decided at once** (A): WIN-26's `postPad` takes a time too, `postPad(slot:, pad:, at:)`,
   as `post` does (kama-window `421b8da`).
@@ -806,6 +758,16 @@ so no bump; it moved to 0.9.1018 during the session, closing KR-433 (item 1).
     a call's releases at the call's time; natively a pad at the pump's moment (SDL's own stamp as the refinement); the
     C reading kama's clock through `kama_time.h`.
   - **kama gaps filed:** KY-65, KY-66, KY-67 and KY-68 (item 1), each reproduced on the pin and on 0.9.1018.
+- **The readying, at the owner's word ("we can bump now and push as well"):**
+  - the session's commits pushed first (kyoten `6dfb7a0`, kama-window `fedfc75`, kama-gpu `dc7d711`, kama-graphics
+    `80c9e5f`), nothing having come in on any origin;
+  - **the pin bumped to 0.9.1018** (item 1): every manifest checked on the staged pin, the 48 `.keys()` calls ported,
+    then every gate green at the same counts, kyoten's in 12 min 56 s alone (14 minutes on 0.9.978; about 4 of them its
+    spin fixture's fresh-clone case, which erases the fixture's `out/` and with it kama's object cache);
+  - KY-23, KY-63 and KY-64 fixed on the pin and removed; KY-40, KY-45, KY-58 and KY-65 to KY-68 unchanged;
+  - **the cube's record raised 2,671 B with its reason** (kama-graphics `2865c36`): no source changed, and clang inlines
+    kama's code differently (`Cube.render` 59.7 KB to 68.2 KB raw, small helpers folded into it), with kama's array
+    growth route changed in the range (0.9.995, 0.9.996) and its emitter too, the split between them not measured.
 - **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
   baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 
