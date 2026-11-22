@@ -379,7 +379,8 @@
 # 2026-11-21, Windows: 0.9.978 -> 0.9.1018 (575a9cc6), at the owner's word ("we can bump now"), from a clean clone of
 # ../kama (.scratch/kama-pin-src-1018); the 0.9.978 binary is kept in .scratch/kama-pin-0.9.978. The pin was on kama's
 # history (merge-base). 575a9cc6 and its parent 1e3e30a2 were on ../kama's dev and not yet on its origin, so the Mac
-# rebuilds at 575a9cc6 once kama pushes it, comparing the trees if a rebase gave it another hash. What moved, for kyoten:
+# rebuilds at 575a9cc6 once kama pushes it, comparing the trees if a rebase gave it another hash; kama pushed both the
+# same evening. What moved, for kyoten:
 #   0.9.1013 KR-424: a SortedMap lists as Map does (`foreach (K k in m)`, `values()`, `entries()`, `range(from:, to:)`,
 #           each a view), and `keys()` and `SortedSet.elements()` are gone. The bump ports kyoten's 48 `.keys()` calls,
 #           the staged pin's only refusals: a loop that only reads the map iterates it, and a list kept (returned,

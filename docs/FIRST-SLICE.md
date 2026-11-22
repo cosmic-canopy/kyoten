@@ -150,9 +150,12 @@ forty-fourth). Where the work is:**
      still on kama's history: `git -C ../kama merge-base --is-ancestor 575a9cc6 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     **At the bump `575a9cc6` and its parent `1e3e30a2` were on `../kama`'s `dev` alone, not yet on its origin,** so
-     the Mac rebuilds at it once kama pushes them, and checks first that the pushed commit is the same. The range
-     was empty at the bump (the forty-fifth session); what 0.9.979 to 0.9.1018 brought, read session by session from
+     **At the bump `575a9cc6` and its parent `1e3e30a2` were on `../kama`'s `dev` alone;** kama pushed them the same
+     evening (its origin's `dev` holds `575a9cc6`), so the Mac can rebuild at it. The range was empty at the bump (the
+     forty-fifth session). Read again at its readying, to `f4e36b5b` (0.9.1019): kama filed this session's four gaps
+     as KR-435 to KR-438, claimed by its Windows session, KR-437 and KR-438 ruled A, and KR-439 (a TCP connect to
+     itself); and 0.9.1019 refuses a `return` with a value in a `void` function (KR-435), **which fixes KY-65
+     upstream**, verified on a build of it, on which every manifest still checks clean; what 0.9.979 to 0.9.1018 brought, read session by session from
      the thirty-fifth, is `.kama-version`'s entry for the bump, and this item's history in the git log. A bump is
      optional until something kyoten needs lands, and checks first what a release in the range says it changes.
    - **The pin is on 0.9.1018** (`575a9cc6`) since the forty-fifth session's end (`.kama-version`), at the owner's word
@@ -179,7 +182,7 @@ forty-fourth). Where the work is:**
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `575a9cc6`,** once kama pushes it. It was rebuilt
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `575a9cc6`,** which kama has pushed. It was rebuilt
      at 0.9.978 on 2026-11-18 (kyoten `9c7704b`) from a clean clone at the owner's word, its `tools/test.sh` green
      with Windows's counts, every wasm leg in both builds. KY-3 is narrowed there: a program builds for
      `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its
@@ -188,12 +191,13 @@ forty-fourth). Where the work is:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-65 and KY-66, filed 2026-11-21 (the forty-fifth session): a `return` with a value in a function that returns
-       nothing passes `kama check` (its value dropped, or C that does not compile); `Instant + Duration` traps on a
-       negative `Duration`;
-     - KY-67 and KY-68, filed the same day, both from an `expose fn` in a library: its C is linked into a program that
-       reaches none of its kama while the `expose fn` is not, and the host header kama writes for it shadows the
-       program's own header of the program's name. `@kama/window` has no `expose fn` since (kama-window `fedfc75`).
+     - KY-65 and KY-66, filed 2026-11-21 (the forty-fifth session), kama's KR-435 and KR-436 the same day: a `return`
+       with a value in a function that returns nothing passes `kama check` (its value dropped, or C that does not
+       compile), fixed upstream in 0.9.1019, not on the pin; `Instant + Duration` traps on a negative `Duration`;
+     - KY-67 and KY-68, filed the same day, kama's KR-437 and KR-438, both ruled A, both from an `expose fn` in a
+       library: its C is linked into a program that reaches none of its kama while the `expose fn` is not, and the
+       host header kama writes for it shadows the program's own header of the program's name. `@kama/window` has no
+       `expose fn` since (kama-window `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
