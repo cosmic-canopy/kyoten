@@ -202,3 +202,13 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
 
     So the count kyoten declares is the events its processors schedule ahead at once, with a margin, not the events a
     session makes.
+- **2026-11-21, the owner: `@kama/audio`'s buffers draw their samples from the program's memory and belong to no
+  context** (its `AGENTS.audio.md` § Decided, 44 and 45). This is the third part of kyoten's Budget record for audio,
+  and the largest:
+  - **every buffer kyoten loads takes its samples from the `AudioMemory` it is made with,** kyoten's arena through
+    `AudioMemory.inArena(arena:)`, as the context's parts are. The record sizes them from its content: the frames times
+    the channels times 4 bytes of each buffer it holds at once, so 768 KB for a 2 s stereo loop at 48 kHz;
+  - **a context declares only how many buffers its audio side holds at once,** not their bytes. A buffer plays in any
+    context and in many sources with no copy, so one loaded sound costs its samples once;
+  - **a write into a buffer that is playing copies it,** so a buffer refilled while it plays holds a second copy of
+    its samples until the source lets go.
