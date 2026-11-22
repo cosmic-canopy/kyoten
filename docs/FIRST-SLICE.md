@@ -154,12 +154,24 @@ forty-fourth). Where the work is:**
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
      **At the bump `575a9cc6` and its parent `1e3e30a2` were on `../kama`'s `dev` alone;** kama pushed them the same
      evening (its origin's `dev` holds `575a9cc6`), so the Mac can rebuild at it. The range was empty at the bump (the
-     forty-fifth session). Read again at its readying, to `f4e36b5b` (0.9.1019): kama filed this session's four gaps
-     as KR-435 to KR-438, claimed by its Windows session, KR-437 and KR-438 ruled A, and KR-439 (a TCP connect to
-     itself); and 0.9.1019 refuses a `return` with a value in a `void` function (KR-435), **which fixes KY-65
-     upstream**, verified on a build of it, on which every manifest still checks clean; what 0.9.979 to 0.9.1018 brought, read session by session from
-     the thirty-fifth, is `.kama-version`'s entry for the bump, and this item's history in the git log. A bump is
-     optional until something kyoten needs lands, and checks first what a release in the range says it changes.
+     forty-fifth session). Read again at its readying, to `b2f627b0` (0.9.1026, 2026-11-22), on kama's origin:
+     - kama filed the session's four gaps as KR-435 to KR-438 the day they were filed, and has fixed three: 0.9.1019
+       refuses a `return` with a value in a `void` function (KR-435, **KY-65**); 0.9.1020 lets a negative `Duration`
+       move an `Instant` back, `now + (-d)` in Go's spelling, with no `Instant - Duration` (KR-436, **KY-66**), so
+       `@kama/window`'s `back(at:, nanos:)` in `tests/src/times.kama` goes once the pin carries it; and 0.9.1021 names
+       the host header `<project>.kama.h` (KR-438, **KY-68**). Each is verified on a build of `b2f627b0`.
+     - KR-437 (KY-67) is ruled A, a package's C linked only with its kama, and counted (`b4ee6b4d`): no program on this
+       box calls a dependency's C while reaching none of its kama, so a forcing reach is recommended a non-goal. Its
+       follow-on, KR-440, would give a package's C a generated header for its own `expose fn`s. Not yet built.
+     - The rest: a TCP connect to itself is refused (KR-439, 0.9.1022), `cast<char>` traps on a value that is no
+       Unicode scalar value (KR-441, 0.9.1023), a kbin reader answers a malformed stream with `Err` (KR-442,
+       0.9.1025), and an emitter fix and a bare-metal runtime fix (0.9.1024, 0.9.1026).
+     - **Every manifest of kyoten's and its packages' checks clean on 0.9.1026,** fps and vr too, so a bump to it needs
+       no port.
+
+     What 0.9.979 to 0.9.1018 brought, read session by session from the thirty-fifth, is `.kama-version`'s entry for
+     the bump, and this item's history in the git log. A bump is optional until something kyoten needs lands, and
+     checks first what a release in the range says it changes.
    - **The pin is on 0.9.1018** (`575a9cc6`) since the forty-fifth session's end (`.kama-version`), at the owner's word
      ("we can bump now"), every suite green on it at 0.9.978's counts with the 48 `.keys()` calls ported. Every
      manifest passed `kama check` on the staged pin first but for those calls. Before it, 0.9.978 since the
@@ -193,13 +205,14 @@ forty-fourth). Where the work is:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-65 and KY-66, filed 2026-11-21 (the forty-fifth session), kama's KR-435 and KR-436 the same day: a `return`
-       with a value in a function that returns nothing passes `kama check` (its value dropped, or C that does not
-       compile), fixed upstream in 0.9.1019, not on the pin; `Instant + Duration` traps on a negative `Duration`;
-     - KY-67 and KY-68, filed the same day, kama's KR-437 and KR-438, both ruled A, both from an `expose fn` in a
-       library: its C is linked into a program that reaches none of its kama while the `expose fn` is not, and the
-       host header kama writes for it shadows the program's own header of the program's name. `@kama/window` has no
-       `expose fn` since (kama-window `fedfc75`).
+     - KY-65, KY-66 and KY-68, filed 2026-11-21 (the forty-fifth session), kama's KR-435, KR-436 and KR-438 the same
+       day, **each fixed upstream (0.9.1019, 0.9.1020, 0.9.1021) and not on the pin:** a `return` with a value in a
+       function that returns nothing passes `kama check` (its value dropped, or C that does not compile); `Instant +
+       Duration` traps on a negative `Duration`; and the host header kama writes for a dependency's `expose fn`
+       shadows the program's own header of the program's name. A bump to 0.9.1026 or later removes all three;
+     - KY-67, filed the same day, kama's KR-437, ruled A and not yet built: a library's C is linked into a program that
+       reaches none of its kama while its `expose fn` is not. `@kama/window` has no `expose fn` since (kama-window
+       `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
@@ -777,7 +790,11 @@ so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and th
   - **the spin fixture's fresh-clone case keeps kama's build cache** (the owner, 2026-11-21, (A)): it erases
     `out/kyoten/` and the generated sources, what kyoten makes, and leaves the rest of `out/`, since a fresh compile is
     kama's to test. Its new case, a marker beside kama's cache that must survive the erase, went red on the old erase
-    and green on the new, so the tool's cases are 229 (item 1); kyoten's gate takes 10 min 25 s alone, warm.
+    and green on the new, so the tool's cases are 229 (item 1); kyoten's gate takes 10 min 25 s alone, warm;
+  - **kama read again on 2026-11-22** (item 1), to `b2f627b0` (0.9.1026): KY-65, KY-66 and KY-68 fixed upstream, each
+    verified on a build of it, on which every manifest checks clean; KY-67 counted by kama, still open. Nothing came
+    in on kyoten's, the packages' or the examples' origins but `@kama/audio`'s four commits from the Mac (`0d0df68`,
+    decisions 40 to 45 and AudioParam), fast-forwarded here, its tests' dependencies installed and checked.
 - **A mistake to keep:** committing WIN-25 into `../kama-window` while the `@kama/graphics` baseline ran made that
   baseline measure it; never change a package's main checkout while a gate that depends on it by path runs.
 
