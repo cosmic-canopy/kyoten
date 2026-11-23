@@ -1,8 +1,10 @@
 # Input: devices into a game's actions
 
 **Status:** step 8's four questions are decided (2026-11-21), and its first part is built (2026-11-22, below):
-`Digital` from a key, a mouse button or a pad's button to a processor, split by time. Question 4's lock-in is to be
-tried with real pads. What the peers and the owner's games do is [../research/input.md](../research/input.md).
+`Digital` from a key, a mouse button or a pad's button to a processor, split by time. The second part's three questions
+are decided (2026-11-23, below): a player's active scheme and delta actions, a `Vector2`'s y up, and a pad reading's
+time. Question 4's lock-in was tried with two real pads (2026-11-23). What the peers and the owner's games do is
+[../research/input.md](../research/input.md).
 
 ## What is already decided
 
@@ -177,3 +179,66 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
     driver, the loop, the open platforms' pump, the bindings across layers, the generator's hand-off, views and
     windows, and the run's binder: that last one rewritten so the game it generates compiles, since its first form's
     did not and so proved nothing).
+
+- **2026-11-23, the owner, the second part's three questions,** laid out from the code (the binder, the samples, the
+  hand-off, the generator and `@kama/window`'s pads) and asked in full at the forty-seventh session's start:
+  1. **How a game takes devices that mean different things: (A), each player's active scheme, and `delta` where the
+     binder can convert.**
+     - **Asked first as "look" on the mouse and a stick:** the mouse's motion is a distance moved and the stick's value
+       a position held, so `yaw += look.x * speed` turns differently on each.
+     - **The owner asked back with FFD's aim**, where the mouse's position is an aim point and the stick a direction
+       held: "It seems like the game may need to be able to switch control schema based on input device type?
+       relative vs absolute etc?" FFD does so in `game/src/game.kama`'s `buildLocalFrame` with a device latch,
+       `padIsSpeaking`, added after a play session found "the facing of the player would change when I let go of the
+       stick".
+     - **Asked again, the owner chose (A) in this shape:** "Basically what I figure we should do is have the input type
+       part of the binding as well and that "input" phase logic can be activated based on input type. So logic can be
+       different based on mouse vs game pad. I assume the abstraction can stop at input phase? the update phase
+       shouldn't need to know what input phase is abstracting?"
+     - **A scheme is a binding's device kind:** the keyboard's and the mouse's entries are `KeyboardMouse`, a pad's
+       `Gamepad`; touch and XR add theirs when they come.
+     - **Each player has an active scheme,** that of the device that last drove them, a stick counting only past a
+       threshold, so drift cannot switch it. Each step's hand-off carries it, so a replay runs the same logic.
+     - **An Input-phase processor may name a scheme** in its record (`"scheme": "Gamepad"`), and runs only over the rows
+       whose player's active scheme it is. It turns the device-shaped actions into the game's own components (an aim
+       direction), which Update reads.
+     - **The scheme is no value a processor reads,** and the tool refuses one on an Update or Constraints processor, so
+       the abstraction stops at Input, as the owner asked. An Output processor may name one, for a prompt (settled, to
+       report).
+     - **An action's record may say `"delta": true`** where the binder can convert one device's input into another's
+       units. Its value is a distance moved: each step the motion that landed in it, and a slower run or Output
+       everything since its last. A stick or keys bound to it count their value times the step's seconds, and the
+       mouse's motion bound to an action that is no delta is refused at load. So look is one action, and a processor
+       writes `yaw += look.x` on every device.
+     - **Left for its own part, and asked there:** the cursor's position as a control. FFD turns it into a world point
+       against the camera the player sees, smoothed in presentation, which an Input-phase processor inside the
+       simulation cannot read.
+     - **Set aside:** (B) one action whose value names its source's mode, so every reader must handle every mode; (C)
+       separate actions with no scheme, the game guessing the device from which moved, which is FFD's first form and its
+       facing bug.
+     - **What the peers have, checked 2026-11-23:**
+       - Unity's `PlayerInput` matches bindings to control schemes, names the "currently active control scheme"
+         (`currentControlScheme`), raises an event "when the controls used by the player change", and switches scheme
+         by itself while one player plays (`neverAutoSwitchControlSchemes`, false by default, turned off with more than
+         one) ([PlayerInput](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/PlayerInput.html));
+       - Steam Input tags an analog action's data with `eMode`, "the type of data coming from this action", the mode its
+         configuration gave it ([ISteamInput](https://partner.steamgames.com/doc/api/ISteamInput));
+       - Unreal's Common Input Subsystem has an `OnInputMethodChanged` delegate (Lyra's
+         [input settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-input-settings-in-unreal-engine)).
+  2. **(A): a `Vector2`'s y is up, on every device.** The `up` part gives +1. A stick's Y, which the W3C's standard
+     gamepad reports "negative up/positive down" ([remapping](https://w3c.github.io/gamepad/#remapping)), is turned over
+     wherever it is bound. The mouse moving up the screen gives +1. XInput's sticks are up positive ("Positive values
+     signify up or to the right", `XINPUT_GAMEPAD`), and kyoten's world is Y up. A player's inverted look is an `invert`
+     filter. The owner: "I think A is probably best?"
+  3. **(A): `@kama/window` gives a pad's reading its time, `padAt(slot:)`,** the time its button events carry (its
+     WIN-28), and kyoten makes each stick's and trigger's sample at it. So a button and a stick from one reading land in
+     one step, as question 1 decided. The owner: "I assume option 1 is the production answer?" It is; kyoten stamping
+     the sticks at the pump was the stopgap. Natively a reading's time stays the pump's until WIN-19.
+
+  **The second part, laid out, each its own commit:**
+  1. the kinds and the hand-off (`Analog`, `Vector2`, `Vector3`, `Pose` bound by nothing, and `delta`);
+  2. the binder's devices: an object entry's parts, a pad's axes and triggers, the mouse's motion;
+  3. the active scheme;
+  4. Output's newest sample.
+
+  Then filters, gestures, `Text`, the cursor's position, and the game letting go of the lock.

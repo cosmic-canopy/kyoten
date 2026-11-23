@@ -401,7 +401,7 @@ kyoten-towers/
 |---|---|
 | Module | `rate` in Hz (the engine's default for the phase) |
 | Processor group | `phase` (required); `after`, `before` ([]); `first`, `last` (false); `iterations` (1; a Constraints group may raise it); `parallel` (false: serial until measurement says otherwise) |
-| Processor | `phase` or `group` (one is required); `after`, `before`, `first`, `last`; `rate` (its module's); `iterations` (1); `random`, its purposes ([]); `orderBy`, a sort key such as `"towers::Initiative.value"`, ties broken by handle (none) |
+| Processor | `phase` or `group` (one is required); `after`, `before`, `first`, `last`; `rate` (its module's); `iterations` (1); `random`, its purposes ([]); `orderBy`, a sort key such as `"towers::Initiative.value"`, ties broken by handle (none); `scheme`, `KeyboardMouse` or `Gamepad`, on an Input or Output processor that reads `Actions`: it runs over the rows whose player's active scheme it is (none: every row; design/input.md, the second part's question 1, 2026-11-23) |
 | Component | `store`, `Table`, `Side` or `World` (Table; `World`: the world holds one, a world component); `blend`, `Snap`, `Linear` or `Custom` (Snap); `history` in steps (0); `saved` (true; false is rebuilt for display); `requires` ([]); `combine`, `Sum`, `Min`, `Max` or `First`, needed by a component sent with `Send<C>` (none) |
 
 Every record kind also takes an optional `note`, a string.
@@ -449,7 +449,7 @@ content/
 | Limit, a count rule | `per`, `World`, `Zone` or `Layer`; `prefabs`; `max` |
 | Zone | `place`: placements keyed by placed name |
 | Placement | `prefab` (required); `layer` (its prefab's, else `main`); `group` (none); `values`, laid over the prefab's |
-| Action, a code record | in a module's records file, under `actions`: its `kind`, `Digital`, `Analog`, `Vector2`, `Vector3`, `Pose` or `Text` (components § Decided, 2026-11-08; step 5 builds `Digital`) |
+| Action, a code record | in a module's records file, under `actions`: its `kind`, `Digital`, `Analog`, `Vector2`, `Vector3`, `Pose` or `Text` (components § Decided, 2026-11-08; step 5 builds `Digital`); `delta` (false; true on an `Analog`, `Vector2` or `Vector3`: a distance moved, summed over each run's window, as look on the mouse and a stick; design/input.md, the second part's question 1, 2026-11-23) |
 
 - **A prefab variant starts `from` another,** and lays its values over it, as a placement does.
 - **The default layer is `main`,** where a placement that names no layer goes.
@@ -588,6 +588,7 @@ words.
 | **Hand-off** | one step's input as the Input phase takes it: every player's action values after their bindings, in the game's generated order. What the recorded log keeps, never device events | decided (frame-phases question 4; replay-and-determinism question 2); built at step 8 |
 | **Input source** | what makes each owed step's hand-off from the input that arrived by the step's end: the engine's binder (`kyoten::input`), a replay's log, or a test's script | built at step 8 (2026-11-22) |
 | **Player binding** | what attaches a source to a player: keyboard 1, gamepad 2, a network slot, a bot or an agent. Player 1 has the keyboard and the mouse, and the first pad pressed, which locks in until it disconnects or the game lets go | the owner's direction (2026-11-06); player 1's pad decided 2026-11-21 ([design/input.md](design/input.md) question 4); the rest decided at KYR-54 |
+| **Scheme** | a binding's device kind: `KeyboardMouse` (the keyboard's and the mouse's entries) or `Gamepad`, touch and XR when they come. A player's active scheme is that of the device that last drove them, carried in each step's hand-off. An Input-phase processor naming one runs over its rows, turning device-shaped actions into the game's own components, so Update never asks which device | decided 2026-11-23 ([design/input.md](design/input.md), the second part's question 1; Unity's control schemes) |
 | **Filter** | a step in a binding that reshapes a control's value each step or converts it to the action's kind: a dead zone, a scale, a curve, a stick or trigger as a button, a button as an axis, two buttons as −1 to 1, a filtered accelerometer. Editor controls may use the same idea (human-tools question 4) | decided 2026-11-21 ([design/input.md](design/input.md) question 3; "adapter" retired) |
 | **Gesture** | a step in a binding that recognizes a pattern over time (a hold, a tap, a double tap, a chord, a sequence, a swipe), after the binding's filters and before Input's hand-off records the action | decided 2026-11-21 ([design/input.md](design/input.md) question 3) |
 | **Input context** | a set of bindings a player switches on or off, with a priority (on foot, driving) | the owner's direction (2026-11-06), decided at KYR-54 |
