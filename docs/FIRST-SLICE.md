@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-22, the forty-sixth session)
+## Where it stands (2026-11-23, the forty-seventh session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,9 +107,9 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 334 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 234; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's first part (the
-     forty-sixth session); 218 and 229 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
+   - tools/test.sh: engine 478 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 247; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's second part (the
+     forty-seventh session); 334 and 234 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
      alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
      compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
      `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
@@ -117,8 +117,8 @@ forty-fourth). Where the work is:**
      kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
      526 s, SDL3 compiled again in each build (102 s and 115 s, 11 s and 10 s warm) and the web build from nothing
      (63 s, 49 s warm);
-   - `@kama/window`'s: 313, 204 under node, 318 in Edge and Firefox, 329 through the driver, and a program reaching none
-     of the package linked natively and on wasm, since WIN-27 (the forty-sixth session); 304, 204, 311 and 322 at its
+   - `@kama/window`'s: 334, 221 under node, 341 in Edge and Firefox, 352 through the driver, and a program reaching none
+     of the package linked natively and on wasm, since WIN-28 (the forty-seventh session); 313, 204, 318 and 329 at its
      start;
    - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
      Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
@@ -674,15 +674,33 @@ forty-fourth). Where the work is:**
    Found on the way and fixed first: a slower processor's first window reached the sentinel for "no edge yet" (step -1)
    and saw a press that never was, which the spin fixture's new 30 Hz `tally` found.
 
-   **Next, at the next session's start, the owner's try of the pad lock with two pads** (question 4, "so far"): a short
-   numbered block, on a probe that prints player 1's lock and its action as the pads move
-   (`.scratch/s46/locktry/`, built, machine-local), the pads by USB. **Then step 8's second part,** its shape to lay
-   out from the code: `Analog`, `Vector2` and `Vector3` (`Pose` built, bound by nothing), a device's entry as an
-   object with its parts (`up`, `down`, `left`, `right` for keys; `x`, `y` for a stick) and a pad's axes, a mouse's
-   motion, and Output's newest sample. Filters, gestures, `Text` and the game letting go of the lock follow, each asked where its
-   API needs it. **Beside it, in `@kama/graphics`:** the cube's goldens can move into a `select` value its player's
-   build leaves out, since KY-63's fix is on the pin, which takes emscripten's file packager, about 6.8 KB of brotli JS,
-   out of its ratchet (GFX-20).
+   **The owner tried the pad lock with two pads** (the forty-seventh session's start; design/input.md § Decided,
+   2026-11-23): the first pressed took player 1, the other pad changed nothing while it was locked, unplugging it let
+   go, and the other pad's next press took it. That press left `faster` off, a button it is not bound to (a Switch
+   pad's A is East by place), asked at the session's end.
+
+   **Step 8's second part's three questions are decided** (the owner, 2026-11-23, [design/input.md](design/input.md) §
+   Decided): (1) each player's active scheme, the device kind that last drove them, gating Input-phase processors, so
+   Update never asks which device, and `"delta": true` on an action where the binder can convert (look); (2) a
+   `Vector2`'s y up on every device; (3) a pad's reading at its time, `@kama/window`'s `padAt`.
+
+   **`@kama/window`'s WIN-28 is built** (the forty-seventh session, kama-window `81d6773` decided and `54184ab`):
+   `padAt(slot:)`, the time of the reading `pad(slot:)` shows, the time its events carry; 9 of 9 mutations caught.
+
+   **Step 8's second part is built** (the forty-seventh session, four commits; design/input.md § Decided, its Built
+   entry, which lists what was settled for the owner to object to): every action kind but `Text` and the delta (kyoten
+   `2a8078b`); the binder's devices, an entry's parts, a pad's travel and axes at its reading's time, the mouse's
+   motion, up positive (`b81d9ad`); each player's active scheme and Input processors gated by it (`e301223`); and
+   Output's newest sample (`7258551`). 99 of 101 mutations caught, two shown equivalent.
+
+   **Next: step 8's third part, filters,** its shape to lay out from the code: a scale (look's units: how far a full
+   push turns a second, the mouse's per count), dead zones, invert, a curve, a stick or a trigger as a button; each
+   asked where its API needs it. Then gestures, `Text`, the cursor's position as a control (FFD's aim against the camera
+   the player sees, which a simulation processor cannot read: its question), and the game letting go of the lock. The
+   pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first part had it; it needs the readings'
+   `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the cube's goldens can move into a
+   `select` value its player's build leaves out, since KY-63's fix is on the pin, which takes emscripten's file
+   packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):

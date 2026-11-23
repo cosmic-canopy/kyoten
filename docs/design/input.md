@@ -2,8 +2,9 @@
 
 **Status:** step 8's four questions are decided (2026-11-21), and its first part is built (2026-11-22, below):
 `Digital` from a key, a mouse button or a pad's button to a processor, split by time. The second part's three questions
-are decided (2026-11-23, below): a player's active scheme and delta actions, a `Vector2`'s y up, and a pad reading's
-time. Question 4's lock-in was tried with two real pads (2026-11-23). What the peers and the owner's games do is
+are decided and the part built (2026-11-23, below): every kind but `Text`, delta actions, an entry's parts, a pad read at
+its time, the mouse's motion, each player's active scheme, and Output's newest sample. Question 4's lock-in was tried
+with two real pads (2026-11-23). What the peers and the owner's games do is
 [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -242,3 +243,53 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   4. Output's newest sample.
 
   Then filters, gestures, `Text`, the cursor's position, and the game letting go of the lock.
+
+- **2026-11-23, tried: player 1's pad lock with two real pads** (the forty-seventh session's start, the owner's hands-on
+  block; `.scratch/s46/locktry/`, its log in `.scratch/s47/locktry.log`). Both pads connected (slots 0 and 1); the
+  first pressed, slot 1's, took player 1, and its South drove `faster` held, pressed, then released; while it was locked
+  the log shows no change from the other pad; unplugged, the lock let go ("no pad"); the other pad's next button took
+  it. That pad's press left `faster` off: a button `faster` is not bound to (South or RightShoulder), as a Switch pad's
+  A, which is East by place, would be: asked at the session's end, with the owner's word on the try.
+
+- **2026-11-23, built: step 8's second part** (the forty-seventh session), in four commits on kyoten's pin,
+  `0.9.1027+g25d97c29`, each gated by `tools/test.sh`, on `@kama/window`'s WIN-28 (kama-window `54184ab`).
+  1. **Every action kind but `Text`, and the delta** (kyoten `2a8078b`): the frame tier's `ActionList`, a game's actions
+     by kind, and `Pose`; `Handoff` and `PlayerActions` hold every kind, a state as of a run's last step and a delta
+     summed over its window; the tool reads every kind but `Text` and the action record's `delta`; the generator writes
+     each kind's field, its view and the world's `actions()`.
+  2. **The binder's devices** (kyoten `b81d9ad`): an object entry's parts, a pad's travel and axes read at `padAt`,
+     the mouse's motion, up positive, a state's most actuated entry and a delta's sum, a held control counting the
+     step's seconds in a delta.
+  3. **The active scheme** (kyoten `e301223`): `Scheme` in each step's hand-off, the binder's rule, a processor
+     record's `scheme`, refused outside Input and Output and on a processor reading no `Actions`, and the generated
+     gate.
+  4. **Output's newest sample** (kyoten `7258551`): `InputSource.newest(seconds:)` and `World.output(time:,
+     newest:)`; Output reads each value as of the newest sample and each delta since its last frame, a digital's edges
+     by steps; in a frame that owes no step the samples are applied early and still land in the next step.
+  - **Settled by the decided rules, for the owner to object to:**
+    - a `Vector2` or `Vector3` action needs `std::math` in the game's `generated` module's `importsOnly` (kama has no
+      re-export), and the tool refuses it naming the line to add;
+    - the record keeps the widest window a processor reading actions runs over, and at least a frame's most steps; a
+      wider window sums the newest steps kept;
+    - the mouse's motion is kyoten's own names, `Motion`, `MotionX`, `MotionY`; scroll waits, since lines and pixels
+      do not convert;
+    - a part on several controls reads the most actuated, and a state its most actuated entry (Unity's default, Godot's
+      strongest); keys make a direction no longer than 1 (Unity's DigitalNormalized, Godot's `get_vector`); a delta sums
+      its entries, a held control counting the base step's seconds in a step and the frame's for Output; the mouse's
+      motion bound to a state, mixed with controls held, or as a key's part is refused; a stick stays raw until filters;
+    - a pad's travel and axes are samples apart from its buttons' edges, which stay the events', so a press and its
+      release between two pumps are both kept; neither takes the lock;
+    - the scheme's rule: a key, a mouse button or the mouse moved is `KeyboardMouse`; the locked pad's button, a trigger
+      past `PressedAt` or a stick past half its travel is `Gamepad`; the locked pad gone, `KeyboardMouse`; a row naming
+      no player runs no gated processor;
+    - Output's `Digital` stays by steps, so its `held` and its edges agree;
+    - `Pose` is bound by nothing until XR (KYR-34).
+  - **Counts:** the engine's tests 478 cases (334 at the session's start), the tool's 247 (234), natively and on
+    wasm, debug and release; fps and vr as before. `@kama/window` 334, 221 under node, 341 in Edge and Firefox, 352
+    through the driver (313, 204, 318 and 329), with WIN-28.
+  - **Mutations:** 99 of 101 caught, the other two shown equivalent (kyoten's `.scratch/s47/mutate_c1.py` to
+    `mutate_c4.py`): commit 1, 25 of 26 on the engine and 7 of 8 on the tool (a delta's window clamped to the steps kept
+    only shortens the loop, since a slot counts only while it holds the step asked for; the schedule gives every Output
+    processor rate 0, so the window's check of its phase only restates it); commit 2, 37 of 37; commit 3, 14 of 14 and
+    5 of 5; commit 4, 9 of 9 and 2 of 2. Three test lists were sharpened by mutations first: counts that differ between
+    kinds, a 10 Hz run whose window is wider than a frame's, and schemes held for unequal steps. WIN-28, 9 of 9.
