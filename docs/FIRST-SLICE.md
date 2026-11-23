@@ -110,8 +110,8 @@ forty-fourth). Where the work is:**
    - tools/test.sh: engine 334 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 234; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's first part (the
      forty-sixth session); 218 and 229 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
-     alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took
-     14 minutes on 0.9.978, every `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case
+     alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
+     compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case
      keeps kama's build cache** (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
      kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
      526 s, SDL3 compiled again in each build (102 s and 115 s, 11 s and 10 s warm) and the web build from nothing
@@ -676,9 +676,9 @@ forty-fourth). Where the work is:**
    **Next, at the next session's start, the owner's try of the pad lock with two pads** (question 4, "so far"): a short
    numbered block, on a probe that prints player 1's lock and its action as the pads move
    (`.scratch/s46/locktry/`, built, machine-local), the pads by USB. **Then step 8's second part,** its shape to lay
-   out from the code: `Analog`, `Vector2` and `Vector3` (`Pose` built, bound by nothing), a device's entry as an object with
-   its parts (`up`, `down`, `left`, `right` for keys; `x`, `y` for a stick) and a pad's axes, a mouse's motion, and
-   Output's newest sample. Filters, gestures, `Text` and the game letting go of the lock follow, each asked where its
+   out from the code: `Analog`, `Vector2` and `Vector3` (`Pose` built, bound by nothing), a device's entry as an
+   object with its parts (`up`, `down`, `left`, `right` for keys; `x`, `y` for a stick) and a pad's axes, a mouse's
+   motion, and Output's newest sample. Filters, gestures, `Text` and the game letting go of the lock follow, each asked where its
    API needs it. **Beside it, in `@kama/graphics`:** the cube's goldens can move into a `select` value its player's
    build leaves out, since KY-63's fix is on the pin, which takes emscripten's file packager, about 6.8 KB of brotli JS,
    out of its ratchet (GFX-20).
