@@ -15,13 +15,15 @@
 
 import { std::collections::DynamicArray, std::collections::SortedMap, Records, Family, Component, typeCase, headerLine };
 
-export { actionsKama, prefabsStub, prefabsKama };
+export { actionsKama, prefabsStub, prefabsKama, digitalActionNames };
 
 fn string actionsKama(const ref Records r) {
     string t = headerLine() + "\n";
-    t = t + "// The game's actions, a `Digital` each, in the field its name gives (components § Decided). The Input phase\n";
-    t = t + "// fills them from the player the entity names (step 8).\n\n";
-    if (r.actions().length() > 0) { t = t + "import { kyoten::frame::Digital };\n\n"; }
+    t = t + "// The game's actions, a `Digital` each, in the field its name gives (components § Decided). The passes fill\n";
+    t = t + "// them from the player the entity names before each processor that reads them runs, as that run sees them:\n";
+    t = t + "// each edge once, on its first run at or after the step it landed in (the first slice's step 8).\n\n";
+    bool any = r.actions().length() > 0;
+    if (any) { t = t + "import { kyoten::frame::Digital, kyoten::frame::PlayerActions };\n\n"; }
     t = t + "export { Actions };\n\n";
     t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
     t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
@@ -31,8 +33,28 @@ fn string actionsKama(const ref Records r) {
         t = t + "    // Declared by " + module + ".\n";
         t = t + "    @skip public Digital " + a + " = Digital.default();\n";
     }
-    t = t + "\n    public ctor forPlayer(int32 player) { this.player = player; }\n}\n";
+    t = t + "\n    public ctor forPlayer(int32 player) { this.player = player; }\n";
+    if (!any) {
+        t = t + "}\n";
+        return t;
+    }
+    t = t + "\n    // Each action as a run whose window is the steps after `after` up to `upTo` sees it, from the world's record\n";
+    t = t + "    // of its player's: the generator's own, which the passes call.\n";
+    t = t + "    public fn void viewFrom(const ref PlayerActions from, int64 after, int64 upTo) {\n";
+    int32 index = 0;
+    foreach (string a in r.actions()) {
+        t = t + "        this." + a + " = from.digital(player: this.player, action: ${index}, after: after, upTo: upTo);\n";
+        index = index + 1;
+    }
+    t = t + "    }\n}\n";
     return t;
+}
+
+// The game's digital actions' names, in the generated order: `Actions`' fields, the hand-off's and the binder's.
+fn DynamicArray<string> digitalActionNames(const ref Records r) {
+    DynamicArray<string> names = DynamicArray.empty();
+    foreach (string a in r.actions()) { names.add(item: give a); }
+    return names;
 }
 
 fn string prefabsStub(const ref Records r) {

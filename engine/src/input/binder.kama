@@ -23,7 +23,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
-         kyoten::frame::Device, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
+         kyoten::frame::Device, kyoten::frame::InputSource, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
          window::Key, window::PadButton, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -58,7 +58,7 @@ type value Bound {
     }
 }
 
-type resource Binder {
+type resource Binder implements InputSource {
     int32 playerCount;
     int32 digitalCount;
     // Every action's controls, action by action: action a's are `controls[firsts[a]]` up to `controls[firsts[a + 1]]`.

@@ -14,7 +14,7 @@
   "modules": {
     ".": { "visibility": "internal" },
     "cube": { "visibility": "internal", "importsOnly": ["kyoten::frame", "kyoten::world", "generated"] },
-    "view": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world", "cube"] },
+    "view": { "visibility": "internal", "importsOnly": ["core", "kyoten::frame", "kyoten::world", "cube", "generated"] },
     "generated": {
       "visibility": "internal",
       "importsOnly": ["kyoten::world", "kyoten::frame", "glow", "std::collections", "cube"]

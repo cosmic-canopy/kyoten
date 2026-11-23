@@ -10,6 +10,7 @@
     ".": { "visibility": "internal" }
   },
   "dependencies": {
-    "kyoten": { "path": ".." }
+    "kyoten": { "path": ".." },
+    "@kama/window": { "path": "../../../kama-window" }
   }
 }

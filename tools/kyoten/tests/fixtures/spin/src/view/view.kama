@@ -1,9 +1,11 @@
 // What Output will do with the hello cube once render exists (step 9), as text: each cube's rate and rotation, bit for
-// bit, so the tool's tests can compare them with the same turns made by hand.
+// bit, so the tool's tests can compare them with the same turns made by hand; and, the first slice's step 8, what
+// Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin };
+import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin,
+         spin::cube::Taps, spin::generated::Actions };
 
-export { show };
+export { show, seen };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -13,4 +15,12 @@ fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time 
     uint32 z = bitcast<uint32>(t.rotation.z);
     uint32 w = bitcast<uint32>(t.rotation.w);
     println(s: "shown: slot ${slot} rate ${rate} rotation ${x} ${y} ${z} ${w} at ${time.step}");
+}
+
+fn void seen(const ref Actions input, const ref Taps taps, Handle me) {
+    uint32 slot = me.slot();
+    bool pressed = input.faster.pressed;
+    bool held = input.faster.held;
+    int32 slow = taps.slow;
+    println(s: "seen: slot ${slot} pressed ${pressed} held ${held} slow ${slow}");
 }

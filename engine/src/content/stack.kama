@@ -10,6 +10,9 @@
 // - **Within one layer a prefab or a placement is written once;** a higher layer merges over it by key.
 // - **The app record is laid over layer by layer, field by field:** the engine's content sets the window's size, and a
 //   game's record its title and whatever of the size it changes.
+// - **The bindings are laid over layer by layer, device by device** (design/input.md § Decided, question 2): a higher
+//   layer's binding of an action replaces each device's entry it names and keeps the others, so a player rebinding the
+//   keyboard keeps the pad's.
 // - **The first scene** is the one `app.firstScene` names, else the only folder under `scenes/`. Its zone files hold its
 //   placements. Only the zone at the origin, one layer `main` and no layer groups are built yet (KYR-61), so anything
 //   else is refused, in the same words the `kyoten` tool uses at build.
@@ -17,8 +20,8 @@
 //   the rest is kept.
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
-         std::serialization::text::json::JsonValue, RecordSource, ContentFile, ZoneFile, PlacementRecord,
-         subtreeText, mergeText, readTree };
+         std::serialization::text::json::JsonValue, kyoten::records::BindingRecord, RecordSource, ContentFile, ZoneFile,
+         PlacementRecord, subtreeText, mergeText, readTree };
 
 export { LoadRefusals, LayerStack, Subtree, Placement, Content, readContent, readScene, notMainLayer, componentList,
          listed };
@@ -132,8 +135,9 @@ type resource Content {
     Optional<string> titleSet = Optional::None;
     int32 widthSet = 0;
     int32 heightSet = 0;
+    SortedMap<string, BindingRecord> bindingsSet = SortedMap.empty();
 
-    friend readContent[prefabTrees, titleSet, widthSet, heightSet];
+    friend readContent[prefabTrees, titleSet, widthSet, heightSet, bindingsSet];
     friend fillScene[sceneName, placementList];
 
     public ctor make() { }
@@ -161,6 +165,9 @@ type resource Content {
     // The window's size in logical pixels, the highest layer's of each; 0 when no layer sets it.
     public const fn int32 windowWidth() { return this.widthSet; }
     public const fn int32 windowHeight() { return this.heightSet; }
+
+    // Each action's bindings, every layer's laid over the ones below it, device by device.
+    public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsSet; }
 
     // The first scene, or "" when there is none.
     public const fn const ref string scene() { return this.sceneName; }
@@ -339,6 +346,7 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
         string label = stack.layers()[i].name();
         DynamicArray<string> files = stack.layers()[i].files();
         SortedMap<string, string> writtenHere = SortedMap.empty();
+        SortedMap<string, string> boundHere = SortedMap.empty();
         foreach (const ref string path in files.iterConst()) {
             if (path.startsWith(prefix: "scenes/")) { continue; }
             string file = label + "/" + path;
@@ -379,6 +387,25 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
                 }
                 case None: { }
             };
+            SortedMap<string, BindingRecord> layered = cf.takeBindings();
+            DynamicArray<string> actions = DynamicArray.empty();
+            foreach (string a in layered) { actions.add(item: give a); }
+            foreach (const ref string a in actions.iterConst()) {
+                Optional<BindingRecord> taken = layered.remove(key: a);
+                if (boundHere.contains(key: a)) {
+                    string other = copy boundHere.getRef(key: a);
+                    no.add(where: file, what: "the bindings of `${a}` are in ${other} too: one content layer holds a key once");
+                    continue;
+                }
+                boundHere.put(key: copy a, value: copy file);
+                match (give taken) {
+                    case Some(value: b): {
+                        if (c.bindingsSet.contains(key: a)) { c.bindingsSet.getRefMut(key: a).takeEntriesFrom(above: give b); }
+                        else { c.bindingsSet.put(key: copy a, value: give b); }
+                    }
+                    case None: { }
+                };
+            }
             foreach (string p in cf.prefabs()) {
                 if (writtenHere.contains(key: p)) {
                     string other = copy writtenHere.getRef(key: p);

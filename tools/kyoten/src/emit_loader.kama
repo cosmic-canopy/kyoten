@@ -53,9 +53,10 @@ fn string pushFolder(const ref string package, const ref string native, const re
 // `contentDir` is the game's content folder, made absolute, or "" when the game has none; `engineDir` the engine's, or
 // "" when its package has none.
 fn string loaderKama(const ref string game, const ref DynamicArray<Family> families, const ref Index idx,
-                     const ref string contentDir, const ref string engineDir) {
+                     const ref string contentDir, const ref string engineDir, const ref DynamicArray<string> actions) {
     ImportSet names = ImportSet.make(module: copy game);
     names.declare(name: "openContent");
+    names.declare(name: "actionNames");
     names.declare(name: "loadPrefabs");
     names.declare(name: "placeFirstScene");
     names.declare(name: "refusedAtLoad");
@@ -69,6 +70,8 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     names.add(path: "kyoten::platform::Platform");
     names.add(path: "kyoten::platform::OpenPlatform");
     names.add(path: "kyoten::platform::play");
+    names.add(path: "kyoten::input::Binder");
+    names.add(path: "kyoten::input::BindingError");
     if (!contentDir.isEmpty() || !engineDir.isEmpty()) {
         names.add(path: "std::io::IoError");
         names.add(path: "std::memory::Owned");
@@ -247,6 +250,12 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "// The game's run, which its `main` calls (target-platforms § Decided, questions 1 and 2, and 2026-11-20): the build's\n";
     t = t + "// open platform, the content read at its folders, the prefabs loaded and the first scene placed, then kyoten's loop\n";
     t = t + "// until the window closes or the run's options end it. A refusal at load is printed, and the run ends with 1.\n";
+    t = t + "// The game's digital actions' names, in the order its `Actions` holds them, which its bindings are read for.\n";
+    t = t + "fn DynamicArray<string> actionNames() {\n";
+    t = t + "    DynamicArray<string> names = DynamicArray.empty();\n";
+    foreach (const ref string a in actions.iterConst()) { t = t + "    names.add(item: " + literal(s: a) + ");\n"; }
+    t = t + "    return names;\n";
+    t = t + "}\n\n";
     t = t + "fn uint8 run() {\n";
     t = t + "    OpenPlatform platform = OpenPlatform.make();\n";
     t = t + "    Result<LayerStack, LoadRefusals> opened = openContent(platform: platform);\n";
@@ -267,8 +276,18 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "        return 1;\n";
     t = t + "    }\n";
     t = t + "    string title = content.windowTitle(fallback: " + literal(s: game) + ");\n";
-    t = t + "    return play(world: give world, platform: give platform, hz: GameWorld::baseHz, title: give title, width: width,\n";
-    t = t + "                height: height);\n";
+    t = t + "    DynamicArray<string> actions = actionNames();\n";
+    t = t + "    Result<Binder, BindingError> bound = Binder.make(players: GameWorld::players, digitalActions: actions,\n";
+    t = t + "                                                     bindings: content.bindings());\n";
+    t = t + "    Binder input = match (give bound) {\n";
+    t = t + "        case Ok(value: b): give b;\n";
+    t = t + "        case Err(error: e): {\n";
+    t = t + "            foreach (const ref string l in e.lines().iterConst()) { println(s: \"kyoten: refused at load: \" + l); }\n";
+    t = t + "            return 1;\n";
+    t = t + "        }\n";
+    t = t + "    };\n";
+    t = t + "    return play(world: give world, platform: give platform, input: give input, hz: GameWorld::baseHz, title: give title,\n";
+    t = t + "                width: width, height: height);\n";
     t = t + "}\n";
     return t;
 }

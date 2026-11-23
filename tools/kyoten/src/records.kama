@@ -15,7 +15,7 @@ import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::r
 export { Records, PrefabDecl, CodeFile, readRecords };
 
 // Members the generated `Actions` has itself, which no action may take.
-fn string actionMembers() { return " player forPlayer serialize deserialize mergeFrom "; }
+fn string actionMembers() { return " player forPlayer viewFrom serialize deserialize mergeFrom "; }
 // Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
 fn string prefabMembers() { return " make of index equals hash compareTo format copy serialize deserialize mergeFrom "; }
 

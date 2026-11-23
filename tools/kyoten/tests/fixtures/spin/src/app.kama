@@ -1,15 +1,15 @@
 // The fixture's own main. It reads every name the first pass generates, so a missing or misshapen one fails the build;
-// then it builds the generated world, creates two cubes by hand, one with `faster` held, steps it 60 times through
-// the frame's driver, and runs Output, whose `show` prints each cube. Beside that it prints what `turn` gives when the
+// then it builds the generated world, creates two cubes by hand, one driven by player 1, steps it 60 times through the
+// frame's driver with player 1's `faster` pressed on step 1 and held from then on, and runs Output twice, whose `show` prints each cube. Beside that it prints what `turn` gives when the
 // same turns are made by hand, for the tool's tests to compare bit for bit. Then it loads the content (step 5.5), and
 // last it calls the generated `run`, as a game's `main` does (step 7), which the tests run under
 // `--headless --fixed-fps 60 --quit-after 30`.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
-         kyoten::frame::step, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
+         kyoten::frame::step, kyoten::frame::Handoff, kyoten::frame::Digital, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
          kyoten::content::LoadRefusals, kyoten::content::readContent, std::collections::DynamicArray,
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow,
-         spin::cube::Spin, spin::cube::Size, spin::generated::Actions, spin::generated::CubePrefab,
+         spin::cube::Spin, spin::cube::Size, spin::cube::Taps, spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
          spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
          placeFirstScene, run };
@@ -88,13 +88,13 @@ fn void loadMod() {
 fn CubePrefab startFrom(const ref Prefabs prefabs, CubePrefabId id) { return prefabs.cube(id: id); }
 fn BigCubePrefab startBig(const ref Prefabs prefabs, BigCubePrefabId id) { return prefabs.bigCube(id: id); }
 
-// `turn`, by hand: `steps` steps at `dt` from a rate of 2, with `faster` held or not.
-fn void expect(uint32 slot, bool held, float32 dt, int64 steps) {
+// `turn`, by hand: `steps` steps at `dt` from a rate of 2, with `faster` held from step `heldFrom` on.
+fn void expect(uint32 slot, int64 heldFrom, float32 dt, int64 steps) {
     Transform t = Transform.default();
     float32 rate = 2;
     int64 i = 0;
     while (i < steps) {
-        if (held) { rate = rate + dt; }
+        if (i >= heldFrom) { rate = rate + dt; }
         t.rotateY(by: rate * dt);
         i = i + 1;
     }
@@ -128,36 +128,47 @@ fn uint8 main() {
     Actions a = Actions.forPlayer(player: 1);
     int32 player = a.player;
     bool held = a.faster.held;
-    CubePrefab c = CubePrefab.of(actions: a, spin: Spin.default(), transform: Transform.default());
+    CubePrefab c = CubePrefab.of(actions: a, spin: Spin.default(), taps: Taps.default(), transform: Transform.default());
     float32 rate = c.spin.rate;
     BigCubePrefab b = BigCubePrefab.of(actions: a, glow: Glow.default(), size: Size.default(), spin: Spin.default(),
-                                       transform: Transform.default());
+                                       taps: Taps.default(), transform: Transform.default());
     float32 by = b.size.by;
     float32 strength = b.glow.strength;
     bool differ = CubePrefabId.fastCube() != CubePrefabId.default();
     bool same = BigCubePrefabId.bigCube() == BigCubePrefabId.default();
     println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
 
+    // The first cube names no player (0), so no input reaches it; the second names player 1, whose `faster` is
+    // pressed on step 1, an odd step, and held from then on (the first slice's step 8). The 30 Hz `tally` runs on the
+    // even steps, so it sees the press once, on step 2; Output, run twice at the end, sees it on its first run alone.
     GameWorld world = GameWorld.make();
     Spin two = Spin.default();
     two.rate = 2;
-    Actions calm = Actions.forPlayer(player: 1);
+    Actions calm = Actions.forPlayer(player: 0);
     Actions pressed = Actions.forPlayer(player: 1);
-    pressed.faster.held = true;
-    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, spin: two, transform: Transform.default()));
-    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, spin: two, transform: Transform.default()));
+    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, spin: two, taps: Taps.default(),
+                                                                   transform: Transform.default()));
+    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, spin: two, taps: Taps.default(),
+                                                                     transform: Transform.default()));
     int32 baseHz = GameWorld::baseHz;
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
+    Handoff input = Handoff.make(players: GameWorld::players, digitalActions: GameWorld::digitalActions);
     int64 i = 0;
     while (i < 60) {
+        Digital down = Digital.off();
+        down.held = i >= 1;
+        down.pressed = i == 1;
+        input.setDigital(player: 1, action: 0, value: down);
         Time at = clock.at(step: i);
-        step(world: world, time: at);
+        step(world: world, time: at, handoff: input);
         i = i + 1;
     }
     world.output(time: clock.at(step: 59));
+    println(s: "spin: Output again, on the same step");
+    world.output(time: clock.at(step: 59));
     float32 dt = Time::dtAt(hz: 60);
-    expect(slot: 0, held: false, dt: dt, steps: 60);
-    expect(slot: 1, held: true, dt: dt, steps: 60);
+    expect(slot: 0, heldFrom: 60, dt: dt, steps: 60);
+    expect(slot: 1, heldFrom: 1, dt: dt, steps: 60);
     println(s: "spin: base ${baseHz} Hz");
     load();
     loadMod();

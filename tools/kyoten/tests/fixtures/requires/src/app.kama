@@ -3,6 +3,7 @@
 // whose `show` prints each axle; then it loads the prefabs from the content (step 5.5).
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Rate, kyoten::frame::step,
+         kyoten::frame::Handoff,
          requires::parts::Wheel, requires::parts::Axle, requires::parts::Hub, requires::parts::Driver,
          requires::parts::Left, requires::parts::Right, requires::generated::Actions, requires::generated::CartPrefab,
          requires::generated::CartPrefabId, requires::generated::MillPrefab, requires::generated::CarterPrefab,
@@ -50,7 +51,8 @@ fn uint8 main() {
                                                                     transform: Transform.default()));
     int32 baseHz = GameWorld::baseHz;
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
-    step(world: world, time: clock.at(step: 0));
+    Handoff none = Handoff.make(players: GameWorld::players, digitalActions: GameWorld::digitalActions);
+    step(world: world, time: clock.at(step: 0), handoff: none);
     world.output(time: clock.at(step: 0));
     load();
     return 0;

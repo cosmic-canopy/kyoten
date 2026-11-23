@@ -3,7 +3,7 @@
 // kyoten::content's `ContentFile`, whose prefabs are kept as JSON since a game's components are its own (REFERENCE.md
 // § Records and their files; components § Decided, the loader's question 2 of 2026-11-09).
 
-import { std::collections::DynamicArray, std::memory::Owned };
+import { std::collections::DynamicArray, std::memory::Owned, std::memory::replace };
 
 export { AppRecord, WindowRecord, BindingRecord, ControlEntry };
 
@@ -53,6 +53,20 @@ type resource BindingRecord {
     public const fn const ref Optional<ControlEntry> mouse() { return this.mouseField; }
     public const fn const ref Optional<ControlEntry> gamepad() { return this.gamepadField; }
     public const fn const ref string note() { return this.noteField; }
+
+    // A higher content layer's binding of the same action laid over this one: each device `above` names replaces this
+    // one's entry whole, and each it does not name is kept, as a file of the higher layer merged over this one would.
+    public fn void takeEntriesFrom(BindingRecord above) {
+        Optional<ControlEntry> none = Optional::None;
+        Optional<ControlEntry> k = replace(place: above.keyboardField, with: give none);
+        match (give k) { case Some(value: e): { this.keyboardField = Optional::Some(value: give e); } case None: { } };
+        Optional<ControlEntry> none2 = Optional::None;
+        Optional<ControlEntry> m = replace(place: above.mouseField, with: give none2);
+        match (give m) { case Some(value: e): { this.mouseField = Optional::Some(value: give e); } case None: { } };
+        Optional<ControlEntry> none3 = Optional::None;
+        Optional<ControlEntry> g = replace(place: above.gamepadField, with: give none3);
+        match (give g) { case Some(value: e): { this.gamepadField = Optional::Some(value: give e); } case None: { } };
+    }
 }
 
 // A device's entry in a binding (design/input.md § Decided, question 2): a control's name (`"ArrowUp"`), a list of

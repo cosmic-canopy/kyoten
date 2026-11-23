@@ -7,7 +7,7 @@ import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, ky
          kyoten::content::Content, kyoten::content::Placement, kyoten::content::Subtree,
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
          kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree,
-         kyoten::world::Transform,
+         kyoten::world::Transform, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
          std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
@@ -424,6 +424,54 @@ fn void appWindow(ref Tally t) {
               why: said(no: refused, line: "content/app.records.json: `app.window.height` is -4: a window is at least 1 high"));
 }
 
+// A device's entry as text: its names joined by commas, "none" when absent.
+fn string boundText(const ref Optional<ControlEntry> o) {
+    match (o) {
+        case None: { return "none"; }
+        case Some(value: e): {
+            string joined = "";
+            foreach (const ref string n in e.names().iterConst()) { joined = joined.isEmpty() ? copy n : joined + "," + n; }
+            return joined;
+        }
+    };
+}
+
+// The bindings, laid over layer by layer, device by device (design/input.md § Decided, question 2): a higher layer's
+// binding of an action replaces each device's entry it names and keeps the others; an action only one layer binds is
+// read from it; and one content layer binds an action once.
+fn void bindingLayers(ref Tally t) {
+    MemorySource engine = MemorySource.make(label: "kyoten");
+    engine.put(path: "bindings.records.json", text: "{ \"bindings\": { \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": \"RightShoulder\" }, \"pause\": { \"keyboard\": \"Escape\" } } }");
+    MemorySource game = MemorySource.make(label: "content");
+    game.put(path: "keys.records.json", text: "{ \"bindings\": { \"faster\": { \"keyboard\": [\"KeyW\", \"ArrowUp\"] }, \"jump\": { \"gamepad\": \"South\" } } }");
+    LayerStack stack = stackOf(low: give engine, high: Optional::Some(value: give game));
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stack, no: no);
+    t.verdict(name: "readContent: two layers' bindings read with nothing refused", why: no.any() ? all(no: no) : "");
+    bool three = c.bindings().length() == 3;
+    t.verdict(name: "readContent: every action any layer binds", why: three ? "" : "another count");
+    if (three) {
+        string keyboard = boundText(o: c.bindings().getRef(key: "faster").keyboard());
+        string pad = boundText(o: c.bindings().getRef(key: "faster").gamepad());
+        t.verdict(name: "readContent: a higher layer's keyboard entry replaces the lower's whole",
+                  why: keyboard == "KeyW,ArrowUp" ? "" : "keyboard `${keyboard}`");
+        t.verdict(name: "readContent: and the lower layer's gamepad entry is kept", why: pad == "RightShoulder" ? "" : "gamepad `${pad}`");
+        string pause = boundText(o: c.bindings().getRef(key: "pause").keyboard());
+        string jump = boundText(o: c.bindings().getRef(key: "jump").gamepad());
+        t.verdict(name: "readContent: an action one layer binds is that layer's",
+                  why: pause == "Escape" && jump == "South" ? "" : "pause `${pause}`, jump `${jump}`");
+    }
+
+    MemorySource twice = MemorySource.make(label: "content");
+    twice.put(path: "a.records.json", text: "{ \"bindings\": { \"faster\": { \"keyboard\": \"ArrowUp\" } } }");
+    twice.put(path: "b.records.json", text: "{ \"bindings\": { \"faster\": { \"gamepad\": \"South\" } } }");
+    LayerStack once = stackOf(low: give twice, high: Optional::None);
+    LoadRefusals refused = LoadRefusals.make();
+    Content d = readContent(stack: once, no: refused);
+    string why = said(no: refused, line: "content/b.records.json: the bindings of `faster` are in content/a.records.json too: one content layer holds a key once");
+    t.verdict(name: "readContent: one layer binding an action in two files is refused, naming both", why: why);
+}
+
 unsafe fn void contentTests(ref Tally t) {
     folderSource(t: t);
     layers(t: t);
@@ -434,4 +482,5 @@ unsafe fn void contentTests(ref Tally t) {
     sceneRefusals(t: t);
     subtrees(t: t);
     appWindow(t: t);
+    bindingLayers(t: t);
 }

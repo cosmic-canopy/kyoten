@@ -10,6 +10,10 @@
 //   each under an alias of the generator's own.
 // - `src/<game>.world.generated.kama`: the world, implementing `kyoten::frame::World`: the lookup, each table, each world component, the
 //   base rate, and a `create_<family>` that the loader (step 5.5) and later `Create<P>` call.
+// - **Input** (the first slice's step 8): the world keeps its players' actions across steps (`kyoten::frame::PlayerActions`),
+//   which `pass_input` folds each step's hand-off into first; before each processor that reads `Actions` runs, each row it
+//   reads is written as that run sees it, a processor at a rate every step since its last run and Output every step
+//   since its last frame, so each sees an edge once, whatever its rate.
 //
 // Every name here is the generator's own and may change in any release (rule 5): a game writes none of them. A name
 // the generator writes into a game's namespace has an underscore (`table_cube`, `pass_update`, `run_cube_turn`), which
@@ -267,7 +271,8 @@ fn string callOf(const ref Processor p, const ref Family f, bool perRow, const r
 // One processor's block in its phase's pass, indented by `pad`: its rate's gate, its iterations, and its call over
 // every table its family set gives, or once when it names no entity's component or handle.
 fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> families, const ref ImportSet worldNames,
-                         const ref string timeType, const ref string pad, ref int32 counter) {
+                         const ref string timeType, const ref string pad, const ref string actionsPath, bool hasActions,
+                         ref int32 counter) {
     bool output = p.phase() == Phase::Output;
     string time = output ? "time" : "at";
     string t = "";
@@ -281,6 +286,25 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
         bool takesTime = false;
         foreach (const ref Param a in p.params().iterConst()) { if (a.access() == Access::StepTime) { takesTime = true; } }
         if (takesTime) { t = t + inner + timeType + " at = r" + hz + ".at(step: time.step);\n"; }
+    }
+    bool readsActions = false;
+    foreach (const ref Param a in p.params().iterConst()) {
+        if (a.access() == Access::TableComponent && a.path() == actionsPath) { readsActions = true; }
+    }
+    if (readsActions && hasActions && p.perEntity()) {
+        string after = output ? "w.output_step" : "time.step - cast<int64>(r" + hz + ".period())";
+        t = t + inner + "// Each row's actions as this run sees them: every step since its last run.\n";
+        DynamicArray<isize> seen = familiesFor(p: p, families: families);
+        foreach (isize fi in seen) {
+            string column = columnOf(f: families[fi], path: actionsPath);
+            t = t + inner + "foreach (ref " + chunkType(f: families[fi]) + " c in w." + tableField(f: families[fi]) + ".chunks.iterMut()) {\n";
+            t = t + inner + "    isize i = 0;\n";
+            t = t + inner + "    while (i < c." + handleColumn() + ".length()) {\n";
+            t = t + inner + "        c." + column + "[i].viewFrom(from: w.player_actions, after: " + after + ", upTo: time.step);\n";
+            t = t + inner + "        i = i + 1;\n";
+            t = t + inner + "    }\n";
+            t = t + inner + "}\n";
+        }
     }
     string body = copy inner;
     int32 times = p.iterations();
@@ -315,18 +339,23 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
     return t;
 }
 
-fn string passesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
+fn string passesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s,
+                     int32 digitalActions) {
+    bool hasActions = digitalActions > 0;
     string worldType = worldTypeName();
+    string actionsPath = game + "::generated::Actions";
     ImportSet imports = ImportSet.make(module: copy game);
     foreach (Phase p in phases()) { imports.declare(name: passName(phase: p)); }
     imports.add(path: "kyoten::frame::Rate");
     imports.add(path: "kyoten::frame::Time");
+    imports.add(path: "kyoten::frame::Handoff");
     imports.add(path: inRoot(game: game, name: worldType));
     foreach (const ref Family f in families.iterConst()) { imports.add(path: inRoot(game: game, name: chunkType(f: f))); }
     foreach (const ref Processor p in s.processors().iterConst()) { imports.addAs(path: p.path(), alias: runName(path: p.path())); }
     ImportSet worldNames = worldImports(game: game, families: families, s: s);
     string rateType = imports.nameOf(path: "kyoten::frame::Rate");
     string timeType = imports.nameOf(path: "kyoten::frame::Time");
+    string handoffType = imports.nameOf(path: "kyoten::frame::Handoff");
     string world = imports.nameOf(path: inRoot(game: game, name: worldType));
 
     string t = headerLine() + "\n";
@@ -338,7 +367,14 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "export { pass_input, pass_update, pass_constraints, pass_output };\n";
     int32 counter = 0;
     foreach (Phase phase in phases()) {
-        t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time) {\n";
+        if (phase == Phase::Input) {
+            t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time, const ref "
+                + handoffType + " handoff) {\n";
+            t = t + "    // The step's hand-off into the players' actions, before any processor reads them.\n";
+            t = t + "    w.player_actions.take(handoff: handoff, step: time.step);\n";
+        } else {
+            t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time) {\n";
+        }
         // One Rate a distinct rate the phase's processors run at.
         SortedMap<int32, bool> rates = SortedMap.empty();
         foreach (const ref Processor p in s.processors().iterConst()) {
@@ -352,7 +388,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             string path = key.substring(start: 2, end: key.length());
             if (key.startsWith(prefix: "p:")) {
                 isize at = s.processorAt(path: path);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", actionsPath: actionsPath, hasActions: hasActions, counter: counter); }
                 continue;
             }
             isize gi = s.groupAt(path: path);
@@ -365,10 +401,14 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             t = t + "    while (" + round + " < ${times}) {\n";
             foreach (const ref string member in s.groups()[gi].order().iterConst()) {
                 isize at = s.processorAt(path: member);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", actionsPath: actionsPath, hasActions: hasActions, counter: counter); }
             }
             t = t + "        " + round + " = " + round + " + 1;\n";
             t = t + "    }\n";
+        }
+        if (phase == Phase::Output) {
+            t = t + "    // The step this frame's Output saw up to, where the next frame's window starts.\n";
+            t = t + "    w.output_step = time.step;\n";
         }
         t = t + "}\n";
     }
@@ -382,6 +422,8 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
     imports.add(path: "kyoten::frame::Time");
     imports.add(path: "kyoten::frame::World");
+    imports.add(path: "kyoten::frame::Handoff");
+    imports.add(path: "kyoten::frame::PlayerActions");
     imports.add(path: "kyoten::world::Handle");
     imports.add(path: "kyoten::world::Lookup");
     foreach (const ref Family f in families.iterConst()) {
@@ -392,14 +434,17 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     return imports;
 }
 
-fn string worldKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
+fn string worldKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s,
+                    int32 digitalActions) {
     string worldType = worldTypeName();
     ImportSet imports = worldImports(game: game, families: families, s: s);
     string handle = imports.nameOf(path: "kyoten::world::Handle");
     string contract = imports.nameOf(path: "kyoten::frame::World");
     string time = imports.nameOf(path: "kyoten::frame::Time");
+    string handoffType = imports.nameOf(path: "kyoten::frame::Handoff");
+    string playersType = imports.nameOf(path: "kyoten::frame::PlayerActions");
     // Every field a pass reaches.
-    string fields = "";
+    string fields = "player_actions, output_step";
     foreach (const ref Family f in families.iterConst()) { fields = fields.isEmpty() ? tableField(f: f) : fields + ", " + tableField(f: f); }
     foreach (const ref string w in s.worldComponents().iterConst()) {
         string field = "world_" + imports.nameOf(path: w);
@@ -416,7 +461,16 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     int32 baseHz = s.baseHz();
     t = t + "    // The base clock, in steps a second: the least common multiple of the simulation processors' rates, which the\n";
     t = t + "    // clock that drives this world runs at (frame-phases § Decided, question 2).\n";
-    t = t + "    public comptime int32 baseHz = ${baseHz};\n\n";
+    t = t + "    public comptime int32 baseHz = ${baseHz};\n";
+    t = t + "    // The players, numbered from 1: the engine's default, one, bound to the keyboard, the mouse and the first pad\n";
+    t = t + "    // pressed (design/input.md § Decided, question 4).\n";
+    t = t + "    public comptime int32 players = 1;\n";
+    t = t + "    // The game's digital actions, which each step's hand-off holds for each player.\n";
+    t = t + "    public comptime int32 digitalActions = ${digitalActions};\n\n";
+    t = t + "    // Each player's actions across steps, in the generated order, and the step Output last saw up to.\n";
+    t = t + "    " + playersType + " player_actions = " + playersType + ".make(players: " + worldType + "::players, digitalActions: "
+        + worldType + "::digitalActions);\n";
+    t = t + "    int64 output_step = -1;\n";
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
     t = t + "    " + lookupType + " lookup = " + lookupType + ".make();\n";
     isize n = 0;
@@ -430,12 +484,15 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
         t = t + "    // The world component `" + w + "`, from its default.\n";
         t = t + "    " + ty + " world_" + ty + " = " + ty + ".default();\n";
     }
-    if (!fields.isEmpty()) {
-        t = t + "\n";
-        foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[" + fields + "];\n"; }
-    }
+    t = t + "\n";
+    foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[" + fields + "];\n"; }
     t = t + "\n    public ctor make() { }\n\n";
     foreach (Phase p in phases()) {
+        if (p == Phase::Input) {
+            t = t + "    public fn void input(const ref " + time + " time, const ref " + handoffType + " handoff) { "
+                + passName(phase: p) + "(w: this, time: time, handoff: handoff); }\n";
+            continue;
+        }
         string method = match (p) { case Input: "input"; case Update: "update"; case Constraints: "constraints"; case Output: "output"; };
         t = t + "    public fn void " + method + "(const ref " + time + " time) { " + passName(phase: p) + "(w: this, time: time); }\n";
     }

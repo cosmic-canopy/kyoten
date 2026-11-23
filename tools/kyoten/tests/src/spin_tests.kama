@@ -107,15 +107,18 @@ fn void loaded(ref Tally t, const ref string leg, const ref Ran r) {
 
 // What the generated world did with the two cubes, against the same turns by hand: `show`, an Output processor, prints
 // each cube's rate and rotation as bits, and `main` prints what `turn` gives when the same steps are taken by hand.
+// Output runs twice at the end, on the same step, so each cube is shown twice, the same both times.
 fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
     string said = before(text: r.said(), marker: placedMarker());
     DynamicArray<string> shown = linesAfter(text: said, prefix: "shown: ");
     DynamicArray<string> expected = linesAfter(text: said, prefix: "expect: ");
     string why = "";
-    if (shown.length() != 2 || expected.length() != 2) {
+    if (shown.length() != 4 || expected.length() != 2) {
         isize ns = shown.length();
         isize ne = expected.length();
-        why = "${ns} shown and ${ne} expected lines, wanted 2 of each: ${said}";
+        why = "${ns} shown and ${ne} expected lines, wanted 4 and 2: ${said}";
+    } else if (shown[2] != shown[0] || shown[3] != shown[1]) {
+        why = "Output's second run on the same step showed another world: ${said}";
     } else if (shown[0] != expected[0]) {
         string a = copy shown[0];
         string b = copy expected[0];
@@ -126,8 +129,18 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
         why = "the cube whose `faster` is held: shown `${a}`, by hand `${b}`";
     }
     t.verdict(name: "spin: ${leg}: 60 steps of the generated world turn each cube as `turn` does by hand, bit for bit", why: why);
-    check(t: t, name: "spin: ${leg}: the base clock is 60 Hz, the one rate its processors run at",
+    check(t: t, name: "spin: ${leg}: the base clock is 60 Hz, its processors' rates' least common multiple",
           ok: r.says(what: "spin: base 60 Hz"), why: said);
+    // What each run sees of `faster`, pressed on step 1 and held from then on (the first slice's step 8): the 30 Hz
+    // `tally` sees the press once, on step 2; Output, run twice at step 59, sees it on its first run alone; the cube
+    // naming no player sees nothing.
+    DynamicArray<string> seen = linesAfter(text: said, prefix: "seen: ");
+    string all = "";
+    foreach (const ref string l in seen.iterConst()) { all = all.isEmpty() ? copy l : all + " | " + l; }
+    string want = "slot 0 pressed false held false slow 0 | slot 1 pressed true held true slow 1 | "
+        + "slot 0 pressed false held false slow 0 | slot 1 pressed false held true slow 1";
+    t.verdict(name: "spin: ${leg}: each processor sees a press once, whatever its rate, and Output every step since its last frame",
+              why: all == want ? "" : "seen `${all}`");
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's
@@ -256,6 +269,16 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
           want: 1, says: "kyoten: refused at load: content/broken.records.json: `app.window.width` is 0");
     check(t: t, name: "spin: native: and the loop never starts", ok: !after(text: refusedLoad.said(), marker: runMarker()).contains(substring: "shown: "),
           why: refusedLoad.said());
+    // The game's bindings reach `run`'s binder (the first slice's step 8): a misspelled key in the game's bindings is
+    // refused at load, naming it, and `run` ends with 1. The game's file is read, changed for the one run and written
+    // back.
+    string bindingsFile = s.fixture(at: "spin/content/cube.records.json");
+    string keptBindings = read(path: bindingsFile);
+    write(path: bindingsFile, text: keptBindings.replace(old: "\"keyboard\": \"ArrowUp\"", with: "\"keyboard\": \"Arrowup\""));
+    Ran misspelt = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: none(), options: runOptions()));
+    write(path: bindingsFile, text: keptBindings);
+    ranAs(t: t, name: "spin: native: a misspelled key in the game's bindings ends `run` with 1, refused at load", r: misspelt,
+          want: 1, says: "kyoten: refused at load: the keyboard binding of `faster` names `Arrowup`, which is no keyboard control");
     // The engine's content is the lowest layer, opened first (project-database § Decided, 2026-11-08).
     string loader = read(path: s.fixture(at: "spin/src/spin.generated.kama"));
     isize engineAt = match (loader.find(substring: "label: \"kyoten/content\"")) { case Some(value: v): v; case None: -1; };

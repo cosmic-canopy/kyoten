@@ -1,7 +1,8 @@
 # Input: devices into a game's actions
 
-**Status:** draft. Step 8's four questions are decided (2026-11-21); question 4's lock-in is to be tried with real pads. What the
-peers and the owner's games do is [../research/input.md](../research/input.md).
+**Status:** step 8's four questions are decided (2026-11-21), and its first part is built (2026-11-22, below):
+`Digital` from a key, a mouse button or a pad's button to a processor, split by time. Question 4's lock-in is to be
+tried with real pads. What the peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
 
@@ -120,3 +121,59 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
      the game letting go, which strands a player whose pad dies. It changes the decided wording "the first gamepad"
      (components § Decided, 2026-11-06). "So far": the owner tries it with two pads once it is built, in a short block
      at the start of the session after.
+
+- **2026-11-22, built: step 8's first part, `Digital` end to end** (the forty-sixth session), in two commits on kyoten's
+  pin, `0.9.1027+g25d97c29`, each gated by `tools/test.sh`. The later parts, each its own commit: `Analog`,
+  `Vector2` and `Vector3` (`Pose` built, bound by nothing), the object entries' parts and a pad's axes, a mouse's
+  motion and Output's newest sample; filters; gestures; `Text`; and the game letting go of the lock, whose API is asked
+  when it comes up.
+  - **The frame tier** (`kyoten::frame`, fenced): `Digital` moved there from `kyoten::input`, since a game's generated
+    `Actions` is fenced and holds one per action; `Sample`, one input from a device (a key by its USB HID usage id, a
+    mouse button by the W3C's `button`, a pad's button by the standard gamepad's index, its value and its time on the
+    frame timestamp's base, or a pad's connection); `Handoff`, one step's action values for every player in the
+    generated order; `PlayerActions`, the world's record of them across steps; `Clock.stepEnd(i:)`, where each owed step
+    ends on the timestamps' base, scaled, capped and paused alike; and the `InputSource` contract.
+  - **The driver:** `World.input(time:, handoff:)`; `step` handed its hand-off; `frame` hands each owed step the input
+    that arrived by its end on the clock and the frame's last owed step everything up to the pump, and a frame that
+    owes none asks for none, so it keeps its input for the next step.
+  - **The binder** (`kyoten::input`, tier `Module`, outside the fence, naming `kyoten::frame` and `kyoten::records`
+    alone of the engine): `Binder.make(players:, digitalActions:, bindings:)` reads each device's entry (a control's
+    name or a list of them) by `@kama/window`'s own reader, so a misspelling is refused at load with every name listed,
+    and refuses a binding naming no action and an object entry until its part, every refusal at once.
+  - **Settled by the decided rules, for the owner to object to:**
+    - one action on several controls is held while any is, its edges on the combined state, so a key's repeat or a
+      second key presses nothing;
+    - a press and its release inside one step show the press, held, that step and the release the next; a release and
+      a press inside one step show both, held;
+    - each processor sees an edge once, on its first run at or after the step it lands in, whatever its rate: the
+      passes write each row's `Actions` from its player's record before each processor that reads them, a processor
+      at a rate seeing every step since its last run and Output every step since its last frame;
+    - a control is on at `@kama/window`'s `Gamepad::PressedAt` of its travel, for every device;
+    - **a pad takes player 1's lock with a button pressed, never a stick alone**, any button, bound or not, so a
+      drifting or knocked stick cannot take player 1; the lock goes when that pad disconnects, what it held released at
+      that moment, and the next pad pressed takes it;
+    - an entity naming no player (0) or a player past the world's sees every action off;
+    - under `--fixed-fps`, whose timestamps are made up, a tick's samples are taken at its own timestamp, so they land
+      in its last owed step.
+  - **The bindings across layers:** each content layer's binding of an action replaces each device's entry it names
+    and keeps the others, as a record merges (`BindingRecord.takeEntriesFrom`); one layer binding an action in two
+    files is refused, naming both.
+  - **The platform:** `Platform.pumped(into:)` hands in the window's input as samples; the open platforms make them
+    from `@kama/window`'s events (`pumpInto`), each at its event's time on `now()`'s base, a key's repeat and a touch or
+    pen contact none (touch is WIN-11's); the loop (`Play<W, P, S>`) hands its source each tick's samples, and
+    `play(world:, platform:, input:, …)` takes the source.
+  - **The generator:** `Actions` imports `Digital` from `kyoten::frame` and gains `viewFrom`, the generator's own; the
+    world holds `players` (1, the engine's default), `digitalActions` and the players' record, which `pass_input` takes
+    each step's hand-off into; the generated `run` builds the binder from the merged bindings, a refusal printed and
+    the run ending with 1. The `spin` fixture's own `main` drives two cubes by hand, one naming no player and one
+    player 1, whose `faster` each step's hand-off holds.
+  - **Found by the spin fixture's 30 Hz `tally`, and fixed in the first commit:** `PlayerActions` held "no edge yet"
+    as step -1, which a slower run's first window (the steps after -2 up to 0) contains, so it saw a press that never
+    was; "no edge" is int64's least value.
+  - **Counts:** the engine's tests 334 cases (218 at the session's start), the tool's 234 (229), natively and on wasm,
+    debug and release; fps and vr on the engine as before.
+  - **Mutations:** 40 of 40 on the first commit (`Handoff`, `PlayerActions` and its sentinel, the step ends, the
+    binder, the entry reader), 2 caught by the out-of-bounds trap their guards prevent; 24 of 24 on the second (the
+    driver, the loop, the open platforms' pump, the bindings across layers, the generator's hand-off, views and
+    windows, and the run's binder: that last one rewritten so the game it generates compiles, since its first form's
+    did not and so proved nothing).

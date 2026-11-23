@@ -1,26 +1,38 @@
 // kyoten::frame's serial driver over the `World` contract (frame-phases § Decided, step 4 question 4): `step` runs
-// Input, Update and Constraints once with no clock, and `frame` runs them once per owed step, then Output once. The
-// world and the clock are both injected, so this hand-written world records what it was handed.
+// Input, Update and Constraints once with no clock, and `frame` runs them once per owed step, then Output once, each
+// owed step handed its hand-off from the input that arrived by its end (the first slice's step 8). The world, the clock
+// and the input are injected, so this hand-written world and source record what they were handed.
 
 import {
-    Tally,
+    Tally, digitalOf,
+    std::collections::DynamicArray,
     kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale,
-    kyoten::frame::step, kyoten::frame::frame,
+    kyoten::frame::step, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample,
 };
 
 export { driverTests };
 
 comptime int64 T0 = 5000000000;
+comptime int64 EVERYTHING = 9223372036854775807;
 
 // Records each phase call as its initial and its step index ("I0 U0 C0 O0 "), and the dt each phase was last handed.
 type resource Recorder implements World {
     string log = "";
+    string pressedLog = "";
     float32 updateDt = 0.0;
     float32 outputDt = 0.0;
 
     public ctor make() { }
 
-    public fn void input(const ref Time time) { this.note(phase: "I", time: time); }
+    // Notes the step, and the step whose hand-off pressed player 1's action 0.
+    public fn void input(const ref Time time, const ref Handoff handoff) {
+        this.note(phase: "I", time: time);
+        if (handoff.digital(player: 1, action: 0).pressed) {
+            int64 s = time.step;
+            string was = copy this.pressedLog;
+            this.pressedLog = "${was}${s} ";
+        }
+    }
     public fn void update(const ref Time time) {
         this.note(phase: "U", time: time);
         this.updateDt = time.dt;
@@ -38,9 +50,36 @@ type resource Recorder implements World {
     }
 
     public const fn string calls() { return copy this.log; }
+    public const fn string pressedSteps() { return copy this.pressedLog; }
     public const fn float32 lastUpdateDt() { return this.updateDt; }
     public const fn float32 lastOutputDt() { return this.outputDt; }
     public fn void clear() { this.log = ""; }
+}
+
+// A source that presses player 1's action 0 on one step, and records each step's window end ("0@16666667 2@all ", in
+// nanoseconds after T0) and the samples it was handed.
+type resource Script implements InputSource {
+    Handoff out = Handoff.make(players: 1, digitalActions: 1);
+    int64 pressOn = -1;
+    string asked = "";
+    isize taken = 0;
+
+    public ctor make(int64 pressOn) { this.pressOn = pressOn; }
+
+    public fn void take(const ref DynamicArray<Sample> samples) { this.taken = this.taken + samples.length(); }
+    public fn const ref Handoff handoff(int64 index, int64 until) {
+        string was = copy this.asked;
+        if (until == EVERYTHING) { this.asked = "${was}${index}@all "; }
+        else {
+            int64 after = until - T0;
+            this.asked = "${was}${index}@${after} ";
+        }
+        this.out.clear();
+        if (index == this.pressOn) { this.out.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: true, released: false)); }
+        return this.out;
+    }
+
+    public const fn string windows() { return copy this.asked; }
 }
 
 fn void expectCalls(ref Tally t, const ref string name, const ref Recorder w, const ref string want) {
@@ -52,23 +91,29 @@ fn void expectCalls(ref Tally t, const ref string name, const ref Recorder w, co
 fn void oneStep(ref Tally t) {
     Recorder w = Recorder.make();
     Time time = Time.of(dt: Time::dtAt(hz: 60), step: 7);
-    step(world: w, time: time);
+    Handoff pressed = Handoff.make(players: 1, digitalActions: 1);
+    pressed.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: true, released: false));
+    step(world: w, time: time, handoff: pressed);
     expectCalls(t: t, name: "driver: step runs Input, Update and Constraints once, in order, with no clock", w: w, want: "I7 U7 C7 ");
+    string seen = w.pressedSteps();
+    t.verdict(name: "driver: step hands Input the hand-off it was handed", why: seen == "7 " ? "" : "pressed on `${seen}`");
 }
 
 fn void firstFrame(ref Tally t) {
     Recorder w = Recorder.make();
     Clock c = Clock.make(hz: 60, maxSteps: 5);
-    frame(world: w, clock: c, now: T0);
+    Script s = Script.make(pressOn: -1);
+    frame(world: w, clock: c, source: s, now: T0);
     expectCalls(t: t, name: "driver: the first frame owes no step and runs Output once, before any step settles", w: w, want: "O-1 ");
 }
 
 fn void threeSteps(ref Tally t) {
     Recorder w = Recorder.make();
     Clock c = Clock.make(hz: 60, maxSteps: 5);
-    frame(world: w, clock: c, now: T0);
+    Script s = Script.make(pressOn: -1);
+    frame(world: w, clock: c, source: s, now: T0);
     w.clear();
-    Owed owed = frame(world: w, clock: c, now: T0 + 50000000);      // 50 ms: exactly 3 steps at 60 Hz
+    Owed owed = frame(world: w, clock: c, source: s, now: T0 + 50000000);      // 50 ms: exactly 3 steps at 60 Hz
     expectCalls(t: t, name: "driver: three owed steps run Input, Update and Constraints three times, then Output once", w: w, want: "I0 U0 C0 I1 U1 C1 I2 U2 C2 O2 ");
     bool ok = owed.steps == 3 && owed.first == 0;
     t.verdict(name: "driver: frame returns what the clock owed", why: ok ? "" : "steps ${owed.steps}, first ${owed.first}");
@@ -78,28 +123,57 @@ fn void threeSteps(ref Tally t) {
     bool outDt = shown > 0.0499999 && shown < 0.0500001;
     t.verdict(name: "driver: Output is handed the frame's dt", why: outDt ? "" : "outputDt ${shown}");
     w.clear();
-    frame(world: w, clock: c, now: T0 + 50000000 + 16666667);
+    frame(world: w, clock: c, source: s, now: T0 + 50000000 + 16666667);
     expectCalls(t: t, name: "driver: the next frame's step follows on", w: w, want: "I3 U3 C3 O3 ");
 }
 
 fn void atCap(ref Tally t) {
     Recorder w = Recorder.make();
     Clock c = Clock.make(hz: 60, maxSteps: 5);
-    frame(world: w, clock: c, now: T0);
+    Script s = Script.make(pressOn: -1);
+    frame(world: w, clock: c, source: s, now: T0);
     w.clear();
-    frame(world: w, clock: c, now: T0 + 1000000000);
+    frame(world: w, clock: c, source: s, now: T0 + 1000000000);
     expectCalls(t: t, name: "driver: a stall runs the cap's 5 steps, then Output once", w: w, want: "I0 U0 C0 I1 U1 C1 I2 U2 C2 I3 U3 C3 I4 U4 C4 O4 ");
 }
 
 fn void noneOwed(ref Tally t) {
     Recorder w = Recorder.make();
     Clock c = Clock.make(hz: 60, maxSteps: 5);
-    frame(world: w, clock: c, now: T0);
-    frame(world: w, clock: c, now: T0 + 16666667);
+    Script s = Script.make(pressOn: -1);
+    frame(world: w, clock: c, source: s, now: T0);
+    frame(world: w, clock: c, source: s, now: T0 + 16666667);
     c.setScale(to: TimeScale.paused());
     w.clear();
-    frame(world: w, clock: c, now: T0 + 2 * 16666667);
+    frame(world: w, clock: c, source: s, now: T0 + 2 * 16666667);
     expectCalls(t: t, name: "driver: paused, a frame runs only Output, at the last settled step", w: w, want: "O0 ");
+}
+
+// Each owed step is handed the input that arrived by its end on the clock, the frame's last owed step everything up to
+// the pump, and a frame that owes none asks for no hand-off (design/input.md § Decided, question 1).
+fn void handoffs(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    Script s = Script.make(pressOn: 1);
+    frame(world: w, clock: c, source: s, now: T0);
+    string none = s.windows();
+    t.verdict(name: "driver: a frame that owes no step asks for no hand-off", why: none == "" ? "" : "asked `${none}`");
+    frame(world: w, clock: c, source: s, now: T0 + 50000000);
+    string asked = s.windows();
+    t.verdict(name: "driver: each owed step is handed the input by its end, the last everything up to the pump",
+              why: asked == "0@16666667 1@33333334 2@all " ? "" : "asked `${asked}`");
+    string pressed = w.pressedSteps();
+    t.verdict(name: "driver: each step's Input takes its own step's hand-off", why: pressed == "1 " ? "" : "pressed on `${pressed}`");
+
+    Recorder h = Recorder.make();
+    Clock half = Clock.make(hz: 60, maxSteps: 5);
+    half.setScale(to: TimeScale.of(num: 1, den: 2));
+    Script hs = Script.make(pressOn: -1);
+    frame(world: h, clock: half, source: hs, now: T0);
+    frame(world: h, clock: half, source: hs, now: T0 + 100000000);
+    string slow = hs.windows();
+    t.verdict(name: "driver: at half speed each step's input is twice the real time",
+              why: slow == "0@33333334 1@66666668 2@all " ? "" : "asked `${slow}`");
 }
 
 fn void driverTests(ref Tally t) {
@@ -108,4 +182,5 @@ fn void driverTests(ref Tally t) {
     threeSteps(t: t);
     atCap(t: t);
     noneOwed(t: t);
+    handoffs(t: t);
 }

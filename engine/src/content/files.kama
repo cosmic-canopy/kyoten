@@ -3,7 +3,7 @@
 // are kept as JSON: the tool reads only their keys, and the loader lays each component's subtree over its default
 // (components § Decided, the loader's question 2 of 2026-11-09).
 
-import { kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::SortedMap,
+import { kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::SortedMap, std::memory::replace,
          std::serialization::text::json::JsonValue };
 
 export { ContentFile, ZoneFile, PlacementRecord };
@@ -21,6 +21,11 @@ type resource ContentFile {
     public const fn bool hasApp() { return match (this.appField) { case Some(value: a): true; case None: false; }; }
     public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
     public const fn const ref SortedMap<string, JsonValue> prefabs() { return this.prefabsField; }
+    // Its bindings, handed over to be laid over the lower layers' and leaving it none.
+    public fn SortedMap<string, BindingRecord> takeBindings() {
+        SortedMap<string, BindingRecord> none = SortedMap.empty();
+        return replace(place: this.bindingsField, with: give none);
+    }
 }
 
 // A zone file under `scenes/<scene>/`: its placements by placed name, each kept as JSON so that one placement's

@@ -71,9 +71,18 @@ std::app and reads the run's three options (`--headless`, `--quit-after N`, `--f
 as the engine's platform module, the one place engine code may name a target. It names `kyoten::frame` alone of the
 engine, so `kyoten::frame` stays fenced for the `Time` a game's processors take. The generated `run` calls `play`.
 
+**Input is split across the tiers** (*decided* 2026-11-21, [design/input.md](design/input.md) § Decided; built at the
+first slice's step 8): the kinds a processor reads (`Digital`), the device-neutral **sample** a platform hands in, each
+step's **hand-off** and the world's record of it (`PlayerActions`) are the frame tier's, fenced, since a game's
+generated `Actions` holds them. The **binder**, `kyoten::input`, tier `Module` and outside the fence, reads the bindings
+records by `@kama/window`'s control names and makes each owed step's hand-off from the samples, split by their times;
+it names `kyoten::frame` and `kyoten::records` alone of the engine. A platform turns its devices into samples, and the
+generated `run` builds the binder from the content and hands it to `play`.
+
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
- │ 1 frame   phases · the clock · scheduler · input record · World contract       │
+ │ 1 frame   phases · the clock · scheduler · input kinds, samples, hand-offs ·   │
+ │           World and InputSource contracts                                      │
  ├───────────────────────────────────────────────────────────────────────────────┤
  │ 2 world   engine components (Transform, Mesh…) · table, chunk, side-store,     │
  │           command and lookup types · query contracts (a raycast, a nav path)   │
@@ -575,6 +584,9 @@ words.
 | **Binding** | a record mapping an action to a device's controls, a default per device, rebound by the developer and the player. Keyed by action, then device; a device's entry is a control, a list of controls, or an object with its parts, its filters and its gestures | decided (question 7, choice 4); its shape decided 2026-11-21 ([design/input.md](design/input.md) question 2) |
 | **UI profile** | the HTML and CSS a game's UI documents may use: what `@kama/ui` renders natively, checked at build. It grows as the native renderer does, and a document marked web-only is exempt | decided (web-and-native question 3, 2026-11-07) |
 | **Player** | a numbered slot that drives entities through their `Actions`. A local device, a network slot, a bot or an agent is bound to it, and a budget caps how many there are | that actions belong to a player is decided (question 7, revised 2026-11-06); the rest is the owner's direction for KYR-54 |
+| **Sample** | one input from a device as a platform hands it to the engine: a key, a mouse button or a pad's button by the web's numbering, its value and its time on the frame timestamp's base, or a pad's connection. A platform makes them from its own devices, so the binder reads one shape everywhere | built at the first slice's step 8 (2026-11-22, [design/input.md](design/input.md)) |
+| **Hand-off** | one step's input as the Input phase takes it: every player's action values after their bindings, in the game's generated order. What the recorded log keeps, never device events | decided (frame-phases question 4; replay-and-determinism question 2); built at step 8 |
+| **Input source** | what makes each owed step's hand-off from the input that arrived by the step's end: the engine's binder (`kyoten::input`), a replay's log, or a test's script | built at step 8 (2026-11-22) |
 | **Player binding** | what attaches a source to a player: keyboard 1, gamepad 2, a network slot, a bot or an agent. Player 1 has the keyboard and the mouse, and the first pad pressed, which locks in until it disconnects or the game lets go | the owner's direction (2026-11-06); player 1's pad decided 2026-11-21 ([design/input.md](design/input.md) question 4); the rest decided at KYR-54 |
 | **Filter** | a step in a binding that reshapes a control's value each step or converts it to the action's kind: a dead zone, a scale, a curve, a stick or trigger as a button, a button as an axis, two buttons as −1 to 1, a filtered accelerometer. Editor controls may use the same idea (human-tools question 4) | decided 2026-11-21 ([design/input.md](design/input.md) question 3; "adapter" retired) |
 | **Gesture** | a step in a binding that recognizes a pattern over time (a hold, a tap, a double tap, a chord, a sequence, a swipe), after the binding's filters and before Input's hand-off records the action | decided 2026-11-21 ([design/input.md](design/input.md) question 3) |

@@ -1,2 +1,3 @@
-{ "processors": { "turn": { "phase": "Update" } },
+{ "processors": { "turn": { "phase": "Update" }, "tally": { "phase": "Update", "rate": 30 } },
+  "components": { "Spin": { "requires": ["Taps"] } },
   "actions":    { "faster": { "kind": "Digital" } } }

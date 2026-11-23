@@ -1,12 +1,17 @@
 // kyoten::platform (the first slice's step 7, KYR-8; target-platforms § Decided, 2026-11-20): the run's three options,
 // read from a command line, and the loop, driven by hand on every leg as std::app would drive it, with a world and a
 // platform of the test's own (dependencies are injected): the phases a tick from the platform's timestamps, the window
-// asked for once on `SurfaceReady`, `Resumed` after `Suspended` owing no burst, and each way the run ends.
+// asked for once on `SurfaceReady`, `Resumed` after `Suspended` owing no burst, and each way the run ends. And the
+// input (the first slice's step 8): the loop handing its source each tick's samples, at a fixed tick's own timestamp
+// under `--fixed-fps`, and the open platforms' pump turning a headless window's events into samples at their times.
 
-import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory::Shared, kyoten::frame::World,
-         kyoten::frame::Time, kyoten::platform::Platform, kyoten::platform::RunOptions,
-         kyoten::platform::RunOptionError, kyoten::platform::Ending, kyoten::platform::Play,
-         kyoten::platform::play, kyoten::platform::fixedTimestamp, kyoten::platform::OpenPlatform };
+import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory::Shared, std::time::Instant,
+         std::time::Duration, std::time::monotonicNow, kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Handoff,
+         kyoten::frame::InputSource, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
+         kyoten::platform::Platform, kyoten::platform::RunOptions, kyoten::platform::RunOptionError,
+         kyoten::platform::Ending, kyoten::platform::Play, kyoten::platform::play, kyoten::platform::fixedTimestamp,
+         kyoten::platform::OpenPlatform, kyoten::platform::pumpInto, window::Window, window::Event, window::Key,
+         window::Pointer, window::PointerKind, window::PointerButton, window::PadButton };
 
 export { platformTests };
 
@@ -27,6 +32,8 @@ type resource Log {
     int32 endCount = 0;
     int32 endCode = -1;
     int64 outputCount = 0;
+    DynamicArray<Sample> toPump = DynamicArray.empty();   // handed in at the next pump
+    string takenAt = "";                                  // each sample the source took, at its time
 
     public ctor make() { }
 
@@ -43,10 +50,21 @@ type resource Log {
         this.openedAs = "${title} ${width}x${height} ${h} ${f}";
         return this.openAnswer;
     }
-    public fn bool pump() {
+    public fn void pumpNext(Sample s) { this.toPump.add(item: s); }
+    public fn bool pump(ref DynamicArray<Sample> into) {
         this.pumpCount = this.pumpCount + 1;
+        foreach (Sample s in this.toPump) { into.add(item: s); }
+        this.toPump.clear();
         return this.closeAt == 0 || this.pumpCount < this.closeAt;
     }
+    public fn void took(const ref DynamicArray<Sample> samples) {
+        foreach (Sample s in samples) {
+            int64 at = s.at;
+            string was = copy this.takenAt;
+            this.takenAt = "${was}${at} ";
+        }
+    }
+    public const fn string taken() { return copy this.takenAt; }
     // Each answer in turn, then the last again; 0 with none.
     public fn int64 time() {
         isize n = this.timeList.length();
@@ -81,7 +99,7 @@ type resource FakePlatform implements Platform {
     public fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused) {
         return this.log.derefMut().open(title: title, width: width, height: height, headless: headless, focused: focused);
     }
-    public fn bool pumped() { return this.log.derefMut().pump(); }
+    public fn bool pumped(ref DynamicArray<Sample> into) { return this.log.derefMut().pump(into: into); }
     public fn int64 now() { return this.log.derefMut().time(); }
     public fn void ended(uint8 code) { this.log.derefMut().end(code: code); }
 }
@@ -92,10 +110,21 @@ type resource Counter implements World {
 
     public ctor make(Shared<Log> log) { this.log = give log; }
 
-    public fn void input(const ref Time time) { }
+    public fn void input(const ref Time time, const ref Handoff handoff) { }
     public fn void update(const ref Time time) { }
     public fn void constraints(const ref Time time) { }
     public fn void output(const ref Time time) { this.log.derefMut().output(); }
+}
+
+// Records the samples the loop hands it into the log; its hand-offs are empty.
+type resource Taker implements InputSource {
+    Shared<Log> log;
+    Handoff out = Handoff.make(players: 1, digitalActions: 0);
+
+    public ctor make(Shared<Log> log) { this.log = give log; }
+
+    public fn void take(const ref DynamicArray<Sample> samples) { this.log.derefMut().took(samples: samples); }
+    public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
 }
 
 fn void expectCount(ref Tally t, const ref string name, int64 got, int64 want) {
@@ -178,27 +207,28 @@ fn void timestampCases(ref Tally t) {
 }
 
 // A loop on the test's world and platform, as `play` makes it, the options read from `line`.
-fn Play<Counter, FakePlatform> loopOn(Shared<Log> log, const ref string line) {
+fn Play<Counter, FakePlatform, Taker> loopOn(Shared<Log> log, const ref string line) {
     Result<RunOptions, RunOptionError> r = RunOptions.fromArguments(args: argsOf(line: line));
     RunOptions o = RunOptions.empty();
     match (give r) { case Ok(value: v): { o = v; } case Err(error: e): { } };
     Shared<Log> forWorld = copy log;
+    Shared<Log> forInput = copy log;
     Shared<Log> forPlatform = give log;
     Shared<Ending> ending = new Ending.make();
     return Play.make(world: Counter.make(log: give forWorld),
-                     platform: FakePlatform.make(log: give forPlatform), options: o, hz: 60,
-                     title: "probe", width: 640, height: 400, ending: give ending);
+                     platform: FakePlatform.make(log: give forPlatform), input: Taker.make(log: give forInput),
+                     options: o, hz: 60, title: "probe", width: 640, height: 400, ending: give ending);
 }
 
 // The host's start, as every host says it before the first tick.
-fn void hostStarts(ref Play<Counter, FakePlatform> p) {
+fn void hostStarts(ref Play<Counter, FakePlatform, Taker> p) {
     p.lifecycle(event: Lifecycle::Resumed);
     p.lifecycle(event: Lifecycle::SurfaceReady);
 }
 
 fn void windowCases(ref Tally t) {
     Shared<Log> log = new Log.make();
-    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
     expectCount(t: t, name: "loop: no window is asked for before the host says surfaces may be made",
                 got: log.deref().openings(), want: 0);
     hostStarts(p: p);
@@ -209,13 +239,13 @@ fn void windowCases(ref Tally t) {
               why: opened == "probe 640x400 windowed focused" ? "" : "asked for `${opened}`");
 
     Shared<Log> quiet = new Log.make();
-    Play<Counter, FakePlatform> q = loopOn(log: copy quiet, line: "--headless --quit-after 5");
+    Play<Counter, FakePlatform, Taker> q = loopOn(log: copy quiet, line: "--headless --quit-after 5");
     hostStarts(p: q);
     string asked = quiet.deref().opened();
     t.verdict(name: "loop: under `--headless --quit-after`, the window is headless and takes no focus",
               why: asked == "probe 640x400 headless unfocused" ? "" : "asked for `${asked}`");
     Shared<Log> unfocused = new Log.make();
-    Play<Counter, FakePlatform> u = loopOn(log: copy unfocused, line: "--quit-after 5");
+    Play<Counter, FakePlatform, Taker> u = loopOn(log: copy unfocused, line: "--quit-after 5");
     hostStarts(p: u);
     string shown = unfocused.deref().opened();
     t.verdict(name: "loop: under `--quit-after` alone, a system window that takes no focus",
@@ -229,7 +259,7 @@ fn void phaseCases(ref Tally t) {
     times.add(item: T0 + STEP);
     times.add(item: T0 + 3 * STEP);
     log.derefMut().takeTimes(times: give times);
-    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
     hostStarts(p: p);
     bool going = p.tick() && p.tick() && p.tick();
     t.verdict(name: "loop: a tick goes on while the window is open", why: going ? "" : "a tick ended the run");
@@ -248,7 +278,7 @@ fn void lifecycleCases(ref Tally t) {
     times.add(item: T0 + 10000000000);
     times.add(item: T0 + 10000000000 + STEP);
     log.derefMut().takeTimes(times: give times);
-    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
     hostStarts(p: p);
     p.tick();
     p.tick();
@@ -265,7 +295,7 @@ fn void lifecycleCases(ref Tally t) {
     gap.add(item: T0 + STEP);
     gap.add(item: T0 + 10000000000);
     plain.derefMut().takeTimes(times: give gap);
-    Play<Counter, FakePlatform> r = loopOn(log: copy plain, line: "");
+    Play<Counter, FakePlatform, Taker> r = loopOn(log: copy plain, line: "");
     hostStarts(p: r);
     r.tick();
     r.tick();
@@ -278,7 +308,7 @@ fn void lifecycleCases(ref Tally t) {
 fn void endCases(ref Tally t) {
     Shared<Log> log = new Log.make();
     log.derefMut().closeOnPump(at: 3);
-    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "");
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
     hostStarts(p: p);
     bool one = p.tick();
     bool two = p.tick();
@@ -290,7 +320,7 @@ fn void endCases(ref Tally t) {
 
     Shared<Log> refused = new Log.make();
     refused.derefMut().refuseWindow();
-    Play<Counter, FakePlatform> r = loopOn(log: copy refused, line: "");
+    Play<Counter, FakePlatform, Taker> r = loopOn(log: copy refused, line: "");
     hostStarts(p: r);
     bool ran = r.tick();
     t.verdict(name: "loop: a window that could not be opened ends the run at the first tick",
@@ -299,7 +329,7 @@ fn void endCases(ref Tally t) {
     expectCount(t: t, name: "loop: and runs no frame", got: refused.deref().outputs(), want: 0);
 
     Shared<Log> counted = new Log.make();
-    Play<Counter, FakePlatform> c = loopOn(log: copy counted, line: "--quit-after 3");
+    Play<Counter, FakePlatform, Taker> c = loopOn(log: copy counted, line: "--quit-after 3");
     hostStarts(p: c);
     bool a = c.tick();
     bool b = c.tick();
@@ -313,7 +343,7 @@ fn void endCases(ref Tally t) {
 
 fn void fixedCases(ref Tally t) {
     Shared<Log> log = new Log.make();
-    Play<Counter, FakePlatform> p = loopOn(log: copy log, line: "--headless --fixed-fps 60 --quit-after 30");
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "--headless --fixed-fps 60 --quit-after 30");
     hostStarts(p: p);
     while (p.tick()) { }
     expectCount(t: t, name: "loop: under `--fixed-fps 60 --quit-after 30`, 30 frames run", got: log.deref().outputs(), want: 30);
@@ -322,7 +352,7 @@ fn void fixedCases(ref Tally t) {
     expectCount(t: t, name: "loop: and reading no host clock", got: log.deref().nows(), want: 0);
 
     Shared<Log> half = new Log.make();
-    Play<Counter, FakePlatform> h = loopOn(log: copy half, line: "--fixed-fps 30 --quit-after 11");
+    Play<Counter, FakePlatform, Taker> h = loopOn(log: copy half, line: "--fixed-fps 30 --quit-after 11");
     hostStarts(p: h);
     while (h.tick()) { }
     expectCount(t: t, name: "loop: under `--fixed-fps 30`, each frame owes two 60 Hz steps", got: h.stepsSettled(), want: 20);
@@ -334,8 +364,9 @@ fn void playCases(ref Tally t) {
     log.derefMut().takeArgs(args: argsOf(line: "--quit-after soon"));
     Shared<Log> forWorld = copy log;
     Shared<Log> forPlatform = copy log;
-    uint8 code = play(world: Counter.make(log: give forWorld), platform: FakePlatform.make(log: give forPlatform), hz: 60,
-                      title: "probe", width: 640, height: 400);
+    Shared<Log> forInput = copy log;
+    uint8 code = play(world: Counter.make(log: give forWorld), platform: FakePlatform.make(log: give forPlatform),
+                      input: Taker.make(log: give forInput), hz: 60, title: "probe", width: 640, height: 400);
     expectCount(t: t, name: "play: a malformed option ends the run with 2", got: cast<int64>(code), want: 2);
     expectCount(t: t, name: "play: before its loop, so no window is asked for", got: log.deref().openings(), want: 0);
 }
@@ -356,6 +387,93 @@ fn void openCases(ref Tally t) {
               why: at == want ? "" : "`${at}`, wanted `${want}`");
 }
 
+// The loop hands its source the samples each tick's pump handed in, at the times they carry; under `--fixed-fps`, at
+// the tick's own made-up timestamp, so they land in its last owed step.
+fn void inputCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    log.derefMut().pumpNext(s: Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 1.0, at: T0 - 5));
+    p.tick();
+    log.derefMut().pumpNext(s: Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 0.0, at: T0 + 7));
+    log.derefMut().pumpNext(s: Sample.make(device: Device::Gamepad, slot: 1, control: 5, value: 1.0, at: T0 + 9));
+    p.tick();
+    string taken = log.deref().taken();
+    t.verdict(name: "loop: each tick hands its source the samples its pump handed in, at their own times",
+              why: taken == "4999999995 5000000007 5000000009 " ? "" : "took `${taken}`");
+
+    Shared<Log> fixed = new Log.make();
+    Play<Counter, FakePlatform, Taker> f = loopOn(log: copy fixed, line: "--fixed-fps 60 --quit-after 5");
+    hostStarts(p: f);
+    f.tick();
+    fixed.derefMut().pumpNext(s: Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 1.0, at: 12345));
+    f.tick();
+    string stamped = fixed.deref().taken();
+    t.verdict(name: "loop: under `--fixed-fps`, a tick's samples are taken at its own timestamp",
+              why: stamped == "16666667 " ? "" : "took `${stamped}`");
+}
+
+// A sample spelled: K, M or P for its device, a pad's slot and a colon, the control, `=` and its value; a pad's
+// connection `+` or `-`; then `@` and its time in milliseconds after `began`.
+fn string sampleText(const ref Sample s) {
+    int64 ms = s.at / 1000000;
+    int32 slot = s.slot;
+    int32 control = s.control;
+    string on = s.value >= 0.5 ? "1" : "0";
+    match (s.kind) {
+        case Connected: { return "P${slot}+@${ms}"; }
+        case Disconnected: { return "P${slot}-@${ms}"; }
+        case Control: { }
+    };
+    return match (s.device) {
+        case Keyboard: "K${control}=${on}@${ms}";
+        case Mouse: "M${control}=${on}@${ms}";
+        case Gamepad: "P${slot}:${control}=${on}@${ms}";
+    };
+}
+
+fn Instant msAfter(Instant began, int64 ms) { return began + Duration.fromMillis(ms: ms); }
+
+// The open platforms' pump, on a headless window with posted events: a key, a mouse's button, a pad's button and its
+// connection, each a sample at its event's time; a key's repeat and a touch are none; a close request ends it.
+unsafe fn void pumpCases(ref Tally t) {
+    Window w = Window.headless(width: 64, height: 48);
+    Instant began = monotonicNow();
+    w.post(event: Event::KeyDown(key: Key::ArrowUp, mods: 0, repeat: false), at: msAfter(began: began, ms: 5));
+    w.post(event: Event::KeyDown(key: Key::ArrowUp, mods: 0, repeat: true), at: msAfter(began: began, ms: 6));
+    w.post(event: Event::KeyUp(key: Key::ArrowUp, mods: 0), at: msAfter(began: began, ms: 7));
+    w.post(event: Event::PointerDown(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 1.0, y: 2.0),
+                                     button: PointerButton::Left, mods: 0), at: msAfter(began: began, ms: 8));
+    w.post(event: Event::PointerUp(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 1.0, y: 2.0),
+                                   button: PointerButton::Left, mods: 0), at: msAfter(began: began, ms: 9));
+    w.post(event: Event::PointerDown(pointer: Pointer.at(id: 4, kind: PointerKind::Touch, x: 1.0, y: 2.0),
+                                     button: PointerButton::Left, mods: 0), at: msAfter(began: began, ms: 10));
+    w.post(event: Event::PointerUp(pointer: Pointer.at(id: 4, kind: PointerKind::Touch, x: 1.0, y: 2.0),
+                                   button: PointerButton::Left, mods: 0), at: msAfter(began: began, ms: 11));
+    w.post(event: Event::PadConnected(slot: 2), at: msAfter(began: began, ms: 12));
+    w.post(event: Event::PadButtonDown(slot: 2, button: PadButton::RightShoulder), at: msAfter(began: began, ms: 13));
+    w.post(event: Event::PadButtonUp(slot: 2, button: PadButton::RightShoulder), at: msAfter(began: began, ms: 14));
+    w.post(event: Event::PadDisconnected(slot: 2), at: msAfter(began: began, ms: 15));
+    DynamicArray<Sample> samples = DynamicArray.empty();
+    bool open = pumpInto(w: w, began: began, into: samples);
+    string got = "";
+    foreach (const ref Sample s in samples.iterConst()) {
+        string one = sampleText(s: s);
+        got = got.isEmpty() ? copy one : got + " " + one;
+    }
+    t.verdict(name: "OpenPlatform: a window's input is samples at their events' times, a repeat and a touch none",
+              why: got == "K82=1@5 K82=0@7 M0=1@8 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15" ? "" : "got `${got}`");
+    t.verdict(name: "OpenPlatform: a pump with no close request keeps the window open", why: open ? "" : "it closed");
+    w.post(event: Event::CloseRequested, at: msAfter(began: began, ms: 16));
+    DynamicArray<Sample> after = DynamicArray.empty();
+    bool still = pumpInto(w: w, began: began, into: after);
+    t.verdict(name: "OpenPlatform: a close request ends the run", why: !still && after.length() == 0 ? "" : "it went on");
+}
+
 fn void platformTests(ref Tally t) {
     optionCases(t: t);
     timestampCases(t: t);
@@ -366,4 +484,6 @@ fn void platformTests(ref Tally t) {
     fixedCases(t: t);
     playCases(t: t);
     openCases(t: t);
+    inputCases(t: t);
+    pumpCases(t: t);
 }

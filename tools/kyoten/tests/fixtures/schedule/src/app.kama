@@ -2,11 +2,21 @@
 // fed time, in 60 frames, each owing about five base steps. Output's `report` prints once a frame.
 
 import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
+         kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample, std::collections::DynamicArray,
          schedule::sim::Fast, schedule::sim::Slow, schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Bulk,
          schedule::generated::TickerPrefab, schedule::generated::CratePrefab, GameWorld };
 
+// No input: every step's hand-off is empty, sized for the world's players and actions.
+type resource Quiet implements InputSource {
+    Handoff out = Handoff.make(players: GameWorld::players, digitalActions: GameWorld::digitalActions);
+    public ctor make() { }
+    public fn void take(const ref DynamicArray<Sample> samples) { }
+    public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
+}
+
 fn uint8 main() {
     GameWorld world = GameWorld.make();
+    Quiet quiet = Quiet.make();
     Optional<Handle> h = world.create_ticker(prefab: TickerPrefab.of(fast: Fast.default(), fifty: Fifty.default(),
                                                                      log: Log.default(), slow: Slow.default()));
     // A crate, in its own table at the 16 KiB target: the lookup issues it the next slot.
@@ -26,7 +36,7 @@ fn uint8 main() {
     Clock clock = Clock.make(hz: baseHz, maxSteps: 10);
     int64 k = 0;
     while (k <= 60) {
-        Owed owed = frame(world: world, clock: clock, now: k * 1000000000 / 60);
+        Owed owed = frame(world: world, clock: clock, source: quiet, now: k * 1000000000 / 60);
         k = k + 1;
     }
     int64 settled = clock.settled();

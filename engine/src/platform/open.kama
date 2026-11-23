@@ -11,12 +11,15 @@
 // - **The frame's timestamp is `std::time`'s monotonic clock,** read at the tick, as Bevy and Godot read theirs.
 // - **The end:** natively `run` returns and the program ends with the status; on the web, where `run` never returns,
 //   std::app's `quit` ends it.
+// - **Input is the window's events as samples** (the first slice's step 8, KYR-54): a key, a mouse's button, a pad's
+//   button and a pad's connection, each at its event's time on the frame timestamp's base. A key's repeat is no
+//   sample, since the key was already down; a touch's and a pen's contacts wait for touch (WIN-11).
 
 import { core::println, core::env::args, std::app::quit, std::time::Instant, std::time::monotonicNow,
          std::collections::DynamicArray, window::Window, window::WindowOptions, window::WindowError, window::Event, window::TimedEvent,
-         Platform };
+         window::PointerKind, kyoten::frame::Sample, kyoten::frame::Device, Platform };
 
-export { OpenPlatform };
+export { OpenPlatform, pumpInto };
 
 // The web: the page's canvas, the content `preloadFiles` packed, and std::app's `quit` at the end.
 @compileFor(ARCH_WASM32)
@@ -34,7 +37,7 @@ type resource OpenPlatform implements Platform {
         return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
                       focused: focused);
     }
-    public unsafe fn bool pumped() { return pumpOn(slot: this.window); }
+    public unsafe fn bool pumped(ref DynamicArray<Sample> into) { return pumpOn(slot: this.window, began: this.began, into: into); }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     public fn void ended(uint8 code) { quit(code: code); }
 }
@@ -53,7 +56,7 @@ type resource OpenPlatform implements Platform {
         return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
                       focused: focused);
     }
-    public unsafe fn bool pumped() { return pumpOn(slot: this.window); }
+    public unsafe fn bool pumped(ref DynamicArray<Sample> into) { return pumpOn(slot: this.window, began: this.began, into: into); }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     public fn void ended(uint8 code) { }
 }
@@ -89,22 +92,60 @@ unsafe fn bool openOn(ref Optional<Window> slot, const ref string title, int32 w
     };
 }
 
-// The window's events since the last tick: false once one asks it to close.
-unsafe fn bool pumpOn(ref Optional<Window> slot) {
+// The window's events since the last tick, when there is one: false once one asks it to close.
+unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into) {
     bool open = true;
     match (slot) {
         case Some(value: w): {
             w.pump();
-            bool more = true;
-            while (more) {
-                Optional<TimedEvent> e = w.pollEvent();
-                match (e) {
-                    case Some(value: ev): { match (ev.event) { case CloseRequested: { open = false; } case _: { } }; }
-                    case None: { more = false; }
-                };
-            }
+            open = pumpInto(w: w, began: began, into: into);
         }
         case None: { }
     };
+    return open;
+}
+
+// Every event the window's queue holds, its input added to `into` as samples, each at its event's time in nanoseconds
+// since `began`, the frame timestamp's base: false when one asks the window to close.
+unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into) {
+    bool open = true;
+    bool more = true;
+    while (more) {
+        Optional<TimedEvent> e = w.pollEvent();
+        match (e) {
+            case Some(value: ev): {
+                int64 at = ev.at.since(earlier: began).asNanos();
+                match (ev.event) {
+                    case CloseRequested: { open = false; }
+                    case KeyDown(key: k, mods: m, repeat: r): {
+                        if (!r) { into.add(item: Sample.make(device: Device::Keyboard, slot: 0, control: cast<int32>(k), value: 1.0, at: at)); }
+                    }
+                    case KeyUp(key: k, mods: m): {
+                        into.add(item: Sample.make(device: Device::Keyboard, slot: 0, control: cast<int32>(k), value: 0.0, at: at));
+                    }
+                    case PointerDown(pointer: p, button: b, mods: m): {
+                        if (p.kind == PointerKind::Mouse) {
+                            into.add(item: Sample.make(device: Device::Mouse, slot: 0, control: cast<int32>(b), value: 1.0, at: at));
+                        }
+                    }
+                    case PointerUp(pointer: p, button: b, mods: m): {
+                        if (p.kind == PointerKind::Mouse) {
+                            into.add(item: Sample.make(device: Device::Mouse, slot: 0, control: cast<int32>(b), value: 0.0, at: at));
+                        }
+                    }
+                    case PadButtonDown(slot: s, button: b): {
+                        into.add(item: Sample.make(device: Device::Gamepad, slot: s, control: cast<int32>(b), value: 1.0, at: at));
+                    }
+                    case PadButtonUp(slot: s, button: b): {
+                        into.add(item: Sample.make(device: Device::Gamepad, slot: s, control: cast<int32>(b), value: 0.0, at: at));
+                    }
+                    case PadConnected(slot: s): { into.add(item: Sample.padConnected(slot: s, at: at)); }
+                    case PadDisconnected(slot: s): { into.add(item: Sample.padDisconnected(slot: s, at: at)); }
+                    case _: { }
+                };
+            }
+            case None: { more = false; }
+        };
+    }
     return open;
 }

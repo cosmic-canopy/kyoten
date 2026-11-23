@@ -12,13 +12,13 @@
 //   for each and calls it directly (target-platforms question 2). A closed platform is a private package's type
 //   implementing the same contract, with its own module marked as this one is.
 
-import { std::collections::DynamicArray };
+import { std::collections::DynamicArray, kyoten::frame::Sample };
 
 export { Platform };
 
-// What the engine asks of a platform, as far as the first slice's step 7 needs it: the content folders, the command
-// line, the window, the frame's timestamp and the end. Capabilities, the GPU, audio and input devices join it at the
-// steps that need them.
+// What the engine asks of a platform, as far as the first slice's steps 7 and 8 need it: the content folders, the
+// command line, the window and its input, the frame's timestamp and the end. Capabilities, the GPU and audio join it at
+// the steps that need them.
 type contract Platform for resource {
     // Where a package's content folder is in this build. `native` is the folder the generator found, which a native
     // development build reads; on the web, where the package's `preloadFiles` packed it, `/<package>/content`.
@@ -29,8 +29,9 @@ type contract Platform for resource {
     // The game's window, `width` × `height` logical, titled `title`: a headless one when `headless` says so, taking the
     // focus only when `focused` says so. False when it cannot be opened, with why printed.
     fn bool openWindow(const ref string title, int32 width, int32 height, bool headless, bool focused);
-    // The window's events since the last tick: false once it is closing.
-    fn bool pumped();
+    // The window's events since the last tick, its input added to `into` as samples, in the order of their times, each
+    // on `now`'s base (KYR-54, step 8): false once it is closing.
+    fn bool pumped(ref DynamicArray<Sample> into);
     // This frame's timestamp, in nanoseconds from any fixed start: the host's frame time, where an XR platform answers
     // its predicted display time.
     fn int64 now();
