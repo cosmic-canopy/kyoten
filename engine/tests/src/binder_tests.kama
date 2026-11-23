@@ -480,7 +480,48 @@ fn void schemeCases(ref Tally t) {
     expectScheme(t: t, b: b, step: 12, until: 1300, name: "binder: a pad's release takes no lock and switches nothing", want: "KeyboardMouse");
 }
 
+// Output's newest (frame-phases § Decided: a presentation read takes the newest sample each frame): every sample taken
+// so far applied, each state as of the newest, each delta since Output's last frame at the frame's seconds, every
+// digital off; and what the next step takes, its edges and its motion, kept for it.
+fn void newestCases(ref Tally t) {
+    Binder a = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" }, \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\" } } }");
+    hand(b: a, s: key(control: 82, down: true, at: 10));
+    hand(b: a, s: key(control: 26, down: true, at: 20));
+    float32 early = a.newest(seconds: 0.5).analog(player: 1, action: 0);
+    expectFloat(t: t, name: "binder: Output's newest reads a state as of the newest sample, before any step takes it",
+                got: early, want: 1.0);
+    Digital shown = a.newest(seconds: 0.5).digital(player: 1, action: 0);
+    t.verdict(name: "binder: and every digital off, since Output reads a digital's edges by steps",
+              why: spelled(d: shown) == "---" ? "" : "got " + spelled(d: shown));
+    expectStep(t: t, b: a, step: 0, until: 100, name: "binder: a press the newest applied early still lands in the next step",
+               want: "HP-");
+    expectFloat(t: t, name: "binder: and its state too", got: throttleAt(b: a, step: 1, until: 200), want: 1.0);
+
+    Binder m = binderFor(json: "{ \"look\": { \"mouse\": \"Motion\" } }");
+    hand(b: m, s: motion(index: 0, value: 3.0, at: 30));
+    Vec2 first = m.newest(seconds: 0.5).vector2(player: 1, action: 1);
+    expectVec2(t: t, name: "binder: Output's newest holds the mouse's motion since its last frame", got: first, x: 3.0, y: 0.0);
+    Vec2 again = m.newest(seconds: 0.5).vector2(player: 1, action: 1);
+    expectVec2(t: t, name: "binder: and none it has shown already", got: again, x: 0.0, y: 0.0);
+    hand(b: m, s: motion(index: 0, value: 2.0, at: 40));
+    expectVec2(t: t, name: "binder: the next step takes all the motion since the last step, shown or not",
+               got: lookAt(b: m, step: 0, until: 100), x: 5.0, y: 0.0);
+    Vec2 after = m.newest(seconds: 0.5).vector2(player: 1, action: 1);
+    expectVec2(t: t, name: "binder: and Output the motion since its own last frame", got: after, x: 2.0, y: 0.0);
+
+    Binder s = binderFor(json: "{ \"look\": { \"gamepad\": { \"x\": \"RightX\", \"y\": \"RightY\" } } }");
+    hand(b: s, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: s, s: stick(slot: 0, index: 2, value: 1.0, at: 10));
+    Vec2 turned = s.newest(seconds: 0.5).vector2(player: 1, action: 1);
+    expectVec2(t: t, name: "binder: a stick held in a delta turns its value times the frame's seconds for Output", got: turned,
+               x: 0.5, y: 0.0);
+    Scheme scheme = s.newest(seconds: 0.5).scheme(player: 1);
+    bool onPad = match (scheme) { case Gamepad: true; case KeyboardMouse: false; };
+    t.verdict(name: "binder: Output's newest carries the player's scheme", why: onPad ? "" : "KeyboardMouse");
+}
+
 fn void binderTests(ref Tally t) {
+    newestCases(t: t);
     schemeCases(t: t);
     bindingCases(t: t);
     partCases(t: t);

@@ -65,7 +65,7 @@ fn string actionsKama(const ref Records r) {
     if (anyOf(r: r, k: ActionKind::Pose)) { names = names + "kyoten::frame::Pose, "; }
     if (anyOf(r: r, k: ActionKind::Vector2)) { names = names + "std::math::Vec2, "; }
     if (anyOf(r: r, k: ActionKind::Vector3)) { names = names + "std::math::Vec3, "; }
-    if (any) { t = t + "import { " + names + "kyoten::frame::PlayerActions };\n\n"; }
+    if (any) { t = t + "import { " + names + "kyoten::frame::PlayerActions, kyoten::frame::Handoff };\n\n"; }
     t = t + "export { Actions };\n\n";
     t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
     t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
@@ -98,6 +98,33 @@ fn string actionsKama(const ref Records r) {
         };
         string window = k == ActionKind::Pose ? "upTo: upTo" : "after: after, upTo: upTo";
         t = t + "        this." + a + " = from." + readerOf(k: k) + "(player: this.player, action: ${index}, " + window + ");\n";
+        match (k) {
+            case Digital: { digitals = digitals + 1; } case Analog: { analogs = analogs + 1; }
+            case Vector2: { vector2s = vector2s + 1; } case Vector3: { vector3s = vector3s + 1; }
+            case Pose: { poses = poses + 1; } case Text: { }
+        };
+    }
+    t = t + "    }\n\n";
+    t = t + "    // Each action as Output sees it: a digital's edges by steps, as a run whose window is the steps after `after` up\n";
+    t = t + "    // to `upTo` does, and each value as `newest` holds it, the newest sample's (frame-phases § Decided): the\n";
+    t = t + "    // generator's own, which the passes call.\n";
+    t = t + "    public fn void viewNewest(const ref PlayerActions from, const ref Handoff newest, int64 after, int64 upTo) {\n";
+    digitals = 0;
+    analogs = 0;
+    vector2s = 0;
+    vector3s = 0;
+    poses = 0;
+    foreach (string a in r.actions()) {
+        ActionKind k = r.kindOf(action: a);
+        int32 index = match (k) {
+            case Digital: digitals; case Analog: analogs; case Vector2: vector2s; case Vector3: vector3s; case Pose: poses;
+            case Text: 0;
+        };
+        if (k == ActionKind::Digital) {
+            t = t + "        this." + a + " = from.digital(player: this.player, action: ${index}, after: after, upTo: upTo);\n";
+        } else {
+            t = t + "        this." + a + " = newest." + readerOf(k: k) + "(player: this.player, action: ${index});\n";
+        }
         match (k) {
             case Digital: { digitals = digitals + 1; } case Analog: { analogs = analogs + 1; }
             case Vector2: { vector2s = vector2s + 1; } case Vector3: { vector3s = vector3s + 1; }

@@ -143,12 +143,12 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
               why: all == want ? "" : "seen `${all}`");
     // What each run makes of `look`, a delta of (1, 0.5) each step, and `steer`, an analog state of 0.25 from step 10
     // (the first slice's step 8, its second part): `aimTrack` at 60 Hz sums all 60 steps; `aimTally` at 10 Hz, every 6
-    // steps, a window wider than Output's, the 55 up to its last run, on step 54; Output, after 60 steps run by hand,
-    // the newest 6 the world keeps, then none on its second run at the same step; the cube naming no player, nothing.
+    // steps, the 55 up to its last run, on step 54; Output, the newest hand-off it is handed, (7, 8), then at rest; the
+    // cube naming no player, nothing.
     DynamicArray<string> aimedLines = linesAfter(text: said, prefix: "aimed: ");
     string aims = "";
     foreach (const ref string l in aimedLines.iterConst()) { aims = aims.isEmpty() ? copy l : aims + " | " + l; }
-    string wantAims = "slot 0 yaw 0 pitch 0 slow 0 steer 0 look 0 0 | slot 1 yaw 60 pitch 30 slow 55 steer 0.25 look 6 3 | "
+    string wantAims = "slot 0 yaw 0 pitch 0 slow 0 steer 0 look 0 0 | slot 1 yaw 60 pitch 30 slow 55 steer 0.25 look 7 8 | "
         + "slot 0 yaw 0 pitch 0 slow 0 steer 0 look 0 0 | slot 1 yaw 60 pitch 30 slow 55 steer 0.25 look 0 0";
     t.verdict(name: "spin: ${leg}: a delta is summed over each run's window, whatever its rate, and a state read as of its step",
               why: aims == wantAims ? "" : "aimed `${aims}`");

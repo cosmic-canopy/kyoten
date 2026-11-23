@@ -29,6 +29,8 @@ type resource Recorder implements World {
     string pressedLog = "";
     float32 updateDt = 0.0;
     float32 outputDt = 0.0;
+    // Whether Output was last handed a newest hand-off holding player 1's action 0, the `Script`'s mark.
+    bool newestMarked = false;
 
     public ctor make() { }
 
@@ -46,9 +48,10 @@ type resource Recorder implements World {
         this.updateDt = time.dt;
     }
     public fn void constraints(const ref Time time) { this.note(phase: "C", time: time); }
-    public fn void output(const ref Time time) {
+    public fn void output(const ref Time time, const ref Handoff newest) {
         this.note(phase: "O", time: time);
         this.outputDt = time.dt;
+        this.newestMarked = newest.digital(player: 1, action: 0).held;
     }
 
     fn void note(const ref string phase, const ref Time time) {
@@ -61,6 +64,7 @@ type resource Recorder implements World {
     public const fn string pressedSteps() { return copy this.pressedLog; }
     public const fn float32 lastUpdateDt() { return this.updateDt; }
     public const fn float32 lastOutputDt() { return this.outputDt; }
+    public const fn bool sawNewest() { return this.newestMarked; }
     public fn void clear() { this.log = ""; }
 }
 
@@ -68,9 +72,11 @@ type resource Recorder implements World {
 // nanoseconds after T0) and the samples it was handed.
 type resource Script implements InputSource {
     Handoff out = Handoff.make(players: 1, actions: oneDigital());
+    Handoff view = Handoff.make(players: 1, actions: oneDigital());
     int64 pressOn = -1;
     string asked = "";
     isize taken = 0;
+    float32 newestSeconds = -1.0;
 
     public ctor make(int64 pressOn) { this.pressOn = pressOn; }
 
@@ -88,6 +94,14 @@ type resource Script implements InputSource {
     }
 
     public const fn string windows() { return copy this.asked; }
+
+    // Output's newest: marked, so a world can tell it from a step's, and the seconds it was asked for kept.
+    public fn const ref Handoff newest(float32 seconds) {
+        this.newestSeconds = seconds;
+        this.view.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: false, released: false));
+        return this.view;
+    }
+    public const fn float32 askedSeconds() { return this.newestSeconds; }
 }
 
 fn void expectCalls(ref Tally t, const ref string name, const ref Recorder w, const ref string want) {
@@ -184,7 +198,23 @@ fn void handoffs(ref Tally t) {
               why: slow == "0@33333334 1@66666668 2@all " ? "" : "asked `${slow}`");
 }
 
+// Output is handed the source's newest hand-off, asked for at the frame's real seconds (frame-phases § Decided: a
+// presentation read takes the newest sample each frame), in a frame that owes steps and in one that owes none.
+fn void newestToOutput(ref Tally t) {
+    Recorder w = Recorder.make();
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    Script s = Script.make(pressOn: -1);
+    frame(world: w, clock: c, source: s, now: T0);
+    t.verdict(name: "driver: a frame owing no step hands Output the source's newest", why: w.sawNewest() ? "" : "it handed another");
+    Owed owed = frame(world: w, clock: c, source: s, now: T0 + 50000000);
+    float32 asked = s.askedSeconds();
+    float32 frameDt = owed.frameDt;
+    t.verdict(name: "driver: and a frame owing steps too, asked for at the frame's real seconds",
+              why: w.sawNewest() && asked == frameDt && asked > 0.0 ? "" : "asked at ${asked}, the frame's ${frameDt}");
+}
+
 fn void driverTests(ref Tally t) {
+    newestToOutput(t: t);
     oneStep(t: t);
     firstFrame(t: t);
     threeSteps(t: t);

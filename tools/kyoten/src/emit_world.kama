@@ -300,7 +300,14 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
             t = t + inner + "foreach (ref " + chunkType(f: families[fi]) + " c in w." + tableField(f: families[fi]) + ".chunks.iterMut()) {\n";
             t = t + inner + "    isize i = 0;\n";
             t = t + inner + "    while (i < c." + handleColumn() + ".length()) {\n";
-            t = t + inner + "        c." + column + "[i].viewFrom(from: w.player_actions, after: " + after + ", upTo: time.step);\n";
+            if (output) {
+                // Output reads each value as of the newest sample, and each digital's edges by steps (frame-phases §
+                // Decided; the first slice's step 8, its second part).
+                t = t + inner + "        c." + column + "[i].viewNewest(from: w.player_actions, newest: newest, after: " + after
+                    + ", upTo: time.step);\n";
+            } else {
+                t = t + inner + "        c." + column + "[i].viewFrom(from: w.player_actions, after: " + after + ", upTo: time.step);\n";
+            }
             t = t + inner + "        i = i + 1;\n";
             t = t + inner + "    }\n";
             t = t + inner + "}\n";
@@ -385,6 +392,9 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
                 + handoffType + " handoff) {\n";
             t = t + "    // The step's hand-off into the players' actions, before any processor reads them.\n";
             t = t + "    w.player_actions.take(handoff: handoff, step: time.step);\n";
+        } else if (phase == Phase::Output) {
+            t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time, const ref "
+                + handoffType + " newest) {\n";
         } else {
             t = t + "\nfn void " + passName(phase: phase) + "(ref " + world + " w, const ref " + timeType + " time) {\n";
         }
@@ -530,6 +540,11 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
         if (p == Phase::Input) {
             t = t + "    public fn void input(const ref " + time + " time, const ref " + handoffType + " handoff) { "
                 + passName(phase: p) + "(w: this, time: time, handoff: handoff); }\n";
+            continue;
+        }
+        if (p == Phase::Output) {
+            t = t + "    public fn void output(const ref " + time + " time, const ref " + handoffType + " newest) { "
+                + passName(phase: p) + "(w: this, time: time, newest: newest); }\n";
             continue;
         }
         string method = match (p) { case Input: "input"; case Update: "update"; case Constraints: "constraints"; case Output: "output"; };

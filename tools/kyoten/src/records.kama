@@ -23,7 +23,7 @@ fn string kindWord(ActionKind kind) {
 }
 
 // Members the generated `Actions` has itself, which no action may take.
-fn string actionMembers() { return " player forPlayer viewFrom serialize deserialize mergeFrom "; }
+fn string actionMembers() { return " player forPlayer viewFrom viewNewest serialize deserialize mergeFrom "; }
 // Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
 fn string prefabMembers() { return " make of index equals hash compareTo format copy serialize deserialize mergeFrom "; }
 

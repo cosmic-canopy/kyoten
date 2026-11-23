@@ -12,7 +12,9 @@
 //   handed the input that arrived by its end on the clock (`Clock.stepEnd`), and the frame's last owed step
 //   everything that arrived up to the pump, so a frame's input is split across its steps by time and a frame that owes
 //   none keeps its input for the next step (design/input.md § Decided, question 1). Output's `Time` carries the
-//   frame's real dt and the last settled step (-1 before the first step settles).
+//   frame's real dt and the last settled step (-1 before the first step settles), and Output is handed the source's
+//   newest hand-off, as presentation reads take the newest sample each frame (frame-phases § Decided; the second part
+//   of step 8).
 // - **Left to their own steps:** rate gating and Constraints' iterations, inside the generated phase calls (step 5);
 //   the parallel schedule, behind the `PARALLEL` flag, when a measured scene asks for it.
 // - **The render fraction** is computed by the clock and returned by `frame`. Output's blend reaches it when rendering
@@ -24,14 +26,14 @@ export { World, InputSource, step, frame };
 
 comptime int64 EVERYTHING = 9223372036854775807;
 
-// What the driver runs: one call per phase, each handed its `Time`, and Input its step's hand-off. Output reads the
-// simulation and never writes it; the generated world holds that by handing Output's processors their components as
-// `const ref` (step 5).
+// What the driver runs: one call per phase, each handed its `Time`, Input its step's hand-off and Output the newest.
+// Output reads the simulation and never writes it; the generated world holds that by handing Output's processors their
+// components as `const ref` (step 5).
 type contract World for value, resource {
     fn void input(const ref Time time, const ref Handoff handoff);
     fn void update(const ref Time time);
     fn void constraints(const ref Time time);
-    fn void output(const ref Time time);
+    fn void output(const ref Time time, const ref Handoff newest);
 }
 
 // What makes each owed step's hand-off: the engine's binder (`kyoten::input`), a replay's log, or a test's script.
@@ -41,6 +43,10 @@ type contract InputSource for resource {
     // The hand-off of the step numbered `index`, from the input that arrived by `until` (inclusive, on the frame
     // timestamp's base) and was not handed off yet.
     fn const ref Handoff handoff(int64 index, int64 until);
+    // What Output reads this frame, from every sample taken so far: each state as of the newest, each delta since the
+    // last call (the mouse's motion since, and each control held times `seconds`, the frame's real seconds), every
+    // `Digital` off, since Output reads a digital's edges by steps. A step's hand-off still holds every sample it takes.
+    fn const ref Handoff newest(float32 seconds);
 }
 
 // One simulation step: Input, Update and Constraints, with the `Time` and the hand-off the caller hands in.
@@ -63,6 +69,6 @@ fn Owed frame<W: World, S: InputSource>(ref W world, ref Clock clock, ref S sour
         i = i + 1;
     }
     Time shown = Time.of(dt: owed.frameDt, step: clock.settled() - 1);
-    world.output(time: shown);
+    world.output(time: shown, newest: source.newest(seconds: owed.frameDt));
     return owed;
 }

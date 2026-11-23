@@ -114,7 +114,7 @@ type resource Counter implements World {
     public fn void input(const ref Time time, const ref Handoff handoff) { }
     public fn void update(const ref Time time) { }
     public fn void constraints(const ref Time time) { }
-    public fn void output(const ref Time time) { this.log.derefMut().output(); }
+    public fn void output(const ref Time time, const ref Handoff newest) { this.log.derefMut().output(); }
 }
 
 // Records the samples the loop hands it into the log; its hand-offs are empty.
@@ -126,6 +126,7 @@ type resource Taker implements InputSource {
 
     public fn void take(const ref DynamicArray<Sample> samples) { this.log.derefMut().took(samples: samples); }
     public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
+    public fn const ref Handoff newest(float32 seconds) { return this.out; }
 }
 
 fn void expectCount(ref Tally t, const ref string name, int64 got, int64 want) {

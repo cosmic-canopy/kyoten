@@ -30,6 +30,11 @@
 //     most actuated of its devices' entries, as of the step's end (Unity's default, Godot's strongest);
 //   - **a delta** sums them: the mouse's motion that landed in the step, and each control held times the step's
 //     seconds, so a stick turns as far each second whatever the rate. The mouse's motion bound to a state is refused.
+// - **Output's newest** (`newest`, frame-phases § Decided: "presentation reads, such as camera look, take the newest
+//   sample each frame"): every sample taken so far applied, each state as of the newest, each delta since Output's last
+//   frame at the frame's seconds, whether or not a step took them. In a frame that owes no step the samples are applied
+//   early, which loses nothing: each still lands in the next step's hand-off, since a step's edges and motion are cleared
+//   after it is handed off, and every sample taken arrived before the next step's end.
 //
 // It is tier `Module`, outside the simulation's fence, as the module that reads devices must be, and names
 // `kyoten::frame` and `kyoten::records` alone of the engine; the generated `run` builds it and hands it to the loop.
@@ -89,8 +94,9 @@ type value Source {
     public bool flip;
     // As of the last sample taken: a state.
     public float32 value = 0.0;
-    // The mouse's motion since the last hand-off.
+    // The mouse's motion since the last hand-off, and since Output's last frame.
     public float32 moved = 0.0;
+    public float32 shown = 0.0;
 
     public ctor make(Device device, SampleKind kind, int32 control, bool flip) {
         this.device = device;
@@ -144,6 +150,9 @@ type resource Binder implements InputSource {
     DynamicArray<bool> onEdge = DynamicArray.empty();
     DynamicArray<bool> offEdge = DynamicArray.empty();
     Handoff out;
+    // What Output reads, and the seconds a held control counts for in a delta: the step's, or Output's frame's.
+    Handoff view;
+    float32 seconds = 0.0;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
     // `bindings`, every content layer's merged; `hz` the base rate, whose step's seconds a control held counts for in a
@@ -155,6 +164,7 @@ type resource Binder implements InputSource {
         this.digitalCount = actions.digitalCount();
         this.stepSeconds = Time::dtAt(hz: hz);
         this.out = Handoff.make(players: players, actions: actions);
+        this.view = Handoff.make(players: players, actions: actions);
         BindingError no = BindingError.make();
         foreach (string action in bindings) {
             string kind = kindOf(actions: actions, name: action);
@@ -235,11 +245,6 @@ type resource Binder implements InputSource {
     public fn const ref Handoff handoff(int64 index, int64 until) {
         this.out.clear();
         int32 a = 0;
-        while (a < this.digitalCount) {
-            this.onEdge[cast<isize>(a)] = false;
-            this.offEdge[cast<isize>(a)] = false;
-            a = a + 1;
-        }
         while (this.head < this.waiting.length() && this.waiting[this.head].at <= until) {
             Sample s = this.waiting[this.head];
             this.apply(s: s);
@@ -272,8 +277,15 @@ type resource Binder implements InputSource {
             a = a + 1;
         }
         if (this.playerCount >= 1) {
-            this.handValues();
+            this.seconds = this.stepSeconds;
+            this.handValues(forOutput: false);
             this.out.setScheme(player: 1, value: this.schemeNow);
+        }
+        a = 0;
+        while (a < this.digitalCount) {
+            this.onEdge[cast<isize>(a)] = false;
+            this.offEdge[cast<isize>(a)] = false;
+            a = a + 1;
         }
         isize k = 0;
         while (k < this.sources.length()) {
@@ -283,32 +295,60 @@ type resource Binder implements InputSource {
         return this.out;
     }
 
-    // Each value action's value this step, into player 1's hand-off: a state's most actuated entry, a delta's sum.
-    fn void handValues() {
+    // What Output reads this frame: every sample taken so far applied, each state as of the newest, each delta since
+    // the last call at `seconds`, the frame's, every digital off; the samples' edges and motion kept for the next step.
+    public fn const ref Handoff newest(float32 seconds) {
+        this.view.clear();
+        while (this.head < this.waiting.length()) {
+            Sample s = this.waiting[this.head];
+            this.apply(s: s);
+            this.head = this.head + 1;
+        }
+        this.waiting.clear();
+        this.head = 0;
+        if (this.playerCount >= 1) {
+            this.seconds = seconds;
+            this.handValues(forOutput: true);
+            this.view.setScheme(player: 1, value: this.schemeNow);
+        }
+        isize k = 0;
+        while (k < this.sources.length()) {
+            this.sources[k].shown = 0.0;
+            k = k + 1;
+        }
+        return this.view;
+    }
+
+    // Each value action's value into player 1's hand-off, a step's or Output's: a state's most actuated entry, a
+    // delta's sum, a control held counting for `this.seconds`.
+    fn void handValues(bool forOutput) {
         isize e = 0;
         while (e < this.entries.length()) {
             Entry entry = this.entries[e];
-            Vec3 v = this.entryValue(e: entry);
+            Vec3 v = this.entryValue(e: entry, forOutput: forOutput);
             bool delta = this.isDelta(kind: entry.kind, action: entry.action);
             if (delta && !entry.motion) {
-                v = Vec3.of(x: v.x * this.stepSeconds, y: v.y * this.stepSeconds, z: v.z * this.stepSeconds);
+                v = Vec3.of(x: v.x * this.seconds, y: v.y * this.seconds, z: v.z * this.seconds);
             }
             match (entry.kind) {
                 case Analog: {
-                    float32 had = this.out.analog(player: 1, action: entry.action);
+                    float32 had = forOutput ? this.view.analog(player: 1, action: entry.action) : this.out.analog(player: 1, action: entry.action);
                     float32 now = delta ? had + v.x : (absOf(x: v.x) > absOf(x: had) ? v.x : had);
-                    this.out.setAnalog(player: 1, action: entry.action, value: now);
+                    if (forOutput) { this.view.setAnalog(player: 1, action: entry.action, value: now); }
+                    else { this.out.setAnalog(player: 1, action: entry.action, value: now); }
                 }
                 case Vector2: {
-                    Vec2 had = this.out.vector2(player: 1, action: entry.action);
+                    Vec2 had = forOutput ? this.view.vector2(player: 1, action: entry.action) : this.out.vector2(player: 1, action: entry.action);
                     Vec2 mine = Vec2.of(x: v.x, y: v.y);
                     Vec2 now = delta ? had + mine : (v.x * v.x + v.y * v.y > had.x * had.x + had.y * had.y ? mine : had);
-                    this.out.setVector2(player: 1, action: entry.action, value: now);
+                    if (forOutput) { this.view.setVector2(player: 1, action: entry.action, value: now); }
+                    else { this.out.setVector2(player: 1, action: entry.action, value: now); }
                 }
                 case Vector3: {
-                    Vec3 had = this.out.vector3(player: 1, action: entry.action);
+                    Vec3 had = forOutput ? this.view.vector3(player: 1, action: entry.action) : this.out.vector3(player: 1, action: entry.action);
                     Vec3 now = delta ? had + v : (lengthSquared(v: v) > lengthSquared(v: had) ? v : had);
-                    this.out.setVector3(player: 1, action: entry.action, value: now);
+                    if (forOutput) { this.view.setVector3(player: 1, action: entry.action, value: now); }
+                    else { this.out.setVector3(player: 1, action: entry.action, value: now); }
                 }
                 case _: { }
             };
@@ -326,14 +366,15 @@ type resource Binder implements InputSource {
         };
     }
 
-    // An entry's value from its parts, as a three-component value (an `Analog` its x, a `Vector2` its x and y).
-    const fn Vec3 entryValue(Entry e) {
-        float32 p0 = this.partValue(e: e, part: 0);
-        float32 p1 = this.partValue(e: e, part: 1);
-        float32 p2 = this.partValue(e: e, part: 2);
-        float32 p3 = this.partValue(e: e, part: 3);
-        float32 p4 = this.partValue(e: e, part: 4);
-        float32 p5 = this.partValue(e: e, part: 5);
+    // An entry's value from its parts, as a three-component value (an `Analog` its x, a `Vector2` its x and y); the
+    // mouse's motion since the last step, or since Output's last frame.
+    const fn Vec3 entryValue(Entry e, bool forOutput) {
+        float32 p0 = this.partValue(e: e, part: 0, forOutput: forOutput);
+        float32 p1 = this.partValue(e: e, part: 1, forOutput: forOutput);
+        float32 p2 = this.partValue(e: e, part: 2, forOutput: forOutput);
+        float32 p3 = this.partValue(e: e, part: 3, forOutput: forOutput);
+        float32 p4 = this.partValue(e: e, part: 4, forOutput: forOutput);
+        float32 p5 = this.partValue(e: e, part: 5, forOutput: forOutput);
         return match (e.shape) {
             case One: Vec3.of(x: p0, y: 0.0, z: 0.0);
             case Pair: Vec3.of(x: p0 - p1, y: 0.0, z: 0.0);
@@ -345,14 +386,14 @@ type resource Binder implements InputSource {
     }
 
     // A part's value: the mouse's motion summed, or the most actuated of its controls.
-    const fn float32 partValue(Entry e, int32 part) {
+    const fn float32 partValue(Entry e, int32 part, bool forOutput) {
         isize from = e.firsts[cast<isize>(part)];
         isize to = e.firsts[cast<isize>(part) + 1];
         float32 best = 0.0;
         isize i = from;
         while (i < to) {
             Source s = this.sources[i];
-            if (s.kind == SampleKind::Motion) { best = best + s.moved; }
+            if (s.kind == SampleKind::Motion) { best = best + (forOutput ? s.shown : s.moved); }
             else if (absOf(x: s.value) > absOf(x: best)) { best = s.value; }
             i = i + 1;
         }
@@ -417,7 +458,10 @@ type resource Binder implements InputSource {
                 float32 v = s.value;
                 if (s.kind == SampleKind::Control) { v = s.value >= Gamepad::PressedAt ? 1.0 : 0.0; }
                 if (src.flip) { v = -v; }
-                if (s.kind == SampleKind::Motion) { this.sources[i].moved = src.moved + v; }
+                if (s.kind == SampleKind::Motion) {
+                    this.sources[i].moved = src.moved + v;
+                    this.sources[i].shown = src.shown + v;
+                }
                 else { this.sources[i].value = v; }
             }
             i = i + 1;

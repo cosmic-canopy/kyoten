@@ -11,9 +11,9 @@
 //   window, oldest step first, so a slower run misses no motion and counts none twice (design/input.md § Decided, the
 //   second part's question 1).
 // - **It keeps as many steps as the widest window:** the slowest rate's period among the processors that read actions,
-//   which the generated world states, or Output's, at most the clock's `DefaultMaxSteps` in a frame. A delta read over
-//   a window wider than that sums the newest steps kept: Output's, when steps ran with no frame between, as a test or a
-//   replay drives them.
+//   which the generated world states, and at least the clock's `DefaultMaxSteps`, a frame's. A delta read over a
+//   window wider than that sums the newest steps kept. Output reads its values from the newest hand-off instead
+//   (`InputSource.newest`), and a digital's edges from here, by steps.
 // - **Each player's active scheme,** as of the last step taken, which a scheme-gated processor runs by: a row naming
 //   no player runs none (design/input.md § Decided, the second part's question 1).
 // - **It is world state, made only from hand-offs,** so a replay of the hand-offs makes the same views.

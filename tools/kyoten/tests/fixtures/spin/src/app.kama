@@ -65,7 +65,8 @@ fn void load() {
             };
             int32 baseHz = GameWorld::baseHz;
             Rate clock = Rate.of(hz: baseHz, over: baseHz);
-            world.output(time: clock.at(step: 0));
+            Handoff quiet = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
+            world.output(time: clock.at(step: 0), newest: quiet);
         }
         case Err(error: e): { refused(no: e); }
     };
@@ -177,9 +178,14 @@ fn uint8 main() {
         step(world: world, time: at, handoff: input);
         i = i + 1;
     }
-    world.output(time: clock.at(step: 59));
+    // Output is handed the newest hand-off, whatever the steps took (frame-phases § Decided): `look` at (7, 8), then at
+    // rest, so what Output prints of a value is the newest's.
+    Handoff newest = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
+    newest.setVector2(player: 1, action: 0, value: Vec2.of(x: 7.0, y: 8.0));
+    world.output(time: clock.at(step: 59), newest: newest);
     println(s: "spin: Output again, on the same step");
-    world.output(time: clock.at(step: 59));
+    newest.clear();
+    world.output(time: clock.at(step: 59), newest: newest);
     float32 dt = Time::dtAt(hz: 60);
     expect(slot: 0, heldFrom: 60, dt: dt, steps: 60);
     expect(slot: 1, heldFrom: 1, dt: dt, steps: 60);
