@@ -12,7 +12,7 @@
   ],
   "modules": {
     ".": { "visibility": "public", "importsOnly": [] },
-    "frame": { "visibility": "public", "importsOnly": ["std::collections"] },
+    "frame": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
     "world": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
     "records": { "visibility": "public", "importsOnly": ["std::collections", "std::memory"] },
     "input": { "visibility": "public",

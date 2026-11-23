@@ -340,8 +340,7 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
 }
 
 fn string passesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s,
-                     int32 digitalActions) {
-    bool hasActions = digitalActions > 0;
+                     bool hasActions) {
     string worldType = worldTypeName();
     string actionsPath = game + "::generated::Actions";
     ImportSet imports = ImportSet.make(module: copy game);
@@ -424,6 +423,7 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     imports.add(path: "kyoten::frame::World");
     imports.add(path: "kyoten::frame::Handoff");
     imports.add(path: "kyoten::frame::PlayerActions");
+    imports.add(path: "kyoten::frame::ActionList");
     imports.add(path: "kyoten::world::Handle");
     imports.add(path: "kyoten::world::Lookup");
     foreach (const ref Family f in families.iterConst()) {
@@ -434,8 +434,25 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     return imports;
 }
 
+// The widest window of steps a processor reading `Actions` runs over: its rate's period on the base clock, 1 at the
+// base rate. Output's window is the record's own (kyoten::frame::PlayerActions).
+fn int32 actionsWindow(const ref string game, const ref Schedule s) {
+    string actionsPath = game + "::generated::Actions";
+    int32 widest = 1;
+    foreach (const ref Processor p in s.processors().iterConst()) {
+        if (p.phase() == Phase::Output || p.rate() <= 0) { continue; }
+        bool reads = false;
+        foreach (const ref Param a in p.params().iterConst()) {
+            if (a.access() == Access::TableComponent && a.path() == actionsPath) { reads = true; }
+        }
+        int32 period = s.baseHz() / p.rate();
+        if (reads && period > widest) { widest = period; }
+    }
+    return widest;
+}
+
 fn string worldKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s,
-                    int32 digitalActions) {
+                    const ref string actionLines) {
     string worldType = worldTypeName();
     ImportSet imports = worldImports(game: game, families: families, s: s);
     string handle = imports.nameOf(path: "kyoten::world::Handle");
@@ -443,6 +460,8 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     string time = imports.nameOf(path: "kyoten::frame::Time");
     string handoffType = imports.nameOf(path: "kyoten::frame::Handoff");
     string playersType = imports.nameOf(path: "kyoten::frame::PlayerActions");
+    string listType = imports.nameOf(path: "kyoten::frame::ActionList");
+    int32 window = actionsWindow(game: game, s: s);
     // Every field a pass reaches.
     string fields = "player_actions, output_step";
     foreach (const ref Family f in families.iterConst()) { fields = fields.isEmpty() ? tableField(f: f) : fields + ", " + tableField(f: f); }
@@ -464,12 +483,11 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     t = t + "    public comptime int32 baseHz = ${baseHz};\n";
     t = t + "    // The players, numbered from 1: the engine's default, one, bound to the keyboard, the mouse and the first pad\n";
     t = t + "    // pressed (design/input.md § Decided, question 4).\n";
-    t = t + "    public comptime int32 players = 1;\n";
-    t = t + "    // The game's digital actions, which each step's hand-off holds for each player.\n";
-    t = t + "    public comptime int32 digitalActions = ${digitalActions};\n\n";
-    t = t + "    // Each player's actions across steps, in the generated order, and the step Output last saw up to.\n";
-    t = t + "    " + playersType + " player_actions = " + playersType + ".make(players: " + worldType + "::players, digitalActions: "
-        + worldType + "::digitalActions);\n";
+    t = t + "    public comptime int32 players = 1;\n\n";
+    t = t + "    // Each player's actions across steps, in the generated order, kept for the widest window of steps a processor\n";
+    t = t + "    // reading them runs over, and the step Output last saw up to.\n";
+    t = t + "    " + playersType + " player_actions = " + playersType + ".make(players: " + worldType + "::players, actions: "
+        + worldType + "::actions(), window: ${window});\n";
     t = t + "    int64 output_step = -1;\n";
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
     t = t + "    " + lookupType + " lookup = " + lookupType + ".make();\n";
@@ -487,6 +505,13 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     t = t + "\n";
     foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[" + fields + "];\n"; }
     t = t + "\n    public ctor make() { }\n\n";
+    t = t + "    // The game's actions by kind, each kind's in the order of their names, as `Actions` holds them: what each step's\n";
+    t = t + "    // hand-off, the world's record and the binder are sized by (the first slice's step 8).\n";
+    t = t + "    public static fn " + listType + " actions() {\n";
+    t = t + "        " + listType + " a = " + listType + ".make();\n";
+    t = t + actionLines;
+    t = t + "        return a;\n";
+    t = t + "    }\n\n";
     foreach (Phase p in phases()) {
         if (p == Phase::Input) {
             t = t + "    public fn void input(const ref " + time + " time, const ref " + handoffType + " handoff) { "

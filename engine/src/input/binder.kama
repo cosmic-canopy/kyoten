@@ -23,7 +23,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
-         kyoten::frame::Device, kyoten::frame::InputSource, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
+         kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
          window::Key, window::PadButton, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -77,21 +77,25 @@ type resource Binder implements InputSource {
     DynamicArray<bool> offEdge = DynamicArray.empty();
     Handoff out;
 
-    // A binder for `players` players and the game's digital actions, named in the generated order, bound by
+    // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
     // `bindings`, every content layer's merged. A binding naming no action, a control that names none of its device's,
-    // or an entry KYR-54 does not read yet is refused, every one at once.
-    public ctor Result<Binder, BindingError> make(int32 players, const ref DynamicArray<string> digitalActions,
+    // or an entry KYR-54 does not read yet is refused, every one at once. A value action's values stay zero until its
+    // devices are bound (KYR-54's next part).
+    public ctor Result<Binder, BindingError> make(int32 players, const ref ActionList actions,
                                                   const ref SortedMap<string, BindingRecord> bindings) {
         this.playerCount = players;
-        this.digitalCount = cast<int32>(digitalActions.length());
-        this.out = Handoff.make(players: players, digitalActions: this.digitalCount);
+        this.digitalCount = actions.digitalCount();
+        this.out = Handoff.make(players: players, actions: actions);
         BindingError no = BindingError.make();
         foreach (string action in bindings) {
-            if (!digitalActions.contains(item: action)) {
+            string kind = kindOf(actions: actions, name: action);
+            if (kind.isEmpty()) {
                 no.add(line: "the bindings of `" + action + "` name no action: an action is declared in a module's records file");
+            } else if (kind != "Digital") {
+                no.add(line: "the bindings of `" + action + "` bind a `" + kind + "` action, whose devices KYR-54's next part binds");
             }
         }
-        foreach (const ref string action in digitalActions.iterConst()) {
+        foreach (const ref string action in actions.digitalNames().iterConst()) {
             this.firsts.add(item: this.controls.length());
             this.combined.add(item: false);
             this.owedRelease.add(item: false);
@@ -250,6 +254,16 @@ type resource Binder implements InputSource {
             }
         };
     }
+}
+
+// The kind of the action named `name`, as a records file writes it, or "" when the game declares none of that name.
+fn string kindOf(const ref ActionList actions, const ref string name) {
+    if (actions.digitalNames().contains(item: name)) { return "Digital"; }
+    if (actions.analogNames().contains(item: name)) { return "Analog"; }
+    if (actions.vector2Names().contains(item: name)) { return "Vector2"; }
+    if (actions.vector3Names().contains(item: name)) { return "Vector3"; }
+    if (actions.poseNames().contains(item: name)) { return "Pose"; }
+    return "";
 }
 
 fn string deviceName(Device device) {

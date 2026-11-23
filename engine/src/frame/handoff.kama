@@ -3,61 +3,130 @@
 // game's generated order. It is what the recorded log keeps, never a device's events (replay-and-determinism § Decided,
 // question 2), so a rebind cannot move the world.
 //
-// - **Its edges are the step's own:** `pressed` when a press landed in this step's window, `released` when a release
-//   did; `kyoten::frame::PlayerActions` turns them into each processor's view, whatever its rate.
+// - **Each kind its own values,** numbered as `ActionList` numbers them: a `Digital`, an analog's `float32`, a
+//   `Vector2`'s `Vec2`, a `Vector3`'s `Vec3` and a `Pose`.
+// - **Its edges and its deltas are the step's own:** `pressed` when a press landed in this step's window, `released`
+//   when a release did, and a delta the motion that landed in it; `kyoten::frame::PlayerActions` turns them into each
+//   processor's view, whatever its rate.
 // - **It is made by an `InputSource`:** the engine's binder (`kyoten::input`), a replay's log, or a test's script.
 // - **Sized once,** for the game's players and actions, so a step allocates nothing.
 
-import { std::collections::DynamicArray, Digital };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Pose, ActionList };
 
 export { Handoff };
 
 type resource Handoff {
     int32 playerCount;
     int32 digitalCount;
-    // Player p's digital action a at (p - 1) × digitalCount + a.
+    int32 analogCount;
+    int32 vector2Count;
+    int32 vector3Count;
+    int32 poseCount;
+    // Player p's action a of a kind with n actions at (p - 1) × n + a.
     DynamicArray<Digital> digitals = DynamicArray.empty();
+    DynamicArray<float32> analogs = DynamicArray.empty();
+    DynamicArray<Vec2> vector2s = DynamicArray.empty();
+    DynamicArray<Vec3> vector3s = DynamicArray.empty();
+    DynamicArray<Pose> poses = DynamicArray.empty();
 
-    // Room for `players` players, numbered from 1, each with `digitalActions` digital actions, every one off.
-    public ctor make(int32 players, int32 digitalActions) {
-        assert(cond: players >= 0 && digitalActions >= 0, msg: "a hand-off holds no negative count");
+    // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero or at rest.
+    public ctor make(int32 players, const ref ActionList actions) {
+        assert(cond: players >= 0, msg: "a hand-off holds no negative count of players");
         this.playerCount = players;
-        this.digitalCount = digitalActions;
-        int64 n = cast<int64>(players) * cast<int64>(digitalActions);
+        this.digitalCount = actions.digitalCount();
+        this.analogCount = actions.analogCount();
+        this.vector2Count = actions.vector2Count();
+        this.vector3Count = actions.vector3Count();
+        this.poseCount = actions.poseCount();
+        int64 p = cast<int64>(players);
         int64 i = 0;
-        while (i < n) {
-            this.digitals.add(item: Digital.off());
-            i = i + 1;
-        }
+        while (i < p * cast<int64>(this.digitalCount)) { this.digitals.add(item: Digital.off()); i = i + 1; }
+        i = 0;
+        while (i < p * cast<int64>(this.analogCount)) { this.analogs.add(item: 0.0); i = i + 1; }
+        i = 0;
+        while (i < p * cast<int64>(this.vector2Count)) { this.vector2s.add(item: Vec2.zero()); i = i + 1; }
+        i = 0;
+        while (i < p * cast<int64>(this.vector3Count)) { this.vector3s.add(item: Vec3.zero()); i = i + 1; }
+        i = 0;
+        while (i < p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
     }
 
     public const fn int32 players() { return this.playerCount; }
     public const fn int32 digitalActions() { return this.digitalCount; }
+    public const fn int32 analogActions() { return this.analogCount; }
+    public const fn int32 vector2Actions() { return this.vector2Count; }
+    public const fn int32 vector3Actions() { return this.vector3Count; }
+    public const fn int32 poseActions() { return this.poseCount; }
 
-    // Player `player`'s digital action `action`, in the generated order; off for a player or an action it has no room
-    // for.
+    // Player `player`'s action `action` of each kind, in the generated order: off, zero or at rest for a player or an
+    // action it has no room for.
     public const fn Digital digital(int32 player, int32 action) {
-        if (player < 1 || player > this.playerCount || action < 0 || action >= this.digitalCount) { return Digital.off(); }
-        return this.digitals[this.at(player: player, action: action)];
+        if (!this.holds(player: player, action: action, count: this.digitalCount)) { return Digital.off(); }
+        return this.digitals[this.at(player: player, action: action, count: this.digitalCount)];
+    }
+    public const fn float32 analog(int32 player, int32 action) {
+        if (!this.holds(player: player, action: action, count: this.analogCount)) { return 0.0; }
+        return this.analogs[this.at(player: player, action: action, count: this.analogCount)];
+    }
+    public const fn Vec2 vector2(int32 player, int32 action) {
+        if (!this.holds(player: player, action: action, count: this.vector2Count)) { return Vec2.zero(); }
+        return this.vector2s[this.at(player: player, action: action, count: this.vector2Count)];
+    }
+    public const fn Vec3 vector3(int32 player, int32 action) {
+        if (!this.holds(player: player, action: action, count: this.vector3Count)) { return Vec3.zero(); }
+        return this.vector3s[this.at(player: player, action: action, count: this.vector3Count)];
+    }
+    public const fn Pose pose(int32 player, int32 action) {
+        if (!this.holds(player: player, action: action, count: this.poseCount)) { return Pose.identity(); }
+        return this.poses[this.at(player: player, action: action, count: this.poseCount)];
     }
 
-    // Sets player `player`'s digital action `action`. Out of range is a caller's bug, and traps.
+    // Sets player `player`'s action `action` of each kind. Out of range is a caller's bug, and traps.
     public fn void setDigital(int32 player, int32 action, Digital value) {
-        assert(cond: player >= 1 && player <= this.playerCount && action >= 0 && action < this.digitalCount,
-               msg: "a hand-off has room for this player's action");
-        this.digitals[this.at(player: player, action: action)] = value;
+        assert(cond: this.holds(player: player, action: action, count: this.digitalCount),
+               msg: "a hand-off has room for this player's digital action");
+        this.digitals[this.at(player: player, action: action, count: this.digitalCount)] = value;
+    }
+    public fn void setAnalog(int32 player, int32 action, float32 value) {
+        assert(cond: this.holds(player: player, action: action, count: this.analogCount),
+               msg: "a hand-off has room for this player's analog action");
+        this.analogs[this.at(player: player, action: action, count: this.analogCount)] = value;
+    }
+    public fn void setVector2(int32 player, int32 action, Vec2 value) {
+        assert(cond: this.holds(player: player, action: action, count: this.vector2Count),
+               msg: "a hand-off has room for this player's vector2 action");
+        this.vector2s[this.at(player: player, action: action, count: this.vector2Count)] = value;
+    }
+    public fn void setVector3(int32 player, int32 action, Vec3 value) {
+        assert(cond: this.holds(player: player, action: action, count: this.vector3Count),
+               msg: "a hand-off has room for this player's vector3 action");
+        this.vector3s[this.at(player: player, action: action, count: this.vector3Count)] = value;
+    }
+    public fn void setPose(int32 player, int32 action, Pose value) {
+        assert(cond: this.holds(player: player, action: action, count: this.poseCount),
+               msg: "a hand-off has room for this player's pose action");
+        this.poses[this.at(player: player, action: action, count: this.poseCount)] = value;
     }
 
-    // Every value off.
+    // Every value off, zero or at rest.
     public fn void clear() {
         isize i = 0;
-        while (i < this.digitals.length()) {
-            this.digitals[i] = Digital.off();
-            i = i + 1;
-        }
+        while (i < this.digitals.length()) { this.digitals[i] = Digital.off(); i = i + 1; }
+        i = 0;
+        while (i < this.analogs.length()) { this.analogs[i] = 0.0; i = i + 1; }
+        i = 0;
+        while (i < this.vector2s.length()) { this.vector2s[i] = Vec2.zero(); i = i + 1; }
+        i = 0;
+        while (i < this.vector3s.length()) { this.vector3s[i] = Vec3.zero(); i = i + 1; }
+        i = 0;
+        while (i < this.poses.length()) { this.poses[i] = Pose.identity(); i = i + 1; }
     }
 
-    const fn isize at(int32 player, int32 action) {
-        return cast<isize>(player - 1) * cast<isize>(this.digitalCount) + cast<isize>(action);
+    const fn bool holds(int32 player, int32 action, int32 count) {
+        return player >= 1 && player <= this.playerCount && action >= 0 && action < count;
+    }
+
+    const fn isize at(int32 player, int32 action, int32 count) {
+        return cast<isize>(player - 1) * cast<isize>(count) + cast<isize>(action);
     }
 }

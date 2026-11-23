@@ -8,7 +8,7 @@ import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::fra
 
 // No input: every step's hand-off is empty, sized for the world's players and actions.
 type resource Quiet implements InputSource {
-    Handoff out = Handoff.make(players: GameWorld::players, digitalActions: GameWorld::digitalActions);
+    Handoff out = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
     public ctor make() { }
     public fn void take(const ref DynamicArray<Sample> samples) { }
     public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }

@@ -1,3 +1,5 @@
-{ "processors": { "turn": { "phase": "Update" }, "tally": { "phase": "Update", "rate": 30 } },
-  "components": { "Spin": { "requires": ["Taps"] } },
-  "actions":    { "faster": { "kind": "Digital" } } }
+{ "processors": { "turn": { "phase": "Update" }, "tally": { "phase": "Update", "rate": 30 },
+                  "aimTrack": { "phase": "Update" }, "aimTally": { "phase": "Update", "rate": 10 } },
+  "components": { "Spin": { "requires": ["Taps", "Aim", "SlowAim"] } },
+  "actions":    { "faster": { "kind": "Digital" }, "steer": { "kind": "Analog" },
+                  "look": { "kind": "Vector2", "delta": true } } }

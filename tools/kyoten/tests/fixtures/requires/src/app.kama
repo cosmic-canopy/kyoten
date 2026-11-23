@@ -51,7 +51,7 @@ fn uint8 main() {
                                                                     transform: Transform.default()));
     int32 baseHz = GameWorld::baseHz;
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
-    Handoff none = Handoff.make(players: GameWorld::players, digitalActions: GameWorld::digitalActions);
+    Handoff none = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
     step(world: world, time: clock.at(step: 0), handoff: none);
     world.output(time: clock.at(step: 0));
     load();

@@ -18,7 +18,7 @@ import { core::println, core::eprintln, std::collections::DynamicArray, std::io:
          StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
          worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, checkFence, checkFlags, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile,
-         digitalActionNames };
+         actionListLines };
 
 export { generate, clean };
 
@@ -81,11 +81,12 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     string passes = passesFile(game: gameName);
     string world = worldFile(game: gameName);
     writeIfChanged(path: game.root() + "/" + tables, text: tablesKama(game: gameName, families: families));
-    int32 digitalCount = cast<int32>(records.actions().length());
+    bool hasActions = records.actions().length() > 0;
+    string actionLines = actionListLines(r: records);
     writeIfChanged(path: game.root() + "/" + passes, text: passesKama(game: gameName, families: families, s: schedule,
-                                                                       digitalActions: digitalCount));
+                                                                       hasActions: hasActions));
     writeIfChanged(path: game.root() + "/" + world, text: worldKama(game: gameName, families: families, s: schedule,
-                                                                     digitalActions: digitalCount));
+                                                                     actionLines: actionLines));
     written.add(item: give tables);
     written.add(item: give passes);
     written.add(item: give world);
@@ -104,10 +105,8 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
         Result<string, IoError> e = canonicalPath(path: d.root() + "/content");
         engineDir = match (give e) { case Ok(value: p): give p; case Err(error: x): d.root() + "/content"; };
     }
-    DynamicArray<string> actionNames = digitalActionNames(r: records);
     writeIfChanged(path: game.root() + "/" + loader, text: loaderKama(game: gameName, families: families, idx: idx,
-                                                                       contentDir: contentDir, engineDir: engineDir,
-                                                                       actions: actionNames));
+                                                                       contentDir: contentDir, engineDir: engineDir));
     written.add(item: give loader);
     foreach (const ref string f in before.iterConst()) {
         if (!written.contains(item: f)) { removeFile(path: game.root() + "/" + f); }

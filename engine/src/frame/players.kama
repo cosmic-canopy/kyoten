@@ -1,75 +1,151 @@
 // kyoten::frame::PlayerActions — every player's actions as the world keeps them across steps, from which each
 // processor's view is made (the first slice's step 8, KYR-54; frame-phases § Decided, question 1).
 //
-// - **It takes each step's hand-off** in the Input phase: each action's state, and the step its last press and its
-//   last release landed in.
-// - **A run sees the edges in its own window of steps,** `after` excluded and `upTo` included: a processor at the base
-//   rate its step alone, one at a slower rate every step since its last run, and Output every step since its last
-//   frame. So each processor sees a press and a release once, on its first run at or after the step it lands in,
-//   whatever its rate, as the decided rule reads (design/input.md § Decided).
+// - **It takes each step's hand-off** in the Input phase: each digital action's state, and the step its last press and
+//   its last release landed in; and every value action's value, kept for the last steps a run may reach back to.
+// - **A run sees its own window of steps,** `after` excluded and `upTo` included: a processor at the base rate its step
+//   alone, one at a slower rate every step since its last run, and Output every step since its last frame. So each
+//   processor sees a press and a release once, on its first run at or after the step it lands in, whatever its rate, as
+//   the decided rule reads (design/input.md § Decided).
+// - **A value action is a state or a delta** (`ActionList`): a run sees a state as of `upTo`, and a delta summed over its
+//   window, oldest step first, so a slower run misses no motion and counts none twice (design/input.md § Decided, the
+//   second part's question 1).
+// - **It keeps as many steps as the widest window:** the slowest rate's period among the processors that read actions,
+//   which the generated world states, or Output's, at most the clock's `DefaultMaxSteps` in a frame. A delta read over
+//   a window wider than that sums the newest steps kept: Output's, when steps ran with no frame between, as a test or a
+//   replay drives them.
 // - **It is world state, made only from hand-offs,** so a replay of the hand-offs makes the same views.
 
-import { std::collections::DynamicArray, Digital, Handoff };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Handoff, Pose, ActionList, Clock };
 
 export { PlayerActions };
 
-// No edge yet: int64's least value, below every window's start, since a slower run's first window reaches before
-// step 0 (every 2 steps, the steps after -2 up to 0).
+// No edge yet, and no step kept in a slot: int64's least value, below every window's start, since a slower run's first
+// window reaches before step 0 (every 2 steps, the steps after -2 up to 0).
 comptime int64 NEVER = -9223372036854775807 - 1;
 
 type resource PlayerActions {
     int32 playerCount;
     int32 digitalCount;
+    int32 analogCount;
+    int32 vector2Count;
+    int32 vector3Count;
+    int32 poseCount;
     DynamicArray<bool> helds = DynamicArray.empty();
-    // The step each action's last press and last release landed in, NEVER before its first.
+    // The step each digital action's last press and last release landed in, NEVER before its first.
     DynamicArray<int64> pressedAt = DynamicArray.empty();
     DynamicArray<int64> releasedAt = DynamicArray.empty();
+    // Which value actions are deltas, by kind.
+    DynamicArray<bool> analogDeltas = DynamicArray.empty();
+    DynamicArray<bool> vector2Deltas = DynamicArray.empty();
+    DynamicArray<bool> vector3Deltas = DynamicArray.empty();
+    // The last `keep` steps' values of every value action: step s's in slot s mod `keep`, which `slotSteps` names (NEVER
+    // before one is taken). A kind with n actions keeps player p's action a of slot k at (k × players + p - 1) × n + a.
+    int64 keep;
+    DynamicArray<int64> slotSteps = DynamicArray.empty();
+    DynamicArray<float32> analogs = DynamicArray.empty();
+    DynamicArray<Vec2> vector2s = DynamicArray.empty();
+    DynamicArray<Vec3> vector3s = DynamicArray.empty();
+    DynamicArray<Pose> poses = DynamicArray.empty();
 
-    // Room for `players` players, numbered from 1, each with `digitalActions` digital actions, every one off.
-    public ctor make(int32 players, int32 digitalActions) {
-        assert(cond: players >= 0 && digitalActions >= 0, msg: "a world's actions hold no negative count");
+    // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero or at rest; `window`
+    // the widest window of steps a processor's run reaches back over (its rate's period), Output's added by the record.
+    public ctor make(int32 players, const ref ActionList actions, int32 window) {
+        assert(cond: players >= 0 && window >= 1, msg: "a world's actions hold no negative count, and a window of a step at least");
         this.playerCount = players;
-        this.digitalCount = digitalActions;
-        int64 n = cast<int64>(players) * cast<int64>(digitalActions);
+        this.digitalCount = actions.digitalCount();
+        this.analogCount = actions.analogCount();
+        this.vector2Count = actions.vector2Count();
+        this.vector3Count = actions.vector3Count();
+        this.poseCount = actions.poseCount();
+        this.keep = cast<int64>(window > Clock::DefaultMaxSteps ? window : Clock::DefaultMaxSteps);
+        int64 p = cast<int64>(players);
         int64 i = 0;
-        while (i < n) {
+        while (i < p * cast<int64>(this.digitalCount)) {
             this.helds.add(item: false);
             this.pressedAt.add(item: NEVER);
             this.releasedAt.add(item: NEVER);
             i = i + 1;
         }
+        int32 a = 0;
+        while (a < this.analogCount) { this.analogDeltas.add(item: actions.analogDelta(action: a)); a = a + 1; }
+        a = 0;
+        while (a < this.vector2Count) { this.vector2Deltas.add(item: actions.vector2Delta(action: a)); a = a + 1; }
+        a = 0;
+        while (a < this.vector3Count) { this.vector3Deltas.add(item: actions.vector3Delta(action: a)); a = a + 1; }
+        i = 0;
+        while (i < this.keep) { this.slotSteps.add(item: NEVER); i = i + 1; }
+        i = 0;
+        while (i < this.keep * p * cast<int64>(this.analogCount)) { this.analogs.add(item: 0.0); i = i + 1; }
+        i = 0;
+        while (i < this.keep * p * cast<int64>(this.vector2Count)) { this.vector2s.add(item: Vec2.zero()); i = i + 1; }
+        i = 0;
+        while (i < this.keep * p * cast<int64>(this.vector3Count)) { this.vector3s.add(item: Vec3.zero()); i = i + 1; }
+        i = 0;
+        while (i < this.keep * p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
     }
 
     public const fn int32 players() { return this.playerCount; }
     public const fn int32 digitalActions() { return this.digitalCount; }
+    public const fn int32 analogActions() { return this.analogCount; }
+    public const fn int32 vector2Actions() { return this.vector2Count; }
+    public const fn int32 vector3Actions() { return this.vector3Count; }
+    public const fn int32 poseActions() { return this.poseCount; }
+    // How many steps it keeps: the widest window a run may ask for.
+    public const fn int64 kept() { return this.keep; }
 
-    // Step `step`'s hand-off, which has room for the same players and actions; anything else is a generator's bug, and
-    // traps.
+    // Step `step`'s hand-off, which has room for the same players and actions; anything else, or a negative step, is a
+    // generator's bug, and traps.
     public fn void take(const ref Handoff handoff, int64 step) {
-        assert(cond: handoff.players() == this.playerCount && handoff.digitalActions() == this.digitalCount,
+        assert(cond: handoff.players() == this.playerCount && handoff.digitalActions() == this.digitalCount
+                   && handoff.analogActions() == this.analogCount && handoff.vector2Actions() == this.vector2Count
+                   && handoff.vector3Actions() == this.vector3Count && handoff.poseActions() == this.poseCount,
                msg: "a hand-off has the world's players and actions");
+        assert(cond: step >= 0, msg: "a step taken is numbered from 0");
+        isize slot = cast<isize>(step % this.keep);
+        this.slotSteps[slot] = step;
         int32 p = 1;
         while (p <= this.playerCount) {
             int32 a = 0;
             while (a < this.digitalCount) {
                 Digital d = handoff.digital(player: p, action: a);
-                isize i = this.at(player: p, action: a);
+                isize i = flat(player: p, action: a, count: this.digitalCount);
                 this.helds[i] = d.held;
                 if (d.pressed) { this.pressedAt[i] = step; }
                 if (d.released) { this.releasedAt[i] = step; }
+                a = a + 1;
+            }
+            a = 0;
+            while (a < this.analogCount) {
+                this.analogs[this.inSlot(slot: slot, player: p, action: a, count: this.analogCount)] = handoff.analog(player: p, action: a);
+                a = a + 1;
+            }
+            a = 0;
+            while (a < this.vector2Count) {
+                this.vector2s[this.inSlot(slot: slot, player: p, action: a, count: this.vector2Count)] = handoff.vector2(player: p, action: a);
+                a = a + 1;
+            }
+            a = 0;
+            while (a < this.vector3Count) {
+                this.vector3s[this.inSlot(slot: slot, player: p, action: a, count: this.vector3Count)] = handoff.vector3(player: p, action: a);
+                a = a + 1;
+            }
+            a = 0;
+            while (a < this.poseCount) {
+                this.poses[this.inSlot(slot: slot, player: p, action: a, count: this.poseCount)] = handoff.pose(player: p, action: a);
                 a = a + 1;
             }
             p = p + 1;
         }
     }
 
-    // Player `player`'s digital action `action` as a run sees it whose window is the steps after `after` up to `upTo`:
+    // Player `player`'s digital action `action` as a run whose window is the steps after `after` up to `upTo` sees it:
     // held as of the last step taken, and each edge that landed in the window. Off for a player or an action it has no
     // room for.
     public const fn Digital digital(int32 player, int32 action, int64 after, int64 upTo) {
         Digital d = Digital.off();
-        if (player < 1 || player > this.playerCount || action < 0 || action >= this.digitalCount) { return d; }
-        isize i = this.at(player: player, action: action);
+        if (!this.holds(player: player, action: action, count: this.digitalCount)) { return d; }
+        isize i = flat(player: player, action: action, count: this.digitalCount);
         d.held = this.helds[i];
         int64 p = this.pressedAt[i];
         int64 r = this.releasedAt[i];
@@ -78,7 +154,94 @@ type resource PlayerActions {
         return d;
     }
 
-    const fn isize at(int32 player, int32 action) {
-        return cast<isize>(player - 1) * cast<isize>(this.digitalCount) + cast<isize>(action);
+    // Player `player`'s analog action `action` as that run sees it: a state as of `upTo`, a delta summed over the window.
+    // Zero for a player or an action it has no room for, and for a step not taken.
+    public const fn float32 analog(int32 player, int32 action, int64 after, int64 upTo) {
+        if (!this.holds(player: player, action: action, count: this.analogCount)) { return 0.0; }
+        if (!this.analogDeltas[cast<isize>(action)]) {
+            isize slot = this.slotOf(step: upTo);
+            if (slot < 0) { return 0.0; }
+            return this.analogs[this.inSlot(slot: slot, player: player, action: action, count: this.analogCount)];
+        }
+        float32 sum = 0.0;
+        int64 s = this.oldest(after: after, upTo: upTo);
+        while (s <= upTo) {
+            isize slot = this.slotOf(step: s);
+            if (slot >= 0) { sum = sum + this.analogs[this.inSlot(slot: slot, player: player, action: action, count: this.analogCount)]; }
+            s = s + 1;
+        }
+        return sum;
     }
+
+    // The same for a vector2 action.
+    public const fn Vec2 vector2(int32 player, int32 action, int64 after, int64 upTo) {
+        if (!this.holds(player: player, action: action, count: this.vector2Count)) { return Vec2.zero(); }
+        if (!this.vector2Deltas[cast<isize>(action)]) {
+            isize slot = this.slotOf(step: upTo);
+            if (slot < 0) { return Vec2.zero(); }
+            return this.vector2s[this.inSlot(slot: slot, player: player, action: action, count: this.vector2Count)];
+        }
+        Vec2 sum = Vec2.zero();
+        int64 s = this.oldest(after: after, upTo: upTo);
+        while (s <= upTo) {
+            isize slot = this.slotOf(step: s);
+            if (slot >= 0) { sum = sum + this.vector2s[this.inSlot(slot: slot, player: player, action: action, count: this.vector2Count)]; }
+            s = s + 1;
+        }
+        return sum;
+    }
+
+    // The same for a vector3 action.
+    public const fn Vec3 vector3(int32 player, int32 action, int64 after, int64 upTo) {
+        if (!this.holds(player: player, action: action, count: this.vector3Count)) { return Vec3.zero(); }
+        if (!this.vector3Deltas[cast<isize>(action)]) {
+            isize slot = this.slotOf(step: upTo);
+            if (slot < 0) { return Vec3.zero(); }
+            return this.vector3s[this.inSlot(slot: slot, player: player, action: action, count: this.vector3Count)];
+        }
+        Vec3 sum = Vec3.zero();
+        int64 s = this.oldest(after: after, upTo: upTo);
+        while (s <= upTo) {
+            isize slot = this.slotOf(step: s);
+            if (slot >= 0) { sum = sum + this.vector3s[this.inSlot(slot: slot, player: player, action: action, count: this.vector3Count)]; }
+            s = s + 1;
+        }
+        return sum;
+    }
+
+    // Player `player`'s pose action `action` as of `upTo`: a pose is a state. At rest for a player or an action it has
+    // no room for, and for a step not taken.
+    public const fn Pose pose(int32 player, int32 action, int64 upTo) {
+        if (!this.holds(player: player, action: action, count: this.poseCount)) { return Pose.identity(); }
+        isize slot = this.slotOf(step: upTo);
+        if (slot < 0) { return Pose.identity(); }
+        return this.poses[this.inSlot(slot: slot, player: player, action: action, count: this.poseCount)];
+    }
+
+    const fn bool holds(int32 player, int32 action, int32 count) {
+        return player >= 1 && player <= this.playerCount && action >= 0 && action < count;
+    }
+
+    // The slot holding step `step`, or -1 when it holds another or none: a step before 0, or one not taken yet.
+    const fn isize slotOf(int64 step) {
+        if (step < 0) { return -1; }
+        isize slot = cast<isize>(step % this.keep);
+        if (this.slotSteps[slot] != step) { return -1; }
+        return slot;
+    }
+
+    const fn isize inSlot(isize slot, int32 player, int32 action, int32 count) {
+        return (slot * cast<isize>(this.playerCount) + cast<isize>(player - 1)) * cast<isize>(count) + cast<isize>(action);
+    }
+
+    // The first step a delta's window sums: the one after `after`, or the oldest kept when the window is wider.
+    const fn int64 oldest(int64 after, int64 upTo) {
+        int64 first = after + 1;
+        int64 newest = upTo - this.keep + 1;
+        return first > newest ? first : newest;
+    }
+}
+
+fn isize flat(int32 player, int32 action, int32 count) {
+    return cast<isize>(player - 1) * cast<isize>(count) + cast<isize>(action);
 }

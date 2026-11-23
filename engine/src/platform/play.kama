@@ -78,7 +78,7 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
         this.world = give world;
         this.platform = give platform;
         this.input = give input;
-        this.clock = Clock.make(hz: hz, maxSteps: 5);
+        this.clock = Clock.make(hz: hz, maxSteps: Clock::DefaultMaxSteps);
         this.options = options;
         this.title = give title;
         this.width = width;

@@ -1,0 +1,18 @@
+// kyoten::frame::Pose — a position and an orientation, as an XR device's pose is (an OpenXR action space, located at a
+// time): what a `Pose` action holds (components § Decided, step 5 question 6). It is built and bound by nothing until XR
+// brings a device (KYR-34; design/input.md § Decided, 2026-11-22). Y up, right-handed, metres, as every position is.
+
+import { std::math::Vec3, std::math::Quat };
+
+export { Pose };
+
+type value Pose {
+    public Vec3 position;
+    public Quat orientation;
+
+    // At the origin, turned as the world is: what a pose action reads before any input.
+    public default ctor identity() {
+        this.position = Vec3.zero();
+        this.orientation = Quat.identity();
+    }
+}

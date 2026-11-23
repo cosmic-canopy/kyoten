@@ -6,7 +6,7 @@
 // under `--fixed-fps`, and the open platforms' pump turning a headless window's events into samples at their times.
 
 import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory::Shared, std::time::Instant,
-         std::time::Duration, std::time::monotonicNow, kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Handoff,
+         std::time::Duration, std::time::monotonicNow, kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Handoff, kyoten::frame::ActionList,
          kyoten::frame::InputSource, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::platform::Platform, kyoten::platform::RunOptions, kyoten::platform::RunOptionError,
          kyoten::platform::Ending, kyoten::platform::Play, kyoten::platform::play, kyoten::platform::fixedTimestamp,
@@ -119,7 +119,7 @@ type resource Counter implements World {
 // Records the samples the loop hands it into the log; its hand-offs are empty.
 type resource Taker implements InputSource {
     Shared<Log> log;
-    Handoff out = Handoff.make(players: 1, digitalActions: 0);
+    Handoff out = Handoff.make(players: 1, actions: ActionList.make());
 
     public ctor make(Shared<Log> log) { this.log = give log; }
 

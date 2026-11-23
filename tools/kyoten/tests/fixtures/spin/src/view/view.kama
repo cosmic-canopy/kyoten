@@ -3,9 +3,9 @@
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin,
-         spin::cube::Taps, spin::generated::Actions };
+         spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::generated::Actions };
 
-export { show, seen };
+export { show, seen, aimed };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -23,4 +23,17 @@ fn void seen(const ref Actions input, const ref Taps taps, Handle me) {
     bool held = input.faster.held;
     int32 slow = taps.slow;
     println(s: "seen: slot ${slot} pressed ${pressed} held ${held} slow ${slow}");
+}
+
+// What `aimTrack` and `aimTally` made of each cube's look and steer, and what Output itself sees of `look`: every step's
+// since its last frame.
+fn void aimed(const ref Aim aim, const ref SlowAim slow, const ref Actions input, Handle me) {
+    uint32 slot = me.slot();
+    float32 yaw = aim.yaw;
+    float32 pitch = aim.pitch;
+    float32 slowYaw = slow.yaw;
+    float32 steer = aim.steer;
+    float32 lookX = input.look.x;
+    float32 lookY = input.look.y;
+    println(s: "aimed: slot ${slot} yaw ${yaw} pitch ${pitch} slow ${slowYaw} steer ${steer} look ${lookX} ${lookY}");
 }

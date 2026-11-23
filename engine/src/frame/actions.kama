@@ -1,0 +1,73 @@
+// kyoten::frame::ActionList — a game's actions by kind, each kind's in the generated order, and which value actions are
+// deltas (the first slice's step 8, KYR-54; design/input.md § Decided, the second part's question 1). The generated world
+// makes one, and the hand-off, the world's record of the players' actions and the binder each size themselves by it.
+//
+// - **A kind's actions are numbered from 0 in its own order:** a game's `faster` is digital action 0 and its `look`
+//   vector2 action 0, as the generated `Actions` reads them.
+// - **A delta** (an `Analog`, `Vector2` or `Vector3` whose record says `"delta": true`) is a distance moved: each step
+//   holds the motion that landed in it, and a run sees the sum over its window. Any other value is a state, which a run
+//   sees as of the last step it reaches.
+// - **`Text` is not here yet:** it comes with its own part.
+
+import { std::collections::DynamicArray };
+
+export { ActionList };
+
+type resource ActionList {
+    DynamicArray<string> digitalNamesField = DynamicArray.empty();
+    DynamicArray<string> analogNamesField = DynamicArray.empty();
+    DynamicArray<string> vector2NamesField = DynamicArray.empty();
+    DynamicArray<string> vector3NamesField = DynamicArray.empty();
+    DynamicArray<string> poseNamesField = DynamicArray.empty();
+    DynamicArray<bool> analogDeltas = DynamicArray.empty();
+    DynamicArray<bool> vector2Deltas = DynamicArray.empty();
+    DynamicArray<bool> vector3Deltas = DynamicArray.empty();
+
+    // No actions.
+    public ctor make() { }
+
+    // The next action of each kind, in the generated order.
+    public fn void addDigital(string name) { this.digitalNamesField.add(item: give name); }
+    public fn void addAnalog(string name, bool delta) {
+        this.analogNamesField.add(item: give name);
+        this.analogDeltas.add(item: delta);
+    }
+    public fn void addVector2(string name, bool delta) {
+        this.vector2NamesField.add(item: give name);
+        this.vector2Deltas.add(item: delta);
+    }
+    public fn void addVector3(string name, bool delta) {
+        this.vector3NamesField.add(item: give name);
+        this.vector3Deltas.add(item: delta);
+    }
+    public fn void addPose(string name) { this.poseNamesField.add(item: give name); }
+
+    public const fn int32 digitalCount() { return cast<int32>(this.digitalNamesField.length()); }
+    public const fn int32 analogCount() { return cast<int32>(this.analogNamesField.length()); }
+    public const fn int32 vector2Count() { return cast<int32>(this.vector2NamesField.length()); }
+    public const fn int32 vector3Count() { return cast<int32>(this.vector3NamesField.length()); }
+    public const fn int32 poseCount() { return cast<int32>(this.poseNamesField.length()); }
+
+    // Each kind's names, in its order.
+    public const fn const ref DynamicArray<string> digitalNames() { return this.digitalNamesField; }
+    public const fn const ref DynamicArray<string> analogNames() { return this.analogNamesField; }
+    public const fn const ref DynamicArray<string> vector2Names() { return this.vector2NamesField; }
+    public const fn const ref DynamicArray<string> vector3Names() { return this.vector3NamesField; }
+    public const fn const ref DynamicArray<string> poseNames() { return this.poseNamesField; }
+
+    // Whether a value action is a delta; false for one the list does not hold.
+    public const fn bool analogDelta(int32 action) { return flag(of: this.analogDeltas, at: action); }
+    public const fn bool vector2Delta(int32 action) { return flag(of: this.vector2Deltas, at: action); }
+    public const fn bool vector3Delta(int32 action) { return flag(of: this.vector3Deltas, at: action); }
+
+    // Whether the game declares any action.
+    public const fn bool isEmpty() {
+        return this.digitalNamesField.length() + this.analogNamesField.length() + this.vector2NamesField.length()
+            + this.vector3NamesField.length() + this.poseNamesField.length() == 0;
+    }
+}
+
+fn bool flag(const ref DynamicArray<bool> of, int32 at) {
+    if (at < 0 || cast<isize>(at) >= of.length()) { return false; }
+    return of[cast<isize>(at)];
+}

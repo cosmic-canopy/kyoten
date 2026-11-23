@@ -115,9 +115,13 @@ type resource Clock {
     int64 accBefore = 0;
     TimeScale frameScale = TimeScale.normal();
 
+    // The most steps a frame owes by default, which the loop's clock takes (an App record field when a game needs
+    // another): Output's window of steps is at most this wide.
+    public comptime int32 DefaultMaxSteps = 5;
+
     // `hz` is the base rate: the least common multiple the generator derives from every processor's rate, or a
-    // pinned base. `maxSteps` is the most steps a frame may owe, 5 by default (an App record field when a game needs
-    // another).
+    // pinned base. `maxSteps` is the most steps a frame may owe, `DefaultMaxSteps` by default (an App record field
+    // when a game needs another).
     public ctor make(int32 hz, int32 maxSteps) {
         assert(cond: hz > 0, msg: "a base rate is at least 1 Hz");
         assert(cond: maxSteps >= 1, msg: "a frame may owe at least 1 step");

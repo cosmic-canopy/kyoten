@@ -14,6 +14,14 @@ import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::r
 
 export { Records, PrefabDecl, CodeFile, readRecords };
 
+// An action's kind as a records file writes it.
+fn string kindWord(ActionKind kind) {
+    return match (kind) {
+        case Digital: "Digital"; case Analog: "Analog"; case Vector2: "Vector2"; case Vector3: "Vector3"; case Pose: "Pose";
+        case Text: "Text";
+    };
+}
+
 // Members the generated `Actions` has itself, which no action may take.
 fn string actionMembers() { return " player forPlayer viewFrom serialize deserialize mergeFrom "; }
 // Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
@@ -62,18 +70,23 @@ type resource Records {
     DynamicArray<CodeFile> codeFiles = DynamicArray.empty();
     SortedMap<string, string> actionModules = SortedMap.empty();
     SortedMap<string, string> actionFiles = SortedMap.empty();
+    SortedMap<string, ActionKind> kindsByAction = SortedMap.empty();
+    SortedMap<string, bool> deltasByAction = SortedMap.empty();
     SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
     SortedMap<string, string> bindingFiles = SortedMap.empty();
     string appFile = "";
     string sceneFirst = "";
     string sceneFirstFile = "";
 
-    friend readRecords[codeFiles, addAction, addContent, crossCheck];
+    friend readRecords[codeFiles, kindsByAction, addAction, addContent, crossCheck];
 
     public ctor make() { }
 
     // Each action's declaring module, by name.
     public const fn const ref SortedMap<string, string> actions() { return this.actionModules; }
+    // An action's kind, and whether it is a delta, by its name, which `actions()` lists.
+    public const fn ActionKind kindOf(const ref string action) { return this.kindsByAction.getRef(key: action); }
+    public const fn bool isDelta(const ref string action) { return this.deltasByAction.getRef(key: action); }
     public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
     public const fn DynamicArray<string> prefabNames() {
         DynamicArray<string> names = DynamicArray.empty();
@@ -86,7 +99,8 @@ type resource Records {
     // Every module's records files, in the order of their paths.
     public const fn const ref DynamicArray<CodeFile> code() { return this.codeFiles; }
 
-    unsafe fn void addAction(const ref string name, const ref string module, const ref string file, ref Refusals no) {
+    unsafe fn void addAction(const ref string name, const ref string module, const ref string file, ActionKind kind,
+                             bool delta, ref Refusals no) {
         if (this.actionModules.contains(key: name)) {
             string otherModule = copy this.actionModules.getRef(key: name);
             string otherFile = copy this.actionFiles.getRef(key: name);
@@ -97,6 +111,8 @@ type resource Records {
         if (!problem.isEmpty()) { no.add(where: file, what: "action " + problem); }
         this.actionModules.put(key: copy name, value: copy module);
         this.actionFiles.put(key: copy name, value: copy file);
+        this.kindsByAction.put(key: copy name, value: kind);
+        this.deltasByAction.put(key: copy name, value: delta);
     }
 
     unsafe fn void addContent(const ref ContentFile c, const ref string file, ref Refusals no) {
@@ -244,13 +260,31 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
         if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
         foreach (string a in m.actions()) {
             ActionKind kind = m.actions().getRef(key: a).kind();
-            match (kind) {
-                case Digital: { r.addAction(name: a, module: module, file: file, no: no); }
-                case _: { no.add(where: file, what: "action `${a}`: only `Digital` actions are built so far; the other kinds come with KYR-54 (step 8)"); }
-            };
+            bool delta = m.actions().getRef(key: a).delta();
+            bool moves = kind == ActionKind::Analog || kind == ActionKind::Vector2 || kind == ActionKind::Vector3;
+            if (kind == ActionKind::Text) {
+                no.add(where: file, what: "action `${a}`: a `Text` action comes with its own part of KYR-54 (step 8); `Digital`, `Analog`, `Vector2`, `Vector3` and `Pose` are built");
+            } else if (delta && !moves) {
+                string word = kindWord(kind: kind);
+                no.add(where: file, what: "action `${a}` is a `${word}` and says `delta`: a delta is a distance moved, which only an `Analog`, `Vector2` or `Vector3` holds");
+            } else {
+                r.addAction(name: a, module: module, file: file, kind: kind, delta: delta, no: no);
+            }
         }
         if (!game.isLibrary() && module == game.name() && refusedInRoot(record: m, file: file, no: no)) { continue; }
         r.codeFiles.add(item: CodeFile.of(module: copy module, file: copy file, record: give m));
+    }
+    // A `Vector2` or `Vector3` action is std::math's `Vec2` or `Vec3` in the generated `Actions`, which the game's
+    // `generated` module must be allowed to import (design/input.md § Decided, 2026-11-23).
+    if (game.hasList(folder: "generated") && !game.listOf(folder: "generated").contains(item: "std::math")) {
+        foreach (string a in r.kindsByAction) {
+            ActionKind k = r.kindsByAction.getRef(key: a);
+            if (k == ActionKind::Vector2 || k == ActionKind::Vector3) {
+                string word = kindWord(kind: k);
+                string vec = k == ActionKind::Vector2 ? "Vec2" : "Vec3";
+                no.add(where: "kama.json", what: "action `${a}` is a `${word}`, which the generated `Actions` holds as std::math's `${vec}`: add \"std::math\" to the `generated` module's `importsOnly`");
+            }
+        }
     }
     string content = game.root() + "/content";
     DynamicArray<string> contents = filesUnder(dir: content);

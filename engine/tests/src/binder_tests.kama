@@ -7,7 +7,8 @@
 
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
-         kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::records::BindingRecord,
+         kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
+         std::math::Vec2, kyoten::records::BindingRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
 export { binderTests };
@@ -25,18 +26,22 @@ fn SortedMap<string, BindingRecord> bindingsOf(const ref string json) {
     };
 }
 
-fn DynamicArray<string> actionsOf(const ref string a, const ref string b) {
-    DynamicArray<string> made = DynamicArray.empty();
-    if (!a.isEmpty()) { made.add(item: copy a); }
-    if (!b.isEmpty()) { made.add(item: copy b); }
+// The digital actions `a` and `b` (either "" for none), and an analog `throttle` and a vector2 `look`, which no
+// device binds yet.
+fn ActionList actionsOf(const ref string a, const ref string b) {
+    ActionList made = ActionList.make();
+    if (!a.isEmpty()) { made.addDigital(name: copy a); }
+    if (!b.isEmpty()) { made.addDigital(name: copy b); }
+    made.addAnalog(name: "throttle", delta: false);
+    made.addVector2(name: "look", delta: true);
     return made;
 }
 
 // A binder for player 1 and the actions `faster` and `jump`, bound by `json`; it must be accepted.
 fn Binder binderFor(const ref string json) {
-    DynamicArray<string> actions = actionsOf(a: "faster", b: "jump");
+    ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, digitalActions: actions, bindings: b);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b);
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -48,9 +53,9 @@ fn Binder binderFor(const ref string json) {
 
 // The refusal `json` gets, or "" when it is accepted.
 fn string refusalOf(const ref string json) {
-    DynamicArray<string> actions = actionsOf(a: "faster", b: "jump");
+    ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, digitalActions: actions, bindings: b);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b);
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -97,6 +102,19 @@ fn void bindingCases(ref Tally t) {
     t.verdict(name: "binder: a list binds each control, and the mouse its own", why: listed == 3 ? "" : "${listed} bound");
     string ok = refusalOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" }, \"jump\": { \"gamepad\": \"South\" } }");
     t.verdict(name: "binder: bindings naming the game's actions by their controls' names are accepted", why: ok);
+    expectRefused(t: t, name: "binder: a value action's binding is refused until KYR-54's next part binds its devices",
+                  json: "{ \"look\": { \"keyboard\": \"KeyW\" } }", says: "bind a `Vector2` action");
+    expectRefused(t: t, name: "binder: an analog's too, by its kind", json: "{ \"throttle\": { \"gamepad\": \"RightTrigger\" } }",
+                  says: "bind a `Analog` action");
+    string notNamed = refusalOf(json: "{ \"look\": { \"keyboard\": \"KeyW\" } }");
+    t.verdict(name: "binder: a value action is an action the game declares, not one it names nowhere",
+              why: notNamed.contains(substring: "name no action") ? "`look` called no action" : "");
+    int32 analogs = b.handoff(index: 9, until: 900).analogActions();
+    int32 vector2s = b.handoff(index: 9, until: 900).vector2Actions();
+    float32 throttle = b.handoff(index: 9, until: 900).analog(player: 1, action: 0);
+    Vec2 look = b.handoff(index: 9, until: 900).vector2(player: 1, action: 0);
+    bool rested = analogs == 1 && vector2s == 1 && throttle == 0.0 && look.x == 0.0 && look.y == 0.0;
+    t.verdict(name: "binder: its hand-off has room for every kind, each value at rest", why: rested ? "" : "other sizes or values");
 
     expectRefused(t: t, name: "binder: a binding naming no action is refused, by its name",
                   json: "{ \"dash\": { \"keyboard\": \"Space\" } }", says: "the bindings of `dash` name no action");
@@ -231,9 +249,9 @@ fn void padCases(ref Tally t) {
 }
 
 fn void playerCases(ref Tally t) {
-    DynamicArray<string> actions = actionsOf(a: "faster", b: "");
+    ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
-    Result<Binder, BindingError> made = Binder.make(players: 2, digitalActions: actions, bindings: map);
+    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map);
     match (give made) {
         case Ok(value: b): {
             hand(b: b, s: key(control: 82, down: true, at: 50));

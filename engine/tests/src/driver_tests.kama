@@ -8,12 +8,20 @@ import {
     std::collections::DynamicArray,
     kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale,
     kyoten::frame::step, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample,
+    kyoten::frame::ActionList,
 };
 
 export { driverTests };
 
 comptime int64 T0 = 5000000000;
 comptime int64 EVERYTHING = 9223372036854775807;
+
+// One digital action, as these worlds hold.
+fn ActionList oneDigital() {
+    ActionList a = ActionList.make();
+    a.addDigital(name: "press");
+    return a;
+}
 
 // Records each phase call as its initial and its step index ("I0 U0 C0 O0 "), and the dt each phase was last handed.
 type resource Recorder implements World {
@@ -59,7 +67,7 @@ type resource Recorder implements World {
 // A source that presses player 1's action 0 on one step, and records each step's window end ("0@16666667 2@all ", in
 // nanoseconds after T0) and the samples it was handed.
 type resource Script implements InputSource {
-    Handoff out = Handoff.make(players: 1, digitalActions: 1);
+    Handoff out = Handoff.make(players: 1, actions: oneDigital());
     int64 pressOn = -1;
     string asked = "";
     isize taken = 0;
@@ -91,7 +99,7 @@ fn void expectCalls(ref Tally t, const ref string name, const ref Recorder w, co
 fn void oneStep(ref Tally t) {
     Recorder w = Recorder.make();
     Time time = Time.of(dt: Time::dtAt(hz: 60), step: 7);
-    Handoff pressed = Handoff.make(players: 1, digitalActions: 1);
+    Handoff pressed = Handoff.make(players: 1, actions: oneDigital());
     pressed.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: true, released: false));
     step(world: w, time: time, handoff: pressed);
     expectCalls(t: t, name: "driver: step runs Input, Update and Constraints once, in order, with no clock", w: w, want: "I7 U7 C7 ");

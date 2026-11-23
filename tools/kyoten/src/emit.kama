@@ -1,7 +1,8 @@
 // The kama the first pass writes, into the game's `src/generated/` (components § Decided: the naming rule of
 // 2026-11-07, and step 5.3's questions of 2026-11-09):
 //
-// - `actions.kama`: `Actions`, the engine's `player` and one `Digital` field per action the game's modules declare.
+// - `actions.kama`: `Actions`, the engine's `player` and one field per action the game's modules declare, of its kind's
+//   type.
 // - `prefabs.kama`: each family's `<Base>Prefab`, a field per component, and `<Base>PrefabId`, a constructor per member
 //   with the base as its default; then `Prefabs`, with one `<base>(id:)` per family. The loader fills `Prefabs` from
 //   the content records (step 5.5).
@@ -13,25 +14,68 @@
 // `prefabs.<base>(id:)`. The rest (the lists inside `Prefabs`, an id's index, the import aliases) is the generator's own
 // and may change in any release (rule 5).
 
-import { std::collections::DynamicArray, std::collections::SortedMap, Records, Family, Component, typeCase, headerLine };
+import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::ActionKind, Records, Family,
+         Component, typeCase, headerLine };
 
-export { actionsKama, prefabsStub, prefabsKama, digitalActionNames };
+export { actionsKama, prefabsStub, prefabsKama, actionListLines };
+
+// The type of an action's field, its value before any input, and the `PlayerActions` reader that views it, by kind.
+// `Text` is refused before anything is written.
+fn string fieldType(ActionKind k) {
+    return match (k) {
+        case Digital: "Digital"; case Analog: "float32"; case Vector2: "Vec2"; case Vector3: "Vec3"; case Pose: "Pose";
+        case Text: "Digital";
+    };
+}
+fn string atRest(ActionKind k) {
+    return match (k) {
+        case Digital: "Digital.default()"; case Analog: "0.0"; case Vector2: "Vec2.zero()"; case Vector3: "Vec3.zero()";
+        case Pose: "Pose.default()"; case Text: "Digital.default()";
+    };
+}
+fn string readerOf(ActionKind k) {
+    return match (k) {
+        case Digital: "digital"; case Analog: "analog"; case Vector2: "vector2"; case Vector3: "vector3"; case Pose: "pose";
+        case Text: "digital";
+    };
+}
+
+fn string kindName(ActionKind k) {
+    return match (k) {
+        case Digital: "Digital"; case Analog: "Analog"; case Vector2: "Vector2"; case Vector3: "Vector3"; case Pose: "Pose";
+        case Text: "Text";
+    };
+}
+
+fn bool anyOf(const ref Records r, ActionKind k) {
+    foreach (string a in r.actions()) { if (r.kindOf(action: a) == k) { return true; } }
+    return false;
+}
 
 fn string actionsKama(const ref Records r) {
     string t = headerLine() + "\n";
-    t = t + "// The game's actions, a `Digital` each, in the field its name gives (components § Decided). The passes fill\n";
-    t = t + "// them from the player the entity names before each processor that reads them runs, as that run sees them:\n";
-    t = t + "// each edge once, on its first run at or after the step it landed in (the first slice's step 8).\n\n";
+    t = t + "// The game's actions, a field each, of its kind's type (components § Decided; design/input.md § Decided): a\n";
+    t = t + "// `Digital`, an analog's `float32`, a `Vector2`'s `Vec2`, a `Vector3`'s `Vec3` or a `Pose`. The passes fill them\n";
+    t = t + "// from the player the entity names before each processor that reads them runs, as that run sees them: each\n";
+    t = t + "// edge once, on its first run at or after the step it landed in; a state as of its step; and a delta, a\n";
+    t = t + "// distance moved, summed over every step since its last run (the first slice's step 8).\n\n";
     bool any = r.actions().length() > 0;
-    if (any) { t = t + "import { kyoten::frame::Digital, kyoten::frame::PlayerActions };\n\n"; }
+    string names = "";
+    if (anyOf(r: r, k: ActionKind::Digital)) { names = "kyoten::frame::Digital, "; }
+    if (anyOf(r: r, k: ActionKind::Pose)) { names = names + "kyoten::frame::Pose, "; }
+    if (anyOf(r: r, k: ActionKind::Vector2)) { names = names + "std::math::Vec2, "; }
+    if (anyOf(r: r, k: ActionKind::Vector3)) { names = names + "std::math::Vec3, "; }
+    if (any) { t = t + "import { " + names + "kyoten::frame::PlayerActions };\n\n"; }
     t = t + "export { Actions };\n\n";
     t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
     t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
     t = t + "    @field public int32 player;\n";
     foreach (string a in r.actions()) {
         string module = copy r.actions().getRef(key: a);
-        t = t + "    // Declared by " + module + ".\n";
-        t = t + "    @skip public Digital " + a + " = Digital.default();\n";
+        ActionKind k = r.kindOf(action: a);
+        string delta = r.isDelta(action: a) ? ", a delta" : "";
+        t = t + "    // A `" + kindName(k: k) + "`" + delta + ", declared by " + module + ".\n";
+        t = t + "    @skip public " + fieldType(k: k) + " " + a + " = " + atRest(k: k) + ";\n";
     }
     t = t + "\n    public ctor forPlayer(int32 player) { this.player = player; }\n";
     if (!any) {
@@ -41,20 +85,47 @@ fn string actionsKama(const ref Records r) {
     t = t + "\n    // Each action as a run whose window is the steps after `after` up to `upTo` sees it, from the world's record\n";
     t = t + "    // of its player's: the generator's own, which the passes call.\n";
     t = t + "    public fn void viewFrom(const ref PlayerActions from, int64 after, int64 upTo) {\n";
-    int32 index = 0;
+    int32 digitals = 0;
+    int32 analogs = 0;
+    int32 vector2s = 0;
+    int32 vector3s = 0;
+    int32 poses = 0;
     foreach (string a in r.actions()) {
-        t = t + "        this." + a + " = from.digital(player: this.player, action: ${index}, after: after, upTo: upTo);\n";
-        index = index + 1;
+        ActionKind k = r.kindOf(action: a);
+        int32 index = match (k) {
+            case Digital: digitals; case Analog: analogs; case Vector2: vector2s; case Vector3: vector3s; case Pose: poses;
+            case Text: 0;
+        };
+        string window = k == ActionKind::Pose ? "upTo: upTo" : "after: after, upTo: upTo";
+        t = t + "        this." + a + " = from." + readerOf(k: k) + "(player: this.player, action: ${index}, " + window + ");\n";
+        match (k) {
+            case Digital: { digitals = digitals + 1; } case Analog: { analogs = analogs + 1; }
+            case Vector2: { vector2s = vector2s + 1; } case Vector3: { vector3s = vector3s + 1; }
+            case Pose: { poses = poses + 1; } case Text: { }
+        };
     }
     t = t + "    }\n}\n";
     return t;
 }
 
-// The game's digital actions' names, in the generated order: `Actions`' fields, the hand-off's and the binder's.
-fn DynamicArray<string> digitalActionNames(const ref Records r) {
-    DynamicArray<string> names = DynamicArray.empty();
-    foreach (string a in r.actions()) { names.add(item: give a); }
-    return names;
+// The body of the generated world's `actions()`: each action in the order of its name, which numbers each kind's
+// actions as `Actions`' fields and `viewFrom` do, so the hand-off, the world's record and the binder agree.
+fn string actionListLines(const ref Records r) {
+    string t = "";
+    foreach (string a in r.actions()) {
+        ActionKind k = r.kindOf(action: a);
+        string d = r.isDelta(action: a) ? "true" : "false";
+        string line = match (k) {
+            case Digital: "a.addDigital(name: \"" + a + "\");";
+            case Analog: "a.addAnalog(name: \"" + a + "\", delta: " + d + ");";
+            case Vector2: "a.addVector2(name: \"" + a + "\", delta: " + d + ");";
+            case Vector3: "a.addVector3(name: \"" + a + "\", delta: " + d + ");";
+            case Pose: "a.addPose(name: \"" + a + "\");";
+            case Text: "";
+        };
+        t = t + "        " + line + "\n";
+    }
+    return t;
 }
 
 fn string prefabsStub(const ref Records r) {

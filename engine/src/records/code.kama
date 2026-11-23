@@ -97,11 +97,15 @@ type resource ComponentRecord {
 @generate(Serializable, Deserializable)
 type resource ActionRecord {
     @field(name: "kind") ActionKind kindField = ActionKind::Digital;
+    @field(name: "delta", default) bool deltaField = false;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
 
     public const fn ActionKind kind() { return this.kindField; }
+    // A distance moved, summed over each run's window, where any other value is a state: an `Analog`, `Vector2` or
+    // `Vector3` alone (design/input.md § Decided, the second part's question 1).
+    public const fn bool delta() { return this.deltaField; }
     public const fn const ref string note() { return this.noteField; }
 }
 
