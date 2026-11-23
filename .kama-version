@@ -438,5 +438,23 @@
 #   197), @kama/imagediff's (94) and @kama/graphics' (475 natively, 476 in Firefox and Chrome for Testing, 451 in Edge),
 #   its ratchet raised as above. KY-35, KY-40, KY-45, KY-58 and KY-67 re-checked, unchanged. The Mac's pin is 0.9.978
 #   until it is rebuilt at b2f627b0.
-KAMA_VERSION=0.9.1026
-KAMA_BUILD=gb2f627b0
+#
+# 2026-11-22: 0.9.1026 -> 0.9.1027 (25d97c29), kama's dev HEAD with a clean tree, on its origin, at the owner's word
+# ("A: bump now (Recommended)", the forty-sixth session's start); 0.9.1026 kept in .scratch/kama-pin-0.9.1026. What
+# moved, for kyoten:
+#   0.9.1027 KR-437: a package's C goes with its kama. A program that reaches a package (an import of any name) links its
+#           `csources`, one that reaches none links none, and a reached package emits every `expose fn`; a package that
+#           is only C links whenever depended on. So KY-67 is fixed and removed: its repro's `app2` builds and prints
+#           `app2: linked`, where 0.9.1026 refused it ("undefined reference to `lib_tick'"). Nothing to port:
+#           @kama/window's C reads kama's clock through kama_time.h, kama's binding header for std::time, and
+#           kyoten's frame guard and @kama/window's unreached fixture now link none of its C. An unreached package's
+#           `link` libraries and flags still apply (KR-443).
+#   Every manifest passed `kama check` on it before the bump. Green on it with nothing else changed, at 0.9.1026's
+#   counts, every leg debug and release: tools/test.sh (engine 218 natively and on wasm, the frame guard, the tool's
+#   229, kyoten check, fps native and on wasm, vr checked), @kama/window's (304, 204 under node, 311 in Edge and
+#   Firefox, 322 through the driver, the unreached fixture linked), @kama/gpu's (344, 315 in Edge, 319 in Firefox and
+#   Chrome for Testing), @kama/image's (1,401, the sweep's 197), @kama/imagediff's (94) and @kama/graphics' (475
+#   natively, 476 in Firefox and Chrome for Testing, 451 in Edge). KY-35, KY-40, KY-45 and KY-58 re-checked,
+#   unchanged. The Mac's pin is 0.9.978 until it is rebuilt at 25d97c29.
+KAMA_VERSION=0.9.1027
+KAMA_BUILD=g25d97c29

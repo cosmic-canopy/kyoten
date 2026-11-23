@@ -100,13 +100,13 @@ the spin fixture runs headless on every leg.
 **`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), and the join's step 7 (the
 forty-fourth). Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.1018+g575a9cc6`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.1027+g25d97c29`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s, `@kama/imagediff`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
-   twice on each leg. The closing counts, on 0.9.1026, as on 0.9.1018 and 0.9.978 before:
+   twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
    - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 229; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
      session's start. It takes 10 min 25 s alone on 0.9.1018, warm (12 min 6 s on the first run after the change
@@ -148,22 +148,21 @@ forty-fourth). Where the work is:**
      beside a suite.
    - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
      emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
-   - **Read `../kama`'s log since `b2f627b0`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor b2f627b0 HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `25d97c29`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 25d97c29 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     **At the bump `b2f627b0` was on kama's origin** (2026-11-22), so the Mac can rebuild at it, and the range was
-     empty. Read again at the readying after it, the same day: nothing new on kama's origin, and its tree on this
-     machine one roadmap commit ahead of it (`98a48e19`), KR-437's last two decisions ruled (KY-67). What 0.9.979 to
-     0.9.1026 brought, read session by session from the thirty-fifth, is `.kama-version`'s entries for the bumps, and
-     this item's history in the git log. A bump is optional until something kyoten needs lands, and checks first what a
-     release in the range says it changes.
-   - **The pin is on 0.9.1026** (`b2f627b0`) since 2026-11-22, the forty-fifth session's readying (`.kama-version`), at
-     the owner's word ("yes you can bump first A"), every suite green on it at 0.9.1018's counts with nothing changed
-     but the cube's web-size record. Before it, 0.9.1018 since the forty-fifth session, at the owner's word ("we can
-     bump now"), with the 48 `.keys()` calls ported; 0.9.978 since the thirty-fifth session, whose 0.9.967 brought
-     KR-378, so `@kama/window`'s WIN-24 can be built; and 0.9.966 since the thirty-second. `.kama-version` says what
-     moved:
+     **At the bump `25d97c29` was kama's origin's HEAD** (2026-11-22, the forty-sixth session's start), so the Mac can
+     rebuild at it, and the range was empty. What 0.9.979 to 0.9.1027 brought, read session by session from the
+     thirty-fifth, is `.kama-version`'s entries for the bumps, and this item's history in the git log. A bump is
+     optional until something kyoten needs lands, and checks first what a release in the range says it changes.
+   - **The pin is on 0.9.1027** (`25d97c29`) since 2026-11-22, the forty-sixth session's start (`.kama-version`), at
+     the owner's word ("A: bump now (Recommended)"), every suite green on it at 0.9.1026's counts with nothing changed.
+     Before it, 0.9.1026 (`b2f627b0`) since the forty-fifth session's readying, at the owner's word ("yes you can bump
+     first A"), every suite green on it at 0.9.1018's counts with nothing changed but the cube's web-size record;
+     0.9.1018 since the forty-fifth session, at the owner's word ("we can bump now"), with the 48 `.keys()` calls
+     ported; 0.9.978 since the thirty-fifth session, whose 0.9.967 brought KR-378, so `@kama/window`'s WIN-24 can be
+     built; and 0.9.966 since the thirty-second. `.kama-version` says what moved:
      - **0.9.1019 to 0.9.1026:** kama fixed three of the forty-fifth session's four gaps the day after they were filed,
        each now removed: a `return` with a value in a `void` function is refused (KR-435, KY-65); a negative `Duration`
        moves an `Instant` back, `now + (-d)` (KR-436, KY-66), so `@kama/window`'s tests dropped their
@@ -173,6 +172,10 @@ forty-fourth). Where the work is:**
        check (kama-graphics `7de75ab`), and a lone surrogate from a page's synthetic key event now ends the program,
        which is `@kama/window`'s WIN-27. The rest is none that kyoten calls: a TCP connect to itself, a kbin reader's
        malformed stream, an emitter fix and the bare-metal runtime.
+     - **0.9.1027:** a package's C goes with its kama (KR-437, KY-67, fixed and removed): a program that reaches a
+       package links its `csources`, one that reaches none links none, and a reached package emits every `expose fn`.
+       Nothing to port: `@kama/window`'s C reads kama's clock through `kama_time.h`, kama's binding header for
+       `std::time`, and kyoten's frame guard and the package's `unreached` fixture now link none of its C.
      - **0.9.1013 to 0.9.1018:** a `SortedMap` lists as `Map` does (`foreach (K k in m)`), its `keys()` gone (KR-424);
        any `select` value takes `assets` (KR-432), which fixes KY-63; a project's `kama run` builds where `kama build`
        does and shares its object cache (KR-433), which fixes KY-64; and since 0.9.980 a method may be named `spawn`
@@ -192,7 +195,7 @@ forty-fourth). Where the work is:**
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `b2f627b0`,** on kama's origin. It was rebuilt
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `25d97c29`,** on kama's origin. It was rebuilt
      at 0.9.978 on 2026-11-18 (kyoten `9c7704b`) from a clean clone at the owner's word, its `tools/test.sh` green
      with Windows's counts, every wasm leg in both builds. KY-3 is narrowed there: a program builds for
      `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its
@@ -201,9 +204,6 @@ forty-fourth). Where the work is:**
      - KY-45 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
-     - KY-67, filed 2026-11-21 (the forty-fifth session), kama's KR-437, its three decisions ruled and not yet built:
-       a library's C is linked into a program that reaches none of its kama while its `expose fn` is not.
-       `@kama/window` has no `expose fn` since (kama-window `fedfc75`).
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
    ([design/architecture.md](design/architecture.md) § Decided, how the libraries grow). Each row is test-first, its
    questions asked in full in the chat:
