@@ -8,10 +8,12 @@
 // - **Its edges and its deltas are the step's own:** `pressed` when a press landed in this step's window, `released`
 //   when a release did, and a delta the motion that landed in it; `kyoten::frame::PlayerActions` turns them into each
 //   processor's view, whatever its rate.
+// - **Each player's active scheme** (`Scheme`), the kind of device that last drove them, which a scheme-gated Input
+//   processor runs by (design/input.md § Decided, the second part's question 1).
 // - **It is made by an `InputSource`:** the engine's binder (`kyoten::input`), a replay's log, or a test's script.
 // - **Sized once,** for the game's players and actions, so a step allocates nothing.
 
-import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Pose, ActionList };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Pose, ActionList, Scheme };
 
 export { Handoff };
 
@@ -28,6 +30,8 @@ type resource Handoff {
     DynamicArray<Vec2> vector2s = DynamicArray.empty();
     DynamicArray<Vec3> vector3s = DynamicArray.empty();
     DynamicArray<Pose> poses = DynamicArray.empty();
+    // Player p's active scheme at p - 1.
+    DynamicArray<Scheme> schemes = DynamicArray.empty();
 
     // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero or at rest.
     public ctor make(int32 players, const ref ActionList actions) {
@@ -49,6 +53,8 @@ type resource Handoff {
         while (i < p * cast<int64>(this.vector3Count)) { this.vector3s.add(item: Vec3.zero()); i = i + 1; }
         i = 0;
         while (i < p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
+        i = 0;
+        while (i < p) { this.schemes.add(item: Scheme::KeyboardMouse); i = i + 1; }
     }
 
     public const fn int32 players() { return this.playerCount; }
@@ -120,6 +126,19 @@ type resource Handoff {
         while (i < this.vector3s.length()) { this.vector3s[i] = Vec3.zero(); i = i + 1; }
         i = 0;
         while (i < this.poses.length()) { this.poses[i] = Pose.identity(); i = i + 1; }
+        i = 0;
+        while (i < this.schemes.length()) { this.schemes[i] = Scheme::KeyboardMouse; i = i + 1; }
+    }
+
+    // Player `player`'s active scheme: `KeyboardMouse` until a pad drives them, and for a player it has no room for.
+    public const fn Scheme scheme(int32 player) {
+        if (player < 1 || player > this.playerCount) { return Scheme::KeyboardMouse; }
+        return this.schemes[cast<isize>(player - 1)];
+    }
+    // Sets player `player`'s active scheme. Out of range is a caller's bug, and traps.
+    public fn void setScheme(int32 player, Scheme value) {
+        assert(cond: player >= 1 && player <= this.playerCount, msg: "a hand-off has room for this player's scheme");
+        this.schemes[cast<isize>(player - 1)] = value;
     }
 
     const fn bool holds(int32 player, int32 action, int32 count) {

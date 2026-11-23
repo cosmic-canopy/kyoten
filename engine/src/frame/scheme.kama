@@ -1,0 +1,15 @@
+// kyoten::frame::Scheme — a binding's device kind (design/input.md § Decided, the second part's question 1): the
+// keyboard's and the mouse's entries are `KeyboardMouse`, a pad's `Gamepad`; touch and XR join with theirs.
+//
+// - **Each player has an active scheme,** that of the device that last drove them (the binder's rule), carried in each
+//   step's hand-off, so a replay runs the same logic.
+// - **An Input-phase processor may name one in its record** (`"scheme": "Gamepad"`), and runs only over the rows whose
+//   player's active scheme it is: it turns the device-shaped actions into the game's own components, which Update reads.
+//   The scheme is no value a processor reads, and the tool refuses one on an Update or Constraints processor, so the
+//   abstraction stops at Input (the owner: "the update phase shouldn't need to know what input phase is abstracting").
+//   An Output processor may name one too, for a prompt.
+
+export { Scheme };
+
+@generate(Serializable, Deserializable)
+type enum Scheme { KeyboardMouse, Gamepad }

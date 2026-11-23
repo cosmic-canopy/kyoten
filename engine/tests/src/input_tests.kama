@@ -7,7 +7,7 @@
 import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
-         kyoten::frame::Clock };
+         kyoten::frame::Clock, kyoten::frame::Scheme };
 
 export { inputTests, spelled, digitalOf };
 
@@ -355,7 +355,41 @@ fn void valuePlayerCases(ref Tally t) {
                x: 0.0, y: 500.0);
 }
 
+fn string schemeWord(Scheme s) { return match (s) { case KeyboardMouse: "KeyboardMouse"; case Gamepad: "Gamepad"; }; }
+
+// Each player's active scheme in the hand-off and the world's record (the second part's question 1).
+fn void schemeCases(ref Tally t) {
+    Handoff h = Handoff.make(players: 2, actions: twoDigital());
+    string first = schemeWord(s: h.scheme(player: 1));
+    t.verdict(name: "Handoff: a player's scheme is KeyboardMouse until a pad drives them", why: first == "KeyboardMouse" ? "" : first);
+    h.setScheme(player: 2, value: Scheme::Gamepad);
+    string two = schemeWord(s: h.scheme(player: 2));
+    string one = schemeWord(s: h.scheme(player: 1));
+    t.verdict(name: "Handoff: a scheme set is read back by its player, the other's its own",
+              why: two == "Gamepad" && one == "KeyboardMouse" ? "" : "player 2 ${two}, player 1 ${one}");
+    string past = schemeWord(s: h.scheme(player: 3));
+    t.verdict(name: "Handoff: a player past its room reads KeyboardMouse", why: past == "KeyboardMouse" ? "" : past);
+    h.clear();
+    string cleared = schemeWord(s: h.scheme(player: 2));
+    t.verdict(name: "Handoff: clear sets every scheme back", why: cleared == "KeyboardMouse" ? "" : cleared);
+
+    PlayerActions w = PlayerActions.make(players: 2, actions: twoDigital(), window: 1);
+    t.verdict(name: "PlayerActions: a player is on KeyboardMouse before the first hand-off",
+              why: w.inScheme(player: 1, scheme: Scheme::KeyboardMouse) && !w.inScheme(player: 1, scheme: Scheme::Gamepad) ? "" : "it is not");
+    h.setScheme(player: 2, value: Scheme::Gamepad);
+    w.take(handoff: h, step: 0);
+    t.verdict(name: "PlayerActions: a step's hand-off sets each player's scheme",
+              why: w.inScheme(player: 2, scheme: Scheme::Gamepad) && w.inScheme(player: 1, scheme: Scheme::KeyboardMouse) ? "" : "it did not");
+    t.verdict(name: "PlayerActions: a row naming no player is in no scheme",
+              why: !w.inScheme(player: 0, scheme: Scheme::KeyboardMouse) && !w.inScheme(player: 0, scheme: Scheme::Gamepad) ? "" : "it is in one");
+    t.verdict(name: "PlayerActions: nor one past its room", why: !w.inScheme(player: 3, scheme: Scheme::KeyboardMouse) ? "" : "it is in one");
+    h.setScheme(player: 2, value: Scheme::KeyboardMouse);
+    w.take(handoff: h, step: 1);
+    t.verdict(name: "PlayerActions: and the next step's sets it again", why: w.inScheme(player: 2, scheme: Scheme::KeyboardMouse) ? "" : "it did not");
+}
+
 fn void inputTests(ref Tally t) {
+    schemeCases(t: t);
     digitalCases(t: t);
     actionListCases(t: t);
     poseCases(t: t);

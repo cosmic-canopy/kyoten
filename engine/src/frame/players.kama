@@ -14,9 +14,12 @@
 //   which the generated world states, or Output's, at most the clock's `DefaultMaxSteps` in a frame. A delta read over
 //   a window wider than that sums the newest steps kept: Output's, when steps ran with no frame between, as a test or a
 //   replay drives them.
+// - **Each player's active scheme,** as of the last step taken, which a scheme-gated processor runs by: a row naming
+//   no player runs none (design/input.md § Decided, the second part's question 1).
 // - **It is world state, made only from hand-offs,** so a replay of the hand-offs makes the same views.
 
-import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Handoff, Pose, ActionList, Clock };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Handoff, Pose, ActionList, Clock,
+         Scheme };
 
 export { PlayerActions };
 
@@ -47,6 +50,8 @@ type resource PlayerActions {
     DynamicArray<Vec2> vector2s = DynamicArray.empty();
     DynamicArray<Vec3> vector3s = DynamicArray.empty();
     DynamicArray<Pose> poses = DynamicArray.empty();
+    // Player p's active scheme as of the last step taken, at p - 1.
+    DynamicArray<Scheme> schemes = DynamicArray.empty();
 
     // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero or at rest; `window`
     // the widest window of steps a processor's run reaches back over (its rate's period), Output's added by the record.
@@ -83,6 +88,8 @@ type resource PlayerActions {
         while (i < this.keep * p * cast<int64>(this.vector3Count)) { this.vector3s.add(item: Vec3.zero()); i = i + 1; }
         i = 0;
         while (i < this.keep * p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
+        i = 0;
+        while (i < p) { this.schemes.add(item: Scheme::KeyboardMouse); i = i + 1; }
     }
 
     public const fn int32 players() { return this.playerCount; }
@@ -106,6 +113,7 @@ type resource PlayerActions {
         this.slotSteps[slot] = step;
         int32 p = 1;
         while (p <= this.playerCount) {
+            this.schemes[cast<isize>(p - 1)] = handoff.scheme(player: p);
             int32 a = 0;
             while (a < this.digitalCount) {
                 Digital d = handoff.digital(player: p, action: a);
@@ -216,6 +224,13 @@ type resource PlayerActions {
         isize slot = this.slotOf(step: upTo);
         if (slot < 0) { return Pose.identity(); }
         return this.poses[this.inSlot(slot: slot, player: player, action: action, count: this.poseCount)];
+    }
+
+    // Whether player `player`'s active scheme is `scheme`, as of the last step taken: false for a player it has no room
+    // for, as for a row naming none, so a scheme-gated processor runs on no such row.
+    public const fn bool inScheme(int32 player, Scheme scheme) {
+        if (player < 1 || player > this.playerCount) { return false; }
+        return this.schemes[cast<isize>(player - 1)] == scheme;
     }
 
     const fn bool holds(int32 player, int32 action, int32 count) {

@@ -14,7 +14,7 @@
     ".": { "visibility": "public", "importsOnly": [] },
     "frame": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
     "world": { "visibility": "public", "importsOnly": ["std::math", "std::collections"] },
-    "records": { "visibility": "public", "importsOnly": ["std::collections", "std::memory"] },
+    "records": { "visibility": "public", "importsOnly": ["std::collections", "std::memory", "frame"] },
     "input": { "visibility": "public",
                "importsOnly": ["std::collections", "std::memory", "std::math", "std::serialization::text::json", "frame", "records",
                                "window"] },

@@ -152,6 +152,14 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
         + "slot 0 yaw 0 pitch 0 slow 0 steer 0 look 0 0 | slot 1 yaw 60 pitch 30 slow 55 steer 0.25 look 0 0";
     t.verdict(name: "spin: ${leg}: a delta is summed over each run's window, whatever its rate, and a state read as of its step",
               why: aims == wantAims ? "" : "aimed `${aims}`");
+    // Each scheme's Input processor runs over the rows whose player's active scheme it names (the second part's question
+    // 1): player 1 on the keyboard and the mouse for 20 steps, then on a pad for 40; the cube naming no player, neither.
+    DynamicArray<string> schemedLines = linesAfter(text: said, prefix: "schemed: ");
+    string schemes = "";
+    foreach (const ref string l in schemedLines.iterConst()) { schemes = schemes.isEmpty() ? copy l : schemes + " | " + l; }
+    string wantSchemes = "slot 0 keys 0 pad 0 | slot 1 keys 20 pad 40 | slot 0 keys 0 pad 0 | slot 1 keys 20 pad 40";
+    t.verdict(name: "spin: ${leg}: a scheme's Input processor runs over the rows whose player's scheme it names, none for no player",
+              why: schemes == wantSchemes ? "" : "schemed `${schemes}`");
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's

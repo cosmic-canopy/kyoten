@@ -25,6 +25,8 @@
     "inner":          { "group": "g", "after": ["outer"] },
     "seven":          { "phase": "Update", "rate": 7 },
     "eleven":         { "phase": "Update", "rate": 11 },
+    "padInUpdate":    { "phase": "Update", "scheme": "Gamepad" },
+    "schemeBlind":    { "phase": "Input", "scheme": "KeyboardMouse" },
     "missing":        { "phase": "Update" },
     "kyoten::physics::solve": { "phase": "Constraints" } },
   "components": {

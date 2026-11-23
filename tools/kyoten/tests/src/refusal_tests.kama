@@ -137,6 +137,10 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
     eraseDir(path: s.fixture(at: "processors/src/generated"));
     Ran p = s.kyoten(command: "generate", game: "processors", more: none());
     ranAs(t: t, name: "processors: refused", r: p, want: 1, says: "");
+    says(t: t, name: "processors: a scheme on an Update processor is refused: the abstraction stops at Input", r: p,
+         words: allOf(a: "processor `padInUpdate` names a scheme and runs in Update", b: "never asks which device", c: ""));
+    says(t: t, name: "processors: a scheme on a processor reading no `Actions` is refused, since a row's player names it", r: p,
+         words: allOf(a: "processor `schemeBlind` names a scheme and reads no `Actions`", b: "", c: ""));
     says(t: t, name: "processors: `ref Time` is refused, naming the fix", r: p,
          words: allOf(a: "`processors::bad::refTime`", b: "`ref Time`", c: "`const ref Time`"));
     says(t: t, name: "processors: `Time` by value is refused", r: p,

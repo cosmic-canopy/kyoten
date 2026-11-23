@@ -1,5 +1,5 @@
 import { kyoten::world::Transform, kyoten::frame::Time, spin::generated::Actions };
-export { Spin, Size, Taps, Aim, SlowAim, turn, tally, aimTrack, aimTally };
+export { Spin, Size, Taps, Aim, SlowAim, Steering, turn, tally, aimTrack, aimTally, steerByKeys, steerByPad };
 @generate(Serializable, Deserializable)
 type value Spin { @field public float32 rate = 1; public default ctor make() { } }
 @generate(Serializable, Deserializable)
@@ -33,3 +33,13 @@ fn void aimTrack(ref Aim aim, const ref Actions input) {
     aim.steer = input.steer;
 }
 fn void aimTally(ref SlowAim aim, const ref Actions input) { aim.yaw = aim.yaw + input.look.x; }
+// The steps each scheme's Input processor ran for a cube (the first slice's step 8, its second part): each runs over the
+// rows whose player's active scheme it names, where a game turns that device's actions into its own components.
+@generate(Serializable, Deserializable)
+type value Steering {
+    @field public int32 keys = 0;
+    @field public int32 pad = 0;
+    public default ctor make() { }
+}
+fn void steerByKeys(ref Steering s, const ref Actions input) { s.keys = s.keys + 1; }
+fn void steerByPad(ref Steering s, const ref Actions input) { s.pad = s.pad + 1; }

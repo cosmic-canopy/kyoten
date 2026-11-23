@@ -17,6 +17,10 @@
 // - **Edges, per step** (kyoten::frame::Digital): a press and its release inside one step show the press, held, on that
 //   step and the release on the next; a release and a press inside one step show both, held.
 // - **A control is on at `Gamepad::PressedAt` of its travel or more,** `@kama/window`'s own threshold, for every device.
+// - **Player 1's active scheme** (the second part's question 1) is the kind of device that last drove them: a key or a
+//   mouse button pressed or the mouse moved is `KeyboardMouse`; the locked pad's button pressed, a trigger past
+//   `PressedAt` or a stick past half its travel is `Gamepad`, so drift cannot switch it; the locked pad gone, back to
+//   `KeyboardMouse`. Each step's hand-off carries it as of the step's end.
 // - **A value action** (`Analog`, `Vector2`, `Vector3`; the second part's questions 1 and 2):
 //   - an entry's parts make its value: an `Analog`'s `positive` less its `negative`; a `Vector2`'s `right` less `left`
 //     and `up` less `down`, or its `x` and `y`; a `Vector3`'s with `backward` less `forward` (forward is -Z) or `z`.
@@ -34,12 +38,15 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          std::math::Vec3, std::math::sqrt, std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
+         kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
 
 comptime int32 NO_PAD = -1;
+// How far a stick goes before it says the pad is in use: half its travel, so a drifting or knocked stick does not.
+comptime float32 STICK_IN_USE = 0.5;
 
 // Why bindings were refused at load: one line each, every refusal at once.
 type resource BindingError implements Error {
@@ -127,8 +134,9 @@ type resource Binder implements InputSource {
     DynamicArray<bool> analogDeltas = DynamicArray.empty();
     DynamicArray<bool> vector2Deltas = DynamicArray.empty();
     DynamicArray<bool> vector3Deltas = DynamicArray.empty();
-    // The pad player 1 has locked in, NO_PAD while none.
+    // The pad player 1 has locked in, NO_PAD while none, and player 1's active scheme.
     int32 lockSlot = NO_PAD;
+    Scheme schemeNow = Scheme::KeyboardMouse;
     // The samples handed in, oldest first, those before `head` handed off; cleared once all are.
     DynamicArray<Sample> waiting = DynamicArray.empty();
     isize head = 0;
@@ -200,6 +208,8 @@ type resource Binder implements InputSource {
 
     public const fn int32 players() { return this.playerCount; }
     public const fn int32 digitalActions() { return this.digitalCount; }
+    // Player 1's active scheme as of the samples handed off.
+    public const fn Scheme scheme() { return this.schemeNow; }
     // The pad slot player 1 has locked in, None while none is.
     public const fn Optional<int32> lockedPad() {
         if (this.lockSlot == NO_PAD) { return Optional::None; }
@@ -261,7 +271,10 @@ type resource Binder implements InputSource {
             if (this.playerCount >= 1) { this.out.setDigital(player: 1, action: a, value: d); }
             a = a + 1;
         }
-        if (this.playerCount >= 1) { this.handValues(); }
+        if (this.playerCount >= 1) {
+            this.handValues();
+            this.out.setScheme(player: 1, value: this.schemeNow);
+        }
         isize k = 0;
         while (k < this.sources.length()) {
             this.sources[k].moved = 0.0;
@@ -354,19 +367,25 @@ type resource Binder implements InputSource {
                 if (s.slot == this.lockSlot) {
                     this.lockSlot = NO_PAD;
                     this.release(device: Device::Gamepad);
+                    this.schemeNow = Scheme::KeyboardMouse;
                 }
                 return;
             }
             case Control: { }
             case Travel: {
-                if (s.slot == this.lockSlot) { this.setValues(s: s); }
+                if (s.slot != this.lockSlot) { return; }
+                if (s.value >= Gamepad::PressedAt) { this.schemeNow = Scheme::Gamepad; }
+                this.setValues(s: s);
                 return;
             }
             case Axis: {
-                if (s.slot == this.lockSlot) { this.setValues(s: s); }
+                if (s.slot != this.lockSlot) { return; }
+                if (absOf(x: s.value) >= STICK_IN_USE) { this.schemeNow = Scheme::Gamepad; }
+                this.setValues(s: s);
                 return;
             }
             case Motion: {
+                this.schemeNow = Scheme::KeyboardMouse;
                 this.setValues(s: s);
                 return;
             }
@@ -375,6 +394,9 @@ type resource Binder implements InputSource {
         if (s.device == Device::Gamepad) {
             if (this.lockSlot == NO_PAD && on) { this.lockSlot = s.slot; }
             if (s.slot != this.lockSlot) { return; }
+            if (on) { this.schemeNow = Scheme::Gamepad; }
+        } else if (on) {
+            this.schemeNow = Scheme::KeyboardMouse;
         }
         isize i = 0;
         while (i < this.controls.length()) {

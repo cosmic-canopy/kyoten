@@ -5,7 +5,7 @@ import { kyoten::frame::Time, kyoten::world::Handle, std::math::Vec3 };
 
 export { Hp, Armor, Mark, Score, Ghostly, refTime, timeByValue, handleByRef, byValue, notKyoten, notBuilt,
          writesInOutput, returns, both, neither, lost, tooSlow, outputRated, iterates, randomly, sorted, nowhere, loopA,
-         loopB, hitA, hitB, outer, inner, seven, eleven };
+         loopB, hitA, hitB, outer, inner, seven, eleven, padInUpdate, schemeBlind };
 
 type value Hp { public int32 hp = 10; public default ctor make() { } }
 type value Armor { public int32 points = 0; public default ctor make() { } }
@@ -37,4 +37,7 @@ fn void hitB(ref Armor a) { }
 fn void outer(const ref Hp h) { }
 fn void inner(const ref Hp h) { }
 fn void seven(const ref Hp h) { }
+// A scheme on an Update processor, and one on an Input processor that reads no `Actions` (design/input.md § Decided).
+fn void padInUpdate(const ref Hp h) { }
+fn void schemeBlind(const ref Hp h) { }
 fn void eleven(const ref Hp h) { }

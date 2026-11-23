@@ -272,7 +272,7 @@ fn string callOf(const ref Processor p, const ref Family f, bool perRow, const r
 // every table its family set gives, or once when it names no entity's component or handle.
 fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> families, const ref ImportSet worldNames,
                          const ref string timeType, const ref string pad, const ref string actionsPath, bool hasActions,
-                         ref int32 counter) {
+                         const ref string schemeType, ref int32 counter) {
     bool output = p.phase() == Phase::Output;
     string time = output ? "time" : "at";
     string t = "";
@@ -322,7 +322,19 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
             t = t + body + "foreach (ref " + chunkType(f: families[fi]) + " c in w." + tableField(f: families[fi]) + ".chunks.iterMut()) {\n";
             t = t + body + "    isize i = 0;\n";
             t = t + body + "    while (i < c." + handleColumn() + ".length()) {\n";
-            t = t + body + "        " + callOf(p: p, f: families[fi], perRow: true, time: time, worldNames: worldNames) + "\n";
+            string call = callOf(p: p, f: families[fi], perRow: true, time: time, worldNames: worldNames);
+            match (p.scheme()) {
+                case Some(value: sc): {
+                    // A scheme-gated processor runs over the rows whose player's active scheme it is (design/input.md §
+                    // Decided, the second part's question 1).
+                    string word = match (sc) { case KeyboardMouse: "KeyboardMouse"; case Gamepad: "Gamepad"; };
+                    string column = columnOf(f: families[fi], path: actionsPath);
+                    call = "if (w.player_actions.inScheme(player: c." + column + "[i].player, scheme: " + schemeType + "::" + word
+                        + ")) { " + call + " }";
+                }
+                case None: { }
+            };
+            t = t + body + "        " + call + "\n";
             t = t + body + "        i = i + 1;\n";
             t = t + body + "    }\n";
             t = t + body + "}\n";
@@ -348,6 +360,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     imports.add(path: "kyoten::frame::Rate");
     imports.add(path: "kyoten::frame::Time");
     imports.add(path: "kyoten::frame::Handoff");
+    imports.add(path: "kyoten::frame::Scheme");
     imports.add(path: inRoot(game: game, name: worldType));
     foreach (const ref Family f in families.iterConst()) { imports.add(path: inRoot(game: game, name: chunkType(f: f))); }
     foreach (const ref Processor p in s.processors().iterConst()) { imports.addAs(path: p.path(), alias: runName(path: p.path())); }
@@ -356,6 +369,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     string timeType = imports.nameOf(path: "kyoten::frame::Time");
     string handoffType = imports.nameOf(path: "kyoten::frame::Handoff");
     string world = imports.nameOf(path: inRoot(game: game, name: worldType));
+    string schemeType = imports.nameOf(path: "kyoten::frame::Scheme");
 
     string t = headerLine() + "\n";
     t = t + "// The passes (components § Decided; frame-phases § Decided, questions 1, 2 and 5): one function a phase, calling\n";
@@ -387,7 +401,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             string path = key.substring(start: 2, end: key.length());
             if (key.startsWith(prefix: "p:")) {
                 isize at = s.processorAt(path: path);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", actionsPath: actionsPath, hasActions: hasActions, counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
                 continue;
             }
             isize gi = s.groupAt(path: path);
@@ -400,7 +414,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             t = t + "    while (" + round + " < ${times}) {\n";
             foreach (const ref string member in s.groups()[gi].order().iterConst()) {
                 isize at = s.processorAt(path: member);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", actionsPath: actionsPath, hasActions: hasActions, counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
             }
             t = t + "        " + round + " = " + round + " + 1;\n";
             t = t + "    }\n";

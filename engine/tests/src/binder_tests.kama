@@ -8,7 +8,8 @@
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
-         std::math::Vec2, std::math::Vec3, std::math::sqrt, kyoten::frame::Time, kyoten::records::BindingRecord,
+         std::math::Vec2, std::math::Vec3, std::math::sqrt, kyoten::frame::Time, kyoten::frame::Scheme,
+         kyoten::records::BindingRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
 export { binderTests };
@@ -435,7 +436,52 @@ fn void valueRefusalCases(ref Tally t) {
               ? "" : "refused `${many}`");
 }
 
+// Player 1's scheme in step `step`'s hand-off up to `until`, as a word.
+fn string schemeAt(ref Binder b, int64 step, int64 until) {
+    Scheme s = b.handoff(index: step, until: until).scheme(player: 1);
+    return match (s) { case KeyboardMouse: "KeyboardMouse"; case Gamepad: "Gamepad"; };
+}
+
+fn void expectScheme(ref Tally t, ref Binder b, int64 step, int64 until, const ref string name, const ref string want) {
+    string got = schemeAt(b: b, step: step, until: until);
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+// Player 1's active scheme: the kind of device that last drove them, a stick only past half its travel, the locked pad
+// gone back to KeyboardMouse (the second part's question 1).
+fn void schemeCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
+    expectScheme(t: t, b: b, step: 0, until: 100, name: "binder: player 1 starts on KeyboardMouse", want: "KeyboardMouse");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 110));
+    expectScheme(t: t, b: b, step: 1, until: 200, name: "binder: a pad's press, taking the lock, is Gamepad", want: "Gamepad");
+    hand(b: b, s: key(control: 4, down: true, at: 210));
+    expectScheme(t: t, b: b, step: 2, until: 300, name: "binder: a key pressed, any key, is KeyboardMouse again", want: "KeyboardMouse");
+    hand(b: b, s: key(control: 4, down: false, at: 310));
+    hand(b: b, s: stick(slot: 0, index: 0, value: 0.3, at: 320));
+    expectScheme(t: t, b: b, step: 3, until: 400, name: "binder: a stick short of half its travel, a drift, switches nothing", want: "KeyboardMouse");
+    hand(b: b, s: stick(slot: 0, index: 1, value: -0.6, at: 410));
+    expectScheme(t: t, b: b, step: 4, until: 500, name: "binder: a stick past half its travel is Gamepad", want: "Gamepad");
+    hand(b: b, s: motion(index: 0, value: 2.0, at: 510));
+    expectScheme(t: t, b: b, step: 5, until: 600, name: "binder: the mouse moved is KeyboardMouse", want: "KeyboardMouse");
+    hand(b: b, s: travel(slot: 0, button: 7, value: 0.1, at: 610));
+    expectScheme(t: t, b: b, step: 6, until: 700, name: "binder: a trigger short of PressedAt switches nothing", want: "KeyboardMouse");
+    hand(b: b, s: travel(slot: 0, button: 7, value: 0.5, at: 710));
+    expectScheme(t: t, b: b, step: 7, until: 800, name: "binder: a trigger past PressedAt is Gamepad", want: "Gamepad");
+    hand(b: b, s: Sample.make(device: Device::Mouse, slot: 0, control: 0, value: 1.0, at: 810));
+    expectScheme(t: t, b: b, step: 8, until: 900, name: "binder: a mouse button pressed is KeyboardMouse", want: "KeyboardMouse");
+    hand(b: b, s: pad(slot: 1, control: 0, value: 1.0, at: 910));
+    hand(b: b, s: stick(slot: 1, index: 0, value: 1.0, at: 920));
+    expectScheme(t: t, b: b, step: 9, until: 1000, name: "binder: another pad, not locked, switches nothing", want: "KeyboardMouse");
+    hand(b: b, s: pad(slot: 0, control: 1, value: 1.0, at: 1010));
+    expectScheme(t: t, b: b, step: 10, until: 1100, name: "binder: the locked pad's press again", want: "Gamepad");
+    hand(b: b, s: Sample.padDisconnected(slot: 0, at: 1110));
+    expectScheme(t: t, b: b, step: 11, until: 1200, name: "binder: the locked pad gone, KeyboardMouse", want: "KeyboardMouse");
+    hand(b: b, s: pad(slot: 1, control: 0, value: 0.0, at: 1210));
+    expectScheme(t: t, b: b, step: 12, until: 1300, name: "binder: a pad's release takes no lock and switches nothing", want: "KeyboardMouse");
+}
+
 fn void binderTests(ref Tally t) {
+    schemeCases(t: t);
     bindingCases(t: t);
     partCases(t: t);
     travelCases(t: t);

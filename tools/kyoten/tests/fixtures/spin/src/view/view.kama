@@ -3,9 +3,9 @@
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin,
-         spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::generated::Actions };
+         spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering, spin::generated::Actions };
 
-export { show, seen, aimed };
+export { show, seen, aimed, schemed };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -36,4 +36,12 @@ fn void aimed(const ref Aim aim, const ref SlowAim slow, const ref Actions input
     float32 lookX = input.look.x;
     float32 lookY = input.look.y;
     println(s: "aimed: slot ${slot} yaw ${yaw} pitch ${pitch} slow ${slowYaw} steer ${steer} look ${lookX} ${lookY}");
+}
+
+// The steps each scheme's Input processor ran for each cube.
+fn void schemed(const ref Steering s, Handle me) {
+    uint32 slot = me.slot();
+    int32 keys = s.keys;
+    int32 pad = s.pad;
+    println(s: "schemed: slot ${slot} keys ${keys} pad ${pad}");
 }

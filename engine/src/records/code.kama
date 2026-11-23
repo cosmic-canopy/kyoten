@@ -7,7 +7,7 @@
 // (a group's `phase`, an action's `kind`) is required, and refused by name when missing. The rules across fields and
 // records (a processor names a phase or a group, not both) are `kyoten check`'s.
 
-import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind, Tier };
+import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind, Tier, kyoten::frame::Scheme };
 
 export { ModuleRecord, ProcessorGroupRecord, ProcessorRecord, ComponentRecord, ActionRecord };
 
@@ -48,6 +48,7 @@ type resource ProcessorRecord {
     @field(name: "iterations", default) int32 iterationsField = 1;
     @field(name: "random", default) DynamicArray<string> randomField = DynamicArray.empty();
     @field(name: "orderBy") Optional<string> orderByField = Optional::None;
+    @field(name: "scheme") Optional<Scheme> schemeField = Optional::None;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
@@ -66,6 +67,9 @@ type resource ProcessorRecord {
     public const fn const ref DynamicArray<string> random() { return this.randomField; }
     // A sort key such as `"towers::Initiative.value"`, ties broken by handle; none is chunk order.
     public const fn const ref Optional<string> orderBy() { return this.orderByField; }
+    // The scheme it runs by, an Input or an Output processor reading `Actions`: it runs over the rows whose player's
+    // active scheme it is; none, every row (design/input.md § Decided, the second part's question 1).
+    public const fn Optional<Scheme> scheme() { return this.schemeField; }
     public const fn const ref string note() { return this.noteField; }
 }
 

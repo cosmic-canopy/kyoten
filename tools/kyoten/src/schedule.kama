@@ -16,7 +16,7 @@
 //
 // Every problem is named, with its record's or its code's file and the fix, and one run names them all.
 
-import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord,
+import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord, kyoten::frame::Scheme,
          kyoten::records::ProcessorGroupRecord, kyoten::records::ComponentRecord, kyoten::frame::Rate,
          std::collections::DynamicArray, std::collections::SortedMap, Records, CodeFile, Index, FunctionEntry,
          ParamEntry, Family, Component, Refusals, Manifest, inModule, lastOf, moduleOfPath };
@@ -55,9 +55,11 @@ type resource Processor {
     int32 hz = 0;
     int32 times = 1;
     DynamicArray<Param> paramList = DynamicArray.empty();
+    Optional<Scheme> schemeValue = Optional::None;
 
     public ctor make(string path, string recordFile, string codeFile, Phase phase, string group, int32 hz, int32 times,
-                     DynamicArray<Param> params) {
+                     DynamicArray<Param> params, Optional<Scheme> scheme) {
+        this.schemeValue = scheme;
         this.fullPath = give path;
         this.recordFile = give recordFile;
         this.codeFile = give codeFile;
@@ -76,6 +78,8 @@ type resource Processor {
     public const fn int32 rate() { return this.hz; }
     public const fn int32 iterations() { return this.times; }
     public const fn const ref DynamicArray<Param> params() { return this.paramList; }
+    // The scheme it runs by, over the rows whose player's active scheme it is; none, every row.
+    public const fn Optional<Scheme> scheme() { return this.schemeValue; }
     // The records file that declares it.
     public const fn const ref string recordFileOf() { return this.recordFile; }
 
@@ -522,7 +526,26 @@ unsafe fn bool processorRecord(const ref string key, const ref ProcessorRecord r
         case Some(value: o): { no.add(where: file, what: "processor `${key}` names an `orderBy`, which is not built yet: it comes with its row"); ok = false; }
         case None: { }
     };
+    match (rec.scheme()) {
+        case Some(value: sc): {
+            if (phase == Phase::Update || phase == Phase::Constraints) {
+                string ph = phaseName(phase: phase);
+                no.add(where: file, what: "processor `${key}` names a scheme and runs in ${ph}: a scheme picks an Input processor, which turns a device's actions into the game's own components, or an Output one, so the simulation past Input never asks which device (design/input.md § Decided)");
+                ok = false;
+            }
+        }
+        case None: { }
+    };
     return ok;
+}
+
+// Whether a processor's parameters read the game's generated `Actions`, a row at a time.
+fn bool readsActions(const ref DynamicArray<Param> params, const ref Manifest game) {
+    string actionsPath = game.name() + "::generated::Actions";
+    foreach (const ref Param p in params.iterConst()) {
+        if (p.access() == Access::TableComponent && p.path() == actionsPath) { return true; }
+    }
+    return false;
 }
 
 // One processor's signature, each parameter classified by its resolved type; false when anything is refused.
@@ -667,11 +690,16 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
                                    params: params, no: no);
             groupOf.put(key: copy path, value: copy group);
             if (!ok || !typed) { continue; }
+            Optional<Scheme> scheme = f.record().processors().getRef(key: key).scheme();
+            if (scheme.isSome() && !readsActions(params: params, game: game)) {
+                no.add(where: f.file(), what: "processor `${key}` names a scheme and reads no `Actions`: it runs over the rows whose player's active scheme it is, and a row's `Actions` names its player");
+                continue;
+            }
             s.processorList.add(item: Processor.make(path: copy path, recordFile: copy f.file(),
                                                      codeFile: copy idx.functions()[at].file(), phase: phase,
                                                      group: give group, hz: hz,
                                                      times: f.record().processors().getRef(key: key).iterations(),
-                                                     params: give params));
+                                                     params: give params, scheme: scheme));
         }
     }
 
