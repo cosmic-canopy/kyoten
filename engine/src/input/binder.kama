@@ -1,0 +1,286 @@
+// kyoten::input — devices into a game's actions (the first slice's step 8, KYR-54; design/input.md § Decided). The
+// binder reads the bindings records and the samples a platform hands in, and makes each owed step's hand-off: every
+// player's action values, split by each sample's time.
+//
+// - **Bindings are content,** keyed by action, then device (question 2): a control's name, or a list of them, by
+//   `@kama/window`'s names (`"ArrowUp"`, `"RightShoulder"`), each read by the package's own reader, so a misspelling is
+//   refused at load with every name listed. An object entry (parts, filters, gestures) is refused by name until
+//   KYR-54's later parts read it.
+// - **Split by time** (question 1): a step takes the samples that arrived by its end and were not handed off yet, so a
+//   frame that owes no step keeps its input for the next.
+// - **Player 1** has the keyboard and the mouse throughout, and **the first pad pressed**, locked until it disconnects
+//   (question 4): while one is locked another pad does nothing. A pad takes the lock with a button pressed, never a
+//   stick alone, so a drifting or knocked stick cannot take player 1.
+// - **One action on several controls** (`["ArrowUp", "KeyW"]`) is held while any of them is, and its edges are those
+//   of that combined state.
+// - **Edges, per step** (kyoten::frame::Digital): a press and its release inside one step show the press, held, on that
+//   step and the release on the next; a release and a press inside one step show both, held.
+// - **A control is on at `Gamepad::PressedAt` of its travel or more,** `@kama/window`'s own threshold, for every device.
+//
+// It is tier `Module`, outside the simulation's fence, as the module that reads devices must be, and names
+// `kyoten::frame` and `kyoten::records` alone of the engine; the generated `run` builds it and hands it to the loop.
+
+import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
+         std::serialization::text::json::deserializeJsonBuffer,
+         kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
+         kyoten::frame::Device, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
+         window::Key, window::PadButton, window::PointerButton, window::Gamepad };
+
+export { Binder, BindingError };
+
+comptime int32 NO_PAD = -1;
+
+// Why bindings were refused at load: one line each, every refusal at once.
+type resource BindingError implements Error {
+    DynamicArray<string> linesField = DynamicArray.empty();
+
+    public ctor make() { }
+
+    public fn void add(string line) { this.linesField.add(item: give line); }
+    public const fn bool any() { return this.linesField.length() > 0; }
+    public const fn const ref DynamicArray<string> lines() { return this.linesField; }
+    public const fn string message() {
+        string all = "";
+        foreach (const ref string l in this.linesField.iterConst()) { all = all.isEmpty() ? copy l : all + "; " + l; }
+        return all;
+    }
+}
+
+// One control an action is bound to, and whether it is on.
+type value Bound {
+    public Device device;
+    public int32 control;
+    public bool on = false;
+
+    public ctor make(Device device, int32 control) {
+        this.device = device;
+        this.control = control;
+    }
+}
+
+type resource Binder {
+    int32 playerCount;
+    int32 digitalCount;
+    // Every action's controls, action by action: action a's are `controls[firsts[a]]` up to `controls[firsts[a + 1]]`.
+    DynamicArray<Bound> controls = DynamicArray.empty();
+    DynamicArray<isize> firsts = DynamicArray.empty();
+    // Each action's combined state as of the last sample handed off, and a tap's release owed to the next step.
+    DynamicArray<bool> combined = DynamicArray.empty();
+    DynamicArray<bool> owedRelease = DynamicArray.empty();
+    // The pad player 1 has locked in, NO_PAD while none.
+    int32 lockSlot = NO_PAD;
+    // The samples handed in, oldest first, those before `head` handed off; cleared once all are.
+    DynamicArray<Sample> waiting = DynamicArray.empty();
+    isize head = 0;
+    // Each action's edges inside the step being handed off.
+    DynamicArray<bool> onEdge = DynamicArray.empty();
+    DynamicArray<bool> offEdge = DynamicArray.empty();
+    Handoff out;
+
+    // A binder for `players` players and the game's digital actions, named in the generated order, bound by
+    // `bindings`, every content layer's merged. A binding naming no action, a control that names none of its device's,
+    // or an entry KYR-54 does not read yet is refused, every one at once.
+    public ctor Result<Binder, BindingError> make(int32 players, const ref DynamicArray<string> digitalActions,
+                                                  const ref SortedMap<string, BindingRecord> bindings) {
+        this.playerCount = players;
+        this.digitalCount = cast<int32>(digitalActions.length());
+        this.out = Handoff.make(players: players, digitalActions: this.digitalCount);
+        BindingError no = BindingError.make();
+        foreach (string action in bindings) {
+            if (!digitalActions.contains(item: action)) {
+                no.add(line: "the bindings of `" + action + "` name no action: an action is declared in a module's records file");
+            }
+        }
+        foreach (const ref string action in digitalActions.iterConst()) {
+            this.firsts.add(item: this.controls.length());
+            this.combined.add(item: false);
+            this.owedRelease.add(item: false);
+            this.onEdge.add(item: false);
+            this.offEdge.add(item: false);
+            if (!bindings.contains(key: action)) { continue; }
+            borrow bindings.getRef(key: action) as b {
+                this.bindEntry(action: action, device: Device::Keyboard, entry: b.keyboard(), no: no);
+                this.bindEntry(action: action, device: Device::Mouse, entry: b.mouse(), no: no);
+                this.bindEntry(action: action, device: Device::Gamepad, entry: b.gamepad(), no: no);
+            }
+        }
+        this.firsts.add(item: this.controls.length());
+        if (no.any()) { return Result::Err(error: give no); }
+        return Result::Ok(value: give this);
+    }
+
+    public const fn int32 players() { return this.playerCount; }
+    public const fn int32 digitalActions() { return this.digitalCount; }
+    // The pad slot player 1 has locked in, None while none is.
+    public const fn Optional<int32> lockedPad() {
+        if (this.lockSlot == NO_PAD) { return Optional::None; }
+        return Optional::Some(value: this.lockSlot);
+    }
+    // How many controls action `action` is bound to, for a test to read what was bound.
+    public const fn isize boundCount(int32 action) {
+        if (action < 0 || action >= this.digitalCount) { return 0; }
+        isize a = cast<isize>(action);
+        return this.firsts[a + 1] - this.firsts[a];
+    }
+
+    // The samples a platform handed in since the last call, which arrived in the order of their times.
+    public fn void take(const ref DynamicArray<Sample> samples) {
+        foreach (Sample s in samples) { this.waiting.add(item: s); }
+    }
+
+    // The hand-off of a step, from the samples that arrived by `until` (inclusive, on the frame timestamp's base) and
+    // were not handed off yet; the driver hands the frame's last owed step everything that arrived.
+    public fn const ref Handoff handoff(int64 index, int64 until) {
+        this.out.clear();
+        int32 a = 0;
+        while (a < this.digitalCount) {
+            this.onEdge[cast<isize>(a)] = false;
+            this.offEdge[cast<isize>(a)] = false;
+            a = a + 1;
+        }
+        while (this.head < this.waiting.length() && this.waiting[this.head].at <= until) {
+            Sample s = this.waiting[this.head];
+            this.apply(s: s);
+            this.head = this.head + 1;
+        }
+        if (this.head == this.waiting.length()) {
+            this.waiting.clear();
+            this.head = 0;
+        }
+        a = 0;
+        while (a < this.digitalCount) {
+            isize i = cast<isize>(a);
+            bool now = this.combined[i];
+            Digital d = Digital.off();
+            if (this.owedRelease[i]) {
+                d.released = true;
+                this.owedRelease[i] = false;
+            }
+            if (this.onEdge[i]) {
+                d.pressed = true;
+                d.held = true;
+                if (!now) { this.owedRelease[i] = true; }
+                if (this.offEdge[i] && now) { d.released = true; }
+            } else if (this.offEdge[i]) {
+                d.released = true;
+            } else {
+                d.held = now;
+            }
+            if (this.playerCount >= 1) { this.out.setDigital(player: 1, action: a, value: d); }
+            a = a + 1;
+        }
+        return this.out;
+    }
+
+    // One sample: a pad's lock, then each control it moves, then each action whose combined state it changes.
+    fn void apply(Sample s) {
+        match (s.kind) {
+            case Connected: { return; }
+            case Disconnected: {
+                if (s.slot == this.lockSlot) {
+                    this.lockSlot = NO_PAD;
+                    this.release(device: Device::Gamepad);
+                }
+                return;
+            }
+            case Control: { }
+        };
+        bool on = s.value >= Gamepad::PressedAt;
+        if (s.device == Device::Gamepad) {
+            if (this.lockSlot == NO_PAD && on) { this.lockSlot = s.slot; }
+            if (s.slot != this.lockSlot) { return; }
+        }
+        isize i = 0;
+        while (i < this.controls.length()) {
+            if (this.controls[i].device == s.device && this.controls[i].control == s.control) { this.controls[i].on = on; }
+            i = i + 1;
+        }
+        this.settle();
+    }
+
+    // Every control of `device` off: a pad gone with its lock.
+    fn void release(Device device) {
+        isize i = 0;
+        while (i < this.controls.length()) {
+            if (this.controls[i].device == device) { this.controls[i].on = false; }
+            i = i + 1;
+        }
+        this.settle();
+    }
+
+    // Each action's combined state from its controls, an edge noted where it changed.
+    fn void settle() {
+        int32 a = 0;
+        while (a < this.digitalCount) {
+            isize ai = cast<isize>(a);
+            bool any = false;
+            isize c = this.firsts[ai];
+            while (c < this.firsts[ai + 1]) {
+                if (this.controls[c].on) { any = true; }
+                c = c + 1;
+            }
+            if (any != this.combined[ai]) {
+                if (any) { this.onEdge[ai] = true; } else { this.offEdge[ai] = true; }
+                this.combined[ai] = any;
+            }
+            a = a + 1;
+        }
+    }
+
+    // One device's entry of an action's binding: each control it names, resolved by `@kama/window`'s own names.
+    fn void bindEntry(const ref string action, Device device, const ref Optional<ControlEntry> entry, ref BindingError no) {
+        string where = deviceName(device: device);
+        match (entry) {
+            case None: { }
+            case Some(value: e): {
+                if (e.isObject()) {
+                    no.add(line: "the " + where + " binding of `" + action + "` is an object (parts, filters or gestures), which KYR-54's later parts read: bind a control's name, or a list of them");
+                    return;
+                }
+                foreach (const ref string name in e.names().iterConst()) {
+                    Result<int32, Owned<Error>> found = controlOf(device: device, name: name);
+                    match (found) {
+                        case Ok(value: n): { this.controls.add(item: Bound.make(device: device, control: n)); }
+                        case Err(error: e): {
+                            string why = e.message();
+                            no.add(line: "the " + where + " binding of `" + action + "` names `" + name + "`, which is no " + where + " control: " + why);
+                        }
+                    };
+                }
+            }
+        };
+    }
+}
+
+fn string deviceName(Device device) {
+    return match (device) { case Keyboard: "keyboard"; case Mouse: "mouse"; case Gamepad: "gamepad"; };
+}
+
+// A control's number from its name, read by `@kama/window`'s own reader for its device: a `Key`'s USB HID usage id, a
+// `PointerButton`'s W3C button, a `PadButton`'s W3C standard index. The reader's refusal lists every name.
+fn Result<int32, Owned<Error>> controlOf(Device device, const ref string name) {
+    string quoted = "\"" + name + "\"";
+    match (device) {
+        case Keyboard: {
+            Result<Key, Owned<Error>> k = deserializeJsonBuffer::<Key>(src: copy quoted, strict: true);
+            match (give k) {
+                case Ok(value: v): { return Result::Ok(value: cast<int32>(v)); }
+                case Err(error: e): { return Result::Err(error: give e); }
+            };
+        }
+        case Mouse: {
+            Result<PointerButton, Owned<Error>> b = deserializeJsonBuffer::<PointerButton>(src: copy quoted, strict: true);
+            match (give b) {
+                case Ok(value: v): { return Result::Ok(value: cast<int32>(v)); }
+                case Err(error: e): { return Result::Err(error: give e); }
+            };
+        }
+        case Gamepad: {
+            Result<PadButton, Owned<Error>> p = deserializeJsonBuffer::<PadButton>(src: copy quoted, strict: true);
+            match (give p) {
+                case Ok(value: v): { return Result::Ok(value: cast<int32>(v)); }
+                case Err(error: e): { return Result::Err(error: give e); }
+            };
+        }
+    };
+}

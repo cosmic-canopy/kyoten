@@ -1,0 +1,63 @@
+// kyoten::frame::Handoff — one simulation step's input, as the Input phase takes it (frame-phases § Decided,
+// questions 1 and 4; the first slice's step 8, KYR-54): every player's action values after their bindings, in the
+// game's generated order. It is what the recorded log keeps, never a device's events (replay-and-determinism § Decided,
+// question 2), so a rebind cannot move the world.
+//
+// - **Its edges are the step's own:** `pressed` when a press landed in this step's window, `released` when a release
+//   did; `kyoten::frame::PlayerActions` turns them into each processor's view, whatever its rate.
+// - **It is made by an `InputSource`:** the engine's binder (`kyoten::input`), a replay's log, or a test's script.
+// - **Sized once,** for the game's players and actions, so a step allocates nothing.
+
+import { std::collections::DynamicArray, Digital };
+
+export { Handoff };
+
+type resource Handoff {
+    int32 playerCount;
+    int32 digitalCount;
+    // Player p's digital action a at (p - 1) × digitalCount + a.
+    DynamicArray<Digital> digitals = DynamicArray.empty();
+
+    // Room for `players` players, numbered from 1, each with `digitalActions` digital actions, every one off.
+    public ctor make(int32 players, int32 digitalActions) {
+        assert(cond: players >= 0 && digitalActions >= 0, msg: "a hand-off holds no negative count");
+        this.playerCount = players;
+        this.digitalCount = digitalActions;
+        int64 n = cast<int64>(players) * cast<int64>(digitalActions);
+        int64 i = 0;
+        while (i < n) {
+            this.digitals.add(item: Digital.off());
+            i = i + 1;
+        }
+    }
+
+    public const fn int32 players() { return this.playerCount; }
+    public const fn int32 digitalActions() { return this.digitalCount; }
+
+    // Player `player`'s digital action `action`, in the generated order; off for a player or an action it has no room
+    // for.
+    public const fn Digital digital(int32 player, int32 action) {
+        if (player < 1 || player > this.playerCount || action < 0 || action >= this.digitalCount) { return Digital.off(); }
+        return this.digitals[this.at(player: player, action: action)];
+    }
+
+    // Sets player `player`'s digital action `action`. Out of range is a caller's bug, and traps.
+    public fn void setDigital(int32 player, int32 action, Digital value) {
+        assert(cond: player >= 1 && player <= this.playerCount && action >= 0 && action < this.digitalCount,
+               msg: "a hand-off has room for this player's action");
+        this.digitals[this.at(player: player, action: action)] = value;
+    }
+
+    // Every value off.
+    public fn void clear() {
+        isize i = 0;
+        while (i < this.digitals.length()) {
+            this.digitals[i] = Digital.off();
+            i = i + 1;
+        }
+    }
+
+    const fn isize at(int32 player, int32 action) {
+        return cast<isize>(player - 1) * cast<isize>(this.digitalCount) + cast<isize>(action);
+    }
+}

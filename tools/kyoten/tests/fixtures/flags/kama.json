@@ -21,7 +21,7 @@
     "generated": {
       "visibility": "internal",
       "importsOnly": [
-        "kyoten::input",
+        "kyoten::frame",
         "std::collections"
       ]
     },

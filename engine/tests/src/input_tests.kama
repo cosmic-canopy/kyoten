@@ -1,15 +1,37 @@
-// kyoten::input (components § Decided, step 5 question 6): `Digital`, the action kind a processor reads as on or off.
-// Each `Actions` field holds one, filled by the Input phase from the player's bindings (KYR-54, step 8), and a
-// processor reads it through `const ref Actions`: `if (input.faster.held) { … }`.
+// The frame tier's input (the first slice's step 8, KYR-54): `Digital`, the action kind a processor reads as on or off;
+// `Sample`, one input from a device as a platform hands it in; `Handoff`, one step's action values; and
+// `PlayerActions`, the world's record of them across steps, from which each processor's view is made, whatever its rate.
 
-import { Tally, kyoten::input::Digital };
+import { Tally, kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
+         kyoten::frame::Handoff, kyoten::frame::PlayerActions };
 
-export { inputTests };
+export { inputTests, spelled, digitalOf };
 
 // A processor reads an action through a `const ref`, so its fields must read there.
 fn bool heldThrough(const ref Digital d) { return d.held; }
 
-fn void inputTests(ref Tally t) {
+// "held pressed released" as three letters, H, P and R, a dash for each off.
+fn string spelled(Digital d) {
+    string h = d.held ? "H" : "-";
+    string p = d.pressed ? "P" : "-";
+    string r = d.released ? "R" : "-";
+    return h + p + r;
+}
+
+fn void expectSpelled(ref Tally t, const ref string name, Digital d, const ref string want) {
+    string got = spelled(d: d);
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+fn Digital digitalOf(bool held, bool pressed, bool released) {
+    Digital d = Digital.off();
+    d.held = held;
+    d.pressed = pressed;
+    d.released = released;
+    return d;
+}
+
+fn void digitalCases(ref Tally t) {
     Digital off = Digital.default();
     bool ok = !off.held && !off.pressed && !off.released;
     t.verdict(name: "Digital: off by default, neither held nor pressed nor released", why: ok ? "" : "not all false");
@@ -23,4 +45,106 @@ fn void inputTests(ref Tally t) {
     // An `Actions` row holds one per action, so its size feeds the chunk size (components question 6, choice 4).
     usize size = sizeof(Digital);
     t.verdict(name: "Digital: 3 bytes on every target", why: size == 3 ? "" : "${size} bytes");
+}
+
+fn void sampleCases(ref Tally t) {
+    Sample key = Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 1.0, at: 1234);
+    bool keyOk = key.kind == SampleKind::Control && key.device == Device::Keyboard && key.slot == 0 && key.control == 82
+        && key.value == 1.0 && key.at == 1234;
+    t.verdict(name: "Sample: a control's device, slot, number, value and time", why: keyOk ? "" : "a field differs");
+    Sample on = Sample.padConnected(slot: 3, at: 50);
+    Sample off = Sample.padDisconnected(slot: 3, at: 60);
+    bool padOk = on.kind == SampleKind::Connected && off.kind == SampleKind::Disconnected && on.device == Device::Gamepad
+        && off.device == Device::Gamepad && on.slot == 3 && off.slot == 3 && on.at == 50 && off.at == 60;
+    t.verdict(name: "Sample: a pad's connection and disconnection, by slot, at their times", why: padOk ? "" : "a field differs");
+}
+
+fn void handoffCases(ref Tally t) {
+    Handoff h = Handoff.make(players: 2, digitalActions: 3);
+    bool sized = h.players() == 2 && h.digitalActions() == 3;
+    t.verdict(name: "Handoff: room for its players and actions", why: sized ? "" : "another size");
+    bool allOff = true;
+    int32 p = 1;
+    while (p <= 2) {
+        int32 a = 0;
+        while (a < 3) {
+            if (spelled(d: h.digital(player: p, action: a)) != "---") { allOff = false; }
+            a = a + 1;
+        }
+        p = p + 1;
+    }
+    t.verdict(name: "Handoff: every value off when made", why: allOff ? "" : "one is on");
+
+    h.setDigital(player: 2, action: 1, value: digitalOf(held: true, pressed: true, released: false));
+    expectSpelled(t: t, name: "Handoff: a value set is read back by its player and action", d: h.digital(player: 2, action: 1),
+                  want: "HP-");
+    expectSpelled(t: t, name: "Handoff: another player's same action is its own", d: h.digital(player: 1, action: 1), want: "---");
+    expectSpelled(t: t, name: "Handoff: the same player's next action is its own", d: h.digital(player: 2, action: 2), want: "---");
+    expectSpelled(t: t, name: "Handoff: player 0 is no player, off", d: h.digital(player: 0, action: 1), want: "---");
+    expectSpelled(t: t, name: "Handoff: a player past its room, off", d: h.digital(player: 3, action: 1), want: "---");
+    expectSpelled(t: t, name: "Handoff: an action past its room, off", d: h.digital(player: 2, action: 3), want: "---");
+    expectSpelled(t: t, name: "Handoff: a negative action, off", d: h.digital(player: 2, action: -1), want: "---");
+    h.clear();
+    expectSpelled(t: t, name: "Handoff: clear turns every value off", d: h.digital(player: 2, action: 1), want: "---");
+}
+
+fn void playerActionCases(ref Tally t) {
+    PlayerActions w = PlayerActions.make(players: 2, digitalActions: 2);
+    Handoff h = Handoff.make(players: 2, digitalActions: 2);
+    expectSpelled(t: t, name: "PlayerActions: every action off before its first hand-off",
+                  d: w.digital(player: 1, action: 0, after: -1, upTo: 0), want: "---");
+
+    // Step 10: player 1's action 0 pressed, player 2's action 1 held from before with no edge.
+    h.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: true, released: false));
+    h.setDigital(player: 2, action: 1, value: digitalOf(held: true, pressed: false, released: false));
+    w.take(handoff: h, step: 10);
+    expectSpelled(t: t, name: "PlayerActions: a run at the base rate sees its own step's press",
+                  d: w.digital(player: 1, action: 0, after: 9, upTo: 10), want: "HP-");
+    expectSpelled(t: t, name: "PlayerActions: a held action with no edge reads held alone",
+                  d: w.digital(player: 2, action: 1, after: 9, upTo: 10), want: "H--");
+    expectSpelled(t: t, name: "PlayerActions: another player's same action is its own",
+                  d: w.digital(player: 2, action: 0, after: 9, upTo: 10), want: "---");
+
+    // Step 11: no edge, still held.
+    h.clear();
+    h.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: false, released: false));
+    w.take(handoff: h, step: 11);
+    expectSpelled(t: t, name: "PlayerActions: the next step at the base rate sees the press no more",
+                  d: w.digital(player: 1, action: 0, after: 10, upTo: 11), want: "H--");
+    expectSpelled(t: t, name: "PlayerActions: a run every 4 steps, at step 12, sees step 10's press once",
+                  d: w.digital(player: 1, action: 0, after: 8, upTo: 12), want: "HP-");
+    expectSpelled(t: t, name: "PlayerActions: its window excludes the step it last ran on",
+                  d: w.digital(player: 1, action: 0, after: 10, upTo: 12), want: "H--");
+
+    // Step 12: released.
+    h.clear();
+    h.setDigital(player: 1, action: 0, value: digitalOf(held: false, pressed: false, released: true));
+    w.take(handoff: h, step: 12);
+    expectSpelled(t: t, name: "PlayerActions: a release at the base rate",
+                  d: w.digital(player: 1, action: 0, after: 11, upTo: 12), want: "--R");
+    expectSpelled(t: t, name: "PlayerActions: a slow run whose window holds both edges sees both, held as now",
+                  d: w.digital(player: 1, action: 0, after: 8, upTo: 12), want: "-PR");
+    expectSpelled(t: t, name: "PlayerActions: an Output whose window is empty sees no edge",
+                  d: w.digital(player: 1, action: 0, after: 12, upTo: 12), want: "---");
+    expectSpelled(t: t, name: "PlayerActions: player 0 is no player, off", d: w.digital(player: 0, action: 0, after: 8, upTo: 12),
+                  want: "---");
+    expectSpelled(t: t, name: "PlayerActions: an action past its room, off", d: w.digital(player: 1, action: 2, after: 8, upTo: 12),
+                  want: "---");
+
+    // A run at a slower rate on step 0 has a window that starts before it (every 2 steps: after -2), and sees no press
+    // or release that never was: found by the spin fixture's 30 Hz `tally`.
+    PlayerActions fresh = PlayerActions.make(players: 1, digitalActions: 1);
+    Handoff quiet = Handoff.make(players: 1, digitalActions: 1);
+    fresh.take(handoff: quiet, step: 0);
+    expectSpelled(t: t, name: "PlayerActions: a slower run's first window, reaching before step 0, sees no edge that never was",
+                  d: fresh.digital(player: 1, action: 0, after: -2, upTo: 0), want: "---");
+    expectSpelled(t: t, name: "PlayerActions: nor one reaching far before it",
+                  d: fresh.digital(player: 1, action: 0, after: -1000000, upTo: 0), want: "---");
+}
+
+fn void inputTests(ref Tally t) {
+    digitalCases(t: t);
+    sampleCases(t: t);
+    handoffCases(t: t);
+    playerActionCases(t: t);
 }

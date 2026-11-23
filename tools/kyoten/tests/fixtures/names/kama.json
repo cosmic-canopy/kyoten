@@ -12,6 +12,6 @@
     ".": { "visibility": "internal" },
     "a": { "visibility": "internal", "importsOnly": [] },
     "b": { "visibility": "internal", "importsOnly": [] },
-    "generated": { "visibility": "internal", "importsOnly": ["kyoten::input", "std::collections"] }
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::frame", "std::collections"] }
   }
 }

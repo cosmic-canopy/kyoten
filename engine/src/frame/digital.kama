@@ -1,0 +1,28 @@
+// kyoten::frame::Digital — an action a processor reads as on or off (components § Decided, step 5 question 6). An
+// action's kind names the value a processor reads, not a device, so one `Digital` serves a key, a button, a trigger
+// past a threshold and a UI button. It is the frame tier's, beside `Time`, since a game's generated `Actions` is fenced
+// and holds one per action, while the module that binds devices to actions reads the window and cannot be (the first
+// slice's step 8, KYR-54).
+//
+// Each field of a game's generated `Actions` holds one, filled from the player the entity names, and a processor reads
+// it through `const ref Actions`: `if (input.faster.held) { … }`. Its edges are the steps a press and a release land in,
+// split by each input's time (design/input.md § Decided, question 1):
+// - **A processor sees each edge once,** on its first run at or after the step it lands in, whatever its rate; Output,
+//   once a display frame, sees the edges since its last run.
+// - **A press and its release inside one step** show the press, held, on that step and the release on the next, so a
+//   reader of `held` never misses a tap.
+// - **A release and a press inside one step** show both edges, held.
+
+export { Digital };
+
+type value Digital {
+    // On, as this run sees it: held, or a tap pressed and released inside one step, held for that step.
+    public bool held = false;
+    // A press landed since this processor's last run: in this step, for a processor at the base rate.
+    public bool pressed = false;
+    // A release landed since this processor's last run.
+    public bool released = false;
+
+    // Off, as every action is before its first input.
+    public default ctor off() { }
+}

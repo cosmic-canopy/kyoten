@@ -1,0 +1,84 @@
+// kyoten::frame::PlayerActions — every player's actions as the world keeps them across steps, from which each
+// processor's view is made (the first slice's step 8, KYR-54; frame-phases § Decided, question 1).
+//
+// - **It takes each step's hand-off** in the Input phase: each action's state, and the step its last press and its
+//   last release landed in.
+// - **A run sees the edges in its own window of steps,** `after` excluded and `upTo` included: a processor at the base
+//   rate its step alone, one at a slower rate every step since its last run, and Output every step since its last
+//   frame. So each processor sees a press and a release once, on its first run at or after the step it lands in,
+//   whatever its rate, as the decided rule reads (design/input.md § Decided).
+// - **It is world state, made only from hand-offs,** so a replay of the hand-offs makes the same views.
+
+import { std::collections::DynamicArray, Digital, Handoff };
+
+export { PlayerActions };
+
+// No edge yet: int64's least value, below every window's start, since a slower run's first window reaches before
+// step 0 (every 2 steps, the steps after -2 up to 0).
+comptime int64 NEVER = -9223372036854775807 - 1;
+
+type resource PlayerActions {
+    int32 playerCount;
+    int32 digitalCount;
+    DynamicArray<bool> helds = DynamicArray.empty();
+    // The step each action's last press and last release landed in, NEVER before its first.
+    DynamicArray<int64> pressedAt = DynamicArray.empty();
+    DynamicArray<int64> releasedAt = DynamicArray.empty();
+
+    // Room for `players` players, numbered from 1, each with `digitalActions` digital actions, every one off.
+    public ctor make(int32 players, int32 digitalActions) {
+        assert(cond: players >= 0 && digitalActions >= 0, msg: "a world's actions hold no negative count");
+        this.playerCount = players;
+        this.digitalCount = digitalActions;
+        int64 n = cast<int64>(players) * cast<int64>(digitalActions);
+        int64 i = 0;
+        while (i < n) {
+            this.helds.add(item: false);
+            this.pressedAt.add(item: NEVER);
+            this.releasedAt.add(item: NEVER);
+            i = i + 1;
+        }
+    }
+
+    public const fn int32 players() { return this.playerCount; }
+    public const fn int32 digitalActions() { return this.digitalCount; }
+
+    // Step `step`'s hand-off, which has room for the same players and actions; anything else is a generator's bug, and
+    // traps.
+    public fn void take(const ref Handoff handoff, int64 step) {
+        assert(cond: handoff.players() == this.playerCount && handoff.digitalActions() == this.digitalCount,
+               msg: "a hand-off has the world's players and actions");
+        int32 p = 1;
+        while (p <= this.playerCount) {
+            int32 a = 0;
+            while (a < this.digitalCount) {
+                Digital d = handoff.digital(player: p, action: a);
+                isize i = this.at(player: p, action: a);
+                this.helds[i] = d.held;
+                if (d.pressed) { this.pressedAt[i] = step; }
+                if (d.released) { this.releasedAt[i] = step; }
+                a = a + 1;
+            }
+            p = p + 1;
+        }
+    }
+
+    // Player `player`'s digital action `action` as a run sees it whose window is the steps after `after` up to `upTo`:
+    // held as of the last step taken, and each edge that landed in the window. Off for a player or an action it has no
+    // room for.
+    public const fn Digital digital(int32 player, int32 action, int64 after, int64 upTo) {
+        Digital d = Digital.off();
+        if (player < 1 || player > this.playerCount || action < 0 || action >= this.digitalCount) { return d; }
+        isize i = this.at(player: player, action: action);
+        d.held = this.helds[i];
+        int64 p = this.pressedAt[i];
+        int64 r = this.releasedAt[i];
+        d.pressed = p > after && p <= upTo;
+        d.released = r > after && r <= upTo;
+        return d;
+    }
+
+    const fn isize at(int32 player, int32 action) {
+        return cast<isize>(player - 1) * cast<isize>(this.digitalCount) + cast<isize>(action);
+    }
+}

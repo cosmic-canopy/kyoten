@@ -4,7 +4,7 @@
 
 import { Tally, kyoten::records::ModuleRecord, kyoten::records::ProcessorGroupRecord,
          kyoten::records::ProcessorRecord, kyoten::records::ComponentRecord, kyoten::records::ActionRecord,
-         kyoten::records::AppRecord, kyoten::records::BindingRecord, kyoten::records::SceneRecord,
+         kyoten::records::AppRecord, kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::SceneRecord,
          kyoten::records::LayerRecord, kyoten::records::LayerGroupRecord, kyoten::records::BudgetRecord,
          kyoten::records::LimitRecord, kyoten::records::RingRange, kyoten::records::Phase, kyoten::records::Store,
          kyoten::records::Blend, kyoten::records::Combine, kyoten::records::ZoneShape, kyoten::records::LayerStart,
@@ -50,6 +50,19 @@ fn bool isSome(const ref Optional<string> o, const ref string want) {
 
 fn bool isNone(const ref Optional<string> o) {
     return match (o) { case Some(value: v): false; case None: true; };
+}
+
+// A device's entry as text: its names joined by commas, `[…]` round a list, `{}` for an object, "none" when absent.
+fn string entryText(const ref Optional<ControlEntry> o) {
+    match (o) {
+        case None: { return "none"; }
+        case Some(value: e): {
+            if (e.isObject()) { return "{}"; }
+            string joined = "";
+            foreach (const ref string n in e.names().iterConst()) { joined = joined.isEmpty() ? copy n : joined + "," + n; }
+            return e.listed() ? "[" + joined + "]" : copy joined;
+        }
+    };
 }
 
 fn bool hz(Optional<int32> o, int32 want) { return match (o) { case Some(value: v): v == want; case None: false; }; }
@@ -268,9 +281,9 @@ fn void content(ref Tally t) {
     if (why.isEmpty()) {
         bool app = isSome(o: c.app().firstScene(), want: "battle") && isSome(o: c.app().title(), want: "Towers");
         bool bindings = c.bindings().length() == 2
-            && isSome(o: c.bindings().getRef(key: "fire").keyboard(), want: "Space")
-            && isSome(o: c.bindings().getRef(key: "fire").gamepad(), want: "RightTrigger")
-            && isNone(o: c.bindings().getRef(key: "fire").mouse());
+            && entryText(o: c.bindings().getRef(key: "fire").keyboard()) == "Space"
+            && entryText(o: c.bindings().getRef(key: "fire").gamepad()) == "RightTrigger"
+            && entryText(o: c.bindings().getRef(key: "fire").mouse()) == "none";
         if (!app) { why = "the app read wrong"; }
         else if (!bindings) { why = "the bindings read wrong"; }
     }
@@ -355,4 +368,38 @@ fn void recordsTests(ref Tally t) {
     sceneExample(t: t);
     sceneRefusals(t: t);
     content(t: t);
+    bindingEntries(t: t);
+}
+
+// A binding's entry for each device (design/input.md § Decided, question 2): a control's name, a list of them, or an
+// object, and a layer's entry replacing that device's alone.
+fn void bindingEntries(ref Tally t) {
+    ContentFile c = ContentFile.make();
+    string why = mergeContent(c: c, src: "{ \"bindings\": { \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyW\"], \"gamepad\": \"RightShoulder\", \"mouse\": { \"control\": \"Left\", \"gestures\": [ { \"multiTap\": 2 } ] } } } }");
+    if (why.isEmpty()) {
+        string keys = entryText(o: c.bindings().getRef(key: "faster").keyboard());
+        string pad = entryText(o: c.bindings().getRef(key: "faster").gamepad());
+        string mouse = entryText(o: c.bindings().getRef(key: "faster").mouse());
+        if (keys != "[ArrowUp,KeyW]" || pad != "RightShoulder" || mouse != "{}") {
+            why = "keyboard ${keys}, gamepad ${pad}, mouse ${mouse}";
+        }
+    }
+    t.verdict(name: "records: a binding's entry is a control's name, a list of them, or an object", why: why);
+
+    string over = mergeContent(c: c, src: "{ \"bindings\": { \"faster\": { \"keyboard\": \"KeyF\" } } }");
+    if (over.isEmpty()) {
+        string keys = entryText(o: c.bindings().getRef(key: "faster").keyboard());
+        string pad = entryText(o: c.bindings().getRef(key: "faster").gamepad());
+        if (keys != "KeyF" || pad != "RightShoulder") { over = "keyboard ${keys}, gamepad ${pad}"; }
+    }
+    t.verdict(name: "records: a layer's entry replaces that device's whole and keeps the others", why: over);
+
+    ContentFile n = ContentFile.make();
+    string number = mergeContent(c: n, src: "{ \"bindings\": { \"fire\": { \"keyboard\": 3 } } }");
+    refused(t: t, name: "records: an entry that is no name, list or object is refused, where it is", why: number,
+            want: "`bindings.fire.keyboard`");
+    ContentFile l = ContentFile.make();
+    string inList = mergeContent(c: l, src: "{ \"bindings\": { \"fire\": { \"keyboard\": [\"Space\", 3] } } }");
+    refused(t: t, name: "records: a list's element that is no name is refused, where it is", why: inList,
+            want: "`bindings.fire.keyboard[1]`");
 }

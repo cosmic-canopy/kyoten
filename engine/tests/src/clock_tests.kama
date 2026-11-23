@@ -264,4 +264,70 @@ fn void clockTests(ref Tally t) {
     frameDt(t: t);
     baseDt(t: t);
     baselineReset(t: t);
+    stepEnds(t: t);
+}
+
+fn void expectEnd(ref Tally t, const ref string name, int64 got, int64 want) {
+    int64 gotIn = got - T0;
+    int64 wantIn = want - T0;
+    t.verdict(name: name, why: got == want ? "" : "ends at T0 + ${gotIn}, want T0 + ${wantIn}");
+}
+
+// Where each owed step ends on the timestamps' base, so a frame's input splits by time (design/input.md § Decided,
+// question 1): the moment the scaled time owed reached it, rounded up to the nanosecond, never past the frame.
+fn void stepEnds(ref Tally t) {
+    Clock c = Clock.make(hz: 60, maxSteps: 5);
+    Owed none = c.advance(now: T0);
+    Owed three = c.advance(now: T0 + 50000000);
+    t.verdict(name: "clock: 50 ms at 60 Hz owes 3 steps", why: three.steps == 3 ? "" : "${three.steps}");
+    expectEnd(t: t, name: "clock: the first owed step ends a 60th of a second in, rounded up", got: c.stepEnd(i: 0),
+              want: T0 + 16666667);
+    expectEnd(t: t, name: "clock: the second, two 60ths in, rounded up", got: c.stepEnd(i: 1), want: T0 + 33333334);
+    expectEnd(t: t, name: "clock: the third at the frame's own timestamp", got: c.stepEnd(i: 2), want: T0 + 50000000);
+    expectEnd(t: t, name: "clock: a step past the frame's, the frame's timestamp", got: c.stepEnd(i: 7), want: T0 + 50000000);
+    expectEnd(t: t, name: "clock: a negative step, the frame's timestamp", got: c.stepEnd(i: -1), want: T0 + 50000000);
+
+    // A part of a step owed before the frame counts toward its first step.
+    Clock p = Clock.make(hz: 60, maxSteps: 5);
+    Owed baseline = p.advance(now: T0);
+    Owed part = p.advance(now: T0 + 10000000);
+    Owed one = p.advance(now: T0 + 30000000);
+    t.verdict(name: "clock: 10 ms then 20 ms at 60 Hz owes 0 steps then 1", why: part.steps == 0 && one.steps == 1 ? "" : "other counts");
+    expectEnd(t: t, name: "clock: a step begun in the frame before ends a 60th of a second after the first timestamp",
+              got: p.stepEnd(i: 0), want: T0 + 16666667);
+
+    // Half speed: a step takes twice the real time.
+    Clock h = Clock.make(hz: 60, maxSteps: 5);
+    h.setScale(to: TimeScale.of(num: 1, den: 2));
+    Owed hb = h.advance(now: T0);
+    Owed hs = h.advance(now: T0 + 100000000);
+    t.verdict(name: "clock: 100 ms at half speed owes 3 steps", why: hs.steps == 3 ? "" : "${hs.steps}");
+    expectEnd(t: t, name: "clock: at half speed the first step ends two 60ths in", got: h.stepEnd(i: 0), want: T0 + 33333334);
+    expectEnd(t: t, name: "clock: and the second four", got: h.stepEnd(i: 1), want: T0 + 66666668);
+
+    // Three times real speed: a step takes a third of the real time.
+    Clock f = Clock.make(hz: 60, maxSteps: 5);
+    f.setScale(to: TimeScale.of(num: 3, den: 1));
+    Owed fb = f.advance(now: T0);
+    Owed fs = f.advance(now: T0 + 20000000);
+    t.verdict(name: "clock: 20 ms at three times speed owes 3 steps", why: fs.steps == 3 ? "" : "${fs.steps}");
+    expectEnd(t: t, name: "clock: at three times speed the first step ends a 180th of a second in, rounded up",
+              got: f.stepEnd(i: 0), want: T0 + 5555556);
+
+    // Past the cap the first steps keep their own ends; the driver hands the last everything up to the pump.
+    Clock k = Clock.make(hz: 60, maxSteps: 5);
+    Owed kb = k.advance(now: T0);
+    Owed ks = k.advance(now: T0 + NS);
+    t.verdict(name: "clock: a second at 60 Hz with a cap of 5 owes 5", why: ks.steps == 5 ? "" : "${ks.steps}");
+    expectEnd(t: t, name: "clock: past the cap, the fourth owed step still ends four 60ths in", got: k.stepEnd(i: 3),
+              want: T0 + 66666667);
+
+    // Paused, a step asked for takes the whole frame.
+    Clock s = Clock.make(hz: 60, maxSteps: 5);
+    s.setScale(to: TimeScale.paused());
+    Owed sb = s.advance(now: T0);
+    bool asked = s.stepOnce();
+    Owed ss = s.advance(now: T0 + 40000000);
+    t.verdict(name: "clock: paused, a step asked for is owed", why: ss.steps == 1 && asked ? "" : "${ss.steps}");
+    expectEnd(t: t, name: "clock: and ends at the frame's timestamp", got: s.stepEnd(i: 0), want: T0 + 40000000);
 }

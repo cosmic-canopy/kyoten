@@ -12,6 +12,6 @@
     ".": { "visibility": "internal" },
     "towers": { "visibility": "internal", "importsOnly": [] },
     "player": { "visibility": "internal", "importsOnly": [] },
-    "generated": { "visibility": "internal", "importsOnly": ["kyoten::world", "kyoten::input", "std::collections", "towers", "player"] }
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::world", "kyoten::frame", "std::collections", "towers", "player"] }
   }
 }

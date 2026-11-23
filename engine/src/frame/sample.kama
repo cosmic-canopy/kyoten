@@ -1,0 +1,63 @@
+// kyoten::frame::Sample — one input from a device, as a platform hands it to the engine (the first slice's step 8,
+// KYR-54). It names no window and no target: the open platforms make samples from `@kama/window`'s events, a console's
+// platform from its own, and a test or a replay writes them by hand, so the module that binds them to actions
+// (`kyoten::input`) reads one shape on every platform.
+//
+// - **A control is numbered as the web numbers it,** as `@kama/window` does: a key by its USB HID usage id (KeyA 4,
+//   ArrowUp 82), a mouse button by the W3C's `button` (Left 0, Middle 1, Right 2), and a gamepad's button by the W3C
+//   standard gamepad's index (South 0, RightShoulder 5).
+// - **Its time is on the frame timestamp's base,** the nanoseconds `Platform.now()` counts, so the clock's steps split
+//   a frame's input by it (design/input.md § Decided, question 1).
+// - **A pad's connection is a sample too,** so a pad that disconnects lets player 1's lock go at its moment
+//   (design/input.md § Decided, question 4).
+
+export { Sample, SampleKind, Device };
+
+// What a sample says.
+type enum SampleKind { Control, Connected, Disconnected }
+
+// Which kind of device it came from: the bindings record's keys.
+type enum Device { Keyboard, Mouse, Gamepad }
+
+type value Sample {
+    public SampleKind kind;
+    public Device device;
+    // A gamepad's slot, as `@kama/window` numbers them; 0 for the keyboard and the mouse.
+    public int32 slot;
+    // The control, numbered as above; 0 for a connection.
+    public int32 control;
+    // A button's or a key's travel, 0 up to 1, as the device reports it: 1 down and 0 up for a key.
+    public float32 value;
+    // When it happened, in nanoseconds on the frame timestamp's base.
+    public int64 at;
+
+    // A control's value at a moment.
+    public ctor make(Device device, int32 slot, int32 control, float32 value, int64 at) {
+        this.kind = SampleKind::Control;
+        this.device = device;
+        this.slot = slot;
+        this.control = control;
+        this.value = value;
+        this.at = at;
+    }
+
+    // The gamepad in `slot` connected.
+    public ctor padConnected(int32 slot, int64 at) {
+        this.kind = SampleKind::Connected;
+        this.device = Device::Gamepad;
+        this.slot = slot;
+        this.control = 0;
+        this.value = 0.0;
+        this.at = at;
+    }
+
+    // The gamepad in `slot` disconnected, after an up for each of its controls held.
+    public ctor padDisconnected(int32 slot, int64 at) {
+        this.kind = SampleKind::Disconnected;
+        this.device = Device::Gamepad;
+        this.slot = slot;
+        this.control = 0;
+        this.value = 0.0;
+        this.at = at;
+    }
+}

@@ -1,0 +1,258 @@
+// kyoten::input's binder (the first slice's step 8, KYR-54; design/input.md § Decided): bindings read by
+// `@kama/window`'s names and refused at load when they name nothing; each step's hand-off split by the samples' times;
+// the decided edges; player 1 on the keyboard and the mouse throughout and the first pad pressed, locked until it
+// disconnects. Every sample is written by hand, so each case states its time and its wanted value literally: a key by
+// its HID usage id (ArrowUp 82, KeyW 26, KeyA 4), a mouse button by the W3C's (Left 0), a pad's button by the
+// standard gamepad's index (South 0, RightShoulder 5).
+
+import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
+         std::serialization::text::json::deserializeJsonBuffer,
+         kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::records::BindingRecord,
+         kyoten::input::Binder, kyoten::input::BindingError };
+
+export { binderTests };
+
+comptime int64 EVERYTHING = 9223372036854775807;
+
+fn SortedMap<string, BindingRecord> bindingsOf(const ref string json) {
+    Result<SortedMap<string, BindingRecord>, Owned<Error>> read = deserializeJsonBuffer::<SortedMap<string, BindingRecord>>(src: copy json, strict: true);
+    return match (give read) {
+        case Ok(value: m): give m;
+        case Err(error: e): {
+            string why = e.message();
+            panic(msg: "a test's bindings read: " + why);
+        }
+    };
+}
+
+fn DynamicArray<string> actionsOf(const ref string a, const ref string b) {
+    DynamicArray<string> made = DynamicArray.empty();
+    if (!a.isEmpty()) { made.add(item: copy a); }
+    if (!b.isEmpty()) { made.add(item: copy b); }
+    return made;
+}
+
+// A binder for player 1 and the actions `faster` and `jump`, bound by `json`; it must be accepted.
+fn Binder binderFor(const ref string json) {
+    DynamicArray<string> actions = actionsOf(a: "faster", b: "jump");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    Result<Binder, BindingError> made = Binder.make(players: 1, digitalActions: actions, bindings: b);
+    return match (give made) {
+        case Ok(value: v): give v;
+        case Err(error: e): {
+            string why = e.message();
+            panic(msg: "a test's bindings refused: " + why);
+        }
+    };
+}
+
+// The refusal `json` gets, or "" when it is accepted.
+fn string refusalOf(const ref string json) {
+    DynamicArray<string> actions = actionsOf(a: "faster", b: "jump");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    Result<Binder, BindingError> made = Binder.make(players: 1, digitalActions: actions, bindings: b);
+    return match (made) {
+        case Ok(value: v): "";
+        case Err(error: e): e.message();
+    };
+}
+
+fn void hand(ref Binder b, Sample s) {
+    DynamicArray<Sample> one = DynamicArray.empty();
+    one.add(item: s);
+    b.take(samples: one);
+}
+
+fn Sample key(int32 control, bool down, int64 at) {
+    return Sample.make(device: Device::Keyboard, slot: 0, control: control, value: down ? 1.0 : 0.0, at: at);
+}
+
+fn Sample pad(int32 slot, int32 control, float32 value, int64 at) {
+    return Sample.make(device: Device::Gamepad, slot: slot, control: control, value: value, at: at);
+}
+
+// Action `action`'s value in the hand-off of step `step` up to `until`, spelled.
+fn string stepped(ref Binder b, int64 step, int64 until, int32 action) {
+    Digital d = b.handoff(index: step, until: until).digital(player: 1, action: action);
+    return spelled(d: d);
+}
+
+fn void expectStep(ref Tally t, ref Binder b, int64 step, int64 until, const ref string name, const ref string want) {
+    string got = stepped(b: b, step: step, until: until, action: 0);
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+fn void expectRefused(ref Tally t, const ref string name, const ref string json, const ref string says) {
+    string why = refusalOf(json: json);
+    if (why.contains(substring: says)) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "refusal `${why}` does not say `${says}`"); }
+}
+
+fn void bindingCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": \"RightShoulder\" } }");
+    bool two = b.boundCount(action: 0) == 2 && b.boundCount(action: 1) == 0 && b.digitalActions() == 2;
+    t.verdict(name: "binder: a control on each of two devices binds two, an unbound action none", why: two ? "" : "other counts");
+    Binder l = binderFor(json: "{ \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyW\"], \"mouse\": \"Left\" } }");
+    isize listed = l.boundCount(action: 0);
+    t.verdict(name: "binder: a list binds each control, and the mouse its own", why: listed == 3 ? "" : "${listed} bound");
+    string ok = refusalOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" }, \"jump\": { \"gamepad\": \"South\" } }");
+    t.verdict(name: "binder: bindings naming the game's actions by their controls' names are accepted", why: ok);
+
+    expectRefused(t: t, name: "binder: a binding naming no action is refused, by its name",
+                  json: "{ \"dash\": { \"keyboard\": \"Space\" } }", says: "the bindings of `dash` name no action");
+    expectRefused(t: t, name: "binder: a misspelled key is refused, naming it",
+                  json: "{ \"faster\": { \"keyboard\": \"Arrowup\" } }", says: "names `Arrowup`, which is no keyboard control");
+    expectRefused(t: t, name: "binder: and the refusal lists the keys' names",
+                  json: "{ \"faster\": { \"keyboard\": \"Arrowup\" } }", says: "ArrowUp");
+    expectRefused(t: t, name: "binder: a stick's axis is no gamepad button yet",
+                  json: "{ \"faster\": { \"gamepad\": \"LeftX\" } }", says: "names `LeftX`, which is no gamepad control");
+    expectRefused(t: t, name: "binder: a misspelling in a list is refused",
+                  json: "{ \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyQQ\"] } }", says: "names `KeyQQ`");
+    expectRefused(t: t, name: "binder: a key's name on the mouse is refused",
+                  json: "{ \"faster\": { \"mouse\": \"ArrowUp\" } }", says: "which is no mouse control");
+    expectRefused(t: t, name: "binder: an object entry is refused until KYR-54's later parts read it",
+                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [] } } }",
+                  says: "the keyboard binding of `faster` is an object");
+    string both = refusalOf(json: "{ \"dash\": { \"keyboard\": \"Space\" }, \"faster\": { \"keyboard\": \"Arrowup\" } }");
+    bool all = both.contains(substring: "`dash`") && both.contains(substring: "`Arrowup`");
+    t.verdict(name: "binder: every refusal is said at once", why: all ? "" : "only `${both}`");
+}
+
+fn void edgeCases(ref Tally t) {
+    string json = "{ \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyW\"], \"gamepad\": \"RightShoulder\", \"mouse\": \"Left\" }, \"jump\": { \"keyboard\": \"KeyA\" } }";
+    Binder b = binderFor(json: json);
+    expectStep(t: t, b: b, step: 0, until: 100, name: "binder: off before any sample", want: "---");
+
+    hand(b: b, s: key(control: 82, down: true, at: 150));
+    expectStep(t: t, b: b, step: 1, until: 200, name: "binder: a press in the step's window is pressed and held", want: "HP-");
+    expectStep(t: t, b: b, step: 2, until: 300, name: "binder: the next step, held alone", want: "H--");
+    hand(b: b, s: key(control: 82, down: false, at: 350));
+    expectStep(t: t, b: b, step: 3, until: 400, name: "binder: a release is released, not held", want: "--R");
+    expectStep(t: t, b: b, step: 4, until: 500, name: "binder: then off", want: "---");
+
+    // Split by time: a press after the step's end waits for the step whose window holds it.
+    hand(b: b, s: key(control: 82, down: true, at: 650));
+    expectStep(t: t, b: b, step: 5, until: 600, name: "binder: a sample after the step's end is not the step's", want: "---");
+    expectStep(t: t, b: b, step: 6, until: 700, name: "binder: it is the next step's", want: "HP-");
+    hand(b: b, s: key(control: 82, down: false, at: 750));
+
+    // A tap inside one step: the press, held, then the release on the next step.
+    hand(b: b, s: key(control: 82, down: true, at: 810));
+    hand(b: b, s: key(control: 82, down: false, at: 820));
+    expectStep(t: t, b: b, step: 7, until: 900, name: "binder: a tap inside one step shows the press, held",
+               want: "HP-");
+    expectStep(t: t, b: b, step: 8, until: 1000, name: "binder: and its release on the next step", want: "--R");
+    expectStep(t: t, b: b, step: 9, until: 1100, name: "binder: then off", want: "---");
+
+    // A release then a press inside one step: both edges, held.
+    hand(b: b, s: key(control: 82, down: true, at: 1150));
+    expectStep(t: t, b: b, step: 10, until: 1200, name: "binder: held", want: "HP-");
+    hand(b: b, s: key(control: 82, down: false, at: 1210));
+    hand(b: b, s: key(control: 82, down: true, at: 1220));
+    expectStep(t: t, b: b, step: 11, until: 1300, name: "binder: a release and a press in one step show both, held", want: "HPR");
+    hand(b: b, s: key(control: 82, down: false, at: 1350));
+    expectStep(t: t, b: b, step: 12, until: 1400, name: "binder: released", want: "--R");
+
+    // Two controls of one action: held while either is, its edges those of both together.
+    hand(b: b, s: key(control: 82, down: true, at: 1450));
+    expectStep(t: t, b: b, step: 13, until: 1500, name: "binder: the first of two controls presses", want: "HP-");
+    hand(b: b, s: key(control: 26, down: true, at: 1550));
+    expectStep(t: t, b: b, step: 14, until: 1600, name: "binder: the second, while the first is held, presses nothing", want: "H--");
+    hand(b: b, s: key(control: 82, down: false, at: 1650));
+    expectStep(t: t, b: b, step: 15, until: 1700, name: "binder: the first let go, while the second is held, releases nothing",
+               want: "H--");
+    hand(b: b, s: key(control: 82, down: true, at: 1750));
+    expectStep(t: t, b: b, step: 16, until: 1800, name: "binder: a key's repeat, a down while held, presses nothing", want: "H--");
+    hand(b: b, s: key(control: 82, down: false, at: 1850));
+    hand(b: b, s: key(control: 26, down: false, at: 1860));
+    expectStep(t: t, b: b, step: 17, until: 1900, name: "binder: both let go release it", want: "--R");
+
+    // Another action, and another device.
+    hand(b: b, s: key(control: 4, down: true, at: 1950));
+    string jumpFaster = stepped(b: b, step: 18, until: 2000, action: 0);
+    string jump = stepped(b: b, step: 19, until: 2000, action: 1);
+    t.verdict(name: "binder: a key of another action moves that action alone",
+              why: jumpFaster == "---" && jump == "H--" ? "" : "faster ${jumpFaster}, jump ${jump}");
+    hand(b: b, s: key(control: 4, down: false, at: 2050));
+    hand(b: b, s: Sample.make(device: Device::Mouse, slot: 0, control: 0, value: 1.0, at: 2150));
+    expectStep(t: t, b: b, step: 20, until: 2200, name: "binder: the mouse's Left presses what it is bound to", want: "HP-");
+    hand(b: b, s: Sample.make(device: Device::Mouse, slot: 0, control: 0, value: 0.0, at: 2250));
+    hand(b: b, s: key(control: 0, down: true, at: 2260));
+    expectStep(t: t, b: b, step: 21, until: 2300, name: "binder: a keyboard control with the mouse button's number is not it",
+               want: "--R");
+
+    // The last owed step takes everything that arrived.
+    hand(b: b, s: key(control: 82, down: true, at: 900000));
+    expectStep(t: t, b: b, step: 22, until: EVERYTHING, name: "binder: the frame's last step takes everything that arrived",
+               want: "HP-");
+    hand(b: b, s: key(control: 82, down: false, at: 900001));
+    expectStep(t: t, b: b, step: 23, until: EVERYTHING, name: "binder: released", want: "--R");
+}
+
+fn void padCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": \"RightShoulder\" } }");
+    t.verdict(name: "binder: no pad is locked before one is pressed", why: b.lockedPad().isNone() ? "" : "one is");
+    hand(b: b, s: Sample.padConnected(slot: 2, at: 10));
+    expectStep(t: t, b: b, step: 0, until: 100, name: "binder: a pad's connection presses nothing", want: "---");
+    t.verdict(name: "binder: nor locks it", why: b.lockedPad().isNone() ? "" : "it locked");
+    hand(b: b, s: pad(slot: 2, control: 5, value: 0.05, at: 110));
+    expectStep(t: t, b: b, step: 1, until: 200, name: "binder: a button under PressedAt of its travel presses nothing", want: "---");
+    t.verdict(name: "binder: nor locks its pad", why: b.lockedPad().isNone() ? "" : "it locked");
+
+    hand(b: b, s: pad(slot: 2, control: 5, value: 1.0, at: 210));
+    expectStep(t: t, b: b, step: 2, until: 300, name: "binder: the first pad pressed drives player 1", want: "HP-");
+    bool locked2 = match (b.lockedPad()) { case Some(value: s): s == 2; case None: false; };
+    t.verdict(name: "binder: and locks in", why: locked2 ? "" : "not slot 2");
+    hand(b: b, s: pad(slot: 2, control: 5, value: 0.0, at: 310));
+    expectStep(t: t, b: b, step: 3, until: 400, name: "binder: its release", want: "--R");
+    hand(b: b, s: pad(slot: 0, control: 5, value: 1.0, at: 410));
+    expectStep(t: t, b: b, step: 4, until: 500, name: "binder: another pad does nothing while one is locked", want: "---");
+    hand(b: b, s: pad(slot: 0, control: 5, value: 0.0, at: 510));
+    hand(b: b, s: key(control: 82, down: true, at: 520));
+    expectStep(t: t, b: b, step: 5, until: 600, name: "binder: the keyboard drives player 1 while a pad is locked", want: "HP-");
+    hand(b: b, s: key(control: 82, down: false, at: 610));
+    expectStep(t: t, b: b, step: 6, until: 700, name: "binder: released", want: "--R");
+
+    // The locked pad held, then disconnected: its lock goes, and what it held is let go at that moment.
+    hand(b: b, s: pad(slot: 2, control: 5, value: 1.0, at: 710));
+    expectStep(t: t, b: b, step: 7, until: 800, name: "binder: the locked pad presses again", want: "HP-");
+    hand(b: b, s: Sample.padDisconnected(slot: 0, at: 810));
+    expectStep(t: t, b: b, step: 8, until: 900, name: "binder: another pad's disconnection changes nothing", want: "H--");
+    hand(b: b, s: Sample.padDisconnected(slot: 2, at: 910));
+    expectStep(t: t, b: b, step: 9, until: 1000, name: "binder: the locked pad's disconnection releases what it held", want: "--R");
+    t.verdict(name: "binder: and lets the lock go", why: b.lockedPad().isNone() ? "" : "still locked");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 1010));
+    expectStep(t: t, b: b, step: 10, until: 1100, name: "binder: an unbound button presses nothing", want: "---");
+    bool locked0 = match (b.lockedPad()) { case Some(value: s): s == 0; case None: false; };
+    t.verdict(name: "binder: but any button pressed takes the lock, the next pad's", why: locked0 ? "" : "not slot 0");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 0.0, at: 1110));
+    hand(b: b, s: pad(slot: 0, control: 5, value: 1.0, at: 1120));
+    expectStep(t: t, b: b, step: 11, until: 1200, name: "binder: and drives player 1", want: "HP-");
+}
+
+fn void playerCases(ref Tally t) {
+    DynamicArray<string> actions = actionsOf(a: "faster", b: "");
+    SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
+    Result<Binder, BindingError> made = Binder.make(players: 2, digitalActions: actions, bindings: map);
+    match (give made) {
+        case Ok(value: b): {
+            hand(b: b, s: key(control: 82, down: true, at: 50));
+            string one = spelled(d: b.handoff(index: 0, until: 100).digital(player: 1, action: 0));
+            string two = spelled(d: b.handoff(index: 1, until: 100).digital(player: 2, action: 0));
+            bool sized = b.players() == 2;
+            t.verdict(name: "binder: the keyboard drives player 1 alone, player 2 off",
+                      why: one == "HP-" && two == "---" && sized ? "" : "player 1 ${one}, player 2 ${two}");
+        }
+        case Err(error: e): {
+            string why = e.message();
+            t.verdict(name: "binder: the keyboard drives player 1 alone, player 2 off", why: why);
+        }
+    };
+}
+
+fn void binderTests(ref Tally t) {
+    bindingCases(t: t);
+    edgeCases(t: t);
+    padCases(t: t);
+    playerCases(t: t);
+}

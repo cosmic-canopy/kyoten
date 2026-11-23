@@ -108,6 +108,12 @@ type resource Clock {
     int64 count = 0;                    // steps settled: the next step's base index
     int64 discards = 0;
     bool stepPending = false;
+    // The last frame's span and what it owed from, for `stepEnd`: its start and end timestamps, the owed time before it
+    // and the scale it ran at.
+    int64 frameFrom = 0;
+    int64 frameTo = 0;
+    int64 accBefore = 0;
+    TimeScale frameScale = TimeScale.normal();
 
     // `hz` is the base rate: the least common multiple the generator derives from every processor's rate, or a
     // pinned base. `maxSteps` is the most steps a frame may owe, 5 by default (an App record field when a game needs
@@ -156,6 +162,10 @@ type resource Clock {
     public fn Owed advance(int64 now) {
         int64 elapsed = 0;
         if (this.started) { elapsed = between(from: this.last, to: now); }
+        this.frameFrom = this.started ? this.last : now;
+        this.frameTo = now;
+        this.accBefore = this.acc;
+        this.frameScale = this.ratio;
         this.started = true;
         this.last = now;
 
@@ -176,6 +186,27 @@ type resource Clock {
         float32 frameDt = cast<float32>(cast<float64>(shown) / 1000000000.0);
         float32 fraction = cast<float32>(cast<float64>(this.acc) / 1000000000.0);
         return Owed.of(steps: owed, first: first, fraction: fraction, frameDt: frameDt);
+    }
+
+    // Where the last frame's `i`-th owed step ends (0 is the first), on the timestamps' base: the moment the scaled time
+    // the frame owed reached that step, rounded up to the nanosecond, so input that arrived by then is that step's
+    // (design/input.md § Decided, question 1). Never past the frame's own timestamp, which is also the answer while
+    // paused, when a step asked for with `stepOnce` takes the whole frame. The driver hands the frame's last owed step
+    // everything that arrived up to the pump, so it asks this of the others.
+    public const fn int64 stepEnd(int64 i) {
+        int64 num = cast<int64>(this.frameScale.numerator());
+        int64 den = cast<int64>(this.frameScale.denominator());
+        if (num == 0 || i < 0) { return this.frameTo; }
+        // The scaled nanoseconds from the frame's start to the step's end, rounded up: the owed time is counted in
+        // nanoseconds × rate, and a step is owed at NS.
+        int64 units = mulSat(a: i + 1, b: NS) - this.accBefore;
+        int64 scaled = units / this.rate + (units % this.rate == 0 ? 0 : 1);
+        // Back to real nanoseconds, scaled × den / num, rounded up, split by a division first so it never overflows.
+        int64 whole = scaled / num;
+        int64 part = scaled % num;
+        int64 real = addSat(a: mulSat(a: whole, b: den), b: (part * den + num - 1) / num);
+        if (real >= between(from: this.frameFrom, to: this.frameTo)) { return this.frameTo; }
+        return this.frameFrom + real;
     }
 
     // Real nanoseconds to scaled ones, exactly: elapsed × num / den, with the remainder carried to the next frame.

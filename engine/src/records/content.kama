@@ -3,7 +3,9 @@
 // kyoten::content's `ContentFile`, whose prefabs are kept as JSON since a game's components are its own (REFERENCE.md
 // § Records and their files; components § Decided, the loader's question 2 of 2026-11-09).
 
-export { AppRecord, WindowRecord, BindingRecord };
+import { std::collections::DynamicArray, std::memory::Owned };
+
+export { AppRecord, WindowRecord, BindingRecord, ControlEntry };
 
 // The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
 // lays its own over, field by field.
@@ -35,18 +37,73 @@ type resource AppRecord {
     public const fn const ref string note() { return this.noteField; }
 }
 
-// One action's controls, one per device. The control names are KYR-54's.
-@generate(Serializable, Deserializable)
+// One action's controls, keyed by device (design/input.md § Decided, question 2): `{ "keyboard": ["ArrowUp", "KeyW"],
+// "gamepad": "RightShoulder" }`. A content layer that names a device replaces that device's entry whole and leaves the
+// others, as every record merges, so a player rebinding the keyboard keeps the pad's.
+@generate(Deserializable)
 type resource BindingRecord {
-    @field(name: "keyboard") Optional<string> keyboardField = Optional::None;
-    @field(name: "mouse") Optional<string> mouseField = Optional::None;
-    @field(name: "gamepad") Optional<string> gamepadField = Optional::None;
+    @field(name: "keyboard") Optional<ControlEntry> keyboardField = Optional::None;
+    @field(name: "mouse") Optional<ControlEntry> mouseField = Optional::None;
+    @field(name: "gamepad") Optional<ControlEntry> gamepadField = Optional::None;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
 
-    public const fn const ref Optional<string> keyboard() { return this.keyboardField; }
-    public const fn const ref Optional<string> mouse() { return this.mouseField; }
-    public const fn const ref Optional<string> gamepad() { return this.gamepadField; }
+    public const fn const ref Optional<ControlEntry> keyboard() { return this.keyboardField; }
+    public const fn const ref Optional<ControlEntry> mouse() { return this.mouseField; }
+    public const fn const ref Optional<ControlEntry> gamepad() { return this.gamepadField; }
     public const fn const ref string note() { return this.noteField; }
+}
+
+// A device's entry in a binding (design/input.md § Decided, question 2): a control's name (`"ArrowUp"`), a list of
+// them (`["ArrowUp", "KeyW"]`), or an object with its parts, its filters and its gestures. A name is `@kama/window`'s,
+// which `kyoten::input` resolves, refusing one that names no control. An object is noted and its value passed over
+// here: its parts, filters and gestures are KYR-54's later parts, and the binder refuses one until they are built.
+type resource ControlEntry implements Deserializable<This> {
+    DynamicArray<string> namesField = DynamicArray.empty();
+    bool listedField = false;
+    bool objectField = false;
+
+    public ctor Result<ControlEntry, Owned<Error>> deserialize(Deserializer r) {
+        ValueKind k = r.peekKind();
+        if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+        match (k) {
+            case String: {
+                string one = r.readString();
+                if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+                this.namesField.add(item: give one);
+            }
+            case Array: {
+                this.listedField = true;
+                r.beginArray();
+                isize index = 0;
+                while (r.moreElems()) {
+                    string named = r.readString();
+                    if (r.failed()) {
+                        return Result::Err(error: DeError::inElement(error: DeError.make(kind: r.errorKind()), index: index));
+                    }
+                    this.namesField.add(item: give named);
+                    index = index + 1;
+                }
+                if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+            }
+            case Object: {
+                this.objectField = true;
+                r.skipValue();
+                if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+            }
+            case _: {
+                r.failWith(kind: DeErrorKind::TypeMismatch);
+                return Result::Err(error: DeError.make(kind: r.errorKind()));
+            }
+        };
+        return Result::Ok(value: give this);
+    }
+
+    // The controls' names, in the order written: one for a name, any number for a list, none for an object.
+    public const fn const ref DynamicArray<string> names() { return this.namesField; }
+    // Written as a list.
+    public const fn bool listed() { return this.listedField; }
+    // Written as an object, with parts, filters or gestures.
+    public const fn bool isObject() { return this.objectField; }
 }
