@@ -123,7 +123,8 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
      Set aside: (B) every pad until the game locks in, which leaves every pad live in a game that never does; (C) only
      the game letting go, which strands a player whose pad dies. It changes the decided wording "the first gamepad"
      (components § Decided, 2026-11-06). "So far": the owner tries it with two pads once it is built, in a short block
-     at the start of the session after.
+     at the start of the session after. **Tried and kept** (2026-11-23, below): "It sounds like the lock worked from
+     what you described."
 
 - **2026-11-22, built: step 8's first part, `Digital` end to end** (the forty-sixth session), in two commits on kyoten's
   pin, `0.9.1027+g25d97c29`, each gated by `tools/test.sh`. The later parts, each its own commit: `Analog`,
@@ -248,8 +249,9 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   block; `.scratch/s46/locktry/`, its log in `.scratch/s47/locktry.log`). Both pads connected (slots 0 and 1); the
   first pressed, slot 1's, took player 1, and its South drove `faster` held, pressed, then released; while it was locked
   the log shows no change from the other pad; unplugged, the lock let go ("no pad"); the other pad's next button took
-  it. That pad's press left `faster` off: a button `faster` is not bound to (South or RightShoulder), as a Switch pad's
-  A, which is East by place, would be: asked at the session's end, with the owner's word on the try.
+  it. That pad's press left `faster` off: it was a Switch-style pad, whose A is East by place, a button `faster` is not
+  bound to (South or RightShoulder). The owner, asked at the session's end: "it was a switch style controller. It
+  sounds like the lock worked from what you described." Question 4 is kept as decided, no longer "so far".
 
 - **2026-11-23, built: step 8's second part** (the forty-seventh session), in four commits on kyoten's pin,
   `0.9.1027+g25d97c29`, each gated by `tools/test.sh`, on `@kama/window`'s WIN-28 (kama-window `54184ab`).

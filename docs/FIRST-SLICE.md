@@ -641,7 +641,8 @@ forty-fourth). Where the work is:**
    splits by it (A); bindings keyed by action then device, an entry a control, a list or an object with its filters
    and gestures (A, "so far"); filter and gesture in place of "adapter" (A); and, asked twice, a pad locks in to player
    1, the first pressed, until it disconnects or the game lets go, other pads doing nothing meanwhile, the keyboard and
-   mouse throughout (A, "so far"; the owner: "I don't want another pad taking input control accidentally").
+   mouse throughout (A, "so far"; the owner: "I don't want another pad taking input control accidentally"; tried with
+   two pads and kept, 2026-11-23).
    **`@kama/window`'s WIN-25 and WIN-26 are built** (the forty-fifth session; kama-window `642d116`, `663689e` and
    `fedfc75`), and their callers ported (kama-gpu `dc7d711`, kama-graphics `80c9e5f`, kyoten `c51a474`):
    - WIN-25: `Key`, `PadButton`, `PadAxis` and `PointerButton` read and written by their case names, a misspelling
@@ -676,8 +677,9 @@ forty-fourth). Where the work is:**
 
    **The owner tried the pad lock with two pads** (the forty-seventh session's start; design/input.md § Decided,
    2026-11-23): the first pressed took player 1, the other pad changed nothing while it was locked, unplugging it let
-   go, and the other pad's next press took it. That press left `faster` off, a button it is not bound to (a Switch
-   pad's A is East by place), asked at the session's end.
+   go, and the other pad's next press took it. That press left `faster` off: it was a Switch-style pad, whose A is East
+   by place, a button `faster` is not bound to. The owner kept the lock as decided: "It sounds like the lock worked
+   from what you described."
 
    **Step 8's second part's three questions are decided** (the owner, 2026-11-23, [design/input.md](design/input.md) §
    Decided): (1) each player's active scheme, the device kind that last drove them, gating Input-phase processors, so
