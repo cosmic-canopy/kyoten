@@ -129,8 +129,8 @@ forty-fourth). Where the work is:**
    - `@kama/graphics`': 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, and `examples/cube`
      on every leg, since part 6's step 4 (the forty-third session); 450, 451 and 438 at its start. The cube on the GPU,
      natively and in Edge, is held to its software golden by FLIP, and its player build (`--define CUBE_PLAYER`) is run
-     once in Edge and measured: 172,372 B of wasm and JS after brotli since WIN-27 (172,418 B on 0.9.1026 and 0.9.1027,
-     172,326 B on 0.9.1018, 169,655 B on 0.9.978), its ratchet (`examples/cube/web-size.json`). Its
+     once in Edge and measured: 172,656 B of wasm and JS after brotli since WIN-28 (172,372 B since WIN-27, 172,418 B on
+     0.9.1026 and 0.9.1027, 172,326 B on 0.9.1018, 169,655 B on 0.9.978), its ratchet (`examples/cube/web-size.json`). Its
      gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
      that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
      side by side.
@@ -686,6 +686,8 @@ forty-fourth). Where the work is:**
 
    **`@kama/window`'s WIN-28 is built** (the forty-seventh session, kama-window `81d6773` decided and `54184ab`):
    `padAt(slot:)`, the time of the reading `pad(slot:)` shows, the time its events carry; 9 of 9 mutations caught.
+   `@kama/gpu`'s gate is green on it at the same counts, and `@kama/graphics`' cube is 284 B larger for it (`pad_take`
+   keeping each reading's time, measured by function), its record raised with that reason (kama-graphics `abc0383`).
 
    **Step 8's second part is built** (the forty-seventh session, four commits; design/input.md § Decided, its Built
    entry, which lists what was settled for the owner to object to): every action kind but `Text` and the delta (kyoten
