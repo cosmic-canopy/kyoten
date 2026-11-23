@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-21, the forty-fifth session)
+## Where it stands (2026-11-22, the forty-sixth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,18 +107,18 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 218 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 229; kyoten check; fps native, and on wasm in both builds; vr checked. 164 and 211 at the forty-fourth
-     session's start. It takes 10 min 25 s alone on 0.9.1018, warm (12 min 6 s on the first run after the change
-     below), whose `kama run` keeps its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took
+   - tools/test.sh: engine 334 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 234; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's first part (the
+     forty-sixth session); 218 and 229 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
+     alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took
      14 minutes on 0.9.978, every `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case
      keeps kama's build cache** (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
      kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
      526 s, SDL3 compiled again in each build (102 s and 115 s, 11 s and 10 s warm) and the web build from nothing
      (63 s, 49 s warm);
-   - `@kama/window`'s: 304, 204 under node, 311 in Edge and Firefox, 322 through the driver, and a program reaching none
-     of the package linked natively and on wasm, since WIN-25 and WIN-26 (the forty-fifth session); 249, 163, 253 and
-     264 at its start;
+   - `@kama/window`'s: 313, 204 under node, 318 in Edge and Firefox, 329 through the driver, and a program reaching none
+     of the package linked natively and on wasm, since WIN-27 (the forty-sixth session); 304, 204, 311 and 322 at its
+     start;
    - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
      Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
      its start;
@@ -128,8 +128,8 @@ forty-fourth). Where the work is:**
    - `@kama/graphics`': 475 cases natively, 476 in Firefox and in Chrome for Testing, 451 in Edge, and `examples/cube`
      on every leg, since part 6's step 4 (the forty-third session); 450, 451 and 438 at its start. The cube on the GPU,
      natively and in Edge, is held to its software golden by FLIP, and its player build (`--define CUBE_PLAYER`) is run
-     once in Edge and measured: 172,326 B of wasm and JS after brotli since the bump to 0.9.1018 (169,655 B on 0.9.978
-     since WIN-26, 169,091 B before), its ratchet (`examples/cube/web-size.json`). Its
+     once in Edge and measured: 172,372 B of wasm and JS after brotli since WIN-27 (172,418 B on 0.9.1026 and 0.9.1027,
+     172,326 B on 0.9.1018, 169,655 B on 0.9.978), its ratchet (`examples/cube/web-size.json`). Its
      gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
      that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
      side by side.
@@ -153,9 +153,11 @@ forty-fourth). Where the work is:**
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
      **At the bump `25d97c29` was kama's origin's HEAD** (2026-11-22, the forty-sixth session's start), so the Mac can
-     rebuild at it, and the range was empty. What 0.9.979 to 0.9.1027 brought, read session by session from the
-     thirty-fifth, is `.kama-version`'s entries for the bumps, and this item's history in the git log. A bump is
-     optional until something kyoten needs lands, and checks first what a release in the range says it changes.
+     rebuild at it, and the range was empty. Read again at the session's end: a guard script's fix on kama's origin
+     (`82313c84`) and a roadmap commit in its tree here (`56ac55b9`, KR-440's brief and KR-444 filed), no compiler
+     change. What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
+     entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
+     lands, and checks first what a release in the range says it changes.
    - **The pin is on 0.9.1027** (`25d97c29`) since 2026-11-22, the forty-sixth session's start (`.kama-version`), at
      the owner's word ("A: bump now (Recommended)"), every suite green on it at 0.9.1026's counts with nothing changed.
      Before it, 0.9.1026 (`b2f627b0`) since the forty-fifth session's readying, at the owner's word ("yes you can bump
@@ -649,14 +651,37 @@ forty-fourth). Where the work is:**
      the web the DOM event's `timeStamp` and a pad's `Gamepad.timestamp`, held to the pumps and in order. Natively a
      pad's time is the pump's, a stopgap until SDL's stamp for a reading can be held by a test.
 
-   **First, `@kama/window`'s WIN-27** (filed at the bump to 0.9.1026, kama-window `ec5cf96`): since 0.9.1023 a lone
-   surrogate from a page's own key event ends the program in `cast<char>`, and step 8's `Text` action reads those
-   events. Decided (A) on 2026-11-22 (kama-window `e3d15b0`): a key that is no Unicode scalar value types nothing, as
-   GLFW on Windows already makes it natively; the seam passes no such value, and `eventOf` reads with `try cast<char>`.
-   **Next: step 8's parts in kyoten,** test-first on posted events and pads, the events' times now in hand; the lock-in
-   tried by the owner with two pads in a short block at the start of the session after it is built. **Beside it, in
-   `@kama/graphics`:** the cube's goldens can move into a `select` value its player's build leaves out, since KY-63's
-   fix is on the pin, which takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
+   **`@kama/window`'s WIN-27 is built** (the forty-sixth session, kama-window `9274a48`), as decided (A): a key whose
+   code point is no Unicode scalar value types nothing, and no program ends. It was a native bug too: GLFW 3.5.1 joins
+   `WM_CHAR`'s surrogates but hands an input method's `WM_UNICHAR` value to the char callback unchecked (read in its
+   source). The page's `typed()` and the native `on_char` pass no such value, and `eventOf` reads with
+   `try cast<char>`, each end held alone; 10 of 10 mutations caught. The cube is 46 B smaller for it, its record
+   lowered with that reason (kama-graphics `5a6fbcf`).
+
+   **Step 8's first part is built: `Digital` end to end** (the forty-sixth session; kyoten `9b7ecad` and `b78715c`;
+   [design/input.md](design/input.md) § Decided, its Built entry, which lists what was settled for the owner to object
+   to), from a key, a mouse button or a pad's button to a processor:
+   - the frame tier's `Digital`, `Sample`, `Handoff`, `PlayerActions`, `Clock.stepEnd` and the `InputSource` contract;
+     `World.input(time:, handoff:)`, and `frame` handing each owed step the input that arrived by its end;
+   - the binder, `kyoten::input` (tier `Module`, outside the fence): the bindings read by `@kama/window`'s names, each
+     layer's laid over the ones below device by device, player 1 on the keyboard and the mouse and the first pad
+     pressed, locked until it disconnects;
+   - the platform's samples from `@kama/window`'s events, the loop handing them to its source, and the generated `run`
+     building the binder from the content; the passes write each row's `Actions` as each run sees it, whatever its
+     rate, so each processor sees an edge once.
+
+   Found on the way and fixed first: a slower processor's first window reached the sentinel for "no edge yet" (step -1)
+   and saw a press that never was, which the spin fixture's new 30 Hz `tally` found.
+
+   **Next, at the next session's start, the owner's try of the pad lock with two pads** (question 4, "so far"): a short
+   numbered block, on a probe that prints player 1's lock and its action as the pads move
+   (`.scratch/s46/locktry/`, built, machine-local), the pads by USB. **Then step 8's second part,** its shape to lay
+   out from the code: `Analog`, `Vector2` and `Vector3` (`Pose` built, bound by nothing), a device's entry as an object with
+   its parts (`up`, `down`, `left`, `right` for keys; `x`, `y` for a stick) and a pad's axes, a mouse's motion, and
+   Output's newest sample. Filters, gestures, `Text` and the game letting go of the lock follow, each asked where its
+   API needs it. **Beside it, in `@kama/graphics`:** the cube's goldens can move into a `select` value its player's
+   build leaves out, since KY-63's fix is on the pin, which takes emscripten's file packager, about 6.8 KB of brotli JS,
+   out of its ratchet (GFX-20).
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
@@ -749,6 +774,26 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The forty-sixth session** (2026-11-22). Nothing new on any origin at the start; kama had moved one compiler commit
+past the pin, 0.9.1027 (`25d97c29`), which closes KY-67.
+- **Every suite was green on 0.9.1026 at the start,** at the forty-fifth session's counts.
+- **One question at the start, decided at once** (A): the bump to 0.9.1027, made first as its own commit (kyoten
+  `cece7ef`), every gate green on it at 0.9.1026's counts, KY-67 removed.
+- **Built:** WIN-27 in `@kama/window` (kama-window `9274a48`; 10 of 10 mutations caught), and step 8's first part in
+  kyoten in two commits (`9b7ecad`, 40 of 40 mutations caught; `b78715c`, 24 of 24), item 3.
+  - **Found reading GLFW's source:** its `WM_UNICHAR` path passes any value to the char callback, so WIN-27 was a native
+    bug too, and its native case has that real route.
+  - **Found by a fixture written to hold the generator's windows:** the sentinel for "no edge yet" sat inside a slower
+    processor's first window (fixed in the first commit, red first).
+  - **Settled and reported, for the owner to object to** (design/input.md's Built entry): a pad takes the lock with a
+    button, never a stick alone; one action on several controls held while any is; a tap's release on the next step;
+    under `--fixed-fps` a tick's samples at its own timestamp; an entity naming no player sees nothing.
+- **A Firefox leg failed once under load** (`@kama/graphics`' release leg, its sandbox unable to start the tab's
+  processes, "Failed to launch tab subprocess @SB::LA::SpawnTarget") while a mutation batch ran beside it; the gate
+  passed on a quiet machine.
+- **Mistakes to keep:** a worktree was edited twice while its gate built from it, and each run was stopped and rerun;
+  a stopped run leaves its test program and the tool running, which must be ended before the next run can link.
 
 **The forty-fifth session** (2026-11-21). Nothing new on any origin at the start, and kama unchanged since `3aefd09d`,
 so no bump then; it moved to 0.9.1018 during the session, closing KR-433, and the pin was bumped to it at the end

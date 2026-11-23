@@ -442,10 +442,10 @@
 # 2026-11-22: 0.9.1026 -> 0.9.1027 (25d97c29), kama's dev HEAD with a clean tree, on its origin, at the owner's word
 # ("A: bump now (Recommended)", the forty-sixth session's start); 0.9.1026 kept in .scratch/kama-pin-0.9.1026. What
 # moved, for kyoten:
-#   0.9.1027 KR-437: a package's C goes with its kama. A program that reaches a package (an import of any name) links its
-#           `csources`, one that reaches none links none, and a reached package emits every `expose fn`; a package that
-#           is only C links whenever depended on. So KY-67 is fixed and removed: its repro's `app2` builds and prints
-#           `app2: linked`, where 0.9.1026 refused it ("undefined reference to `lib_tick'"). Nothing to port:
+#   0.9.1027 KR-437: a package's C goes with its kama. A program that reaches a package (an import of any name) links
+#           its `csources`, one that reaches none links none, and a reached package emits every `expose fn`; a package
+#           that is only C links whenever depended on. So KY-67 is fixed and removed: its repro's `app2` builds and
+#           prints `app2: linked`, where 0.9.1026 refused it ("undefined reference to `lib_tick'"). Nothing to port:
 #           @kama/window's C reads kama's clock through kama_time.h, kama's binding header for std::time, and
 #           kyoten's frame guard and @kama/window's unreached fixture now link none of its C. An unreached package's
 #           `link` libraries and flags still apply (KR-443).
