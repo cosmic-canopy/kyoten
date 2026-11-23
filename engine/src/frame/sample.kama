@@ -10,11 +10,17 @@
 //   a frame's input by it (design/input.md § Decided, question 1).
 // - **A pad's connection is a sample too,** so a pad that disconnects lets player 1's lock go at its moment
 //   (design/input.md § Decided, question 4).
+// - **A control's edges and its values are apart** (the second part of step 8): `Control` is a key's, a mouse button's
+//   or a pad button's down and up, from the window's events, so a press and its release between two pumps are both
+//   kept; `Travel` is a pad button's travel and `Axis` a stick's, read from each reading of the pad at its time
+//   (`@kama/window`'s `padAt`, WIN-28); and `Motion` the mouse's, a distance moved. Each value is as the device
+//   reports it, right and down positive: the binder turns a Y over, since an action's up is positive (design/input.md
+//   § Decided, the second part's question 2).
 
 export { Sample, SampleKind, Device };
 
-// What a sample says.
-type enum SampleKind { Control, Connected, Disconnected }
+// What a sample says: a control's edge, a pad button's travel, a stick's axis, the mouse's motion, or a pad's connection.
+type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected }
 
 // Which kind of device it came from: the bindings record's keys.
 type enum Device { Keyboard, Mouse, Gamepad }
@@ -24,9 +30,11 @@ type value Sample {
     public Device device;
     // A gamepad's slot, as `@kama/window` numbers them; 0 for the keyboard and the mouse.
     public int32 slot;
-    // The control, numbered as above; 0 for a connection.
+    // The control, numbered as above: a stick's axis by the standard gamepad's index (LeftX 0, LeftY 1), the mouse's
+    // motion 0 across and 1 down; 0 for a connection.
     public int32 control;
-    // A button's or a key's travel, 0 up to 1, as the device reports it: 1 down and 0 up for a key.
+    // An edge's or a button's travel, 0 up to 1 (1 down and 0 up for a key), an axis from -1 to 1, or a distance moved,
+    // as the device reports it.
     public float32 value;
     // When it happened, in nanoseconds on the frame timestamp's base.
     public int64 at;
@@ -58,6 +66,38 @@ type value Sample {
         this.slot = slot;
         this.control = 0;
         this.value = 0.0;
+        this.at = at;
+    }
+
+    // The pad in `slot`'s button `button` (the standard gamepad's index) at `value` of its travel, 0 to 1.
+    public ctor padTravel(int32 slot, int32 button, float32 value, int64 at) {
+        this.kind = SampleKind::Travel;
+        this.device = Device::Gamepad;
+        this.slot = slot;
+        this.control = button;
+        this.value = value;
+        this.at = at;
+    }
+
+    // The pad in `slot`'s stick axis `index` (the standard gamepad's: LeftX 0, LeftY 1, RightX 2, RightY 3) at `value`,
+    // -1 to 1, right and down positive.
+    public ctor padAxis(int32 slot, int32 index, float32 value, int64 at) {
+        this.kind = SampleKind::Axis;
+        this.device = Device::Gamepad;
+        this.slot = slot;
+        this.control = index;
+        this.value = value;
+        this.at = at;
+    }
+
+    // The mouse moved `value` along `index` (0 across, right positive; 1 down the window, down positive): logical
+    // pixels, or the raw counts while the cursor is locked, as `@kama/window` reports them.
+    public ctor mouseMotion(int32 index, float32 value, int64 at) {
+        this.kind = SampleKind::Motion;
+        this.device = Device::Mouse;
+        this.slot = 0;
+        this.control = index;
+        this.value = value;
         this.at = at;
     }
 }

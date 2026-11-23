@@ -270,7 +270,7 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "    }\n";
     t = t + "    string title = content.windowTitle(fallback: " + literal(s: game) + ");\n";
     t = t + "    Result<Binder, BindingError> bound = Binder.make(players: GameWorld::players, actions: GameWorld::actions(),\n";
-    t = t + "                                                     bindings: content.bindings());\n";
+    t = t + "                                                     bindings: content.bindings(), hz: GameWorld::baseHz);\n";
     t = t + "    Binder input = match (give bound) {\n";
     t = t + "        case Ok(value: b): give b;\n";
     t = t + "        case Err(error: e): {\n";

@@ -8,7 +8,7 @@
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
-         std::math::Vec2, kyoten::records::BindingRecord,
+         std::math::Vec2, std::math::Vec3, std::math::sqrt, kyoten::frame::Time, kyoten::records::BindingRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
 export { binderTests };
@@ -26,14 +26,18 @@ fn SortedMap<string, BindingRecord> bindingsOf(const ref string json) {
     };
 }
 
-// The digital actions `a` and `b` (either "" for none), and an analog `throttle` and a vector2 `look`, which no
-// device binds yet.
+// The digital actions `a` and `b` (either "" for none), then a value action of each kind: an analog `throttle` (a
+// state, analog 0); a vector2 `move` (a state, vector2 0) and `look` (a delta, vector2 1); a vector3 `fly` (a state);
+// and a pose `hand`, which no device binds.
 fn ActionList actionsOf(const ref string a, const ref string b) {
     ActionList made = ActionList.make();
     if (!a.isEmpty()) { made.addDigital(name: copy a); }
     if (!b.isEmpty()) { made.addDigital(name: copy b); }
     made.addAnalog(name: "throttle", delta: false);
+    made.addVector2(name: "move", delta: false);
     made.addVector2(name: "look", delta: true);
+    made.addVector3(name: "fly", delta: false);
+    made.addPose(name: "hand");
     return made;
 }
 
@@ -41,7 +45,7 @@ fn ActionList actionsOf(const ref string a, const ref string b) {
 fn Binder binderFor(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, hz: 60);
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -55,7 +59,7 @@ fn Binder binderFor(const ref string json) {
 fn string refusalOf(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, hz: 60);
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -102,19 +106,19 @@ fn void bindingCases(ref Tally t) {
     t.verdict(name: "binder: a list binds each control, and the mouse its own", why: listed == 3 ? "" : "${listed} bound");
     string ok = refusalOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" }, \"jump\": { \"gamepad\": \"South\" } }");
     t.verdict(name: "binder: bindings naming the game's actions by their controls' names are accepted", why: ok);
-    expectRefused(t: t, name: "binder: a value action's binding is refused until KYR-54's next part binds its devices",
-                  json: "{ \"look\": { \"keyboard\": \"KeyW\" } }", says: "bind a `Vector2` action");
-    expectRefused(t: t, name: "binder: an analog's too, by its kind", json: "{ \"throttle\": { \"gamepad\": \"RightTrigger\" } }",
-                  says: "bind a `Analog` action");
-    string notNamed = refusalOf(json: "{ \"look\": { \"keyboard\": \"KeyW\" } }");
+    string trigger = refusalOf(json: "{ \"throttle\": { \"gamepad\": \"RightTrigger\" } }");
+    t.verdict(name: "binder: an analog on a trigger is accepted, its travel read", why: trigger);
+    string notNamed = refusalOf(json: "{ \"look\": { \"mouse\": \"Motion\" } }");
     t.verdict(name: "binder: a value action is an action the game declares, not one it names nowhere",
               why: notNamed.contains(substring: "name no action") ? "`look` called no action" : "");
     int32 analogs = b.handoff(index: 9, until: 900).analogActions();
     int32 vector2s = b.handoff(index: 9, until: 900).vector2Actions();
     float32 throttle = b.handoff(index: 9, until: 900).analog(player: 1, action: 0);
     Vec2 look = b.handoff(index: 9, until: 900).vector2(player: 1, action: 0);
-    bool rested = analogs == 1 && vector2s == 1 && throttle == 0.0 && look.x == 0.0 && look.y == 0.0;
+    bool rested = analogs == 1 && vector2s == 2 && throttle == 0.0 && look.x == 0.0 && look.y == 0.0;
     t.verdict(name: "binder: its hand-off has room for every kind, each value at rest", why: rested ? "" : "other sizes or values");
+    isize none = b.valueEntries();
+    t.verdict(name: "binder: a value action bound by no entry reads none", why: none == 0 ? "" : "${none} entries");
 
     expectRefused(t: t, name: "binder: a binding naming no action is refused, by its name",
                   json: "{ \"dash\": { \"keyboard\": \"Space\" } }", says: "the bindings of `dash` name no action");
@@ -251,7 +255,7 @@ fn void padCases(ref Tally t) {
 fn void playerCases(ref Tally t) {
     ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
-    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map);
+    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, hz: 60);
     match (give made) {
         case Ok(value: b): {
             hand(b: b, s: key(control: 82, down: true, at: 50));
@@ -268,8 +272,175 @@ fn void playerCases(ref Tally t) {
     };
 }
 
+fn Sample travel(int32 slot, int32 button, float32 value, int64 at) { return Sample.padTravel(slot: slot, button: button, value: value, at: at); }
+fn Sample stick(int32 slot, int32 index, float32 value, int64 at) { return Sample.padAxis(slot: slot, index: index, value: value, at: at); }
+fn Sample motion(int32 index, float32 value, int64 at) { return Sample.mouseMotion(index: index, value: value, at: at); }
+
+fn void expectFloat(ref Tally t, const ref string name, float32 got, float32 want) {
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+fn void expectVec2(ref Tally t, const ref string name, Vec2 got, float32 x, float32 y) {
+    float32 gx = got.x;
+    float32 gy = got.y;
+    t.verdict(name: name, why: gx == x && gy == y ? "" : "got (${gx}, ${gy}), want (${x}, ${y})");
+}
+
+fn void expectVec3(ref Tally t, const ref string name, Vec3 got, float32 x, float32 y, float32 z) {
+    float32 gx = got.x;
+    float32 gy = got.y;
+    float32 gz = got.z;
+    t.verdict(name: name, why: gx == x && gy == y && gz == z ? "" : "got (${gx}, ${gy}, ${gz}), want (${x}, ${y}, ${z})");
+}
+
+// Action `throttle`, `move`, `look` or `fly` in step `step`'s hand-off up to `until`.
+fn float32 throttleAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).analog(player: 1, action: 0); }
+fn Vec2 moveAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).vector2(player: 1, action: 0); }
+fn Vec2 lookAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).vector2(player: 1, action: 1); }
+fn Vec3 flyAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).vector3(player: 1, action: 0); }
+
+// A value action's parts make its value (the second part of step 8): an analog's positive less its negative, keys a
+// direction no longer than 1, a stick's axes with its Y turned over, up positive.
+fn void partCases(ref Tally t) {
+    Binder p = binderFor(json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"negative\": \"KeyS\" } } }");
+    hand(b: p, s: key(control: 26, down: true, at: 10));
+    expectFloat(t: t, name: "binder: an analog's positive key reads 1", got: throttleAt(b: p, step: 0, until: 100), want: 1.0);
+    hand(b: p, s: key(control: 22, down: true, at: 110));
+    expectFloat(t: t, name: "binder: and its negative too, 0", got: throttleAt(b: p, step: 1, until: 200), want: 0.0);
+    hand(b: p, s: key(control: 26, down: false, at: 210));
+    expectFloat(t: t, name: "binder: its negative alone, -1", got: throttleAt(b: p, step: 2, until: 300), want: -1.0);
+
+    Binder k = binderFor(json: "{ \"move\": { \"keyboard\": { \"up\": [\"KeyW\", \"ArrowUp\"], \"down\": \"KeyS\", \"left\": \"KeyA\", \"right\": \"KeyD\" } } }");
+    hand(b: k, s: key(control: 26, down: true, at: 10));
+    expectVec2(t: t, name: "binder: a vector2's up key reads up, positive", got: moveAt(b: k, step: 0, until: 100), x: 0.0, y: 1.0);
+    hand(b: k, s: key(control: 7, down: true, at: 110));
+    float32 two = 2.0;
+    float32 diagonal = 1.0 / sqrt(x: two);
+    expectVec2(t: t, name: "binder: up and right make a diagonal no longer than 1", got: moveAt(b: k, step: 1, until: 200),
+               x: diagonal, y: diagonal);
+    hand(b: k, s: key(control: 26, down: false, at: 210));
+    hand(b: k, s: key(control: 7, down: false, at: 220));
+    hand(b: k, s: key(control: 82, down: true, at: 230));
+    expectVec2(t: t, name: "binder: a part's second key reads as its first", got: moveAt(b: k, step: 2, until: 300), x: 0.0, y: 1.0);
+    hand(b: k, s: key(control: 22, down: true, at: 310));
+    expectVec2(t: t, name: "binder: up and down cancel", got: moveAt(b: k, step: 3, until: 400), x: 0.0, y: 0.0);
+
+    Binder a = binderFor(json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"LeftY\" } } }");
+    hand(b: a, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: a, s: stick(slot: 0, index: 0, value: 0.5, at: 10));
+    hand(b: a, s: stick(slot: 0, index: 1, value: 0.25, at: 20));
+    expectVec2(t: t, name: "binder: a stick's axes read as they are, its Y turned over so up is positive",
+               got: moveAt(b: a, step: 0, until: 100), x: 0.5, y: -0.25);
+    hand(b: a, s: stick(slot: 1, index: 0, value: -1.0, at: 110));
+    expectVec2(t: t, name: "binder: another pad's stick moves nothing while one is locked", got: moveAt(b: a, step: 1, until: 200),
+               x: 0.5, y: -0.25);
+    hand(b: a, s: Sample.padDisconnected(slot: 0, at: 210));
+    expectVec2(t: t, name: "binder: the locked pad's disconnection sets its sticks at rest", got: moveAt(b: a, step: 2, until: 300),
+               x: 0.0, y: 0.0);
+
+    Binder f = binderFor(json: "{ \"fly\": { \"keyboard\": { \"forward\": \"KeyW\", \"up\": \"Space\" } } }");
+    hand(b: f, s: key(control: 26, down: true, at: 10));
+    expectVec3(t: t, name: "binder: a vector3's forward is -Z", got: flyAt(b: f, step: 0, until: 100), x: 0.0, y: 0.0, z: -1.0);
+    hand(b: f, s: key(control: 44, down: true, at: 110));
+    expectVec3(t: t, name: "binder: forward and up, a diagonal no longer than 1", got: flyAt(b: f, step: 1, until: 200), x: 0.0,
+               y: diagonal, z: -diagonal);
+}
+
+// A trigger's travel, the lock, and which of an action's devices drives a state.
+fn void travelCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\" }, \"gamepad\": \"RightTrigger\" } }");
+    hand(b: b, s: travel(slot: 2, button: 7, value: 0.5, at: 10));
+    expectFloat(t: t, name: "binder: a trigger's travel with no pad locked moves nothing", got: throttleAt(b: b, step: 0, until: 100),
+                want: 0.0);
+    bool none = match (b.lockedPad()) { case Some(value: s): false; case None: true; };
+    t.verdict(name: "binder: and takes no lock: a travel is no press", why: none ? "" : "a pad took the lock");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 110));
+    hand(b: b, s: travel(slot: 0, button: 7, value: 0.25, at: 120));
+    expectFloat(t: t, name: "binder: the locked pad's trigger reads its travel", got: throttleAt(b: b, step: 1, until: 200), want: 0.25);
+    hand(b: b, s: travel(slot: 2, button: 7, value: 0.9, at: 210));
+    expectFloat(t: t, name: "binder: another pad's trigger moves nothing", got: throttleAt(b: b, step: 2, until: 300), want: 0.25);
+    hand(b: b, s: key(control: 26, down: true, at: 310));
+    expectFloat(t: t, name: "binder: a state reads its most actuated device, a key held over a trigger's quarter",
+                got: throttleAt(b: b, step: 3, until: 400), want: 1.0);
+    hand(b: b, s: key(control: 26, down: false, at: 410));
+    expectFloat(t: t, name: "binder: and the trigger again once the key is up", got: throttleAt(b: b, step: 4, until: 500), want: 0.25);
+    hand(b: b, s: Sample.padDisconnected(slot: 0, at: 510));
+    expectFloat(t: t, name: "binder: the locked pad gone, its trigger at rest", got: throttleAt(b: b, step: 5, until: 600), want: 0.0);
+}
+
+// A delta: the mouse's motion that landed in each step, split by time, its Y turned over; a stick held, times the
+// step's seconds; both devices summed.
+fn void deltaCases(ref Tally t) {
+    Binder m = binderFor(json: "{ \"look\": { \"mouse\": \"Motion\" } }");
+    hand(b: m, s: motion(index: 0, value: 3.0, at: 10));
+    hand(b: m, s: motion(index: 1, value: 2.0, at: 20));
+    hand(b: m, s: motion(index: 0, value: 1.0, at: 150));
+    hand(b: m, s: motion(index: 0, value: 2.0, at: 250));
+    expectVec2(t: t, name: "binder: the mouse's motion in a step, its Y down the window turned over",
+               got: lookAt(b: m, step: 0, until: 100), x: 3.0, y: -2.0);
+    expectVec2(t: t, name: "binder: the next step's its own, split by time", got: lookAt(b: m, step: 1, until: 200), x: 1.0, y: 0.0);
+    expectVec2(t: t, name: "binder: and the last step everything after", got: lookAt(b: m, step: 2, until: 300), x: 2.0, y: 0.0);
+    expectVec2(t: t, name: "binder: a step with no motion moves nothing", got: lookAt(b: m, step: 3, until: 400), x: 0.0, y: 0.0);
+
+    float32 dt = Time::dtAt(hz: 60);
+    Binder s = binderFor(json: "{ \"look\": { \"mouse\": \"Motion\", \"gamepad\": { \"x\": \"RightX\", \"y\": \"RightY\" } } }");
+    hand(b: s, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: s, s: stick(slot: 0, index: 2, value: 1.0, at: 10));
+    expectVec2(t: t, name: "binder: a stick held in a delta turns its value times the step's seconds", got: lookAt(b: s, step: 0, until: 100),
+               x: dt, y: 0.0);
+    expectVec2(t: t, name: "binder: and as much each step it is held", got: lookAt(b: s, step: 1, until: 200), x: dt, y: 0.0);
+    hand(b: s, s: motion(index: 0, value: 3.0, at: 210));
+    expectVec2(t: t, name: "binder: a delta sums its devices, the mouse's motion and the stick's", got: lookAt(b: s, step: 2, until: 300),
+               x: 3.0 + dt, y: 0.0);
+}
+
+// What a value action's binding refuses.
+fn void valueRefusalCases(ref Tally t) {
+    expectRefused(t: t, name: "binder: a vector2 named by one control is refused: its parts bind it",
+                  json: "{ \"move\": { \"keyboard\": \"KeyW\" } }", says: "names a control, and a `Vector2` is bound by its parts");
+    expectRefused(t: t, name: "binder: a vector3 too", json: "{ \"fly\": { \"gamepad\": \"LeftX\" } }",
+                  says: "a `Vector3` is bound by its parts");
+    expectRefused(t: t, name: "binder: keys' parts and axes in one entry are refused",
+                  json: "{ \"move\": { \"keyboard\": { \"up\": \"KeyW\", \"x\": \"KeyD\" } } }", says: "names both keys' parts and axes");
+    expectRefused(t: t, name: "binder: a misspelled part is refused, naming the kind's parts",
+                  json: "{ \"move\": { \"keyboard\": { \"upp\": \"KeyW\" } } }",
+                  says: "names `upp`, which is no part of a `Vector2`: its parts are `up`, `down`, `left` and `right`, or `x` and `y`");
+    expectRefused(t: t, name: "binder: a vector2 has no forward", json: "{ \"move\": { \"keyboard\": { \"forward\": \"KeyW\" } } }",
+                  says: "names `forward`, which is no part of a `Vector2`");
+    expectRefused(t: t, name: "binder: an analog's parts are positive and negative",
+                  json: "{ \"throttle\": { \"keyboard\": { \"up\": \"KeyW\" } } }", says: "no part of a `Analog`: its parts are `positive` and `negative`");
+    expectRefused(t: t, name: "binder: an object naming no part is refused", json: "{ \"move\": { \"keyboard\": { } } }",
+                  says: "is an object naming no part");
+    expectRefused(t: t, name: "binder: the mouse's motion on a state is refused: it is a distance moved",
+                  json: "{ \"move\": { \"mouse\": \"Motion\" } }", says: "so `move` must be a delta");
+    expectRefused(t: t, name: "binder: the mouse's motion mixed with a button held is refused",
+                  json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"Left\" } } }", says: "mixes the mouse's motion");
+    expectRefused(t: t, name: "binder: the mouse's motion as a key's part is refused",
+                  json: "{ \"look\": { \"mouse\": { \"up\": \"MotionY\" } } }", says: "as a key's part");
+    expectRefused(t: t, name: "binder: filters are refused until KYR-54's later parts",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"radialDeadZone\": 0.2 } ] } } }",
+                  says: "names filters or gestures");
+    expectRefused(t: t, name: "binder: a misspelled pad control lists the buttons and the axes",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }", says: "no button (");
+    expectRefused(t: t, name: "binder: and the axes' names", json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }",
+                  says: "and no stick's axis (");
+    expectRefused(t: t, name: "binder: a misspelled mouse control names the motion's names too",
+                  json: "{ \"look\": { \"mouse\": { \"x\": \"MotionZ\" } } }", says: "nor the mouse's motion, `MotionX` or `MotionY`");
+    expectRefused(t: t, name: "binder: a pose is bound by nothing until XR", json: "{ \"hand\": { \"keyboard\": \"KeyW\" } }",
+                  says: "bind a `Pose` action, which no device binds until XR brings one");
+    expectRefused(t: t, name: "binder: a digital's object entry is its filters and gestures, refused until their part",
+                  json: "{ \"faster\": { \"keyboard\": { \"up\": \"KeyW\" } } }", says: "which for a `Digital` holds filters and gestures");
+    string many = refusalOf(json: "{ \"move\": { \"keyboard\": \"KeyW\" }, \"fly\": { \"keyboard\": \"KeyW\" } }");
+    t.verdict(name: "binder: every refusal at once", why: many.contains(substring: "`move`") && many.contains(substring: "`fly`")
+              ? "" : "refused `${many}`");
+}
+
 fn void binderTests(ref Tally t) {
     bindingCases(t: t);
+    partCases(t: t);
+    travelCases(t: t);
+    deltaCases(t: t);
+    valueRefusalCases(t: t);
     edgeCases(t: t);
     padCases(t: t);
     playerCases(t: t);

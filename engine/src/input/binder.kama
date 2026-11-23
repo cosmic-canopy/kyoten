@@ -2,29 +2,40 @@
 // binder reads the bindings records and the samples a platform hands in, and makes each owed step's hand-off: every
 // player's action values, split by each sample's time.
 //
-// - **Bindings are content,** keyed by action, then device (question 2): a control's name, or a list of them, by
-//   `@kama/window`'s names (`"ArrowUp"`, `"RightShoulder"`), each read by the package's own reader, so a misspelling is
-//   refused at load with every name listed. An object entry (parts, filters, gestures) is refused by name until
-//   KYR-54's later parts read it.
+// - **Bindings are content,** keyed by action, then device (question 2): a control's name, a list of them, or an object
+//   of an action kind's parts, by `@kama/window`'s names (`"ArrowUp"`, `"RightShoulder"`, `"LeftX"`), each read by the
+//   package's own reader, so a misspelling is refused at load with every name listed. The mouse's motion is kyoten's
+//   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis. An object's filters and gestures are
+//   refused by name until KYR-54's later parts read them.
 // - **Split by time** (question 1): a step takes the samples that arrived by its end and were not handed off yet, so a
 //   frame that owes no step keeps its input for the next.
 // - **Player 1** has the keyboard and the mouse throughout, and **the first pad pressed**, locked until it disconnects
 //   (question 4): while one is locked another pad does nothing. A pad takes the lock with a button pressed, never a
-//   stick alone, so a drifting or knocked stick cannot take player 1.
+//   stick or a trigger's travel alone, so a drifting or knocked stick cannot take player 1.
 // - **One action on several controls** (`["ArrowUp", "KeyW"]`) is held while any of them is, and its edges are those
 //   of that combined state.
 // - **Edges, per step** (kyoten::frame::Digital): a press and its release inside one step show the press, held, on that
 //   step and the release on the next; a release and a press inside one step show both, held.
 // - **A control is on at `Gamepad::PressedAt` of its travel or more,** `@kama/window`'s own threshold, for every device.
+// - **A value action** (`Analog`, `Vector2`, `Vector3`; the second part's questions 1 and 2):
+//   - an entry's parts make its value: an `Analog`'s `positive` less its `negative`; a `Vector2`'s `right` less `left`
+//     and `up` less `down`, or its `x` and `y`; a `Vector3`'s with `backward` less `forward` (forward is -Z) or `z`.
+//     Up is positive on every device: a stick's Y and the mouse's motion down the window are turned over. Keys make a
+//     direction no longer than 1, so a diagonal is not faster (Unity's DigitalNormalized, Godot's `get_vector`);
+//   - a part on several controls reads the most actuated, and **a state** (any value whose record says no `delta`) the
+//     most actuated of its devices' entries, as of the step's end (Unity's default, Godot's strongest);
+//   - **a delta** sums them: the mouse's motion that landed in the step, and each control held times the step's
+//     seconds, so a stick turns as far each second whatever the rate. The mouse's motion bound to a state is refused.
 //
 // It is tier `Module`, outside the simulation's fence, as the module that reads devices must be, and names
 // `kyoten::frame` and `kyoten::records` alone of the engine; the generated `run` builds it and hands it to the loop.
 
-import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
-         std::serialization::text::json::deserializeJsonBuffer,
+import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned, std::math::Vec2,
+         std::math::Vec3, std::math::sqrt, std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
-         kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
-         window::Key, window::PadButton, window::PointerButton, window::Gamepad };
+         kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
+         kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
+         window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
 
@@ -46,7 +57,7 @@ type resource BindingError implements Error {
     }
 }
 
-// One control an action is bound to, and whether it is on.
+// One control a digital action is bound to, and whether it is on.
 type value Bound {
     public Device device;
     public int32 control;
@@ -58,41 +69,91 @@ type value Bound {
     }
 }
 
+// How a value entry's parts make its value.
+type enum Shape { One, Pair, Keys2, Axes2, Keys3, Axes3 }
+
+// One control a value is read from: a key's or a button's edge (1 or 0), a pad button's travel, a stick's axis, or the
+// mouse's motion; and what it reads now.
+type value Source {
+    public Device device;
+    public SampleKind kind;
+    public int32 control;
+    // A Y read up positive: a stick's LeftY or RightY, the mouse's motion down the window.
+    public bool flip;
+    // As of the last sample taken: a state.
+    public float32 value = 0.0;
+    // The mouse's motion since the last hand-off.
+    public float32 moved = 0.0;
+
+    public ctor make(Device device, SampleKind kind, int32 control, bool flip) {
+        this.device = device;
+        this.kind = kind;
+        this.control = control;
+        this.flip = flip;
+    }
+}
+
+// One device's entry of a value action: its kind and its index there, its shape, whether it is the mouse's motion, and
+// its parts' sources, part k's from `firsts[k]` up to `firsts[k + 1]` in the binder's sources.
+type value Entry {
+    public ActionKind kind;
+    public int32 action;
+    public Shape shape;
+    public bool motion = false;
+    public InlineArray<isize>#(7) firsts;
+
+    public ctor make(ActionKind kind, int32 action, Shape shape) {
+        this.kind = kind;
+        this.action = action;
+        this.shape = shape;
+        this.firsts = [0; 7];
+    }
+}
+
 type resource Binder implements InputSource {
     int32 playerCount;
     int32 digitalCount;
-    // Every action's controls, action by action: action a's are `controls[firsts[a]]` up to `controls[firsts[a + 1]]`.
+    float32 stepSeconds;
+    // Every digital action's controls, action by action: action a's are `controls[firsts[a]]` up to `controls[firsts[a + 1]]`.
     DynamicArray<Bound> controls = DynamicArray.empty();
     DynamicArray<isize> firsts = DynamicArray.empty();
-    // Each action's combined state as of the last sample handed off, and a tap's release owed to the next step.
+    // Each digital action's combined state as of the last sample handed off, and a tap's release owed to the next step.
     DynamicArray<bool> combined = DynamicArray.empty();
     DynamicArray<bool> owedRelease = DynamicArray.empty();
+    // Every value action's entries, and the controls they read.
+    DynamicArray<Entry> entries = DynamicArray.empty();
+    DynamicArray<Source> sources = DynamicArray.empty();
+    // Which value actions are deltas, by kind, as the game's `ActionList` says.
+    DynamicArray<bool> analogDeltas = DynamicArray.empty();
+    DynamicArray<bool> vector2Deltas = DynamicArray.empty();
+    DynamicArray<bool> vector3Deltas = DynamicArray.empty();
     // The pad player 1 has locked in, NO_PAD while none.
     int32 lockSlot = NO_PAD;
     // The samples handed in, oldest first, those before `head` handed off; cleared once all are.
     DynamicArray<Sample> waiting = DynamicArray.empty();
     isize head = 0;
-    // Each action's edges inside the step being handed off.
+    // Each digital action's edges inside the step being handed off.
     DynamicArray<bool> onEdge = DynamicArray.empty();
     DynamicArray<bool> offEdge = DynamicArray.empty();
     Handoff out;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
-    // `bindings`, every content layer's merged. A binding naming no action, a control that names none of its device's,
-    // or an entry KYR-54 does not read yet is refused, every one at once. A value action's values stay zero until its
-    // devices are bound (KYR-54's next part).
+    // `bindings`, every content layer's merged; `hz` the base rate, whose step's seconds a control held counts for in a
+    // delta. A binding naming no action, a control that names none of its device's, an entry its action's kind cannot
+    // read, or one KYR-54 does not read yet is refused, every one at once.
     public ctor Result<Binder, BindingError> make(int32 players, const ref ActionList actions,
-                                                  const ref SortedMap<string, BindingRecord> bindings) {
+                                                  const ref SortedMap<string, BindingRecord> bindings, int32 hz) {
         this.playerCount = players;
         this.digitalCount = actions.digitalCount();
+        this.stepSeconds = Time::dtAt(hz: hz);
         this.out = Handoff.make(players: players, actions: actions);
         BindingError no = BindingError.make();
         foreach (string action in bindings) {
             string kind = kindOf(actions: actions, name: action);
             if (kind.isEmpty()) {
                 no.add(line: "the bindings of `" + action + "` name no action: an action is declared in a module's records file");
-            } else if (kind != "Digital") {
-                no.add(line: "the bindings of `" + action + "` bind a `" + kind + "` action, whose devices KYR-54's next part binds");
+            } else if (kind == "Pose") {
+                no.add(line: "the bindings of `" + action + "` bind a `Pose` action, which no device binds until XR brings one (KYR-34)");
             }
         }
         foreach (const ref string action in actions.digitalNames().iterConst()) {
@@ -109,6 +170,30 @@ type resource Binder implements InputSource {
             }
         }
         this.firsts.add(item: this.controls.length());
+        int32 a = 0;
+        while (a < actions.analogCount()) {
+            bool delta = actions.analogDelta(action: a);
+            this.analogDeltas.add(item: delta);
+            this.bindValue(kind: ActionKind::Analog, index: a, name: actions.analogNames()[cast<isize>(a)], delta: delta,
+                           bindings: bindings, no: no);
+            a = a + 1;
+        }
+        a = 0;
+        while (a < actions.vector2Count()) {
+            bool delta = actions.vector2Delta(action: a);
+            this.vector2Deltas.add(item: delta);
+            this.bindValue(kind: ActionKind::Vector2, index: a, name: actions.vector2Names()[cast<isize>(a)], delta: delta,
+                           bindings: bindings, no: no);
+            a = a + 1;
+        }
+        a = 0;
+        while (a < actions.vector3Count()) {
+            bool delta = actions.vector3Delta(action: a);
+            this.vector3Deltas.add(item: delta);
+            this.bindValue(kind: ActionKind::Vector3, index: a, name: actions.vector3Names()[cast<isize>(a)], delta: delta,
+                           bindings: bindings, no: no);
+            a = a + 1;
+        }
         if (no.any()) { return Result::Err(error: give no); }
         return Result::Ok(value: give this);
     }
@@ -120,12 +205,15 @@ type resource Binder implements InputSource {
         if (this.lockSlot == NO_PAD) { return Optional::None; }
         return Optional::Some(value: this.lockSlot);
     }
-    // How many controls action `action` is bound to, for a test to read what was bound.
+    // How many controls digital action `action` is bound to, for a test to read what was bound.
     public const fn isize boundCount(int32 action) {
         if (action < 0 || action >= this.digitalCount) { return 0; }
         isize a = cast<isize>(action);
         return this.firsts[a + 1] - this.firsts[a];
     }
+    // How many entries the value actions have, and how many controls they read, for a test to read what was bound.
+    public const fn isize valueEntries() { return this.entries.length(); }
+    public const fn isize valueSources() { return this.sources.length(); }
 
     // The samples a platform handed in since the last call, which arrived in the order of their times.
     public fn void take(const ref DynamicArray<Sample> samples) {
@@ -173,10 +261,92 @@ type resource Binder implements InputSource {
             if (this.playerCount >= 1) { this.out.setDigital(player: 1, action: a, value: d); }
             a = a + 1;
         }
+        if (this.playerCount >= 1) { this.handValues(); }
+        isize k = 0;
+        while (k < this.sources.length()) {
+            this.sources[k].moved = 0.0;
+            k = k + 1;
+        }
         return this.out;
     }
 
-    // One sample: a pad's lock, then each control it moves, then each action whose combined state it changes.
+    // Each value action's value this step, into player 1's hand-off: a state's most actuated entry, a delta's sum.
+    fn void handValues() {
+        isize e = 0;
+        while (e < this.entries.length()) {
+            Entry entry = this.entries[e];
+            Vec3 v = this.entryValue(e: entry);
+            bool delta = this.isDelta(kind: entry.kind, action: entry.action);
+            if (delta && !entry.motion) {
+                v = Vec3.of(x: v.x * this.stepSeconds, y: v.y * this.stepSeconds, z: v.z * this.stepSeconds);
+            }
+            match (entry.kind) {
+                case Analog: {
+                    float32 had = this.out.analog(player: 1, action: entry.action);
+                    float32 now = delta ? had + v.x : (absOf(x: v.x) > absOf(x: had) ? v.x : had);
+                    this.out.setAnalog(player: 1, action: entry.action, value: now);
+                }
+                case Vector2: {
+                    Vec2 had = this.out.vector2(player: 1, action: entry.action);
+                    Vec2 mine = Vec2.of(x: v.x, y: v.y);
+                    Vec2 now = delta ? had + mine : (v.x * v.x + v.y * v.y > had.x * had.x + had.y * had.y ? mine : had);
+                    this.out.setVector2(player: 1, action: entry.action, value: now);
+                }
+                case Vector3: {
+                    Vec3 had = this.out.vector3(player: 1, action: entry.action);
+                    Vec3 now = delta ? had + v : (lengthSquared(v: v) > lengthSquared(v: had) ? v : had);
+                    this.out.setVector3(player: 1, action: entry.action, value: now);
+                }
+                case _: { }
+            };
+            e = e + 1;
+        }
+    }
+
+    const fn bool isDelta(ActionKind kind, int32 action) {
+        isize a = cast<isize>(action);
+        return match (kind) {
+            case Analog: this.analogDeltas[a];
+            case Vector2: this.vector2Deltas[a];
+            case Vector3: this.vector3Deltas[a];
+            case _: false;
+        };
+    }
+
+    // An entry's value from its parts, as a three-component value (an `Analog` its x, a `Vector2` its x and y).
+    const fn Vec3 entryValue(Entry e) {
+        float32 p0 = this.partValue(e: e, part: 0);
+        float32 p1 = this.partValue(e: e, part: 1);
+        float32 p2 = this.partValue(e: e, part: 2);
+        float32 p3 = this.partValue(e: e, part: 3);
+        float32 p4 = this.partValue(e: e, part: 4);
+        float32 p5 = this.partValue(e: e, part: 5);
+        return match (e.shape) {
+            case One: Vec3.of(x: p0, y: 0.0, z: 0.0);
+            case Pair: Vec3.of(x: p0 - p1, y: 0.0, z: 0.0);
+            case Keys2: clamped(v: Vec3.of(x: p3 - p2, y: p0 - p1, z: 0.0));
+            case Axes2: Vec3.of(x: p0, y: p1, z: 0.0);
+            case Keys3: clamped(v: Vec3.of(x: p3 - p2, y: p0 - p1, z: p5 - p4));
+            case Axes3: Vec3.of(x: p0, y: p1, z: p2);
+        };
+    }
+
+    // A part's value: the mouse's motion summed, or the most actuated of its controls.
+    const fn float32 partValue(Entry e, int32 part) {
+        isize from = e.firsts[cast<isize>(part)];
+        isize to = e.firsts[cast<isize>(part) + 1];
+        float32 best = 0.0;
+        isize i = from;
+        while (i < to) {
+            Source s = this.sources[i];
+            if (s.kind == SampleKind::Motion) { best = best + s.moved; }
+            else if (absOf(x: s.value) > absOf(x: best)) { best = s.value; }
+            i = i + 1;
+        }
+        return best;
+    }
+
+    // One sample: a pad's lock, then each control it moves, then each digital action whose combined state it changes.
     fn void apply(Sample s) {
         match (s.kind) {
             case Connected: { return; }
@@ -188,6 +358,18 @@ type resource Binder implements InputSource {
                 return;
             }
             case Control: { }
+            case Travel: {
+                if (s.slot == this.lockSlot) { this.setValues(s: s); }
+                return;
+            }
+            case Axis: {
+                if (s.slot == this.lockSlot) { this.setValues(s: s); }
+                return;
+            }
+            case Motion: {
+                this.setValues(s: s);
+                return;
+            }
         };
         bool on = s.value >= Gamepad::PressedAt;
         if (s.device == Device::Gamepad) {
@@ -199,20 +381,43 @@ type resource Binder implements InputSource {
             if (this.controls[i].device == s.device && this.controls[i].control == s.control) { this.controls[i].on = on; }
             i = i + 1;
         }
+        this.setValues(s: s);
         this.settle();
     }
 
-    // Every control of `device` off: a pad gone with its lock.
+    // Each value source the sample moves: an edge's 1 or 0, a travel or an axis as it reads (a Y turned over), or the
+    // mouse's motion added to what it moved this step.
+    fn void setValues(Sample s) {
+        isize i = 0;
+        while (i < this.sources.length()) {
+            Source src = this.sources[i];
+            if (src.device == s.device && src.kind == s.kind && src.control == s.control) {
+                float32 v = s.value;
+                if (s.kind == SampleKind::Control) { v = s.value >= Gamepad::PressedAt ? 1.0 : 0.0; }
+                if (src.flip) { v = -v; }
+                if (s.kind == SampleKind::Motion) { this.sources[i].moved = src.moved + v; }
+                else { this.sources[i].value = v; }
+            }
+            i = i + 1;
+        }
+    }
+
+    // Every control of `device` off and at rest: a pad gone with its lock.
     fn void release(Device device) {
         isize i = 0;
         while (i < this.controls.length()) {
             if (this.controls[i].device == device) { this.controls[i].on = false; }
             i = i + 1;
         }
+        i = 0;
+        while (i < this.sources.length()) {
+            if (this.sources[i].device == device) { this.sources[i].value = 0.0; }
+            i = i + 1;
+        }
         this.settle();
     }
 
-    // Each action's combined state from its controls, an edge noted where it changed.
+    // Each digital action's combined state from its controls, an edge noted where it changed.
     fn void settle() {
         int32 a = 0;
         while (a < this.digitalCount) {
@@ -231,14 +436,14 @@ type resource Binder implements InputSource {
         }
     }
 
-    // One device's entry of an action's binding: each control it names, resolved by `@kama/window`'s own names.
+    // One device's entry of a digital action's binding: each control it names, resolved by `@kama/window`'s own names.
     fn void bindEntry(const ref string action, Device device, const ref Optional<ControlEntry> entry, ref BindingError no) {
         string where = deviceName(device: device);
         match (entry) {
             case None: { }
             case Some(value: e): {
                 if (e.isObject()) {
-                    no.add(line: "the " + where + " binding of `" + action + "` is an object (parts, filters or gestures), which KYR-54's later parts read: bind a control's name, or a list of them");
+                    no.add(line: "the " + where + " binding of `" + action + "` is an object, which for a `Digital` holds filters and gestures, KYR-54's later parts: bind a control's name, or a list of them");
                     return;
                 }
                 foreach (const ref string name in e.names().iterConst()) {
@@ -254,6 +459,104 @@ type resource Binder implements InputSource {
             }
         };
     }
+
+    // A value action's binding: each device's entry, refused where its kind cannot read it.
+    fn void bindValue(ActionKind kind, int32 index, const ref string name, bool delta,
+                      const ref SortedMap<string, BindingRecord> bindings, ref BindingError no) {
+        if (!bindings.contains(key: name)) { return; }
+        borrow bindings.getRef(key: name) as b {
+            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Keyboard, entry: b.keyboard(), no: no);
+            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Mouse, entry: b.mouse(), no: no);
+            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Gamepad, entry: b.gamepad(), no: no);
+        }
+    }
+
+    // One device's entry of a value action: its shape from its parts, and a source for each control a part names.
+    fn void bindValueEntry(ActionKind kind, int32 index, const ref string action, bool delta, Device device,
+                           const ref Optional<ControlEntry> entry, ref BindingError no) {
+        string where = deviceName(device: device);
+        string kindWord = valueKindWord(kind: kind);
+        string whose = "the " + where + " binding of `" + action + "`";
+        match (entry) {
+            case None: { }
+            case Some(value: e): {
+                if (e.steps().length() > 0) {
+                    no.add(line: whose + " names filters or gestures, which KYR-54's later parts read");
+                    return;
+                }
+                DynamicArray<string> words = DynamicArray.empty();
+                Shape shape = Shape::One;
+                if (e.isObject()) {
+                    string why = "";
+                    shape = shapeOf(kind: kind, entry: e, why: why);
+                    if (!why.isEmpty()) {
+                        no.add(line: whose + " " + why);
+                        return;
+                    }
+                    words = partWords(kind: kind, shape: shape);
+                } else if (kind != ActionKind::Analog) {
+                    if (kind == ActionKind::Vector2 && device == Device::Mouse && e.names().length() == 1 && e.names()[0] == "Motion") {
+                        shape = Shape::Axes2;
+                    } else {
+                        string parts = kind == ActionKind::Vector2 ? "`up`, `down`, `left`, `right`, or `x` and `y`, or the mouse's `Motion`"
+                                                                   : "`up`, `down`, `left`, `right`, `forward`, `backward`, or `x`, `y` and `z`";
+                        no.add(line: whose + " names a control, and a `" + kindWord + "` is bound by its parts: an object of " + parts);
+                        return;
+                    }
+                }
+                Entry made = Entry.make(kind: kind, action: index, shape: shape);
+                isize motions = 0;
+                isize held = 0;
+                isize first = this.sources.length();
+                int32 k = 0;
+                while (k < 6) {
+                    made.firsts[cast<isize>(k)] = this.sources.length();
+                    if (cast<isize>(k) < partCount(shape: shape)) {
+                        DynamicArray<string> named = namesOf(entry: e, shape: shape, part: k, words: words);
+                        foreach (const ref string n in named.iterConst()) {
+                            string why = "";
+                            Optional<Source> found = valueSourceOf(device: device, name: n, why: why);
+                            match (found) {
+                                case Some(value: src): {
+                                    if (src.kind == SampleKind::Motion) { motions = motions + 1; } else { held = held + 1; }
+                                    this.sources.add(item: src);
+                                }
+                                case None: { no.add(line: whose + " names `" + n + "`, which is no " + where + " control: " + why); }
+                            };
+                        }
+                    }
+                    k = k + 1;
+                }
+                made.firsts[6] = this.sources.length();
+                if (motions > 0 && held > 0) {
+                    no.add(line: whose + " mixes the mouse's motion, a distance moved, with controls held: bind them in two entries' devices, or to two actions");
+                    return;
+                }
+                if (motions > 0 && !delta) {
+                    no.add(line: whose + " names the mouse's motion, a distance moved, so `" + action + "` must be a delta: its record says `\"delta\": true`");
+                    return;
+                }
+                if (motions > 0 && (shape == Shape::Keys2 || shape == Shape::Keys3)) {
+                    no.add(line: whose + " names the mouse's motion as a key's part: bind it as `x` and `y`, or as `Motion`");
+                    return;
+                }
+                if (this.sources.length() == first) { return; }
+                made.motion = motions > 0;
+                this.entries.add(item: made);
+            }
+        };
+    }
+}
+
+fn float32 absOf(float32 x) { return x < 0.0 ? -x : x; }
+fn float32 lengthSquared(Vec3 v) { return v.x * v.x + v.y * v.y + v.z * v.z; }
+
+// A direction no longer than 1: keys pressed together, a diagonal.
+fn Vec3 clamped(Vec3 v) {
+    float32 l2 = lengthSquared(v: v);
+    if (l2 <= 1.0) { return v; }
+    float32 l = sqrt(x: l2);
+    return Vec3.of(x: v.x / l, y: v.y / l, z: v.z / l);
 }
 
 // The kind of the action named `name`, as a records file writes it, or "" when the game declares none of that name.
@@ -266,12 +569,94 @@ fn string kindOf(const ref ActionList actions, const ref string name) {
     return "";
 }
 
+fn string valueKindWord(ActionKind kind) {
+    return match (kind) { case Analog: "Analog"; case Vector2: "Vector2"; case Vector3: "Vector3"; case _: "value"; };
+}
+
 fn string deviceName(Device device) {
     return match (device) { case Keyboard: "keyboard"; case Mouse: "mouse"; case Gamepad: "gamepad"; };
 }
 
-// A control's number from its name, read by `@kama/window`'s own reader for its device: a `Key`'s USB HID usage id, a
-// `PointerButton`'s W3C button, a `PadButton`'s W3C standard index. The reader's refusal lists every name.
+// How many parts a shape reads.
+fn isize partCount(Shape shape) {
+    return match (shape) { case One: 1; case Pair: 2; case Keys2: 4; case Axes2: 2; case Keys3: 6; case Axes3: 3; };
+}
+
+// The words of a shape's parts, in their order.
+fn DynamicArray<string> partWords(ActionKind kind, Shape shape) {
+    DynamicArray<string> w = DynamicArray.empty();
+    match (shape) {
+        case One: { }
+        case Pair: { w.add(item: "positive"); w.add(item: "negative"); }
+        case Keys2: { w.add(item: "up"); w.add(item: "down"); w.add(item: "left"); w.add(item: "right"); }
+        case Axes2: { w.add(item: "x"); w.add(item: "y"); }
+        case Keys3: {
+            w.add(item: "up"); w.add(item: "down"); w.add(item: "left"); w.add(item: "right"); w.add(item: "forward");
+            w.add(item: "backward");
+        }
+        case Axes3: { w.add(item: "x"); w.add(item: "y"); w.add(item: "z"); }
+    };
+    return w;
+}
+
+// The shape an object entry's words make for `kind`, or why they make none (`why` set).
+fn Shape shapeOf(ActionKind kind, const ref ControlEntry entry, ref string why) {
+    bool keys = false;
+    bool axes = false;
+    bool pair = false;
+    string unknown = "";
+    foreach (string w in entry.parts()) {
+        if (w == "positive" || w == "negative") { pair = true; }
+        else if (w == "up" || w == "down" || w == "left" || w == "right" || w == "forward" || w == "backward") { keys = true; }
+        else if (w == "x" || w == "y" || w == "z") { axes = true; }
+        else if (unknown.isEmpty()) { unknown = copy w; }
+        if ((w == "forward" || w == "backward" || w == "z") && kind != ActionKind::Vector3 && unknown.isEmpty()) { unknown = copy w; }
+    }
+    string allowed = match (kind) {
+        case Analog: "`positive` and `negative`";
+        case Vector2: "`up`, `down`, `left` and `right`, or `x` and `y`";
+        case Vector3: "`up`, `down`, `left`, `right`, `forward` and `backward`, or `x`, `y` and `z`";
+        case _: "none";
+    };
+    string kindWord = valueKindWord(kind: kind);
+    if (!unknown.isEmpty() || (kind == ActionKind::Analog && (keys || axes)) || (kind != ActionKind::Analog && pair)) {
+        string named = unknown.isEmpty() ? "a part" : "`" + unknown + "`";
+        why = "names " + named + ", which is no part of a `" + kindWord + "`: its parts are " + allowed;
+        return Shape::One;
+    }
+    if (keys && axes) {
+        why = "names both keys' parts and axes: a `" + kindWord + "`'s entry is one or the other, " + allowed;
+        return Shape::One;
+    }
+    if (!keys && !axes && !pair) {
+        why = "is an object naming no part: a `" + kindWord + "`'s parts are " + allowed;
+        return Shape::One;
+    }
+    if (pair) { return Shape::Pair; }
+    if (kind == ActionKind::Vector2) { return keys ? Shape::Keys2 : Shape::Axes2; }
+    return keys ? Shape::Keys3 : Shape::Axes3;
+}
+
+// The names a part of an entry reads: an entry written as a name or a list reads them all as its one part; the mouse's
+// `Motion` reads its two axes; an object's part reads what its word names, none when it names none.
+fn DynamicArray<string> namesOf(const ref ControlEntry entry, Shape shape, int32 part, const ref DynamicArray<string> words) {
+    DynamicArray<string> named = DynamicArray.empty();
+    if (!entry.isObject()) {
+        if (shape == Shape::Axes2) {
+            named.add(item: part == 0 ? "MotionX" : "MotionY");
+            return named;
+        }
+        foreach (const ref string n in entry.names().iterConst()) { named.add(item: copy n); }
+        return named;
+    }
+    string word = copy words[cast<isize>(part)];
+    if (!entry.parts().contains(key: word)) { return named; }
+    foreach (const ref string n in entry.parts().getRef(key: word).iterConst()) { named.add(item: copy n); }
+    return named;
+}
+
+// A digital control's number from its name, read by `@kama/window`'s own reader for its device: a `Key`'s USB HID usage
+// id, a `PointerButton`'s W3C button, a `PadButton`'s W3C standard index. The reader's refusal lists every name.
 fn Result<int32, Owned<Error>> controlOf(Device device, const ref string name) {
     string quoted = "\"" + name + "\"";
     match (device) {
@@ -294,6 +679,62 @@ fn Result<int32, Owned<Error>> controlOf(Device device, const ref string name) {
             match (give p) {
                 case Ok(value: v): { return Result::Ok(value: cast<int32>(v)); }
                 case Err(error: e): { return Result::Err(error: give e); }
+            };
+        }
+    };
+}
+
+
+// A value's control from its name, or none with `why` set: a key, a mouse button or a pad button's edge or travel by
+// `@kama/window`'s readers, a pad's stick axis by `PadAxis` (its Y turned over), or the mouse's `MotionX` or `MotionY`
+// (its Y turned over). A reader's refusal lists every name.
+fn Optional<Source> valueSourceOf(Device device, const ref string name, ref string why) {
+    string quoted = "\"" + name + "\"";
+    match (device) {
+        case Keyboard: {
+            Result<int32, Owned<Error>> k = controlOf(device: device, name: name);
+            match (give k) {
+                case Ok(value: v): { return Optional::Some(value: Source.make(device: device, kind: SampleKind::Control, control: v, flip: false)); }
+                case Err(error: e): {
+                    why = e.message();
+                    return Optional::None;
+                }
+            };
+        }
+        case Mouse: {
+            if (name == "MotionX") { return Optional::Some(value: Source.make(device: device, kind: SampleKind::Motion, control: 0, flip: false)); }
+            if (name == "MotionY") { return Optional::Some(value: Source.make(device: device, kind: SampleKind::Motion, control: 1, flip: true)); }
+            Result<int32, Owned<Error>> b = controlOf(device: device, name: name);
+            match (give b) {
+                case Ok(value: v): { return Optional::Some(value: Source.make(device: device, kind: SampleKind::Control, control: v, flip: false)); }
+                case Err(error: e): {
+                    string asButton = e.message();
+                    why = asButton + "; nor the mouse's motion, `MotionX` or `MotionY`";
+                    return Optional::None;
+                }
+            };
+        }
+        case Gamepad: {
+            Result<PadButton, Owned<Error>> p = deserializeJsonBuffer::<PadButton>(src: copy quoted, strict: true);
+            match (give p) {
+                case Ok(value: v): {
+                    return Optional::Some(value: Source.make(device: device, kind: SampleKind::Travel, control: cast<int32>(v), flip: false));
+                }
+                case Err(error: e): {
+                    string asButton = e.message();
+                    Result<PadAxis, Owned<Error>> x = deserializeJsonBuffer::<PadAxis>(src: copy quoted, strict: true);
+                    match (give x) {
+                        case Ok(value: axis): {
+                            bool turned = axis == PadAxis::LeftY || axis == PadAxis::RightY;
+                            return Optional::Some(value: Source.make(device: device, kind: SampleKind::Axis, control: cast<int32>(axis), flip: turned));
+                        }
+                        case Err(error: f): {
+                            string asAxis = f.message();
+                            why = "no button (" + asButton + ") and no stick's axis (" + asAxis + ")";
+                            return Optional::None;
+                        }
+                    };
+                }
             };
         }
     };

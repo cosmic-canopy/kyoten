@@ -11,21 +11,42 @@
 // - **The frame's timestamp is `std::time`'s monotonic clock,** read at the tick, as Bevy and Godot read theirs.
 // - **The end:** natively `run` returns and the program ends with the status; on the web, where `run` never returns,
 //   std::app's `quit` ends it.
-// - **Input is the window's events as samples** (the first slice's step 8, KYR-54): a key, a mouse's button, a pad's
-//   button and a pad's connection, each at its event's time on the frame timestamp's base. A key's repeat is no
-//   sample, since the key was already down; a touch's and a pen's contacts wait for touch (WIN-11).
+// - **Input is the window's events as samples** (the first slice's step 8, KYR-54): a key, a mouse's button and its
+//   motion, a pad's button and a pad's connection, each at its event's time on the frame timestamp's base. A key's
+//   repeat is no sample, since the key was already down; a touch's and a pen's contacts wait for touch (WIN-11).
+// - **And each pad's reading, at its time** (`padAt`, WIN-28; design/input.md § Decided, the second part's question 3):
+//   a button's travel and a stick's axis that moved since the reading before, placed among the events' samples by
+//   time, so a stick and a button read together land in one step.
 
 import { core::println, core::env::args, std::app::quit, std::time::Instant, std::time::monotonicNow,
          std::collections::DynamicArray, window::Window, window::WindowOptions, window::WindowError, window::Event, window::TimedEvent,
-         window::PointerKind, kyoten::frame::Sample, kyoten::frame::Device, Platform };
+         window::PointerKind, window::Gamepad, kyoten::frame::Sample, kyoten::frame::Device, Platform };
 
-export { OpenPlatform, pumpInto };
+export { OpenPlatform, PadReadings, pumpInto };
+
+// The last reading of each pad slot a pump took, so the next makes a sample only for what moved.
+type resource PadReadings {
+    DynamicArray<Gamepad> slots = DynamicArray.empty();
+
+    // Every slot empty.
+    public ctor make() {
+        int32 s = 0;
+        while (s < Window::PadSlots) {
+            this.slots.add(item: Gamepad.disconnected());
+            s = s + 1;
+        }
+    }
+
+    public const fn Gamepad at(int32 slot) { return this.slots[cast<isize>(slot)]; }
+    public fn void keep(int32 slot, Gamepad reading) { this.slots[cast<isize>(slot)] = reading; }
+}
 
 // The web: the page's canvas, the content `preloadFiles` packed, and std::app's `quit` at the end.
 @compileFor(ARCH_WASM32)
 type resource OpenPlatform implements Platform {
     Optional<Window> window = Optional::None;
     Instant began = monotonicNow();
+    PadReadings pads = PadReadings.make();
 
     public ctor make() { }
 
@@ -37,7 +58,9 @@ type resource OpenPlatform implements Platform {
         return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
                       focused: focused);
     }
-    public unsafe fn bool pumped(ref DynamicArray<Sample> into) { return pumpOn(slot: this.window, began: this.began, into: into); }
+    public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
+    }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     public fn void ended(uint8 code) { quit(code: code); }
 }
@@ -47,6 +70,7 @@ type resource OpenPlatform implements Platform {
 type resource OpenPlatform implements Platform {
     Optional<Window> window = Optional::None;
     Instant began = monotonicNow();
+    PadReadings pads = PadReadings.make();
 
     public ctor make() { }
 
@@ -56,7 +80,9 @@ type resource OpenPlatform implements Platform {
         return openOn(slot: this.window, title: title, width: width, height: height, headless: headless,
                       focused: focused);
     }
-    public unsafe fn bool pumped(ref DynamicArray<Sample> into) { return pumpOn(slot: this.window, began: this.began, into: into); }
+    public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
+    }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     public fn void ended(uint8 code) { }
 }
@@ -93,12 +119,12 @@ unsafe fn bool openOn(ref Optional<Window> slot, const ref string title, int32 w
 }
 
 // The window's events since the last tick, when there is one: false once one asks it to close.
-unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into) {
+unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads) {
     bool open = true;
     match (slot) {
         case Some(value: w): {
             w.pump();
-            open = pumpInto(w: w, began: began, into: into);
+            open = pumpInto(w: w, began: began, into: into, pads: pads);
         }
         case None: { }
     };
@@ -106,8 +132,10 @@ unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray
 }
 
 // Every event the window's queue holds, its input added to `into` as samples, each at its event's time in nanoseconds
-// since `began`, the frame timestamp's base: false when one asks the window to close.
-unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into) {
+// since `began`, the frame timestamp's base; then each pad's reading, what moved since `pads` kept, at the reading's
+// time, placed by time among the events': false when one asks the window to close.
+unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads) {
+    isize from = into.length();
     bool open = true;
     bool more = true;
     while (more) {
@@ -133,6 +161,10 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                             into.add(item: Sample.make(device: Device::Mouse, slot: 0, control: cast<int32>(b), value: 0.0, at: at));
                         }
                     }
+                    case PointerMove(pointer: p, dx: x, dy: y): {
+                        if (p.kind == PointerKind::Mouse && x != 0.0) { into.add(item: Sample.mouseMotion(index: 0, value: cast<float32>(x), at: at)); }
+                        if (p.kind == PointerKind::Mouse && y != 0.0) { into.add(item: Sample.mouseMotion(index: 1, value: cast<float32>(y), at: at)); }
+                    }
                     case PadButtonDown(slot: s, button: b): {
                         into.add(item: Sample.make(device: Device::Gamepad, slot: s, control: cast<int32>(b), value: 1.0, at: at));
                     }
@@ -147,5 +179,45 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
             case None: { more = false; }
         };
     }
+    int32 slot = 0;
+    while (slot < Window::PadSlots) {
+        readPad(w: w, slot: slot, began: began, into: into, from: from, pads: pads);
+        slot = slot + 1;
+    }
     return open;
+}
+
+// The pad in `slot`'s reading against the one before: a `Travel` sample for each button whose travel moved and an
+// `Axis` for each stick's axis, at the reading's time, each placed after every sample this pump added at or before it.
+unsafe fn void readPad(ref Window w, int32 slot, Instant began, ref DynamicArray<Sample> into, isize from,
+                       ref PadReadings pads) {
+    Gamepad now = w.pad(slot: slot);
+    Gamepad was = pads.at(slot: slot);
+    if (!now.connected) {
+        if (was.connected) { pads.keep(slot: slot, reading: Gamepad.disconnected()); }
+        return;
+    }
+    int64 at = w.padAt(slot: slot).since(earlier: began).asNanos();
+    int32 b = 0;
+    while (b < 17) {
+        float32 travel = now.buttons[cast<isize>(b)];
+        if (travel != was.buttons[cast<isize>(b)]) {
+            placed(into: into, from: from, s: Sample.padTravel(slot: slot, button: b, value: travel, at: at));
+        }
+        b = b + 1;
+    }
+    int32 a = 0;
+    while (a < 4) {
+        float32 v = now.axes[cast<isize>(a)];
+        if (v != was.axes[cast<isize>(a)]) { placed(into: into, from: from, s: Sample.padAxis(slot: slot, index: a, value: v, at: at)); }
+        a = a + 1;
+    }
+    pads.keep(slot: slot, reading: now);
+}
+
+// `s` into `into` after every sample from `from` on at or before its time, so this pump's samples stay in time's order.
+unsafe fn void placed(ref DynamicArray<Sample> into, isize from, Sample s) {
+    isize i = into.length();
+    while (i > from && into[i - 1].at > s.at) { i = i - 1; }
+    into.insertAt(index: i, item: s);
 }
