@@ -111,8 +111,9 @@ forty-fourth). Where the work is:**
      the tool's 234; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's first part (the
      forty-sixth session); 218 and 229 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
      alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
-     compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case
-     keeps kama's build cache** (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
+     compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
+     `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
+     (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
      kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
      526 s, SDL3 compiled again in each build (102 s and 115 s, 11 s and 10 s warm) and the web build from nothing
      (63 s, 49 s warm);
