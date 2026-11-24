@@ -5,8 +5,13 @@
 // - **Bindings are content,** keyed by action, then device (question 2): a control's name, a list of them, or an object
 //   of an action kind's parts, by `@kama/window`'s names (`"ArrowUp"`, `"RightShoulder"`, `"LeftX"`), each read by the
 //   package's own reader, so a misspelling is refused at load with every name listed. The mouse's motion is kyoten's
-//   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis. An object's filters and gestures are
-//   refused by name until KYR-54's later parts read them.
+//   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis. An object's gestures are refused by name
+//   until KYR-54's later part reads them.
+// - **An entry's filters** (the third part, design/input.md § Decided, 2026-11-23) reshape the value its parts make, in
+//   the order written, before a delta's seconds, on a step's hand-off and on Output's newest alike: `deadZone`, `scale`,
+//   `invert`, `curve`, `clamp`, `remap`, `normalize`, `digital` and `smooth`, whose state each path keeps apart. On the
+//   mouse's motion, a distance moved, only `scale`, `invert` and `smooth`, since the rest would change with the step's
+//   length; `smooth` smooths its speed. A value out of its filter's range is refused at load, naming the action.
 // - **Split by time** (question 1): a step takes the samples that arrived by its end and were not handed off yet, so a
 //   frame that owes no step keeps its input for the next.
 // - **Player 1** has the keyboard and the mouse throughout, and **the first pad pressed**, locked until it disconnects
@@ -45,6 +50,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
          kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
+         kyoten::records::FilterRecord, kyoten::records::FilterKind, std::math::exp, std::math::pow,
          window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -106,14 +112,17 @@ type value Source {
     }
 }
 
-// One device's entry of a value action: its kind and its index there, its shape, whether it is the mouse's motion, and
-// its parts' sources, part k's from `firsts[k]` up to `firsts[k + 1]` in the binder's sources.
+// One device's entry of a value action: its kind and its index there, its shape, whether it is the mouse's motion, its
+// parts' sources, part k's from `firsts[k]` up to `firsts[k + 1]` in the binder's sources, and its filters, from
+// `filterFrom` up to `filterTo` in the binder's.
 type value Entry {
     public ActionKind kind;
     public int32 action;
     public Shape shape;
     public bool motion = false;
     public InlineArray<isize>#(7) firsts;
+    public isize filterFrom = 0;
+    public isize filterTo = 0;
 
     public ctor make(ActionKind kind, int32 action, Shape shape) {
         this.kind = kind;
@@ -136,6 +145,12 @@ type resource Binder implements InputSource {
     // Every value action's entries, and the controls they read.
     DynamicArray<Entry> entries = DynamicArray.empty();
     DynamicArray<Source> sources = DynamicArray.empty();
+    // Every value entry's filters, every curve's points in pairs (in, out), and each `smooth`'s value so far on the
+    // steps' path and on Output's, by filter.
+    DynamicArray<FilterRecord> filters = DynamicArray.empty();
+    DynamicArray<float32> points = DynamicArray.empty();
+    DynamicArray<Vec3> smoothSteps = DynamicArray.empty();
+    DynamicArray<Vec3> smoothShown = DynamicArray.empty();
     // Which value actions are deltas, by kind, as the game's `ActionList` says.
     DynamicArray<bool> analogDeltas = DynamicArray.empty();
     DynamicArray<bool> vector2Deltas = DynamicArray.empty();
@@ -325,7 +340,8 @@ type resource Binder implements InputSource {
         isize e = 0;
         while (e < this.entries.length()) {
             Entry entry = this.entries[e];
-            Vec3 v = this.entryValue(e: entry, forOutput: forOutput);
+            Vec3 parts = this.entryValue(e: entry, forOutput: forOutput);
+            Vec3 v = this.filtered(e: entry, value: parts, forOutput: forOutput);
             bool delta = this.isDelta(kind: entry.kind, action: entry.action);
             if (delta && !entry.motion) {
                 v = Vec3.of(x: v.x * this.seconds, y: v.y * this.seconds, z: v.z * this.seconds);
@@ -354,6 +370,79 @@ type resource Binder implements InputSource {
             };
             e = e + 1;
         }
+    }
+
+    // An entry's value through its filters, in the order written, each on the axes its kind reads (an `Analog` 1, a
+    // `Vector2` 2, a `Vector3` 3), the others held at 0.
+    fn Vec3 filtered(Entry e, Vec3 value, bool forOutput) {
+        int32 dims = match (e.kind) { case Analog: 1; case Vector2: 2; case _: 3; };
+        Vec3 v = value;
+        isize i = e.filterFrom;
+        while (i < e.filterTo) {
+            FilterRecord f = this.filters[i];
+            match (f.kind) {
+                case DeadZone: { v = deadZoned(v: v, f: f); }
+                case Scale: { v = Vec3.of(x: v.x * f.a, y: v.y * f.b, z: v.z * f.c); }
+                case Invert: { v = Vec3.of(x: invertedBy(x: v.x, by: f.a), y: invertedBy(x: v.y, by: f.b), z: invertedBy(x: v.z, by: f.c)); }
+                case Curve: {
+                    if (f.points) {
+                        v = Vec3.of(x: this.throughPoints(x: v.x, f: f), y: this.throughPoints(x: v.y, f: f),
+                                    z: this.throughPoints(x: v.z, f: f));
+                    } else {
+                        v = Vec3.of(x: powered(x: v.x, e: f.a), y: powered(x: v.y, e: f.b), z: powered(x: v.z, e: f.c));
+                    }
+                }
+                case Clamp: { v = clampedBy(v: v, f: f); }
+                case Remap: { v = Vec3.of(x: remapped(x: v.x, f: f), y: remapped(x: v.y, f: f), z: remapped(x: v.z, f: f)); }
+                case Normalize: { if (f.on) { v = unit(v: v); } }
+                case Digital: { if (f.on) { v = Vec3.of(x: signOf(x: v.x), y: signOf(x: v.y), z: signOf(x: v.z)); } }
+                case Smooth: { v = this.smoothed(i: i, v: v, f: f, motion: e.motion, forOutput: forOutput); }
+                case Threshold: { }
+            };
+            v = masked(v: v, dims: dims);
+            i = i + 1;
+        }
+        return v;
+    }
+
+    // A curve through `f`'s points on `x`'s size, linear between them and level past the ends, its sign kept.
+    const fn float32 throughPoints(float32 x, FilterRecord f) {
+        float32 a = absOf(x: x);
+        isize first = f.pointsFrom;
+        isize last = f.pointsTo - 2;
+        float32 got = this.points[first + 1];
+        if (a >= this.points[last]) {
+            got = this.points[last + 1];
+        } else if (a > this.points[first]) {
+            isize k = first;
+            while (k < last) {
+                float32 x0 = this.points[k];
+                float32 x1 = this.points[k + 2];
+                if (a <= x1) {
+                    float32 y0 = this.points[k + 1];
+                    float32 y1 = this.points[k + 3];
+                    got = y0 + (a - x0) / (x1 - x0) * (y1 - y0);
+                    k = last;
+                } else {
+                    k = k + 2;
+                }
+            }
+        }
+        return x < 0.0 ? 0.0 - got : (x > 0.0 ? got : 0.0);
+    }
+
+    // `v` smoothed by `f`'s time: moved toward its value by the share of it `this.seconds` makes, from the path's last
+    // value; the mouse's motion as a speed, so how far it moves is kept whatever the step.
+    fn Vec3 smoothed(isize i, Vec3 v, FilterRecord f, bool motion, bool forOutput) {
+        float32 dt = this.seconds;
+        Vec3 had = forOutput ? this.smoothShown[i] : this.smoothSteps[i];
+        if (dt <= 0.0) { return motion ? v : had; }
+        float32 share = 1.0 - exp(x: 0.0 - dt / f.a);
+        Vec3 target = motion ? Vec3.of(x: v.x / dt, y: v.y / dt, z: v.z / dt) : v;
+        Vec3 now = Vec3.of(x: had.x + (target.x - had.x) * share, y: had.y + (target.y - had.y) * share,
+                           z: had.z + (target.z - had.z) * share);
+        if (forOutput) { this.smoothShown[i] = now; } else { this.smoothSteps[i] = now; }
+        return motion ? Vec3.of(x: now.x * dt, y: now.y * dt, z: now.z * dt) : now;
     }
 
     const fn bool isDelta(ActionKind kind, int32 action) {
@@ -502,6 +591,35 @@ type resource Binder implements InputSource {
         }
     }
 
+    // An entry's filters into the binder's, each held to its range: false, with every refusal added, when any is
+    // refused.
+    fn bool takeFilters(const ref ControlEntry entry, bool motion, const ref string whose, ref BindingError no) {
+        bool fine = true;
+        foreach (const ref FilterRecord read in entry.filters().iterConst()) {
+            FilterRecord f = read;
+            string why = filterRefusal(f: f, points: entry.curvePoints(), motion: motion);
+            if (!why.isEmpty()) {
+                no.add(line: whose + " " + why);
+                fine = false;
+                continue;
+            }
+            if (f.points) {
+                isize from = this.points.length();
+                isize k = f.pointsFrom;
+                while (k < f.pointsTo) {
+                    this.points.add(item: entry.curvePoints()[k]);
+                    k = k + 1;
+                }
+                f.pointsFrom = from;
+                f.pointsTo = this.points.length();
+            }
+            this.filters.add(item: f);
+            this.smoothSteps.add(item: Vec3.zero());
+            this.smoothShown.add(item: Vec3.zero());
+        }
+        return fine;
+    }
+
     // One device's entry of a digital action's binding: each control it names, resolved by `@kama/window`'s own names.
     fn void bindEntry(const ref string action, Device device, const ref Optional<ControlEntry> entry, ref BindingError no) {
         string where = deviceName(device: device);
@@ -547,7 +665,7 @@ type resource Binder implements InputSource {
             case None: { }
             case Some(value: e): {
                 if (e.steps().length() > 0) {
-                    no.add(line: whose + " names filters or gestures, which KYR-54's later parts read");
+                    no.add(line: whose + " names gestures, which KYR-54's later part reads");
                     return;
                 }
                 DynamicArray<string> words = DynamicArray.empty();
@@ -608,6 +726,10 @@ type resource Binder implements InputSource {
                 }
                 if (this.sources.length() == first) { return; }
                 made.motion = motions > 0;
+                made.filterFrom = this.filters.length();
+                bool kept = this.takeFilters(entry: e, motion: made.motion, whose: whose, no: no);
+                made.filterTo = this.filters.length();
+                if (!kept) { return; }
                 this.entries.add(item: made);
             }
         };
@@ -615,6 +737,120 @@ type resource Binder implements InputSource {
 }
 
 fn float32 absOf(float32 x) { return x < 0.0 ? -x : x; }
+fn float32 signOf(float32 x) { return x > 0.0 ? 1.0 : (x < 0.0 ? -1.0 : 0.0); }
+
+// `x` turned over where `by` is -1; 0 stays 0.
+fn float32 invertedBy(float32 x, float32 by) { return by < 0.0 ? 0.0 - x : x; }
+
+// `x`'s size raised to `e`, its sign kept.
+fn float32 powered(float32 x, float32 e) {
+    if (e == 1.0 || x == 0.0) { return x; }
+    float32 a = pow(x: absOf(x: x), y: e);
+    return x < 0.0 ? 0.0 - a : a;
+}
+
+fn float32 remapped(float32 x, FilterRecord f) { return f.c + (x - f.a) / (f.b - f.a) * (f.d - f.c); }
+
+// `v` on its first `dims` axes, the others 0.
+fn Vec3 masked(Vec3 v, int32 dims) {
+    return Vec3.of(x: v.x, y: dims >= 2 ? v.y : 0.0, z: dims >= 3 ? v.z : 0.0);
+}
+
+fn Vec3 unit(Vec3 v) {
+    float32 l2 = lengthSquared(v: v);
+    if (l2 == 0.0) { return v; }
+    float32 l = sqrt(x: l2);
+    return Vec3.of(x: v.x / l, y: v.y / l, z: v.z / l);
+}
+
+// A dead zone's one number: 0 inside its lower end; past its upper, 1 scaled or the upper end itself unscaled; between,
+// rescaled from 0 to 1 or kept.
+fn float32 zoned(float32 size, FilterRecord f) {
+    if (size <= f.a) { return 0.0; }
+    if (size >= f.b) { return f.scaled ? 1.0 : f.b; }
+    return f.scaled ? (size - f.a) / (f.b - f.a) : size;
+}
+
+// `v` through a dead zone: on its length, its direction kept, or on each axis apart.
+fn Vec3 deadZoned(Vec3 v, FilterRecord f) {
+    if (f.radial) {
+        float32 l2 = lengthSquared(v: v);
+        if (l2 == 0.0) { return v; }
+        float32 l = sqrt(x: l2);
+        float32 to = zoned(size: l, f: f);
+        return Vec3.of(x: v.x / l * to, y: v.y / l * to, z: v.z / l * to);
+    }
+    return Vec3.of(x: signOf(x: v.x) * zoned(size: absOf(x: v.x), f: f), y: signOf(x: v.y) * zoned(size: absOf(x: v.y), f: f),
+                   z: signOf(x: v.z) * zoned(size: absOf(x: v.z), f: f));
+}
+
+// `v` held to a clamp: each axis between its least and its most, or its length to the longest.
+fn Vec3 clampedBy(Vec3 v, FilterRecord f) {
+    if (f.byLength) {
+        float32 l2 = lengthSquared(v: v);
+        if (l2 <= f.c * f.c) { return v; }
+        float32 l = sqrt(x: l2);
+        return Vec3.of(x: v.x / l * f.c, y: v.y / l * f.c, z: v.z / l * f.c);
+    }
+    return Vec3.of(x: clampedOne(x: v.x, f: f), y: clampedOne(x: v.y, f: f), z: clampedOne(x: v.z, f: f));
+}
+
+fn float32 clampedOne(float32 x, FilterRecord f) {
+    float32 low = f.hasA && x < f.a ? f.a : x;
+    return f.hasB && low > f.b ? f.b : low;
+}
+
+fn string filterWord(FilterKind kind) {
+    return match (kind) {
+        case DeadZone: "deadZone"; case Scale: "scale"; case Invert: "invert"; case Curve: "curve"; case Clamp: "clamp";
+        case Remap: "remap"; case Normalize: "normalize"; case Digital: "digital"; case Smooth: "smooth";
+        case Threshold: "threshold";
+    };
+}
+
+// Why a value entry's filter `f` is refused, or "": a filter the mouse's motion cannot take, a threshold, which makes a
+// button, or a number out of its range.
+fn string filterRefusal(const ref FilterRecord f, const ref DynamicArray<float32> points, bool motion) {
+    string word = filterWord(kind: f.kind);
+    bool linear = match (f.kind) { case Scale: true; case Invert: true; case Smooth: true; case _: false; };
+    if (motion && !linear) {
+        return "puts a `" + word + "` on the mouse's motion, a distance moved, which would change with the step's length: only `scale`, `invert` and `smooth` filter it";
+    }
+    float32 a = f.a;
+    float32 b = f.b;
+    match (f.kind) {
+        case Threshold: { return "lists a `threshold`: a `threshold` makes a button from a value, so it filters a `Digital`'s entry"; }
+        case DeadZone: {
+            if (a < 0.0) { return "has a dead zone: its `lower`, ${a}, must be 0 or more"; }
+            if (a >= b) { return "has a dead zone: its `lower`, ${a}, must be below its `upper`, ${b}"; }
+        }
+        case Curve: {
+            if (f.points) {
+                if (f.pointsTo - f.pointsFrom < 4) { return "has a `curve` of one point: a `curve` through points needs two or more"; }
+                isize k = f.pointsFrom + 2;
+                while (k < f.pointsTo) {
+                    if (points[k] <= points[k - 2]) { return "has a `curve` whose inputs fall or repeat: a `curve`'s points must rise in input"; }
+                    k = k + 2;
+                }
+            } else if (a <= 0.0 || b <= 0.0 || f.c <= 0.0) {
+                return "has a `curve` of no rise: a `curve`'s exponent must be more than 0";
+            }
+        }
+        case Clamp: {
+            if (!f.hasA && !f.hasB && !f.byLength) { return "has an empty `clamp`: a `clamp` names its `min`, its `max` or its `length`"; }
+            if (f.hasA && f.hasB && a > b) { return "has a `clamp` past itself: a `clamp`'s `min` must be at most its `max`"; }
+            if (f.byLength && f.c <= 0.0) { return "has a `clamp` of no length: a `clamp`'s `length` must be more than 0"; }
+        }
+        case Remap: {
+            if (a == b) { return "has a `remap` from one number: a `remap`'s `from` must span a range"; }
+        }
+        case Smooth: {
+            if (a <= 0.0) { return "has a `smooth` of no time: a `smooth`'s seconds must be more than 0"; }
+        }
+        case _: { }
+    };
+    return "";
+}
 fn float32 lengthSquared(Vec3 v) { return v.x * v.x + v.y * v.y + v.z * v.z; }
 
 // A direction no longer than 1: keys pressed together, a diagonal.

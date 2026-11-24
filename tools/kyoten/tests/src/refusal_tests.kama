@@ -66,6 +66,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
     // action written twice in one file is named rather than the first silently lost.
     says(t: t, name: "names: a key written twice in a module's records file is refused, naming it and its file", r: n,
          words: allOf(a: "src/a/more.records.json: duplicate key `actions.fire`", b: "", c: ""));
+    says(t: t, name: "names: a misspelt filter is refused at build, by the engine's own reader, naming every filter", r: n,
+         words: allOf(a: "content/bindings.records.json: `deadzone` is not a `filter`", b: "expected `deadZone`, `scale`", c: ""));
     says(t: t, name: "names: a key written twice in a content file is refused, naming it and its file", r: n,
          words: allOf(a: "content/twice.records.json: duplicate key `prefabs.twice`", b: "", c: ""));
     bool wrote = has(path: s.fixture(at: "names/src/generated/actions.kama"));

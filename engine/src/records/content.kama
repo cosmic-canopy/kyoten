@@ -5,7 +5,7 @@
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned, std::memory::replace };
 
-export { AppRecord, WindowRecord, BindingRecord, ControlEntry };
+export { AppRecord, WindowRecord, BindingRecord, ControlEntry, FilterRecord, FilterKind, DeadZoneShape };
 
 // The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
 // lays its own over, field by field.
@@ -72,15 +72,21 @@ type resource BindingRecord {
 // A device's entry in a binding (design/input.md § Decided, question 2): a control's name (`"ArrowUp"`), a list of
 // them (`["ArrowUp", "KeyW"]`), or an object with its parts (`{ "up": "KeyW", "down": ["KeyS", "ArrowDown"] }`, each a
 // name or a list), its filters and its gestures. A name is `@kama/window`'s, which `kyoten::input` resolves, refusing
-// one that names no control, and a part's word is the action kind's, which the binder holds to it. An object's
-// `filters` and `gestures` are noted and their values passed over here: they are KYR-54's later parts, and the binder
-// refuses them until they are built.
+// one that names no control, and a part's word is the action kind's, which the binder holds to it.
+// - **`filters`** (the third part, design/input.md § Decided, 2026-11-23) is a list, applied in the order written, each
+//   an object of one key naming the filter: `{ "deadZone": 0.2 }`, `{ "scale": { "x": 3.2, "y": 2.2 } }`. A filter or
+//   a parameter misspelt is refused here, naming every one, so the `kyoten` tool refuses it at build; a value out of its
+//   range is the binder's to refuse, at load, naming the action.
+// - **`gestures`** is noted and its value passed over here: it is KYR-54's later part, and the binder refuses it.
 type resource ControlEntry implements Deserializable<This> {
     DynamicArray<string> namesField = DynamicArray.empty();
     bool listedField = false;
     bool objectField = false;
     SortedMap<string, DynamicArray<string>> partsField = SortedMap.empty();
     DynamicArray<string> stepsField = DynamicArray.empty();
+    DynamicArray<FilterRecord> filtersField = DynamicArray.empty();
+    DynamicArray<float32> pointsField = DynamicArray.empty();
+    bool filtersRead = false;
 
     public ctor Result<ControlEntry, Owned<Error>> deserialize(Deserializer r) {
         ValueKind k = r.peekKind();
@@ -111,9 +117,36 @@ type resource ControlEntry implements Deserializable<This> {
                 while (r.moreFields()) {
                     FieldKey key = r.field();
                     string part = match (key) { case Name(name: n): copy n; case _: ""; };
-                    if (part == "filters" || part == "gestures") {
+                    if (part == "gestures") {
                         this.stepsField.add(item: copy part);
                         r.skipValue();
+                        continue;
+                    }
+                    if (part == "filters") {
+                        if (this.filtersRead) {
+                            r.duplicateKey();
+                            if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "filters")); }
+                        }
+                        ValueKind fk = r.peekKind();
+                        bool list = match (fk) { case Array: true; case _: false; };
+                        if (!list) {
+                            r.failWith(kind: DeErrorKind::TypeMismatch);
+                            return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "filters"));
+                        }
+                        this.filtersRead = true;
+                        r.beginArray();
+                        isize index = 0;
+                        while (r.moreElems()) {
+                            Result<FilterRecord, Owned<Error>> one = readFilter(r: r, points: this.pointsField);
+                            match (give one) {
+                                case Ok(value: f): { this.filtersField.add(item: f); }
+                                case Err(error: e): {
+                                    return Result::Err(error: DeError::inField(error: DeError::inElement(error: give e, index: index), name: "filters"));
+                                }
+                            };
+                            index = index + 1;
+                        }
+                        if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "filters")); }
                         continue;
                     }
                     if (this.partsField.contains(key: part)) {
@@ -152,6 +185,339 @@ type resource ControlEntry implements Deserializable<This> {
     public const fn bool isObject() { return this.objectField; }
     // An object's parts by their words, each its controls' names in the order written.
     public const fn const ref SortedMap<string, DynamicArray<string>> parts() { return this.partsField; }
-    // The steps an object names, `filters` or `gestures`, which KYR-54's later parts read.
+    // The steps an object names that KYR-54's later parts read: `gestures`.
     public const fn const ref DynamicArray<string> steps() { return this.stepsField; }
+    // Its filters, in the order written.
+    public const fn const ref DynamicArray<FilterRecord> filters() { return this.filtersField; }
+    // Every curve's points, in pairs (in, out): a curve's are `curvePoints()[pointsFrom]` up to `[pointsTo]`.
+    public const fn const ref DynamicArray<float32> curvePoints() { return this.pointsField; }
+}
+
+// What a filter does to a value (design/input.md § Decided, 2026-11-23, the third part).
+type enum FilterKind { DeadZone, Scale, Invert, Curve, Clamp, Remap, Normalize, Digital, Smooth, Threshold }
+
+// A dead zone's shape: on the value's length, keeping its direction (Unity's stick dead zone, Unreal's Radial,
+// Sutphin's scaled radial), or on each axis apart (Unreal's Axial, FFD's).
+@generate(Deserializable)
+type enum DeadZoneShape { Radial, Axial }
+
+// One filter as a device's entry lists it. Its numbers, by kind:
+// - `DeadZone`: `a` its lower end, `b` its upper (1); `radial` (true; false: each axis apart) and `scaled` (true: what
+//   is between rescaled from 0 to 1; false: kept as it is, Unreal's UnscaledRadial, leafwing's exclusion);
+// - `Scale`, `Curve`'s exponents and `Invert`: `a`, `b`, `c` for x, y and z (1; invert's -1 for an axis turned over);
+// - `Curve`'s points, where `points`: its entry's `curvePoints()` from `pointsFrom` up to `pointsTo`, in pairs;
+// - `Clamp`: `a` its least (where `hasA`) and `b` its most (where `hasB`) on each axis, or `c` the longest length (where
+//   `byLength`);
+// - `Remap`: `a` to `b` onto `c` to `d`, on each axis;
+// - `Normalize` and `Digital`: `on` (false where written `false`: it does nothing);
+// - `Smooth`: `a`, its time in seconds;
+// - `Threshold`: `a` where it presses, `b` where it lets go (where `hasB`; else three quarters of `a`).
+type value FilterRecord {
+    public FilterKind kind;
+    public float32 a = 0.0;
+    public float32 b = 0.0;
+    public float32 c = 0.0;
+    public float32 d = 0.0;
+    public bool radial = true;
+    public bool scaled = true;
+    public bool hasA = false;
+    public bool hasB = false;
+    public bool byLength = false;
+    public bool points = false;
+    public bool on = true;
+    public isize pointsFrom = 0;
+    public isize pointsTo = 0;
+
+    public ctor make(FilterKind kind) { this.kind = kind; }
+}
+
+// Two numbers written `[a, b]`: a curve's point, its input and its output, or a remap's range.
+type value NumberPair implements Deserializable<This> {
+    public float32 first = 0.0;
+    public float32 second = 0.0;
+
+    public ctor of(float32 first, float32 second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public ctor Result<NumberPair, Owned<Error>> deserialize(Deserializer r) {
+        ValueKind k = r.peekKind();
+        if (!isKind(k: k, want: ValueKind::Array)) {
+            r.failWith(kind: DeErrorKind::TypeMismatch);
+            return Result::Err(error: DeError.make(kind: DeErrorKind::TypeMismatch));
+        }
+        r.beginArray();
+        isize n = 0;
+        while (r.moreElems()) {
+            float32 v = r.readF32();
+            if (n == 0) { this.first = v; } else if (n == 1) { this.second = v; }
+            n = n + 1;
+        }
+        if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+        if (n > 2) { return Result::Err(error: DeError.make(kind: DeErrorKind::TooMany)); }
+        if (n < 2) { return Result::Err(error: DeError.make(kind: DeErrorKind::MissingField)); }
+        return Result::Ok(value: this);
+    }
+}
+
+// `{ "deadZone": { … } }`'s parameters.
+@generate(Deserializable)
+type value DeadZoneParams {
+    @field(name: "lower", default) public float32 lower = 0.0;
+    @field(name: "upper", default) public float32 upper = 1.0;
+    @field(name: "shape", default) public DeadZoneShape shape = DeadZoneShape::Radial;
+    @field(name: "scaled", default) public bool scaled = true;
+    public default ctor make() { }
+}
+
+// A number per axis: `scale`'s factors and `curve`'s exponents, each 1 where unnamed.
+@generate(Deserializable)
+type value AxesParams {
+    @field(name: "x", default) public float32 x = 1.0;
+    @field(name: "y", default) public float32 y = 1.0;
+    @field(name: "z", default) public float32 z = 1.0;
+    public default ctor make() { }
+}
+
+// `{ "curve": { … } }`'s parameters: an exponent per axis, or a curve through points.
+@generate(Deserializable)
+type resource CurveParams {
+    @field(name: "x", default) float32 xField = 1.0;
+    @field(name: "y", default) float32 yField = 1.0;
+    @field(name: "z", default) float32 zField = 1.0;
+    @field(name: "points", default) DynamicArray<NumberPair> pointsField = DynamicArray.empty();
+    public default ctor make() { }
+
+    public const fn float32 x() { return this.xField; }
+    public const fn float32 y() { return this.yField; }
+    public const fn float32 z() { return this.zField; }
+    public const fn const ref DynamicArray<NumberPair> points() { return this.pointsField; }
+}
+
+// `{ "invert": { … } }`'s parameters: the axes turned over, each named true.
+@generate(Deserializable)
+type value InvertParams {
+    @field(name: "x", default) public bool x = false;
+    @field(name: "y", default) public bool y = false;
+    @field(name: "z", default) public bool z = false;
+    public default ctor make() { }
+}
+
+// `{ "clamp": { … } }`'s parameters: each axis's least and most, or the longest length.
+@generate(Deserializable)
+type value ClampParams {
+    @field(name: "min", default) public Optional<float32> min = Optional::None;
+    @field(name: "max", default) public Optional<float32> max = Optional::None;
+    @field(name: "length", default) public Optional<float32> length = Optional::None;
+    public default ctor make() { }
+}
+
+// `{ "remap": { "from": [a, b], "to": [c, d] } }`.
+@generate(Deserializable)
+type value RemapParams {
+    @field(name: "from") public NumberPair from;
+    @field(name: "to") public NumberPair to;
+    public default ctor make() {
+        this.from = NumberPair.of(first: 0.0, second: 1.0);
+        this.to = NumberPair.of(first: 0.0, second: 1.0);
+    }
+}
+
+// `{ "threshold": { … } }`'s parameters.
+@generate(Deserializable)
+type value ThresholdParams {
+    @field(name: "press") public float32 press = 0.5;
+    @field(name: "release", default) public Optional<float32> release = Optional::None;
+    public default ctor make() { }
+}
+
+// The filters' names as a refusal lists them.
+fn string filterNames() {
+    return "`deadZone`, `scale`, `invert`, `curve`, `clamp`, `remap`, `normalize`, `digital`, `smooth` or `threshold`";
+}
+
+fn Optional<FilterKind> filterKindOf(const ref string name) {
+    if (name == "deadZone") { return Optional::Some(value: FilterKind::DeadZone); }
+    if (name == "scale") { return Optional::Some(value: FilterKind::Scale); }
+    if (name == "invert") { return Optional::Some(value: FilterKind::Invert); }
+    if (name == "curve") { return Optional::Some(value: FilterKind::Curve); }
+    if (name == "clamp") { return Optional::Some(value: FilterKind::Clamp); }
+    if (name == "remap") { return Optional::Some(value: FilterKind::Remap); }
+    if (name == "normalize") { return Optional::Some(value: FilterKind::Normalize); }
+    if (name == "digital") { return Optional::Some(value: FilterKind::Digital); }
+    if (name == "smooth") { return Optional::Some(value: FilterKind::Smooth); }
+    if (name == "threshold") { return Optional::Some(value: FilterKind::Threshold); }
+    return Optional::None;
+}
+
+// The kind of the value the reader stands at, as a word for its refusal.
+fn bool isKind(ValueKind k, ValueKind want) {
+    return match (k) {
+        case Null: match (want) { case Null: true; case _: false; };
+        case Bool: match (want) { case Bool: true; case _: false; };
+        case Number: match (want) { case Number: true; case _: false; };
+        case String: match (want) { case String: true; case _: false; };
+        case Array: match (want) { case Array: true; case _: false; };
+        case Object: match (want) { case Object: true; case _: false; };
+    };
+}
+
+// A reader's failure inside filter `name`'s value.
+fn Owned<Error> failedIn(Deserializer r, const ref string name) {
+    return DeError::inField(error: DeError.make(kind: r.errorKind()), name: copy name);
+}
+
+// One filter, the object of one key the reader stands at; a curve's points added to `points`.
+fn Result<FilterRecord, Owned<Error>> readFilter(Deserializer r, ref DynamicArray<float32> points) {
+    ValueKind k = r.peekKind();
+    if (!isKind(k: k, want: ValueKind::Object)) {
+        r.failWith(kind: DeErrorKind::TypeMismatch);
+        return Result::Err(error: DeError.make(kind: DeErrorKind::TypeMismatch));
+    }
+    r.beginObject(count: 0);
+    if (!r.moreFields()) {
+        if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+        return Result::Err(error: DeError.unknownCase(key: FieldKey::Name(name: "{}"), type: "filter", cases: filterNames()));
+    }
+    FieldKey key = r.field();
+    string name = match (key) { case Name(name: n): copy n; case _: ""; };
+    Optional<FilterKind> known = filterKindOf(name: name);
+    FilterKind kind = match (known) {
+        case Some(value: fk): fk;
+        case None: {
+            return Result::Err(error: DeError.unknownCase(key: key, type: "filter", cases: filterNames()));
+        }
+    };
+    FilterRecord f = FilterRecord.make(kind: kind);
+    ValueKind vk = r.peekKind();
+    bool number = isKind(k: vk, want: ValueKind::Number);
+    bool truth = isKind(k: vk, want: ValueKind::Bool);
+    bool object = isKind(k: vk, want: ValueKind::Object);
+    match (kind) {
+        case DeadZone: {
+            f.b = 1.0;
+            if (number) { f.a = r.readF32(); }
+            else if (object) {
+                Result<DeadZoneParams, Owned<Error>> got = DeadZoneParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: z): {
+                        f.a = z.lower;
+                        f.b = z.upper;
+                        bool radial = match (z.shape) { case Radial: true; case Axial: false; };
+                        f.radial = radial;
+                        f.scaled = z.scaled;
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Scale: {
+            f.a = 1.0; f.b = 1.0; f.c = 1.0;
+            if (number) {
+                float32 s = r.readF32();
+                f.a = s; f.b = s; f.c = s;
+            } else if (object) {
+                Result<AxesParams, Owned<Error>> got = AxesParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): { f.a = x.x; f.b = x.y; f.c = x.z; }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Invert: {
+            f.a = 1.0; f.b = 1.0; f.c = 1.0;
+            if (truth) {
+                bool all = r.readBool();
+                if (all) { f.a = -1.0; f.b = -1.0; f.c = -1.0; }
+            } else if (object) {
+                Result<InvertParams, Owned<Error>> got = InvertParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): {
+                        if (x.x) { f.a = -1.0; }
+                        if (x.y) { f.b = -1.0; }
+                        if (x.z) { f.c = -1.0; }
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Curve: {
+            f.a = 1.0; f.b = 1.0; f.c = 1.0;
+            if (number) {
+                float32 e = r.readF32();
+                f.a = e; f.b = e; f.c = e;
+            } else if (object) {
+                Result<CurveParams, Owned<Error>> got = CurveParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): {
+                        f.a = x.x(); f.b = x.y(); f.c = x.z();
+                        if (x.points().length() > 0) {
+                            f.points = true;
+                            f.pointsFrom = points.length();
+                            foreach (const ref NumberPair pair in x.points().iterConst()) {
+                                points.add(item: pair.first);
+                                points.add(item: pair.second);
+                            }
+                            f.pointsTo = points.length();
+                        }
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Clamp: {
+            if (object) {
+                Result<ClampParams, Owned<Error>> got = ClampParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): {
+                        match (x.min) { case Some(value: v): { f.a = v; f.hasA = true; } case None: { } };
+                        match (x.max) { case Some(value: v): { f.b = v; f.hasB = true; } case None: { } };
+                        match (x.length) { case Some(value: v): { f.c = v; f.byLength = true; } case None: { } };
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Remap: {
+            if (object) {
+                Result<RemapParams, Owned<Error>> got = RemapParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): { f.a = x.from.first; f.b = x.from.second; f.c = x.to.first; f.d = x.to.second; }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Normalize: {
+            if (truth) { f.on = r.readBool(); } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Digital: {
+            if (truth) { f.on = r.readBool(); } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Smooth: {
+            if (number) { f.a = r.readF32(); } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Threshold: {
+            if (number) { f.a = r.readF32(); }
+            else if (object) {
+                Result<ThresholdParams, Owned<Error>> got = ThresholdParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: x): {
+                        f.a = x.press;
+                        match (x.release) { case Some(value: v): { f.b = v; f.hasB = true; } case None: { } };
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+    };
+    if (r.failed()) { return Result::Err(error: failedIn(r: r, name: name)); }
+    if (r.moreFields()) {
+        FieldKey second = r.field();
+        return Result::Err(error: DeError.unknownCase(key: second, type: "filter's second key",
+                                                      cases: "one key to a filter, each filter its own object: `[ { \"" + name + "\": … }, { … } ]`"));
+    }
+    r.endObject();
+    if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+    return Result::Ok(value: f);
 }

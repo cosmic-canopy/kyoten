@@ -8,7 +8,7 @@
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
-         std::math::Vec2, std::math::Vec3, std::math::sqrt, kyoten::frame::Time, kyoten::frame::Scheme,
+         std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, kyoten::frame::Time, kyoten::frame::Scheme,
          kyoten::records::BindingRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
@@ -418,9 +418,9 @@ fn void valueRefusalCases(ref Tally t) {
                   json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"Left\" } } }", says: "mixes the mouse's motion");
     expectRefused(t: t, name: "binder: the mouse's motion as a key's part is refused",
                   json: "{ \"look\": { \"mouse\": { \"up\": \"MotionY\" } } }", says: "as a key's part");
-    expectRefused(t: t, name: "binder: filters are refused until KYR-54's later parts",
-                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"radialDeadZone\": 0.2 } ] } } }",
-                  says: "names filters or gestures");
+    expectRefused(t: t, name: "binder: gestures are refused until KYR-54's later part",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"gestures\": [ { \"multiTap\": 2 } ] } } }",
+                  says: "names gestures");
     expectRefused(t: t, name: "binder: a misspelled pad control lists the buttons and the axes",
                   json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }", says: "no button (");
     expectRefused(t: t, name: "binder: and the axes' names", json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }",
@@ -520,7 +520,248 @@ fn void newestCases(ref Tally t) {
     t.verdict(name: "binder: Output's newest carries the player's scheme", why: onPad ? "" : "KeyboardMouse");
 }
 
+// What reading `json` as bindings refuses, or "" when it reads: a filter or a parameter misspelt is the reader's.
+fn string readRefusalOf(const ref string json) {
+    Result<SortedMap<string, BindingRecord>, Owned<Error>> read = deserializeJsonBuffer::<SortedMap<string, BindingRecord>>(src: copy json, strict: true);
+    return match (read) {
+        case Ok(value: m): "";
+        case Err(error: e): e.message();
+    };
+}
+
+fn void expectReadRefused(ref Tally t, const ref string name, const ref string json, const ref string says) {
+    string why = readRefusalOf(json: json);
+    if (why.contains(substring: says)) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "read refusal `${why}` does not say `${says}`"); }
+}
+
+fn float32 absOf(float32 x) { return x < 0.0 ? 0.0 - x : x; }
+
+// Within a millionth: a filter's arithmetic in float32, held to the formula worked here.
+fn void expectNear(ref Tally t, const ref string name, float32 got, float32 want) {
+    t.verdict(name: name, why: absOf(x: got - want) <= 0.000001 ? "" : "got ${got}, want ${want}");
+}
+
+fn void expectVec2Near(ref Tally t, const ref string name, Vec2 got, float32 x, float32 y) {
+    float32 gx = got.x;
+    float32 gy = got.y;
+    bool near = absOf(x: gx - x) <= 0.000001 && absOf(x: gy - y) <= 0.000001;
+    t.verdict(name: name, why: near ? "" : "got (${gx}, ${gy}), want (${x}, ${y})");
+}
+
+// `move` bound to the left stick through `filters`, its pad locked, then the stick at (`x`, `y`) as the W3C reports
+// it (down positive), read in the next step.
+fn Vec2 stickThrough(const ref string filters, float32 x, float32 y) {
+    Binder b = binderFor(json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"LeftY\", \"filters\": " + filters + " } } }");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: b, s: stick(slot: 0, index: 0, value: x, at: 10));
+    hand(b: b, s: stick(slot: 0, index: 1, value: y, at: 20));
+    return moveAt(b: b, step: 0, until: 100);
+}
+
+// Each filter's formula, worked at chosen points (design/input.md § Decided, 2026-11-23, the third part).
+fn void filterShapeCases(ref Tally t) {
+    string zone = "[ { \"deadZone\": { \"lower\": 0.5, \"upper\": 0.9 } } ]";
+    expectVec2(t: t, name: "binder: a dead zone zeroes a stick inside it", got: stickThrough(filters: zone, x: 0.3, y: 0.0), x: 0.0, y: 0.0);
+    expectVec2Near(t: t, name: "binder: a scaled radial dead zone rescales the length from its lower end to its upper, keeping the direction",
+                   got: stickThrough(filters: zone, x: 0.45, y: 0.6), x: 0.375, y: -0.5);
+    expectVec2Near(t: t, name: "binder: and past its upper end the stick is a direction of length 1",
+                   got: stickThrough(filters: zone, x: 0.57, y: 0.76), x: 0.6, y: -0.8);
+    expectVec2Near(t: t, name: "binder: a dead zone's upper end is 1 unless written",
+                   got: stickThrough(filters: "[ { \"deadZone\": 0.5 } ]", x: 0.45, y: 0.6), x: 0.3, y: -0.4);
+    expectVec2Near(t: t, name: "binder: an axial dead zone takes each axis apart",
+                   got: stickThrough(filters: "[ { \"deadZone\": { \"lower\": 0.5, \"shape\": \"Axial\" } } ]", x: 0.75, y: 0.25),
+                   x: 0.5, y: 0.0);
+    string unscaled = "[ { \"deadZone\": { \"lower\": 0.5, \"upper\": 0.9, \"scaled\": false } } ]";
+    expectVec2Near(t: t, name: "binder: an unscaled dead zone keeps what is past its lower end as it is",
+                   got: stickThrough(filters: unscaled, x: 0.45, y: 0.6), x: 0.45, y: -0.6);
+    expectVec2Near(t: t, name: "binder: and holds its length to its upper end",
+                   got: stickThrough(filters: unscaled, x: 0.6, y: 0.8), x: 0.54, y: -0.72);
+    expectVec2(t: t, name: "binder: and zeroes inside it", got: stickThrough(filters: unscaled, x: 0.3, y: 0.0), x: 0.0, y: 0.0);
+    expectVec2Near(t: t, name: "binder: a dead zone of 0 reads the stick raw",
+                   got: stickThrough(filters: "[ { \"deadZone\": 0 } ]", x: 0.05, y: -0.02), x: 0.05, y: 0.02);
+
+    expectVec2Near(t: t, name: "binder: a scale per axis", got: stickThrough(filters: "[ { \"scale\": { \"x\": 2, \"y\": 3 } } ]", x: 0.25, y: 0.5),
+                   x: 0.5, y: -1.5);
+    expectVec2Near(t: t, name: "binder: one scale for every axis", got: stickThrough(filters: "[ { \"scale\": 4 } ]", x: 0.25, y: 0.125),
+                   x: 1.0, y: -0.5);
+    expectVec2Near(t: t, name: "binder: invert turns over the axes named",
+                   got: stickThrough(filters: "[ { \"invert\": { \"y\": true } } ]", x: 0.25, y: 0.5), x: 0.25, y: 0.5);
+    expectVec2Near(t: t, name: "binder: and true turns over every axis", got: stickThrough(filters: "[ { \"invert\": true } ]", x: 0.25, y: 0.5),
+                   x: -0.25, y: 0.5);
+    expectVec2Near(t: t, name: "binder: a curve raises each axis to its exponent, its sign kept",
+                   got: stickThrough(filters: "[ { \"curve\": 2 } ]", x: 0.5, y: 0.5), x: 0.25, y: -0.25);
+    expectVec2Near(t: t, name: "binder: an exponent per axis, 1 where unnamed",
+                   got: stickThrough(filters: "[ { \"curve\": { \"x\": 3 } } ]", x: 0.5, y: 0.5), x: 0.125, y: -0.5);
+    expectVec2Near(t: t, name: "binder: a curve through points, linear between them, its sign kept",
+                   got: stickThrough(filters: "[ { \"curve\": { \"points\": [ [0, 0], [0.5, 0.25], [1, 1] ] } } ]", x: 0.75, y: 0.25),
+                   x: 0.625, y: -0.125);
+    expectVec2Near(t: t, name: "binder: a curve's points hold their last output past them",
+                   got: stickThrough(filters: "[ { \"curve\": { \"points\": [ [0, 0], [0.5, 0.25] ] } } ]", x: 0.75, y: 0.0),
+                   x: 0.25, y: 0.0);
+    expectVec2Near(t: t, name: "binder: a clamp by length", got: stickThrough(filters: "[ { \"clamp\": { \"length\": 0.5 } } ]", x: 0.6, y: 0.8),
+                   x: 0.3, y: -0.4);
+    expectVec2Near(t: t, name: "binder: a clamp per axis", got: stickThrough(filters: "[ { \"clamp\": { \"min\": -0.5, \"max\": 0.25 } } ]", x: 0.6, y: 0.8),
+                   x: 0.25, y: -0.5);
+    expectVec2Near(t: t, name: "binder: normalize makes a direction of length 1",
+                   got: stickThrough(filters: "[ { \"normalize\": true } ]", x: 0.3, y: 0.4), x: 0.6, y: -0.8);
+    expectVec2(t: t, name: "binder: and leaves a stick at rest at rest", got: stickThrough(filters: "[ { \"normalize\": true } ]", x: 0.0, y: 0.0),
+               x: 0.0, y: 0.0);
+    expectVec2(t: t, name: "binder: digital makes each axis -1, 0 or 1",
+               got: stickThrough(filters: "[ { \"digital\": true } ]", x: -0.2, y: 0.7), x: -1.0, y: -1.0);
+    expectVec2(t: t, name: "binder: and 0 stays 0", got: stickThrough(filters: "[ { \"digital\": true } ]", x: 0.3, y: 0.0), x: 1.0, y: 0.0);
+    float32 half = 1.0 / sqrt(x: 2.0f32);
+    expectVec2Near(t: t, name: "binder: a filter reads only the axes its action has: a vector2's remap leaves its z at 0",
+                   got: stickThrough(filters: "[ { \"remap\": { \"from\": [0, 1], \"to\": [0.5, 1] } }, { \"normalize\": true } ]", x: 0.0, y: 0.0),
+                   x: half, y: half);
+    Binder two = binderFor(json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"curve\": { \"points\": [ [0, 0], [1, 0.5] ] } } ] }, \"gamepad\": { \"positive\": \"RightTrigger\", \"filters\": [ { \"curve\": { \"points\": [ [0, 0], [1, 0.25] ] } } ] } } }");
+    hand(b: two, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: two, s: travel(slot: 0, button: 7, value: 1.0, at: 10));
+    expectNear(t: t, name: "binder: each entry reads its own curve's points", got: throttleAt(b: two, step: 0, until: 100), want: 0.25);
+    expectVec2Near(t: t, name: "binder: a filter written false does nothing",
+                   got: stickThrough(filters: "[ { \"normalize\": false }, { \"digital\": false } ]", x: 0.3, y: 0.4), x: 0.3, y: -0.4);
+
+    Binder r = binderFor(json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"remap\": { \"from\": [0, 1], \"to\": [0.25, 0.75] } } ] } } }");
+    expectNear(t: t, name: "binder: a remap takes a key up from 0 to its range's start", got: throttleAt(b: r, step: 0, until: 100), want: 0.25);
+    hand(b: r, s: key(control: 26, down: true, at: 110));
+    expectNear(t: t, name: "binder: and down from 1 to its end: a digital as a float from X to Y", got: throttleAt(b: r, step: 1, until: 200),
+               want: 0.75);
+}
+
+// The order written, a delta, Output, smoothing over time.
+fn void filterOrderCases(ref Tally t) {
+    expectVec2Near(t: t, name: "binder: filters run in the order written: a scale, then a dead zone",
+                   got: stickThrough(filters: "[ { \"scale\": 2 }, { \"deadZone\": 0.5 } ]", x: 0.4, y: 0.0), x: 0.6, y: 0.0);
+    expectVec2(t: t, name: "binder: and a dead zone, then a scale", got: stickThrough(filters: "[ { \"deadZone\": 0.5 }, { \"scale\": 2 } ]", x: 0.4, y: 0.0),
+               x: 0.0, y: 0.0);
+
+    float32 dt = Time::dtAt(hz: 60);
+    Binder s = binderFor(json: "{ \"look\": { \"gamepad\": { \"x\": \"RightX\", \"y\": \"RightY\", \"filters\": [ { \"scale\": 3 } ] } } }");
+    hand(b: s, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: s, s: stick(slot: 0, index: 2, value: 1.0, at: 10));
+    expectVec2Near(t: t, name: "binder: a delta's stick is filtered before its seconds: a full push scaled is turned each second",
+                   got: lookAt(b: s, step: 0, until: 100), x: 3.0 * dt, y: 0.0);
+    Binder m = binderFor(json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"filters\": [ { \"scale\": 0.5 }, { \"invert\": { \"y\": true } } ] } } }");
+    hand(b: m, s: motion(index: 0, value: 4.0, at: 10));
+    hand(b: m, s: motion(index: 1, value: 2.0, at: 20));
+    expectVec2Near(t: t, name: "binder: the mouse's motion scaled per count, and its Y turned over again",
+                   got: lookAt(b: m, step: 0, until: 100), x: 2.0, y: 1.0);
+
+    Binder o = binderFor(json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"LeftY\", \"filters\": [ { \"deadZone\": { \"lower\": 0.5, \"upper\": 0.9 } } ] } } }");
+    hand(b: o, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: o, s: stick(slot: 0, index: 0, value: 0.45, at: 10));
+    hand(b: o, s: stick(slot: 0, index: 1, value: 0.6, at: 20));
+    Vec2 shown = o.newest(seconds: 0.5).vector2(player: 1, action: 0);
+    expectVec2Near(t: t, name: "binder: Output's newest is filtered too", got: shown, x: 0.375, y: -0.5);
+
+    float32 tau = 0.05;
+    float32 step = 1.0 - exp(x: 0.0 - dt / tau);
+    Binder k = binderFor(json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"smooth\": 0.05 } ] } } }");
+    hand(b: k, s: key(control: 26, down: true, at: 10));
+    float32 first = step;
+    expectNear(t: t, name: "binder: smooth moves a state toward its value by its time's share of a step",
+               got: throttleAt(b: k, step: 0, until: 100), want: first);
+    float32 frame = 1.0 - exp(x: 0.0 - 0.5 / tau);
+    float32 shownSmooth = k.newest(seconds: 0.5).analog(player: 1, action: 0);
+    expectNear(t: t, name: "binder: and Output's by its frame's seconds, from its own last value", got: shownSmooth, want: frame);
+    float32 second = first + (1.0 - first) * step;
+    expectNear(t: t, name: "binder: the next step goes on from the step's own, which Output left alone",
+               got: throttleAt(b: k, step: 1, until: 200), want: second);
+
+    Binder w = binderFor(json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"filters\": [ { \"smooth\": 0.05 } ] } } }");
+    hand(b: w, s: motion(index: 0, value: 3.0, at: 10));
+    float32 moved = 3.0 * step;
+    expectNear(t: t, name: "binder: smooth on the mouse's motion smooths its speed: a share of the step's motion now",
+               got: lookAt(b: w, step: 0, until: 100).x, want: moved);
+    expectNear(t: t, name: "binder: and the rest over the steps after", got: lookAt(b: w, step: 1, until: 200).x, want: moved * (1.0 - step));
+
+    Binder v = binderFor(json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"filters\": [ { \"smooth\": 0.05 } ] } } }");
+    hand(b: v, s: motion(index: 0, value: 3.0, at: 10));
+    float32 lengthy = 1.0 - exp(x: 0.0 - 0.5 / tau);
+    float32 brief = 1.0 - exp(x: 0.0 - 0.25 / tau);
+    float32 speed = 3.0 / 0.5 * lengthy;
+    expectNear(t: t, name: "binder: smooth on the mouse's motion in Output's frames: a share of the motion in the first",
+               got: v.newest(seconds: 0.5).vector2(player: 1, action: 1).x, want: speed * 0.5);
+    expectNear(t: t, name: "binder: and its speed kept, not its distance, in a frame half as long",
+               got: v.newest(seconds: 0.25).vector2(player: 1, action: 1).x, want: speed * (1.0 - brief) * 0.25);
+    hand(b: v, s: motion(index: 0, value: 2.0, at: 20));
+    expectNear(t: t, name: "binder: an Output frame of no time passes the mouse's motion through",
+               got: v.newest(seconds: 0.0).vector2(player: 1, action: 1).x, want: 2.0);
+}
+
+// What the reader and the binder refuse of filters.
+fn void filterRefusalCases(ref Tally t) {
+    expectReadRefused(t: t, name: "binder: a misspelt filter is refused by the reader, naming every filter",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadzone\": 0.2 } ] } } }",
+                      says: "`deadzone` is not a `filter`");
+    expectReadRefused(t: t, name: "binder: and lists them", json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadzone\": 0.2 } ] } } }",
+                      says: "`deadZone`, `scale`, `invert`, `curve`, `clamp`, `remap`, `normalize`, `digital`, `smooth` or `threshold`");
+    expectReadRefused(t: t, name: "binder: a misspelt parameter is refused, naming where",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadZone\": { \"lowr\": 0.2 } } ] } } }",
+                      says: "filters[0].deadZone.lowr");
+    expectReadRefused(t: t, name: "binder: a dead zone's shape misspelt names the shapes",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadZone\": { \"shape\": \"Round\" } } ] } } }",
+                      says: "`Round` is not a `DeadZoneShape`");
+    expectReadRefused(t: t, name: "binder: a filter's value of the wrong kind is refused, naming where",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"scale\": \"big\" } ] } } }",
+                      says: "type mismatch at `move.gamepad.filters[0].scale`");
+    expectReadRefused(t: t, name: "binder: two filters in one object are refused: each is its own",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"scale\": 2, \"invert\": true } ] } } }",
+                      says: "`invert` is not a `filter's second key`");
+    expectReadRefused(t: t, name: "binder: filters written twice in one entry are refused",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ ], \"filters\": [ { \"scale\": 2 } ] } } }",
+                      says: "duplicate key");
+    expectReadRefused(t: t, name: "binder: filters not written as a list are refused",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": { \"scale\": 2 } } } }",
+                      says: "type mismatch at `move.gamepad.filters`");
+    expectReadRefused(t: t, name: "binder: a curve's point of three numbers is refused",
+                      json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"curve\": { \"points\": [ [0, 0, 1] ] } } ] } } }",
+                      says: "too many elements");
+
+    expectRefused(t: t, name: "binder: a dead zone on the mouse's motion is refused: it would change with the step's length",
+                  json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"filters\": [ { \"deadZone\": 0.2 } ] } } }",
+                  says: "a `deadZone` on the mouse's motion");
+    expectRefused(t: t, name: "binder: and a curve", json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"filters\": [ { \"curve\": 2 } ] } } }",
+                  says: "a `curve` on the mouse's motion");
+    expectRefused(t: t, name: "binder: a threshold on a value is refused: it makes a button",
+                  json: "{ \"throttle\": { \"gamepad\": { \"positive\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.5 } ] } } }",
+                  says: "a `threshold` makes a button");
+    expectRefused(t: t, name: "binder: a dead zone's lower end at or past its upper is refused",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadZone\": { \"lower\": 0.9, \"upper\": 0.5 } } ] } } }",
+                  says: "its `lower`, 0.9, must be below its `upper`, 0.5");
+    expectRefused(t: t, name: "binder: a negative dead zone is refused",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"deadZone\": -0.1 } ] } } }",
+                  says: "its `lower`, -0.1, must be 0 or more");
+    expectRefused(t: t, name: "binder: a curve's exponent of 0 or less is refused",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"curve\": 0 } ] } } }",
+                  says: "a `curve`'s exponent must be more than 0");
+    expectRefused(t: t, name: "binder: a curve's points not rising in input are refused",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"curve\": { \"points\": [ [0, 0], [0.5, 0.2], [0.5, 1] ] } } ] } } }",
+                  says: "a `curve`'s points must rise in input");
+    expectRefused(t: t, name: "binder: a curve of one point is refused",
+                  json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"filters\": [ { \"curve\": { \"points\": [ [0, 0] ] } } ] } } }",
+                  says: "a `curve` through points needs two or more");
+    expectRefused(t: t, name: "binder: a remap from a range of no width is refused",
+                  json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"remap\": { \"from\": [1, 1], \"to\": [0, 1] } } ] } } }",
+                  says: "a `remap`'s `from` must span a range");
+    expectRefused(t: t, name: "binder: a smooth of no time is refused",
+                  json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"smooth\": 0 } ] } } }",
+                  says: "a `smooth`'s seconds must be more than 0");
+    expectRefused(t: t, name: "binder: a clamp naming no bound is refused",
+                  json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"clamp\": { } } ] } } }",
+                  says: "a `clamp` names its `min`, its `max` or its `length`");
+    expectRefused(t: t, name: "binder: a clamp whose least is past its most is refused",
+                  json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"clamp\": { \"min\": 1, \"max\": 0 } } ] } } }",
+                  says: "a `clamp`'s `min` must be at most its `max`");
+    expectRefused(t: t, name: "binder: a digital's object entry is still refused until its part",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.5 } ] } } }",
+                  says: "which for a `Digital` holds filters and gestures");
+}
+
 fn void binderTests(ref Tally t) {
+    filterShapeCases(t: t);
+    filterOrderCases(t: t);
+    filterRefusalCases(t: t);
     newestCases(t: t);
     schemeCases(t: t);
     bindingCases(t: t);
