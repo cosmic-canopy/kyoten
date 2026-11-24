@@ -9,7 +9,7 @@ import { Tally, spelled, std::collections::DynamicArray, std::collections::Sorte
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
          std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, kyoten::frame::Time, kyoten::frame::Scheme,
-         kyoten::records::BindingRecord,
+         kyoten::records::BindingRecord, kyoten::records::InputRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
 export { binderTests };
@@ -46,7 +46,8 @@ fn ActionList actionsOf(const ref string a, const ref string b) {
 fn Binder binderFor(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, hz: 60);
+    InputRecord raw = InputRecord.make();
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60);
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -60,7 +61,8 @@ fn Binder binderFor(const ref string json) {
 fn string refusalOf(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, hz: 60);
+    InputRecord raw = InputRecord.make();
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60);
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -256,7 +258,8 @@ fn void padCases(ref Tally t) {
 fn void playerCases(ref Tally t) {
     ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
-    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, hz: 60);
+    InputRecord raw = InputRecord.make();
+    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, input: raw, hz: 60);
     match (give made) {
         case Ok(value: b): {
             hand(b: b, s: key(control: 82, down: true, at: 50));
@@ -758,7 +761,125 @@ fn void filterRefusalCases(ref Tally t) {
                   says: "which for a `Digital` holds filters and gestures");
 }
 
+// The engine's decided defaults, as engine/content/input.records.json writes them (design/input.md § Decided,
+// 2026-11-23, the third part's question 1).
+fn string defaults() { return "{ \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.11764706 } }"; }
+
+fn InputRecord inputOf(const ref string json) {
+    Result<InputRecord, Owned<Error>> read = deserializeJsonBuffer::<InputRecord>(src: copy json, strict: true);
+    return match (give read) {
+        case Ok(value: r): give r;
+        case Err(error: e): {
+            string why = e.message();
+            panic(msg: "a test's input record read: " + why);
+        }
+    };
+}
+
+// A binder for the actions `faster` and `jump` and the value actions, bound by `json`, with the input record `input`.
+fn Binder binderWith(const ref string json, const ref string input) {
+    ActionList actions = actionsOf(a: "faster", b: "jump");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    InputRecord record = inputOf(json: input);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60);
+    return match (give made) {
+        case Ok(value: v): give v;
+        case Err(error: e): {
+            string why = e.message();
+            panic(msg: "a test's bindings refused: " + why);
+        }
+    };
+}
+
+fn string refusalWith(const ref string json, const ref string input) {
+    ActionList actions = actionsOf(a: "faster", b: "jump");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    InputRecord record = inputOf(json: input);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60);
+    return match (made) {
+        case Ok(value: v): "";
+        case Err(error: e): e.message();
+    };
+}
+
+// `move` bound to the left stick by `entry` (its parts and filters), with the engine's defaults, its pad locked, then
+// the stick at (`x`, `y`) as the W3C reports it, read in the next step.
+fn Vec2 stickWithDefaults(const ref string entry, float32 x, float32 y) {
+    Binder b = binderWith(json: "{ \"move\": { \"gamepad\": " + entry + " } }", input: defaults());
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: b, s: stick(slot: 0, index: 0, value: x, at: 10));
+    hand(b: b, s: stick(slot: 0, index: 1, value: y, at: 20));
+    return moveAt(b: b, step: 0, until: 100);
+}
+
+// `throttle` bound by `entry` on the pad, with the engine's defaults, its pad locked, then `sample` taken.
+fn float32 throttleWithDefaults(const ref string entry, Sample sample) {
+    Binder b = binderWith(json: "{ \"throttle\": { \"gamepad\": " + entry + " } }", input: defaults());
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: b, s: sample);
+    return throttleAt(b: b, step: 0, until: 100);
+}
+
+// The `input` record's defaults (the third part's question 1): every stick an entry reads, radial on one stick's pair
+// and per axis otherwise, and every trigger's travel, unless the entry names a dead zone of its own.
+fn void defaultZoneCases(ref Tally t) {
+    string pair = "{ \"x\": \"LeftX\", \"y\": \"LeftY\" }";
+    expectVec2(t: t, name: "binder: a stick at rest inside the default dead zone reads 0, its drift gone",
+               got: stickWithDefaults(entry: pair, x: 0.06, y: -0.04), x: 0.0, y: 0.0);
+    expectVec2Near(t: t, name: "binder: one stick's pair takes the default radially, rescaled from 0.125 to 0.925",
+                   got: stickWithDefaults(entry: pair, x: 0.45, y: 0.6), x: 0.46875, y: -0.625);
+    expectVec2Near(t: t, name: "binder: and past 0.925 is a direction of length 1", got: stickWithDefaults(entry: pair, x: 0.57, y: 0.76),
+                   x: 0.6, y: -0.8);
+    expectVec2Near(t: t, name: "binder: a pair read the other way about is still one stick's, radial",
+                   got: stickWithDefaults(entry: "{ \"x\": \"LeftY\", \"y\": \"LeftX\" }", x: 0.45, y: 0.6), x: -0.625, y: 0.46875);
+    Binder two = binderWith(json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"RightY\" } } }", input: defaults());
+    hand(b: two, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: two, s: stick(slot: 0, index: 0, value: 0.45, at: 10));
+    hand(b: two, s: stick(slot: 0, index: 3, value: 0.6, at: 20));
+    expectVec2Near(t: t, name: "binder: two sticks' axes take the default each on its own axis",
+                   got: moveAt(b: two, step: 0, until: 100), x: 0.40625, y: -0.59375);
+    expectVec2Near(t: t, name: "binder: the default comes before the entry's own filters",
+                   got: stickWithDefaults(entry: "{ \"x\": \"LeftX\", \"y\": \"LeftY\", \"filters\": [ { \"scale\": 2 } ] }", x: 0.45, y: 0.6),
+                   x: 0.9375, y: -1.25);
+    expectVec2Near(t: t, name: "binder: an entry's own dead zone takes the default's place",
+                   got: stickWithDefaults(entry: "{ \"x\": \"LeftX\", \"y\": \"LeftY\", \"filters\": [ { \"deadZone\": 0 } ] }", x: 0.06, y: -0.04),
+                   x: 0.06, y: 0.04);
+
+    expectNear(t: t, name: "binder: a stick's one axis takes the default on its own",
+               got: throttleWithDefaults(entry: "{ \"positive\": \"LeftX\" }", sample: stick(slot: 0, index: 0, value: 0.5, at: 10)),
+               want: 0.46875);
+    expectNear(t: t, name: "binder: and a dead zone of its own takes its place",
+               got: throttleWithDefaults(entry: "{ \"positive\": \"LeftX\", \"filters\": [ { \"deadZone\": 0 } ] }",
+                                         sample: stick(slot: 0, index: 0, value: 0.05, at: 10)), want: 0.05);
+    float32 pressed = 0.11764706;
+    expectNear(t: t, name: "binder: a trigger's travel takes the trigger's default, from 30/255",
+               got: throttleWithDefaults(entry: "\"RightTrigger\"", sample: travel(slot: 0, button: 7, value: 0.5, at: 10)),
+               want: (0.5 - pressed) / (1.0 - pressed));
+    expectNear(t: t, name: "binder: and short of it reads 0",
+               got: throttleWithDefaults(entry: "\"RightTrigger\"", sample: travel(slot: 0, button: 7, value: 0.1, at: 10)), want: 0.0);
+    expectNear(t: t, name: "binder: the left trigger too",
+               got: throttleWithDefaults(entry: "\"LeftTrigger\"", sample: travel(slot: 0, button: 6, value: 0.1, at: 10)), want: 0.0);
+    expectNear(t: t, name: "binder: another button's travel takes none: the default is the triggers'",
+               got: throttleWithDefaults(entry: "\"South\"", sample: travel(slot: 0, button: 0, value: 0.05, at: 10)), want: 0.05);
+
+    Binder o = binderWith(json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"LeftY\" } } }", input: defaults());
+    hand(b: o, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: o, s: stick(slot: 0, index: 0, value: 0.45, at: 10));
+    hand(b: o, s: stick(slot: 0, index: 1, value: 0.6, at: 20));
+    expectVec2Near(t: t, name: "binder: Output's newest takes the defaults too", got: o.newest(seconds: 0.5).vector2(player: 1, action: 0),
+                   x: 0.46875, y: -0.625);
+
+    string wrong = refusalWith(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }",
+                               input: "{ \"stickDeadZone\": { \"lower\": 0.9, \"upper\": 0.5 } }");
+    t.verdict(name: "binder: an input record's dead zone out of its range is refused, naming the record",
+              why: wrong.contains(substring: "the `input` record's `stickDeadZone` has a dead zone: its `lower`, 0.9, must be below its `upper`, 0.5")
+              ? "" : "refused `${wrong}`");
+    string trig = refusalWith(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }", input: "{ \"triggerDeadZone\": { \"lower\": -1 } }");
+    t.verdict(name: "binder: the trigger's too", why: trig.contains(substring: "the `input` record's `triggerDeadZone`") ? "" : "refused `${trig}`");
+}
+
 fn void binderTests(ref Tally t) {
+    defaultZoneCases(t: t);
     filterShapeCases(t: t);
     filterOrderCases(t: t);
     filterRefusalCases(t: t);

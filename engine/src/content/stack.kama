@@ -10,6 +10,8 @@
 // - **Within one layer a prefab or a placement is written once;** a higher layer merges over it by key.
 // - **The app record is laid over layer by layer, field by field:** the engine's content sets the window's size, and a
 //   game's record its title and whatever of the size it changes.
+// - **The input record is laid over layer by layer, part by part** (design/input.md § Decided, 2026-11-23): the
+//   engine's content sets each stick's and trigger's dead zone, and a game's record changes the parts it names.
 // - **The bindings are laid over layer by layer, device by device** (design/input.md § Decided, question 2): a higher
 //   layer's binding of an action replaces each device's entry it names and keeps the others, so a player rebinding the
 //   keyboard keeps the pad's.
@@ -20,7 +22,7 @@
 //   the rest is kept.
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::io::IoError, std::memory::Owned,
-         std::serialization::text::json::JsonValue, kyoten::records::BindingRecord, RecordSource, ContentFile, ZoneFile,
+         std::serialization::text::json::JsonValue, kyoten::records::BindingRecord, kyoten::records::InputRecord, RecordSource, ContentFile, ZoneFile,
          PlacementRecord, subtreeText, mergeText, readTree };
 
 export { LoadRefusals, LayerStack, Subtree, Placement, Content, readContent, readScene, notMainLayer, componentList,
@@ -136,8 +138,9 @@ type resource Content {
     int32 widthSet = 0;
     int32 heightSet = 0;
     SortedMap<string, BindingRecord> bindingsSet = SortedMap.empty();
+    InputRecord inputSet = InputRecord.make();
 
-    friend readContent[prefabTrees, titleSet, widthSet, heightSet, bindingsSet];
+    friend readContent[prefabTrees, titleSet, widthSet, heightSet, bindingsSet, inputSet];
     friend fillScene[sceneName, placementList];
 
     public ctor make() { }
@@ -168,6 +171,8 @@ type resource Content {
 
     // Each action's bindings, every layer's laid over the ones below it, device by device.
     public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsSet; }
+    // The input record, every layer's laid over the ones below it, part by part.
+    public const fn const ref InputRecord input() { return this.inputSet; }
 
     // The first scene, or "" when there is none.
     public const fn const ref string scene() { return this.sceneName; }
@@ -385,6 +390,10 @@ fn Content readContent(const ref LayerStack stack, ref LoadRefusals no) {
                         case None: { }
                     };
                 }
+                case None: { }
+            };
+            match (cf.input()) {
+                case Some(value: r): { c.inputSet.layOver(above: r); }
                 case None: { }
             };
             SortedMap<string, BindingRecord> layered = cf.takeBindings();

@@ -304,6 +304,10 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     isize gameAt = match (loader.find(substring: "label: \"content\"")) { case Some(value: v): v; case None: -1; };
     check(t: t, name: "spin: the generated `run` opens the engine's content, then the game's above it",
           ok: engineAt >= 0 && gameAt > engineAt, why: "the engine's layer at ${engineAt}, the game's at ${gameAt}");
+    // The binder takes the input record, every layer's laid over (design/input.md § Decided, 2026-11-23): a headless run
+    // has no pad to show its dead zones, so the generated call is read.
+    check(t: t, name: "spin: the generated `run` builds the binder with the content's input record",
+          ok: loader.contains(substring: "input: content.input()"), why: "no `input: content.input()` in the generated run");
     // The world, its tables and its passes drive the simulation, so they sit outside its fence, in the app's root module
     // beside `main` (components § Decided, step 6's question 1 of 2026-11-09). The fenced `generated` keeps what
     // processors import: `Actions` and the prefab types.

@@ -3,15 +3,17 @@
 // are kept as JSON: the tool reads only their keys, and the loader lays each component's subtree over its default
 // (components § Decided, the loader's question 2 of 2026-11-09).
 
-import { kyoten::records::AppRecord, kyoten::records::BindingRecord, std::collections::SortedMap, std::memory::replace,
+import { kyoten::records::AppRecord, kyoten::records::BindingRecord, kyoten::records::InputRecord, std::collections::SortedMap, std::memory::replace,
          std::serialization::text::json::JsonValue };
 
 export { ContentFile, ZoneFile, PlacementRecord };
 
-// A content file outside `scenes/`: its app record, its bindings, and its prefabs, each kept as its JSON object.
+// A content file outside `scenes/`: its app record, its input record, its bindings, and its prefabs, each kept as its
+// JSON object.
 @generate(Deserializable)
 type resource ContentFile {
     @field(name: "app") Optional<AppRecord> appField = Optional::None;
+    @field(name: "input") Optional<InputRecord> inputField = Optional::None;
     @field(name: "bindings", default) SortedMap<string, BindingRecord> bindingsField = SortedMap.empty();
     @field(name: "prefabs", default) SortedMap<string, JsonValue> prefabsField = SortedMap.empty();
 
@@ -19,6 +21,8 @@ type resource ContentFile {
 
     public const fn const ref Optional<AppRecord> app() { return this.appField; }
     public const fn bool hasApp() { return match (this.appField) { case Some(value: a): true; case None: false; }; }
+    public const fn const ref Optional<InputRecord> input() { return this.inputField; }
+    public const fn bool hasInput() { return match (this.inputField) { case Some(value: a): true; case None: false; }; }
     public const fn const ref SortedMap<string, BindingRecord> bindings() { return this.bindingsField; }
     public const fn const ref SortedMap<string, JsonValue> prefabs() { return this.prefabsField; }
     // Its bindings, handed over to be laid over the lower layers' and leaving it none.

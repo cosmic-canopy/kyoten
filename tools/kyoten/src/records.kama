@@ -75,6 +75,7 @@ type resource Records {
     SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
     SortedMap<string, string> bindingFiles = SortedMap.empty();
     string appFile = "";
+    string inputFile = "";
     string sceneFirst = "";
     string sceneFirstFile = "";
 
@@ -116,6 +117,12 @@ type resource Records {
     }
 
     unsafe fn void addContent(const ref ContentFile c, const ref string file, ref Refusals no) {
+        if (c.hasInput()) {
+            if (!this.inputFile.isEmpty()) {
+                no.add(where: file, what: "the `input` record is in ${this.inputFile} too: one content layer holds one");
+            }
+            this.inputFile = copy file;
+        }
         if (c.hasApp()) {
             if (!this.appFile.isEmpty()) {
                 no.add(where: file, what: "the `app` record is in ${this.appFile} too: one content layer holds one");

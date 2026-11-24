@@ -22,6 +22,10 @@
 // - **Edges, per step** (kyoten::frame::Digital): a press and its release inside one step show the press, held, on that
 //   step and the release on the next; a release and a press inside one step show both, held.
 // - **A control is on at `Gamepad::PressedAt` of its travel or more,** `@kama/window`'s own threshold, for every device.
+// - **The default dead zones** (the third part's question 1): the `input` record's, every layer's laid over, given to
+//   every stick an entry reads and every trigger's travel unless the entry's own filters name a `deadZone`: radial,
+//   before its own filters, where the entry reads both axes of one stick as its x and y, and on each axis or trigger
+//   alone otherwise. A record naming none reads raw.
 // - **Player 1's active scheme** (the second part's question 1) is the kind of device that last drove them: a key or a
 //   mouse button pressed or the mouse moved is `KeyboardMouse`; the locked pad's button pressed, a trigger past
 //   `PressedAt` or a stick past half its travel is `Gamepad`, so drift cannot switch it; the locked pad gone, back to
@@ -50,7 +54,8 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
          kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
-         kyoten::records::FilterRecord, kyoten::records::FilterKind, std::math::exp, std::math::pow,
+         kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
+         std::math::pow,
          window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -90,6 +95,9 @@ type value Bound {
 // How a value entry's parts make its value.
 type enum Shape { One, Pair, Keys2, Axes2, Keys3, Axes3 }
 
+// Which default dead zone a source reads through on its own.
+type enum Zone { None, Stick, Trigger }
+
 // One control a value is read from: a key's or a button's edge (1 or 0), a pad button's travel, a stick's axis, or the
 // mouse's motion; and what it reads now.
 type value Source {
@@ -100,6 +108,8 @@ type value Source {
     public bool flip;
     // As of the last sample taken: a state.
     public float32 value = 0.0;
+    // The default dead zone it reads through, per axis: none, a stick's or a trigger's.
+    public Zone zone = Zone::None;
     // The mouse's motion since the last hand-off, and since Output's last frame.
     public float32 moved = 0.0;
     public float32 shown = 0.0;
@@ -151,6 +161,9 @@ type resource Binder implements InputSource {
     DynamicArray<float32> points = DynamicArray.empty();
     DynamicArray<Vec3> smoothSteps = DynamicArray.empty();
     DynamicArray<Vec3> smoothShown = DynamicArray.empty();
+    // The `input` record's dead zones, where it names them.
+    Optional<FilterRecord> stickZone = Optional::None;
+    Optional<FilterRecord> triggerZone = Optional::None;
     // Which value actions are deltas, by kind, as the game's `ActionList` says.
     DynamicArray<bool> analogDeltas = DynamicArray.empty();
     DynamicArray<bool> vector2Deltas = DynamicArray.empty();
@@ -170,17 +183,36 @@ type resource Binder implements InputSource {
     float32 seconds = 0.0;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
-    // `bindings`, every content layer's merged; `hz` the base rate, whose step's seconds a control held counts for in a
-    // delta. A binding naming no action, a control that names none of its device's, an entry its action's kind cannot
-    // read, or one KYR-54 does not read yet is refused, every one at once.
+    // `bindings`, every content layer's merged, with `input`'s defaults; `hz` the base rate, whose step's seconds a
+    // control held counts for in a delta. A binding naming no action, a control that names none of its device's, an
+    // entry its action's kind cannot read, a filter or a default out of its range, or what KYR-54 does not read yet is
+    // refused, every one at once.
     public ctor Result<Binder, BindingError> make(int32 players, const ref ActionList actions,
-                                                  const ref SortedMap<string, BindingRecord> bindings, int32 hz) {
+                                                  const ref SortedMap<string, BindingRecord> bindings,
+                                                  const ref InputRecord input, int32 hz) {
         this.playerCount = players;
         this.digitalCount = actions.digitalCount();
         this.stepSeconds = Time::dtAt(hz: hz);
         this.out = Handoff.make(players: players, actions: actions);
         this.view = Handoff.make(players: players, actions: actions);
         BindingError no = BindingError.make();
+        DynamicArray<float32> noPoints = DynamicArray.empty();
+        match (input.stickDeadZone()) {
+            case Some(value: f): {
+                string why = filterRefusal(f: f, points: noPoints, motion: false);
+                if (why.isEmpty()) { this.stickZone = Optional::Some(value: f); }
+                else { no.add(line: "the `input` record's `stickDeadZone` " + why); }
+            }
+            case None: { }
+        };
+        match (input.triggerDeadZone()) {
+            case Some(value: f): {
+                string why = filterRefusal(f: f, points: noPoints, motion: false);
+                if (why.isEmpty()) { this.triggerZone = Optional::Some(value: f); }
+                else { no.add(line: "the `input` record's `triggerDeadZone` " + why); }
+            }
+            case None: { }
+        };
         foreach (string action in bindings) {
             string kind = kindOf(actions: actions, name: action);
             if (kind.isEmpty()) {
@@ -483,10 +515,26 @@ type resource Binder implements InputSource {
         while (i < to) {
             Source s = this.sources[i];
             if (s.kind == SampleKind::Motion) { best = best + (forOutput ? s.shown : s.moved); }
-            else if (absOf(x: s.value) > absOf(x: best)) { best = s.value; }
+            else {
+                float32 v = this.zonedSource(s: s);
+                if (absOf(x: v) > absOf(x: best)) { best = v; }
+            }
             i = i + 1;
         }
         return best;
+    }
+
+    // A source's value through its default dead zone, on its own axis.
+    const fn float32 zonedSource(Source s) {
+        Optional<FilterRecord> zone = match (s.zone) {
+            case None: Optional::None;
+            case Stick: this.stickZone;
+            case Trigger: this.triggerZone;
+        };
+        return match (zone) {
+            case Some(value: f): signOf(x: s.value) * zoned(size: absOf(x: s.value), f: f);
+            case None: s.value;
+        };
     }
 
     // One sample: a pad's lock, then each control it moves, then each digital action whose combined state it changes.
@@ -588,6 +636,38 @@ type resource Binder implements InputSource {
                 this.combined[ai] = any;
             }
             a = a + 1;
+        }
+    }
+
+    // An entry naming no dead zone of its own takes the defaults: the stick's, radial, as its first filter where it
+    // reads both axes of one stick as its x and y; else each stick axis and trigger it reads through its own.
+    fn void zoneDefaults(Entry made, isize first) {
+        bool pair = false;
+        if (made.shape == Shape::Axes2 && made.firsts[1] - made.firsts[0] == 1 && made.firsts[2] - made.firsts[1] == 1) {
+            Source x = this.sources[made.firsts[0]];
+            Source y = this.sources[made.firsts[1]];
+            pair = x.kind == SampleKind::Axis && y.kind == SampleKind::Axis && x.control / 2 == y.control / 2
+                && x.control != y.control;
+        }
+        if (pair) {
+            match (this.stickZone) {
+                case Some(value: f): {
+                    this.filters.add(item: f);
+                    this.smoothSteps.add(item: Vec3.zero());
+                    this.smoothShown.add(item: Vec3.zero());
+                }
+                case None: { }
+            };
+            return;
+        }
+        isize i = first;
+        while (i < this.sources.length()) {
+            Source s = this.sources[i];
+            if (s.kind == SampleKind::Axis) { this.sources[i].zone = Zone::Stick; }
+            if (s.kind == SampleKind::Travel && (s.control == cast<int32>(PadButton::LeftTrigger) || s.control == cast<int32>(PadButton::RightTrigger))) {
+                this.sources[i].zone = Zone::Trigger;
+            }
+            i = i + 1;
         }
     }
 
@@ -727,6 +807,7 @@ type resource Binder implements InputSource {
                 if (this.sources.length() == first) { return; }
                 made.motion = motions > 0;
                 made.filterFrom = this.filters.length();
+                if (!ownsZone(entry: e)) { this.zoneDefaults(made: made, first: first); }
                 bool kept = this.takeFilters(entry: e, motion: made.motion, whose: whose, no: no);
                 made.filterTo = this.filters.length();
                 if (!kept) { return; }
@@ -798,6 +879,14 @@ fn Vec3 clampedBy(Vec3 v, FilterRecord f) {
 fn float32 clampedOne(float32 x, FilterRecord f) {
     float32 low = f.hasA && x < f.a ? f.a : x;
     return f.hasB && low > f.b ? f.b : low;
+}
+
+// Whether an entry's own filters name a dead zone, which takes the place of the defaults.
+fn bool ownsZone(const ref ControlEntry entry) {
+    foreach (const ref FilterRecord f in entry.filters().iterConst()) {
+        if (f.kind == FilterKind::DeadZone) { return true; }
+    }
+    return false;
 }
 
 fn string filterWord(FilterKind kind) {

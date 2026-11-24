@@ -8,6 +8,7 @@ import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, ky
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
          kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree,
          kyoten::world::Transform, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
+         kyoten::records::FilterRecord,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
          std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
@@ -472,7 +473,92 @@ fn void bindingLayers(ref Tally t) {
     t.verdict(name: "readContent: one layer binding an action in two files is refused, naming both", why: why);
 }
 
+// A default dead zone as text: "<lower> to <upper>, radial|axial, scaled|unscaled", or "none".
+fn string zoneText(Optional<FilterRecord> zone) {
+    return match (zone) {
+        case None: "none";
+        case Some(value: f): zoneWords(f: f);
+    };
+}
+
+fn string zoneWords(FilterRecord f) {
+    float32 a = f.a;
+    float32 b = f.b;
+    string shape = f.radial ? "radial" : "axial";
+    string scale = f.scaled ? "scaled" : "unscaled";
+    return "${a} to ${b}, ${shape}, ${scale}";
+}
+
+// The input record, laid over across layers part by part (design/input.md § Decided, 2026-11-23): the engine's content
+// holds the defaults (engine/content/input.records.json), and a game's record changes the parts it names.
+fn void inputLayers(ref Tally t) {
+    MemorySource low = MemorySource.make(label: "kyoten/content");
+    low.put(path: "input.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.25 } } }");
+    MemorySource high = MemorySource.make(label: "content");
+    high.put(path: "feel.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.2, \"shape\": \"Axial\" } } }");
+    LoadRefusals no = LoadRefusals.make();
+    Content c = readContent(stack: stackOf(low: give low, high: Optional::Some(value: give high)), no: no);
+    string stick = zoneText(zone: c.input().stickDeadZone());
+    string trigger = zoneText(zone: c.input().triggerDeadZone());
+    t.verdict(name: "readContent: the input record is laid over part by part: a game's lower end and shape, the engine's upper end kept",
+              why: stick == "0.2 to 0.925, axial, scaled" && !no.any() ? "" : "stick `${stick}`, " + all(no: no));
+    t.verdict(name: "readContent: and a dead zone only the lower layer names is that layer's",
+              why: trigger == "0.25 to 1, radial, scaled" ? "" : "trigger `${trigger}`");
+
+    MemorySource bare = MemorySource.make(label: "content");
+    bare.put(path: "cube.records.json", text: "{ \"prefabs\": { } }");
+    LoadRefusals none = LoadRefusals.make();
+    Content b = readContent(stack: stackOf(low: give bare, high: Optional::None), no: none);
+    string nothing = zoneText(zone: b.input().stickDeadZone());
+    t.verdict(name: "readContent: with no layer naming a dead zone there is none, and a stick reads raw",
+              why: nothing == "none" ? "" : "stick `${nothing}`");
+}
+
+// The engine's own content folder: packed into every program on the engine at `/kyoten/content` on the web; natively the
+// engine's `content/`, three folders above the test's binary (engine/tests/out/<leg>/).
+@compileFor(ARCH_WASM32)
+fn string engineContentRoot() { return "/kyoten/content"; }
+@compileFor(!ARCH_WASM32)
+fn string engineContentRoot() {
+    Optional<string> exe = programPath();
+    string path = match (give exe) { case Some(value: p): give p; case None: "."; };
+    Optional<string> dir = parent(path: path);
+    string at = match (give dir) { case Some(value: d): give d; case None: "."; };
+    return at.replace(old: "\\", with: "/") + "/../../../content";
+}
+
+// The engine's content holds the decided defaults (design/input.md § Decided, 2026-11-23, the third part's question 1):
+// every stick from 0.125 to 0.925, radial and scaled, Unity's; every trigger from 30/255, `@kama/window`'s press point.
+unsafe fn void engineInput(ref Tally t) {
+    Result<FolderSource, IoError> opened = FolderSource.open(root: engineContentRoot(), label: "kyoten/content");
+    match (give opened) {
+        case Ok(value: f): {
+            LayerStack stack = LayerStack.make();
+            Owned<RecordSource> boxed = give f;
+            stack.push(source: give boxed);
+            LoadRefusals no = LoadRefusals.make();
+            Content c = readContent(stack: stack, no: no);
+            t.verdict(name: "the engine's content reads with nothing refused", why: no.any() ? all(no: no) : "");
+            string stick = zoneText(zone: c.input().stickDeadZone());
+            t.verdict(name: "the engine's content: every stick's dead zone from 0.125 to 0.925, radial and scaled",
+                      why: stick == "0.125 to 0.925, radial, scaled" ? "" : "stick `${stick}`");
+            float32 pressed = 30.0 / 255.0;
+            Optional<FilterRecord> trigger = c.input().triggerDeadZone();
+            bool fromPressed = match (trigger) { case Some(value: z): z.a == pressed && z.b == 1.0 && z.scaled; case None: false; };
+            string seen = zoneText(zone: trigger);
+            t.verdict(name: "the engine's content: every trigger's from 30/255, the press point, to 1, scaled",
+                      why: fromPressed ? "" : "trigger `${seen}`");
+        }
+        case Err(error: e): {
+            string m = e.message();
+            t.verdict(name: "the engine's content reads with nothing refused", why: "not opened at " + engineContentRoot() + ": " + m);
+        }
+    };
+}
+
 unsafe fn void contentTests(ref Tally t) {
+    inputLayers(t: t);
+    engineInput(t: t);
     folderSource(t: t);
     layers(t: t);
     spelling(t: t);

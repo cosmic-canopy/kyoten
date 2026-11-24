@@ -70,6 +70,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "content/bindings.records.json: `deadzone` is not a `filter`", b: "expected `deadZone`, `scale`", c: ""));
     says(t: t, name: "names: a key written twice in a content file is refused, naming it and its file", r: n,
          words: allOf(a: "content/twice.records.json: duplicate key `prefabs.twice`", b: "", c: ""));
+    says(t: t, name: "names: a content layer's second input record is refused, naming both files", r: n,
+         words: allOf(a: "content/more-input.records.json: the `input` record is in", b: "content/input.records.json too: one content layer holds one", c: ""));
     bool wrote = has(path: s.fixture(at: "names/src/generated/actions.kama"));
     if (wrote) { t.verdict(name: "names: a refusal writes nothing", why: "it wrote actions.kama"); }
     else { t.verdict(name: "names: a refusal writes nothing", why: ""); }
