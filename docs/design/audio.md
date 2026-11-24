@@ -212,3 +212,9 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     context and in many sources with no copy, so one loaded sound costs its samples once;
   - **a write into a buffer that is playing copies it,** so a buffer refilled while it plays holds a second copy of
     its samples until the source lets go.
+- **2026-11-24, the owner: `@kama/audio`'s buffer player reads between frames linearly until its game-sounds slice**
+  (its `AGENTS.audio.md` § Decided, 46). This bounds what kyoten's sound records can choose before AUD-30:
+  - **a sound played at another pitch or rate than its file's, or started between two frames, is read linearly,** the
+    reader of Chromium, WebKit and FMOD's default: cheap, exact on whole frames, and aliasing when pitched;
+  - **cubic and band-limited reading come with AUD-30,** and with them the choice of rung per source that a sound record
+    names (2026-11-14, above, KYR-15's).
