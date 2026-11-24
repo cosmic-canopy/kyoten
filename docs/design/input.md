@@ -4,10 +4,10 @@
 `Digital` from a key, a mouse button or a pad's button to a processor, split by time. The second part's three questions
 are decided and the part built (2026-11-23, below): every kind but `Text`, delta actions, an entry's parts, a pad read at
 its time, the mouse's motion, each player's active scheme, and Output's newest sample. Question 4's lock-in was tried
-with two real pads (2026-11-23). The third part, filters, is laid out and its two questions decided (2026-11-23,
-below): a default dead zone on every stick and trigger, its values in the engine's `input` record, and a stick's
-directions as controls, with a press point and a lower release point. What the peers and the owner's games do is
-[../research/input.md](../research/input.md).
+with two real pads (2026-11-23). The third part, filters, is decided and built (2026-11-23, below): every filter the
+peers offer that a device kyoten reads can drive, a default dead zone on every stick and trigger, its values in the
+engine's `input` record, and a stick's directions as controls, with a press point and a lower release point. What the
+peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
 
@@ -359,3 +359,55 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
 
   **Its order, each its own commit:** the value filters; the default dead zones and the `input` record; the stick's
   directions and thresholds.
+
+- **2026-11-23, built: step 8's third part, filters** (the forty-eighth session), in three commits on kyoten's pin,
+  `0.9.1027+g25d97c29`, each gated by `tools/test.sh`.
+  1. **The value filters** (kyoten `8503d9a`): `ControlEntry` reads an entry's `filters`, each filter's parameters by a
+     derived record read strictly, so a misspelt filter, parameter or shape is refused with every name listed and
+     where (`filters[0].deadZone.lowr`), at load and by the `kyoten` tool at build; the binder applies them in the order
+     written, after the entry's parts and before a delta's seconds, on a step's hand-off and on Output's newest, and
+     refuses a value out of its range at load, naming the action.
+  2. **The default dead zones and the `input` record** (kyoten `dd8e4dc`): `InputRecord` in
+     `engine/content/input.records.json`, sticks from 0.125 to 0.925 and triggers from 30/255, laid over part by part;
+     `Binder.make(…, input:)`, holding the record's values to their ranges; the generated `run` passing
+     `content.input()`; one input record a content layer.
+  3. **A stick's directions and the press points** (kyoten `ba93279`): the eight names; a `Digital`'s object entry, its
+     controls under `control` and one `threshold`; a value made a button pressing at one point and letting go at a
+     lower one; the record's `stickThreshold`, 0.5 and 0.375.
+  - **Settled by the decided rules, for the owner to object to:**
+    - each filter acts on the axes its action has, the others held at 0, so a `remap` on a `Vector2` leaves its z at 0;
+      a curve's points are level past their ends;
+    - `smooth` keeps a state per path, the steps' and Output's, and smooths the mouse's motion as a speed, so how far it
+      moves is kept whatever the frame's length; an Output frame of no time passes the motion through;
+    - among the buttons' travel the default dead zone is the triggers' alone, as decided; a pair is an entry whose x and
+      y read one stick's two axes, either way about, while a stick's directions as x and y each take the default on
+      their own axis;
+    - a part no `input` layer names takes the filter's own default (a dead zone's upper end 1, radial, scaled; a press
+      point 0.5, its release three quarters of it), and a record naming no dead zone reads raw. A `null` removes
+      nothing, since the reader cannot tell it from a part left out, so a game turns the stick's default off with
+      `{ "lower": 0, "upper": 1 }`, or an entry with its own `deadZone`;
+    - a press point is measured after the default dead zone, a stick's direction's and a thresholded trigger's alike,
+      as Unity's synthetic stick directions and the-mallow-man's menus measure theirs;
+    - a trigger with a threshold reads its travel, so a press and its release between two readings are not seen, where
+      the window's events keep them; a trigger with none keeps the events;
+    - a `threshold` is refused on a value action's entry, on a key's or a mouse button's, and twice on one entry; a
+      stick's direction as a button with no press point anywhere is refused rather than given one the content never
+      names.
+  - **Counts:** the engine's tests 603 cases (478 at the session's start), the tool's 250 (247), natively and on wasm,
+    debug and release; fps and vr as before.
+  - **Mutations:** 131 of 133 caught, the other two shown equivalent (kyoten's `.scratch/s48/mutate_c1.py` to
+    `mutate_c3.py`):
+    - commit 1, 67 of 69. A refused filter's entry kept is equivalent, since any refusal returns the error before the
+      binder is used; so is `filters` written as an object passing the binder's own check, since the reader's
+      `beginArray` refuses it in the same words at the same place. Two were caught once their cases were sharpened: a
+      stick past a dead zone's upper end but short of 1, and a dead zone on a delta's stick, where a scale alone reads
+      the same before or after the seconds;
+    - commit 2, 23 of 23 on the engine and 3 of 3 on the tool: the generated call, the second record, and commit 1's
+      misspelt filter refused at build;
+    - commit 3, 38 of 38: two once the right stick's cases pushed the left stick the other way, and one rewritten so
+      kama compiles it.
+
+  **Next, KYR-54's later parts, each asked when it comes:** gestures (a hold, a tap, a double tap, a chord, a sequence,
+  and a menu's repeat), `Text`, the cursor's position as a control, the game letting go of the lock, a player's
+  settings reaching the filters (Lyra's settings-driven modifiers, Unity's binding overrides), a game's own filters, and
+  how a higher layer merges an object entry.

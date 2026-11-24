@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-23, the forty-seventh session)
+## Where it stands (2026-11-23, the forty-eighth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,9 +107,9 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 478 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 247; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's second part (the
-     forty-seventh session); 334 and 234 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
+   - tools/test.sh: engine 603 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 250; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's third part (the
+     forty-eighth session); 478 and 247 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
      alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
      compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
      `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
@@ -697,14 +697,19 @@ forty-fourth). Where the work is:**
    motion, up positive (`b81d9ad`); each player's active scheme and Input processors gated by it (`e301223`); and
    Output's newest sample (`7258551`). 99 of 101 mutations caught, two shown equivalent.
 
-   **Next: step 8's third part, filters,** its shape to lay out from the code: a scale (look's units: how far a full
-   push turns a second, the mouse's per count), dead zones, invert, a curve, a stick or a trigger as a button; each
-   asked where its API needs it. Then gestures, `Text`, the cursor's position as a control (FFD's aim against the camera
-   the player sees, which a simulation processor cannot read: its question), and the game letting go of the lock. The
-   pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first part had it; it needs the readings'
-   `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the cube's goldens can move into a
-   `select` value its player's build leaves out, since KY-63's fix is on the pin, which takes emscripten's file
-   packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
+   **Step 8's third part, filters, is decided and built** (the forty-eighth session; kyoten `8503d9a`, `dd8e4dc` and
+   `ba93279`; [design/input.md](design/input.md) § Decided, its two questions and its Built entry, which lists what was
+   settled for the owner to object to): a device's entry lists its filters, every one the peers offer that a device
+   kyoten reads can drive; every stick and trigger takes a default dead zone, its values in the engine's `input` record
+   (asked (A), "default on"); a stick's directions are controls, and a value made a button presses at one point and
+   lets go at a lower one (asked (A), "names + hysteresis"). 131 of 133 mutations caught, two shown equivalent.
+
+   **Next: step 8's fourth part, gestures,** its shape to lay out from the code. Then `Text`, the cursor's position as a
+   control (FFD's aim against the camera the player sees, which a simulation processor cannot read: its question), and
+   the game letting go of the lock. The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first
+   part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the
+   cube's goldens can move into a `select` value its player's build leaves out, since KY-63's fix is on the pin, which
+   takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
    (`.scratch/s44/step8/`, machine-local; the peers and the owner's games in [research/input.md](research/input.md)):
@@ -797,6 +802,19 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The forty-eighth session** (2026-11-23). Nothing new on any origin at the start; kama's range since the pin held its
+two non-compiler commits, already read, so no bump.
+- **Every suite was green on 0.9.1027 at the start,** at the forty-seventh session's counts.
+- **Two questions at the start, decided at once** (A, A), step 8's third part laid out from the code and from the peers'
+  and the owner's games' filters ([research/input.md](research/input.md) § Filters, the defaults the answers rest on
+  re-checked in Unity's and Godot's source), recorded as their own commit (kyoten `864a967`).
+- **Built:** the third part in three commits (`8503d9a`, `dd8e4dc`, `ba93279`), item 3; 131 of 133 mutations caught, two
+  shown equivalent, five after their cases were sharpened or the mutation rewritten to compile.
+- **A mistake to keep:** commit 1's files were copied into the main checkout from the mutation worktree while its
+  driver ran, and one held a mutation (a `normalize` written false ran). Its gate failed on that case in every leg, and
+  the file was mended and proved byte for byte against a clean tree rebuilt by running commit 2's edits backwards
+  before the commit. Files land only from a quiet tree, or from a copy taken while it was quiet.
 
 **The forty-sixth session** (2026-11-22). Nothing new on any origin at the start; kama had moved one compiler commit
 past the pin, 0.9.1027 (`25d97c29`), which closes KY-67.
