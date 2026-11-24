@@ -4,7 +4,9 @@
 `Digital` from a key, a mouse button or a pad's button to a processor, split by time. The second part's three questions
 are decided and the part built (2026-11-23, below): every kind but `Text`, delta actions, an entry's parts, a pad read at
 its time, the mouse's motion, each player's active scheme, and Output's newest sample. Question 4's lock-in was tried
-with two real pads (2026-11-23). What the peers and the owner's games do is
+with two real pads (2026-11-23). The third part, filters, is laid out and its two questions decided (2026-11-23,
+below): a default dead zone on every stick and trigger, its values in the engine's `input` record, and a stick's
+directions as controls, with a press point and a lower release point. What the peers and the owner's games do is
 [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -295,3 +297,65 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
     processor rate 0, so the window's check of its phase only restates it); commit 2, 37 of 37; commit 3, 14 of 14 and
     5 of 5; commit 4, 9 of 9 and 2 of 2. Three test lists were sharpened by mutations first: counts that differ between
     kinds, a 10 Hz run whose window is wider than a frame's, and schemes held for unequal steps. WIN-28, 9 of 9.
+
+- **2026-11-23, the owner, the third part's two questions** (filters), laid out from the code (the binder, the bindings
+  record, the samples, `@kama/window`'s pads and pointer) and from what the peers and the owner's games do
+  ([../research/input.md](../research/input.md) § Filters), and asked in full at the forty-eighth session's start:
+  1. **(A): a stick or a trigger with no dead zone written gets one, its values in the engine's `input` record.**
+     - *The problem:* `"move": { "gamepad": { "x": "LeftX", "y": "LeftY" } }` on a worn pad resting at (0.06, -0.04)
+       hands `move` a small value every step; the character creeps, and a processor never sees zero.
+     - **Every stick an entry reads gets a scaled dead zone,** radial where the entry reads both axes of one stick,
+       per axis where it reads one, and **every trigger's travel one too.** An entry's own `deadZone` filter replaces
+       it for that entry, and `{ "deadZone": 0 }` reads the stick raw.
+     - **The values are content:** a new engine record, `input`, in `engine/content/`, which a game's content lays its
+       own over field by field as it does `app`, and a player's layer later (the-mallow-man's dead zone slider, one
+       value for every action). Sticks from 0.125 to 0.925, Unity's, the one engine default on every stick, its upper
+       end taking in a stick that never reaches 1; triggers from 30/255, `@kama/window`'s press point, so a trigger's
+       value starts where its button presses.
+     - *Set aside:* (B) raw unless written (Unreal's and leafwing's opt-in modifiers), where a game that forgets one
+       drifts.
+  2. **(A): a stick's directions are controls, and a value made a button has a press point and a lower release
+     point.**
+     - *The problem:* `"menuUp": { "keyboard": "ArrowUp", "gamepad": "DpadUp" }` cannot add the stick, since a
+       `Digital` takes a pad button's name alone; and one point both ways chatters, a thumb resting near it pressing
+       and releasing on each reading.
+     - **Eight names:** `LeftStickUp`, `LeftStickDown`, `LeftStickLeft`, `LeftStickRight` and the right stick's four
+       (Unreal's names, Unity's synthetic controls), kyoten's own as the mouse's `Motion` is, each its axis's half
+       toward it, 0 to 1, after the stick's dead zone, usable wherever a control is: a `Digital`, an `Analog`'s part, a
+       `Vector2`'s or `Vector3`'s key-style part. `"gamepad": ["DpadUp", "LeftStickUp"]`.
+     - **Hysteresis wherever the binder makes a button from a value:** it presses at one point and lets go at a lower
+       one, a stick's direction at 0.5 and 0.375 by default (Unity's, its release three quarters of its press), in
+       the `input` record, and per entry by `{ "threshold": { "press": 0.6, "release": 0.4 } }`, a bare number
+       releasing at three quarters of it. The-mallow-man's menus press at 0.55 and let go below 0.35.
+     - **A trigger bound to a `Digital` with no threshold keeps `@kama/window`'s events,** at 30/255 both ways as now,
+       so a press and its release between two readings are both kept.
+     - *Set aside:* (B) the names with one point both ways (Godot, Unreal, leafwing), which chatters at it; (C) no
+       names, an object entry reading an axis and a sign (Godot's shape), whose sign is easy to get wrong with Y turned
+       over and which cannot be an `Analog`'s part.
+
+  **The third part, laid out, settled by the decided rules, for the owner to object to:**
+  - **Filters are a list on a device's entry, applied in the order written** (Unity's, Unreal's and leafwing's lists),
+    after the entry's parts make its value and before a delta's seconds. Each is an object of one key, its value a
+    number or an object of parameters. The decided example's `radialDeadZone` is written `deadZone` with a `shape`.
+  - **Built:** every filter the peers offer that a device kyoten reads can drive: `deadZone` (`lower`, `upper`; `shape`
+    radial or axial; `scaled`, false for Unreal's UnscaledRadial and leafwing's exclusion), `scale` (one factor, or
+    per axis), `invert` (every axis, or those named), `curve` (an exponent per axis, `sign(v)·|v|^e`, Unreal's and
+    the-mallow-man's; or `points`, piecewise linear, Unreal's user curve), `clamp`, `remap` (a range onto another:
+    Unity's Normalize, and the owner's "a `Digital` as a float from X to Y"), `normalize` (unit length), `digital`
+    (leafwing's: each axis to -1, 0 or 1), `smooth` (Unreal's Smooth, by a time in seconds, the steps' state and
+    Output's kept apart) and `threshold` (question 2).
+  - **Not built, by reason:** Unreal's SwizzleAxis and ToWorldSpace (an entry's parts already name any axis for x, y or
+    z); ScaleByDeltaTime (a delta does it); FOVScaling (it reads the camera, which only Output can).
+  - **On the mouse's motion only `scale`, `invert` and `smooth`:** a dead zone or a curve on a distance moved changes
+    with the step's length, so the rest are refused at load, naming why.
+  - **Look's units are the game's:** each device's `scale` converts (the-mallow-man's 0.0008 radians per count, 3.2 a
+    second at a full push). The mouse moves in raw counts only while its cursor is `Locked`.
+  - **A misspelt filter or parameter is refused with every name listed,** in `ControlEntry`'s reader, so at load and
+    by the `kyoten` tool at build, which reads content through the engine's `ContentFile`.
+  - **Later parts, each asked when it comes:** a player's settings reaching the filters (Lyra's modifiers read the
+    player's saved settings; Unity overrides a binding's processors), a game's own filters (every peer has custom
+    ones), how a higher layer merges an object entry (replaced whole today), gestures, `Text`, the cursor's position,
+    and the game letting go of the lock.
+
+  **Its order, each its own commit:** the value filters; the default dead zones and the `input` record; the stick's
+  directions and thresholds.

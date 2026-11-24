@@ -89,3 +89,61 @@ from FFD's `sim/src/input.kama`).
 - **Look:** the-mallow-man adds mouse motion, stick and keys each frame and hands the resulting yaw and pitch to each
   tick.
 - **Local multiplayer:** neither has it.
+
+## Filters (gathered 2026-11-23, the forty-eighth session)
+
+For the third part of step 8 ([design/input.md](../design/input.md) § Decided, 2026-11-23). Three passes read the
+peers' documentation and source and the owner's games; the defaults the two decisions rest on were re-checked in the
+source by hand and are marked [checked].
+
+- **Unity Input System 1.11.2**
+  ([source](https://github.com/Unity-Technologies/InputSystem/tree/1.11.2/Packages/com.unity.inputsystem/InputSystem)):
+  - Every pad stick carries a scaled radial dead zone at the control, so every binding to it gets one:
+    `processors = "stickDeadzone"` on `leftStick` and `rightStick` (`Devices/Gamepad.cs` lines 140 and 150), its
+    bounds `m_DefaultDeadzoneMin = 0.125f` and `m_DefaultDeadzoneMax = 0.925f` (`InputSettings.cs` 767 and 768); the
+    triggers carry none (161, 170) [checked]. The formula rescales min..max to 0..1 on the vector's length
+    (`StickDeadzoneProcessor.cs`) [checked]; `axisDeadzone` is the same on one axis, and a parameter of 0 means "the
+    default", so 0 cannot be set [pass].
+  - A press point with hysteresis on actions: `m_DefaultButtonPressPoint = 0.5f`, `m_ButtonReleaseThreshold = 0.75f`
+    (773, 774), the release at `pressPoint * …ReleaseThreshold` (`Actions/InputActionState.cs` 1588) [checked]. A
+    control's own `isPressed` has none [pass].
+  - `leftStick/up`, `down`, `left` and `right` are synthetic controls, the clamped half of an axis
+    (`clampMin=0,clampMax=1` and its mirror, `Controls/StickControl.cs` 71 to 106) [checked].
+  - Its processors: Clamp, Invert, InvertVector2/3, Normalize, NormalizeVector2/3, Scale, ScaleVector2/3,
+    AxisDeadzone, StickDeadzone; a part binding's, then the composite's, then the action's, each list left to right; a
+    player's change is a binding override (`overrideProcessors`), saved as JSON overrides [pass]
+    ([Processors](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/Processors.html)).
+- **Godot 4.7**: an action's dead zone is 0.2 by default, 0.5 for the `ui_*` actions (`core/input/input_map.h`,
+  `DEFAULT_DEADZONE = 0.2f`, `DEFAULT_TOGGLE_DEADZONE = 0.5f`) [checked], 0.5 before 4.4 (PR #97281) [pass]. It is
+  both the press point and the start of the rescale (`get_action_strength`), `get_vector`'s dead zone is radial and
+  rescaled, and there is no hysteresis, sensitivity, invert or curve [pass].
+- **Unreal Enhanced Input**: DeadZone (Axial, Radial, UnscaledRadial; lower and upper, rescaled between), Scalar,
+  Negate, SwizzleAxis, ResponseCurveExponential, ResponseCurveUser, Smooth, SmoothDelta, FOVScaling,
+  ScaleByDeltaTime and ToWorldSpace; a mapping's modifiers, then the action's, in array order [pass]
+  ([Python API](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/InputAction)). The
+  defaults could not be read: Epic's headers are not public. Lyra's modifiers read the player's saved settings (dead
+  zones, sensitivity presets, inversion) [pass] ([Lyra input settings](https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-input-settings-in-unreal-engine)).
+  A stick's direction is a key (`Gamepad_LeftStick_Up`), pressed past XInput's dead zone with no hysteresis, as UE4's
+  source quoted by a blog shows [pass].
+- **leafwing-input-manager 0.22 and Bevy**: Digital, Inverted, Sensitivity, ValueBounds, Exclusion (unscaled),
+  DeadZone (scaled), their circular forms and Custom, none applied by default ("No processing is applied to raw data
+  from the gamepad"); `GamepadControlDirection::LEFT_UP` and its siblings with a threshold and no hysteresis. Bevy
+  underneath: ±0.05 per axis, and buttons pressed at 0.75 and released at 0.65 [pass].
+- **Steam Input**: a player sets a stick's dead zone (its shape, inner and outer), an anti-dead zone, a response curve
+  (Linear, Aggressive, Relaxed, Wide, Extra Wide, Custom), sensitivity and invert per axis; Valve's advice to a game:
+  "make the deadzone, acceleration, and sensitivity of the joystick configurable" [pass]
+  ([getting started](https://partner.steamgames.com/doc/features/steam_controller/getting_started_for_devs)).
+- **The reference on stick dead zones**, Josh Sutphin's "Doing Thumbstick Dead Zones Right" (2013): axial snaps to the
+  cardinals, radial jumps from 0 to the dead zone's edge, and the scaled radial
+  `normalized * ((magnitude - deadzone) / (1 - deadzone))` is smooth [pass]
+  ([post](https://joshsutphin.com/blog/doing-thumbstick-dead-zones-right.html)). Ryan Juckett's INVERSUS adds an outer
+  zone past which the magnitude is 1 [pass].
+- **The owner's games** (read in their trees): FFD's dead zone is 0.25 per axis, rescaled past it, also its triggers'
+  threshold (`engine/src/input/state.kama` 72, 398 to 431), and no sensitivity, invert or curve. The-mallow-man's sticks
+  take a scaled radial dead zone, 0.2 by default, and its triggers 0.15, each the player's (0.05 to 0.4 and 0.05 to
+  0.6); its look curve is `sign(v)·|v|^2` per axis on the look stick; its rates 0.0008 radians per mouse count, 3.2
+  and 2.2 a second at a full push, with the player's mouse and stick multipliers and invert Y, one settings file per
+  machine. Its menus press a stick's direction at 0.55 and let it go below 0.35, then repeat. Neither smooths.
+- **`@kama/window`**: a pointer's motion is in logical pixels, and raw counts while the cursor is `Locked` (GLFW's raw
+  motion where supported, Pointer Lock's `unadjustedMovement` with a fallback); a pad's button is pressed at 30/255
+  both ways, with no hysteresis; consecutive moves of a pointer are joined, their motion summed (its SPEC).
