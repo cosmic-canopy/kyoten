@@ -19,6 +19,14 @@
 //   stick or a trigger's travel alone, so a drifting or knocked stick cannot take player 1.
 // - **One action on several controls** (`["ArrowUp", "KeyW"]`) is held while any of them is, and its edges are those
 //   of that combined state.
+// - **A stick's directions are controls** (the third part's question 2): `LeftStickUp`, `LeftStickDown`, `LeftStickLeft`,
+//   `LeftStickRight` and the right stick's, kyoten's own names, each its axis's half toward it, 0 to 1, after the
+//   stick's default dead zone, wherever a control is read.
+// - **A value made a button presses at one point and lets go at a lower one:** a stick's direction bound to a `Digital`
+//   at the `input` record's `stickThreshold` (0.5 and 0.375), and any pad control of a `Digital` entry with its own
+//   `threshold` (`{ "control": "RightTrigger", "filters": [ { "threshold": 0.6 } ] }`, a bare number letting go at three
+//   quarters of it), read from its travel or its axis through its default dead zone. A pad button bound with no
+//   threshold keeps `@kama/window`'s events, so a press and its release between two readings are both kept.
 // - **Edges, per step** (kyoten::frame::Digital): a press and its release inside one step show the press, held, on that
 //   step and the release on the next; a release and a press inside one step show both, held.
 // - **A control is on at `Gamepad::PressedAt` of its travel or more,** `@kama/window`'s own threshold, for every device.
@@ -80,11 +88,19 @@ type resource BindingError implements Error {
     }
 }
 
-// One control a digital action is bound to, and whether it is on.
+// One control a digital action is bound to, and whether it is on: a key, a mouse button or a pad button by its edges
+// (`Control`), or a value made a button, a pad button's travel or a stick's half (`Travel`, `Axis`), which presses at
+// `press` and lets go at `release`, read through its default dead zone.
 type value Bound {
     public Device device;
     public int32 control;
     public bool on = false;
+    public SampleKind kind = SampleKind::Control;
+    public bool flip = false;
+    public float32 half = 0.0;
+    public Zone zone = Zone::None;
+    public float32 press = 1.0;
+    public float32 release = 1.0;
 
     public ctor make(Device device, int32 control) {
         this.device = device;
@@ -106,6 +122,8 @@ type value Source {
     public int32 control;
     // A Y read up positive: a stick's LeftY or RightY, the mouse's motion down the window.
     public bool flip;
+    // A stick's direction: its axis's half toward it, 1 the positive half, -1 the negative, 0 the whole axis.
+    public float32 half = 0.0;
     // As of the last sample taken: a state.
     public float32 value = 0.0;
     // The default dead zone it reads through, per axis: none, a stick's or a trigger's.
@@ -164,6 +182,7 @@ type resource Binder implements InputSource {
     // The `input` record's dead zones, where it names them.
     Optional<FilterRecord> stickZone = Optional::None;
     Optional<FilterRecord> triggerZone = Optional::None;
+    Optional<FilterRecord> stickPress = Optional::None;
     // Which value actions are deltas, by kind, as the game's `ActionList` says.
     DynamicArray<bool> analogDeltas = DynamicArray.empty();
     DynamicArray<bool> vector2Deltas = DynamicArray.empty();
@@ -210,6 +229,14 @@ type resource Binder implements InputSource {
                 string why = filterRefusal(f: f, points: noPoints, motion: false);
                 if (why.isEmpty()) { this.triggerZone = Optional::Some(value: f); }
                 else { no.add(line: "the `input` record's `triggerDeadZone` " + why); }
+            }
+            case None: { }
+        };
+        match (input.stickThreshold()) {
+            case Some(value: f): {
+                string why = thresholdRefusal(f: f);
+                if (why.isEmpty()) { this.stickPress = Optional::Some(value: f); }
+                else { no.add(line: "the `input` record's `stickThreshold` " + why); }
             }
             case None: { }
         };
@@ -525,17 +552,7 @@ type resource Binder implements InputSource {
     }
 
     // A source's value through its default dead zone, on its own axis.
-    const fn float32 zonedSource(Source s) {
-        Optional<FilterRecord> zone = match (s.zone) {
-            case None: Optional::None;
-            case Stick: this.stickZone;
-            case Trigger: this.triggerZone;
-        };
-        return match (zone) {
-            case Some(value: f): signOf(x: s.value) * zoned(size: absOf(x: s.value), f: f);
-            case None: s.value;
-        };
-    }
+    const fn float32 zonedSource(Source s) { return this.made(v: s.value, zone: s.zone, half: s.half); }
 
     // One sample: a pad's lock, then each control it moves, then each digital action whose combined state it changes.
     fn void apply(Sample s) {
@@ -554,12 +571,14 @@ type resource Binder implements InputSource {
                 if (s.slot != this.lockSlot) { return; }
                 if (s.value >= Gamepad::PressedAt) { this.schemeNow = Scheme::Gamepad; }
                 this.setValues(s: s);
+                this.moveButtons(s: s);
                 return;
             }
             case Axis: {
                 if (s.slot != this.lockSlot) { return; }
                 if (absOf(x: s.value) >= STICK_IN_USE) { this.schemeNow = Scheme::Gamepad; }
                 this.setValues(s: s);
+                this.moveButtons(s: s);
                 return;
             }
             case Motion: {
@@ -578,11 +597,49 @@ type resource Binder implements InputSource {
         }
         isize i = 0;
         while (i < this.controls.length()) {
-            if (this.controls[i].device == s.device && this.controls[i].control == s.control) { this.controls[i].on = on; }
+            if (this.controls[i].device == s.device && this.controls[i].kind == SampleKind::Control && this.controls[i].control == s.control) {
+                this.controls[i].on = on;
+            }
             i = i + 1;
         }
         this.setValues(s: s);
         this.settle();
+    }
+
+    // Each value made a button the sample moves: on at its press point, off at its release point or below, each digital
+    // action's combined state settled where one changed.
+    fn void moveButtons(Sample s) {
+        bool moved = false;
+        isize i = 0;
+        while (i < this.controls.length()) {
+            Bound c = this.controls[i];
+            if (c.device == s.device && c.kind == s.kind && c.control == s.control) {
+                float32 v = this.made(v: c.flip ? 0.0 - s.value : s.value, zone: c.zone, half: c.half);
+                bool on = c.on ? v > c.release : v >= c.press;
+                if (on != c.on) {
+                    this.controls[i].on = on;
+                    moved = true;
+                }
+            }
+            i = i + 1;
+        }
+        if (moved) { this.settle(); }
+    }
+
+    // A pad value through its default dead zone, on its own axis, then the half of it a stick's direction reads.
+    const fn float32 made(float32 v, Zone zone, float32 half) {
+        Optional<FilterRecord> f = match (zone) {
+            case None: Optional::None;
+            case Stick: this.stickZone;
+            case Trigger: this.triggerZone;
+        };
+        float32 z = match (f) {
+            case Some(value: d): signOf(x: v) * zoned(size: absOf(x: v), f: d);
+            case None: v;
+        };
+        if (half > 0.0) { return z > 0.0 ? z : 0.0; }
+        if (half < 0.0) { return z < 0.0 ? 0.0 - z : 0.0; }
+        return z;
     }
 
     // Each value source the sample moves: an edge's 1 or 0, a travel or an axis as it reads (a Y turned over), or the
@@ -647,7 +704,7 @@ type resource Binder implements InputSource {
             Source x = this.sources[made.firsts[0]];
             Source y = this.sources[made.firsts[1]];
             pair = x.kind == SampleKind::Axis && y.kind == SampleKind::Axis && x.control / 2 == y.control / 2
-                && x.control != y.control;
+                && x.control != y.control && x.half == 0.0 && y.half == 0.0;
         }
         if (pair) {
             match (this.stickZone) {
@@ -703,23 +760,119 @@ type resource Binder implements InputSource {
     // One device's entry of a digital action's binding: each control it names, resolved by `@kama/window`'s own names.
     fn void bindEntry(const ref string action, Device device, const ref Optional<ControlEntry> entry, ref BindingError no) {
         string where = deviceName(device: device);
+        string whose = "the " + where + " binding of `" + action + "`";
         match (entry) {
             case None: { }
             case Some(value: e): {
+                DynamicArray<string> names = DynamicArray.empty();
+                Optional<FilterRecord> threshold = Optional::None;
                 if (e.isObject()) {
-                    no.add(line: "the " + where + " binding of `" + action + "` is an object, which for a `Digital` holds filters and gestures, KYR-54's later parts: bind a control's name, or a list of them");
-                    return;
+                    bool fine = true;
+                    foreach (string part in e.parts()) {
+                        if (part != "control") {
+                            no.add(line: whose + " names `" + part + "`, which is no part of a `Digital`'s entry: its controls go under `control`, a name or a list");
+                            fine = false;
+                        }
+                    }
+                    if (e.steps().length() > 0) {
+                        no.add(line: whose + " names gestures, which KYR-54's later part reads");
+                        fine = false;
+                    }
+                    foreach (const ref FilterRecord f in e.filters().iterConst()) {
+                        if (f.kind != FilterKind::Threshold) {
+                            string word = filterWord(kind: f.kind);
+                            no.add(line: whose + " lists a `" + word + "`: a `Digital` takes a `threshold` alone of the filters, its press point");
+                            fine = false;
+                        } else if (device != Device::Gamepad) {
+                            no.add(line: whose + " lists a `threshold`: a key or a mouse button is a button already, and a `threshold` makes one from a pad's value");
+                            fine = false;
+                        } else {
+                            match (threshold) {
+                                case Some(value: had): {
+                                    no.add(line: whose + " lists two thresholds: an entry presses at one point");
+                                    fine = false;
+                                }
+                                case None: {
+                                    string why = thresholdRefusal(f: f);
+                                    if (why.isEmpty()) { threshold = Optional::Some(value: f); }
+                                    else { no.add(line: whose + " " + why); fine = false; }
+                                }
+                            };
+                        }
+                    }
+                    if (!e.parts().contains(key: "control")) {
+                        no.add(line: whose + " names no control: a `Digital`'s entry names its controls under `control`, a name or a list");
+                        fine = false;
+                    }
+                    if (!fine) { return; }
+                    foreach (const ref string n in e.parts().getRef(key: "control").iterConst()) { names.add(item: copy n); }
+                } else {
+                    foreach (const ref string n in e.names().iterConst()) { names.add(item: copy n); }
                 }
-                foreach (const ref string name in e.names().iterConst()) {
+                foreach (const ref string name in names.iterConst()) {
+                    if (device == Device::Gamepad) {
+                        this.bindPad(name: name, threshold: threshold, whose: whose, no: no);
+                        continue;
+                    }
                     Result<int32, Owned<Error>> found = controlOf(device: device, name: name);
                     match (found) {
                         case Ok(value: n): { this.controls.add(item: Bound.make(device: device, control: n)); }
                         case Err(error: e): {
                             string why = e.message();
-                            no.add(line: "the " + where + " binding of `" + action + "` names `" + name + "`, which is no " + where + " control: " + why);
+                            no.add(line: whose + " names `" + name + "`, which is no " + where + " control: " + why);
                         }
                     };
                 }
+            }
+        };
+    }
+
+    // One pad control of a digital action: a button by its events, or by its travel through `threshold` where the entry
+    // has one; a stick's direction by its half, at `threshold` or the `input` record's `stickThreshold`.
+    fn void bindPad(const ref string name, const ref Optional<FilterRecord> threshold, const ref string whose, ref BindingError no) {
+        string quoted = "\"" + name + "\"";
+        Result<PadButton, Owned<Error>> p = deserializeJsonBuffer::<PadButton>(src: copy quoted, strict: true);
+        match (give p) {
+            case Ok(value: button): {
+                Bound b = Bound.make(device: Device::Gamepad, control: cast<int32>(button));
+                match (threshold) {
+                    case Some(value: f): {
+                        b.kind = SampleKind::Travel;
+                        b.press = f.a;
+                        b.release = releaseOf(f: f);
+                        if (button == PadButton::LeftTrigger || button == PadButton::RightTrigger) { b.zone = Zone::Trigger; }
+                    }
+                    case None: { }
+                };
+                this.controls.add(item: b);
+                return;
+            }
+            case Err(error: e): {
+                Optional<Source> direction = stickDirection(name: name);
+                match (direction) {
+                    case Some(value: d): {
+                        Optional<FilterRecord> at = match (threshold) { case Some(value: f): threshold; case None: this.stickPress; };
+                        match (at) {
+                            case Some(value: f): {
+                                Bound b = Bound.make(device: Device::Gamepad, control: d.control);
+                                b.kind = SampleKind::Axis;
+                                b.flip = d.flip;
+                                b.half = d.half;
+                                b.zone = Zone::Stick;
+                                b.press = f.a;
+                                b.release = releaseOf(f: f);
+                                this.controls.add(item: b);
+                            }
+                            case None: {
+                                no.add(line: whose + " names `" + name + "`, a stick's direction, which as a button needs a press point: the `input` record's `stickThreshold`, or a `threshold` of its own");
+                            }
+                        };
+                    }
+                    case None: {
+                        string why = e.message();
+                        no.add(line: whose + " names `" + name + "`, which is no gamepad control: no button (" + why + ") and no stick's direction (" + directionNames() + ")");
+                    }
+                };
             }
         };
     }
@@ -950,6 +1103,42 @@ fn Vec3 clamped(Vec3 v) {
     return Vec3.of(x: v.x / l, y: v.y / l, z: v.z / l);
 }
 
+// A stick's direction by kyoten's own name: its axis, turned over for a Y so up is positive, and its half.
+fn Optional<Source> stickDirection(const ref string name) {
+    int32 axis = -1;
+    float32 half = 0.0;
+    if (name == "LeftStickUp") { axis = 1; half = 1.0; }
+    else if (name == "LeftStickDown") { axis = 1; half = -1.0; }
+    else if (name == "LeftStickLeft") { axis = 0; half = -1.0; }
+    else if (name == "LeftStickRight") { axis = 0; half = 1.0; }
+    else if (name == "RightStickUp") { axis = 3; half = 1.0; }
+    else if (name == "RightStickDown") { axis = 3; half = -1.0; }
+    else if (name == "RightStickLeft") { axis = 2; half = -1.0; }
+    else if (name == "RightStickRight") { axis = 2; half = 1.0; }
+    if (axis < 0) { return Optional::None; }
+    Source s = Source.make(device: Device::Gamepad, kind: SampleKind::Axis, control: axis, flip: axis == 1 || axis == 3);
+    s.half = half;
+    return Optional::Some(value: s);
+}
+
+fn string directionNames() {
+    return "`LeftStickUp`, `LeftStickDown`, `LeftStickLeft`, `LeftStickRight`, `RightStickUp`, `RightStickDown`, `RightStickLeft` or `RightStickRight`";
+}
+
+// Where a threshold lets go: its own `release`, else three quarters of its press.
+fn float32 releaseOf(FilterRecord f) { return f.hasB ? f.b : f.a * 0.75; }
+
+// Why a threshold is refused, or "": a press point from above 0 to 1, a release point from 0 to below it.
+fn string thresholdRefusal(FilterRecord f) {
+    float32 press = f.a;
+    float32 release = releaseOf(f: f);
+    if (press <= 0.0 || press > 1.0) { return "has a `threshold` pressing at ${press}: a `threshold`'s `press` is above 0 and at most 1"; }
+    if (release < 0.0 || release >= press) {
+        return "has a `threshold` letting go at ${release}: a `threshold`'s `release` is from 0 to below its `press`, ${press}";
+    }
+    return "";
+}
+
 // The kind of the action named `name`, as a records file writes it, or "" when the game declares none of that name.
 fn string kindOf(const ref ActionList actions, const ref string name) {
     if (actions.digitalNames().contains(item: name)) { return "Digital"; }
@@ -1120,8 +1309,13 @@ fn Optional<Source> valueSourceOf(Device device, const ref string name, ref stri
                             return Optional::Some(value: Source.make(device: device, kind: SampleKind::Axis, control: cast<int32>(axis), flip: turned));
                         }
                         case Err(error: f): {
+                            Optional<Source> direction = stickDirection(name: name);
+                            match (direction) {
+                                case Some(value: d): { return direction; }
+                                case None: { }
+                            };
                             string asAxis = f.message();
-                            why = "no button (" + asButton + ") and no stick's axis (" + asAxis + ")";
+                            why = "no button (" + asButton + ") and no stick's axis (" + asAxis + "), nor a stick's direction (" + directionNames() + ")";
                             return Optional::None;
                         }
                     };

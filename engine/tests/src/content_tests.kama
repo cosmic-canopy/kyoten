@@ -489,13 +489,20 @@ fn string zoneWords(FilterRecord f) {
     return "${a} to ${b}, ${shape}, ${scale}";
 }
 
+fn string pressWords(FilterRecord f) {
+    float32 a = f.a;
+    float32 b = f.b;
+    string named = f.hasB ? "" : " (unnamed)";
+    return "${a} and ${b}${named}";
+}
+
 // The input record, laid over across layers part by part (design/input.md § Decided, 2026-11-23): the engine's content
 // holds the defaults (engine/content/input.records.json), and a game's record changes the parts it names.
 fn void inputLayers(ref Tally t) {
     MemorySource low = MemorySource.make(label: "kyoten/content");
-    low.put(path: "input.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.25 } } }");
+    low.put(path: "input.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.25 }, \"stickThreshold\": { \"press\": 0.5, \"release\": 0.375 } } }");
     MemorySource high = MemorySource.make(label: "content");
-    high.put(path: "feel.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.2, \"shape\": \"Axial\" } } }");
+    high.put(path: "feel.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.2, \"shape\": \"Axial\" }, \"stickThreshold\": { \"press\": 0.6 } } }");
     LoadRefusals no = LoadRefusals.make();
     Content c = readContent(stack: stackOf(low: give low, high: Optional::Some(value: give high)), no: no);
     string stick = zoneText(zone: c.input().stickDeadZone());
@@ -504,6 +511,10 @@ fn void inputLayers(ref Tally t) {
               why: stick == "0.2 to 0.925, axial, scaled" && !no.any() ? "" : "stick `${stick}`, " + all(no: no));
     t.verdict(name: "readContent: and a dead zone only the lower layer names is that layer's",
               why: trigger == "0.25 to 1, radial, scaled" ? "" : "trigger `${trigger}`");
+    Optional<FilterRecord> press = c.input().stickThreshold();
+    string pressed = match (press) { case Some(value: p): pressWords(f: p); case None: "none"; };
+    t.verdict(name: "readContent: a stick's press point laid over part by part: a game's press, the engine's release kept",
+              why: pressed == "0.6 and 0.375" ? "" : "pressed `${pressed}`");
 
     MemorySource bare = MemorySource.make(label: "content");
     bare.put(path: "cube.records.json", text: "{ \"prefabs\": { } }");
@@ -548,6 +559,10 @@ unsafe fn void engineInput(ref Tally t) {
             string seen = zoneText(zone: trigger);
             t.verdict(name: "the engine's content: every trigger's from 30/255, the press point, to 1, scaled",
                       why: fromPressed ? "" : "trigger `${seen}`");
+            Optional<FilterRecord> press = c.input().stickThreshold();
+            string stickPress = match (press) { case Some(value: p): pressWords(f: p); case None: "none"; };
+            t.verdict(name: "the engine's content: a stick's direction as a button presses at 0.5 and lets go at 0.375",
+                      why: stickPress == "0.5 and 0.375" ? "" : "pressed `${stickPress}`");
         }
         case Err(error: e): {
             string m = e.message();

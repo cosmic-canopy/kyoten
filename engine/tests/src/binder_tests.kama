@@ -135,9 +135,9 @@ fn void bindingCases(ref Tally t) {
                   json: "{ \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyQQ\"] } }", says: "names `KeyQQ`");
     expectRefused(t: t, name: "binder: a key's name on the mouse is refused",
                   json: "{ \"faster\": { \"mouse\": \"ArrowUp\" } }", says: "which is no mouse control");
-    expectRefused(t: t, name: "binder: an object entry is refused until KYR-54's later parts read it",
+    expectRefused(t: t, name: "binder: an entry naming gestures is refused until their part reads them",
                   json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [] } } }",
-                  says: "the keyboard binding of `faster` is an object");
+                  says: "the keyboard binding of `faster` names gestures, which KYR-54's later part reads");
     string both = refusalOf(json: "{ \"dash\": { \"keyboard\": \"Space\" }, \"faster\": { \"keyboard\": \"Arrowup\" } }");
     bool all = both.contains(substring: "`dash`") && both.contains(substring: "`Arrowup`");
     t.verdict(name: "binder: every refusal is said at once", why: all ? "" : "only `${both}`");
@@ -432,8 +432,9 @@ fn void valueRefusalCases(ref Tally t) {
                   json: "{ \"look\": { \"mouse\": { \"x\": \"MotionZ\" } } }", says: "nor the mouse's motion, `MotionX` or `MotionY`");
     expectRefused(t: t, name: "binder: a pose is bound by nothing until XR", json: "{ \"hand\": { \"keyboard\": \"KeyW\" } }",
                   says: "bind a `Pose` action, which no device binds until XR brings one");
-    expectRefused(t: t, name: "binder: a digital's object entry is its filters and gestures, refused until their part",
-                  json: "{ \"faster\": { \"keyboard\": { \"up\": \"KeyW\" } } }", says: "which for a `Digital` holds filters and gestures");
+    expectRefused(t: t, name: "binder: a digital's object entry names its controls under `control`, no other part",
+                  json: "{ \"faster\": { \"keyboard\": { \"up\": \"KeyW\" } } }",
+                  says: "names `up`, which is no part of a `Digital`'s entry: its controls go under `control`, a name or a list");
     string many = refusalOf(json: "{ \"move\": { \"keyboard\": \"KeyW\" }, \"fly\": { \"keyboard\": \"KeyW\" } }");
     t.verdict(name: "binder: every refusal at once", why: many.contains(substring: "`move`") && many.contains(substring: "`fly`")
               ? "" : "refused `${many}`");
@@ -644,6 +645,11 @@ fn void filterOrderCases(ref Tally t) {
     hand(b: s, s: stick(slot: 0, index: 2, value: 1.0, at: 10));
     expectVec2Near(t: t, name: "binder: a delta's stick is filtered before its seconds: a full push scaled is turned each second",
                    got: lookAt(b: s, step: 0, until: 100), x: 3.0 * dt, y: 0.0);
+    Binder z = binderFor(json: "{ \"look\": { \"gamepad\": { \"x\": \"RightX\", \"y\": \"RightY\", \"filters\": [ { \"deadZone\": 0.5 } ] } } }");
+    hand(b: z, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    hand(b: z, s: stick(slot: 0, index: 2, value: 0.8, at: 10));
+    expectVec2Near(t: t, name: "binder: and a dead zone on it acts on the push, not on the step's turn",
+                   got: lookAt(b: z, step: 0, until: 100), x: 0.6 * dt, y: 0.0);
     Binder m = binderFor(json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"filters\": [ { \"scale\": 0.5 }, { \"invert\": { \"y\": true } } ] } } }");
     hand(b: m, s: motion(index: 0, value: 4.0, at: 10));
     hand(b: m, s: motion(index: 1, value: 2.0, at: 20));
@@ -756,14 +762,15 @@ fn void filterRefusalCases(ref Tally t) {
     expectRefused(t: t, name: "binder: a clamp whose least is past its most is refused",
                   json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"KeyW\", \"filters\": [ { \"clamp\": { \"min\": 1, \"max\": 0 } } ] } } }",
                   says: "a `clamp`'s `min` must be at most its `max`");
-    expectRefused(t: t, name: "binder: a digital's object entry is still refused until its part",
-                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.5 } ] } } }",
-                  says: "which for a `Digital` holds filters and gestures");
+    string accepted = refusalOf(json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.5 } ] } } }");
+    t.verdict(name: "binder: a digital's gamepad entry may name its controls and a threshold", why: accepted);
 }
 
 // The engine's decided defaults, as engine/content/input.records.json writes them (design/input.md § Decided,
 // 2026-11-23, the third part's question 1).
-fn string defaults() { return "{ \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.11764706 } }"; }
+fn string defaults() {
+    return "{ \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.11764706 }, \"stickThreshold\": { \"press\": 0.5, \"release\": 0.375 } }";
+}
 
 fn InputRecord inputOf(const ref string json) {
     Result<InputRecord, Owned<Error>> read = deserializeJsonBuffer::<InputRecord>(src: copy json, strict: true);
@@ -878,7 +885,132 @@ fn void defaultZoneCases(ref Tally t) {
     t.verdict(name: "binder: the trigger's too", why: trig.contains(substring: "the `input` record's `triggerDeadZone`") ? "" : "refused `${trig}`");
 }
 
+// A digital bound by `json` with the engine's defaults, its pad locked by a press of North, which `faster` is not bound to.
+fn Binder digitalWith(const ref string json) {
+    Binder b = binderWith(json: json, input: defaults());
+    hand(b: b, s: pad(slot: 0, control: 3, value: 1.0, at: 5));
+    return b;
+}
+
+// A stick's directions as controls, and a value made a button pressing at one point and letting go at a lower one (the
+// third part's question 2).
+fn void thresholdCases(ref Tally t) {
+    Binder d = digitalWith(json: "{ \"faster\": { \"gamepad\": [\"DpadUp\", \"LeftStickUp\"] } }");
+    hand(b: d, s: stick(slot: 0, index: 1, value: -0.7, at: 10));
+    expectStep(t: t, b: d, step: 0, until: 100, name: "binder: a stick pushed up past the press point presses `LeftStickUp`", want: "HP-");
+    hand(b: d, s: stick(slot: 0, index: 1, value: -0.5, at: 110));
+    expectStep(t: t, b: d, step: 1, until: 200, name: "binder: and back under it, above the release point, holds it", want: "H--");
+    hand(b: d, s: stick(slot: 0, index: 1, value: -0.4, at: 210));
+    expectStep(t: t, b: d, step: 2, until: 300, name: "binder: at the release point or under, lets go", want: "--R");
+    hand(b: d, s: stick(slot: 0, index: 1, value: -0.5, at: 310));
+    expectStep(t: t, b: d, step: 3, until: 400, name: "binder: and between the two once let go, stays up: no chatter", want: "---");
+    hand(b: d, s: pad(slot: 0, control: 12, value: 1.0, at: 410));
+    expectStep(t: t, b: d, step: 4, until: 500, name: "binder: the d-pad beside it still presses by its events", want: "HP-");
+    hand(b: d, s: pad(slot: 0, control: 12, value: 0.0, at: 510));
+    hand(b: d, s: stick(slot: 0, index: 1, value: 0.9, at: 520));
+    expectStep(t: t, b: d, step: 5, until: 600, name: "binder: a stick pushed down is not up", want: "--R");
+
+    Binder down = digitalWith(json: "{ \"faster\": { \"gamepad\": \"LeftStickDown\" } }");
+    hand(b: down, s: stick(slot: 0, index: 1, value: 0.7, at: 10));
+    expectStep(t: t, b: down, step: 0, until: 100, name: "binder: `LeftStickDown` is the stick pushed down", want: "HP-");
+    Binder left = digitalWith(json: "{ \"faster\": { \"gamepad\": \"LeftStickLeft\" } }");
+    hand(b: left, s: stick(slot: 0, index: 0, value: -0.7, at: 10));
+    expectStep(t: t, b: left, step: 0, until: 100, name: "binder: `LeftStickLeft` is the stick pushed left", want: "HP-");
+    Binder right = digitalWith(json: "{ \"faster\": { \"gamepad\": \"RightStickRight\" } }");
+    hand(b: right, s: stick(slot: 0, index: 0, value: -0.9, at: 10));
+    hand(b: right, s: stick(slot: 0, index: 2, value: 0.7, at: 20));
+    expectStep(t: t, b: right, step: 0, until: 100, name: "binder: `RightStickRight` is the right stick, not the left", want: "HP-");
+    Binder rup = digitalWith(json: "{ \"faster\": { \"gamepad\": \"RightStickUp\" } }");
+    hand(b: rup, s: stick(slot: 0, index: 1, value: 0.9, at: 10));
+    hand(b: rup, s: stick(slot: 0, index: 3, value: -0.7, at: 20));
+    expectStep(t: t, b: rup, step: 0, until: 100, name: "binder: `RightStickUp` is the right stick's Y, turned over", want: "HP-");
+    hand(b: rup, s: Sample.padDisconnected(slot: 0, at: 110));
+    expectStep(t: t, b: rup, step: 1, until: 200, name: "binder: the locked pad gone, a stick's direction lets go", want: "--R");
+
+    Binder own = digitalWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"LeftStickUp\", \"filters\": [ { \"threshold\": { \"press\": 0.8, \"release\": 0.2 } } ] } } }");
+    hand(b: own, s: stick(slot: 0, index: 1, value: -0.7, at: 10));
+    expectStep(t: t, b: own, step: 0, until: 100, name: "binder: an entry's own threshold takes the record's place: 0.7 short of 0.8", want: "---");
+    hand(b: own, s: stick(slot: 0, index: 1, value: -0.9, at: 110));
+    hand(b: own, s: stick(slot: 0, index: 1, value: -0.3, at: 120));
+    expectStep(t: t, b: own, step: 1, until: 200, name: "binder: and presses past its own press point", want: "HP-");
+    expectStep(t: t, b: own, step: 2, until: 300, name: "binder: and holds down to its own release point", want: "H--");
+
+    Binder trig = digitalWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.8 } ] } } }");
+    hand(b: trig, s: pad(slot: 0, control: 7, value: 0.5, at: 10));
+    hand(b: trig, s: travel(slot: 0, button: 7, value: 0.5, at: 11));
+    hand(b: trig, s: travel(slot: 0, button: 7, value: 0.82, at: 12));
+    expectStep(t: t, b: trig, step: 0, until: 100, name: "binder: a trigger with a threshold reads its travel through its dead zone, not the window's press at 30/255: 0.82 short of 0.8", want: "---");
+    hand(b: trig, s: travel(slot: 0, button: 7, value: 0.9, at: 110));
+    expectStep(t: t, b: trig, step: 1, until: 200, name: "binder: past its threshold through the trigger's dead zone, pressed", want: "HP-");
+    hand(b: trig, s: travel(slot: 0, button: 7, value: 0.7, at: 210));
+    expectStep(t: t, b: trig, step: 2, until: 300, name: "binder: a bare number lets go at three quarters of it: held above", want: "H--");
+    hand(b: trig, s: travel(slot: 0, button: 7, value: 0.6, at: 310));
+    expectStep(t: t, b: trig, step: 3, until: 400, name: "binder: and let go at it or under", want: "--R");
+
+    Binder record = binderWith(json: "{ \"faster\": { \"gamepad\": \"LeftStickUp\" } }",
+                               input: "{ \"stickThreshold\": { \"press\": 0.6 } }");
+    hand(b: record, s: pad(slot: 0, control: 3, value: 1.0, at: 5));
+    hand(b: record, s: stick(slot: 0, index: 1, value: -0.55, at: 10));
+    expectStep(t: t, b: record, step: 0, until: 100, name: "binder: the record's press point, raw with no dead zone named: 0.55 short of 0.6", want: "---");
+    hand(b: record, s: stick(slot: 0, index: 1, value: -0.65, at: 110));
+    hand(b: record, s: stick(slot: 0, index: 1, value: -0.46, at: 120));
+    expectStep(t: t, b: record, step: 1, until: 200, name: "binder: the record's press point reached", want: "HP-");
+    expectStep(t: t, b: record, step: 2, until: 300, name: "binder: its release three quarters of it where unnamed: 0.46 above 0.45 holds", want: "H--");
+
+    Binder part = binderFor(json: "{ \"throttle\": { \"gamepad\": { \"positive\": \"LeftStickUp\", \"negative\": \"LeftStickDown\" } } }");
+    hand(b: part, s: pad(slot: 0, control: 3, value: 1.0, at: 5));
+    hand(b: part, s: stick(slot: 0, index: 1, value: -0.25, at: 10));
+    expectNear(t: t, name: "binder: a stick's directions as an analog's parts: up its half", got: throttleAt(b: part, step: 0, until: 100), want: 0.25);
+    hand(b: part, s: stick(slot: 0, index: 1, value: 0.75, at: 110));
+    expectNear(t: t, name: "binder: and down its other", got: throttleAt(b: part, step: 1, until: 200), want: -0.75);
+    Binder keys = binderFor(json: "{ \"move\": { \"gamepad\": { \"up\": \"LeftStickUp\", \"right\": \"LeftStickRight\" } } }");
+    hand(b: keys, s: pad(slot: 0, control: 3, value: 1.0, at: 5));
+    hand(b: keys, s: stick(slot: 0, index: 0, value: 0.8, at: 10));
+    hand(b: keys, s: stick(slot: 0, index: 1, value: -0.6, at: 20));
+    expectVec2Near(t: t, name: "binder: and as a vector2's key-style parts", got: moveAt(b: keys, step: 0, until: 100), x: 0.8, y: 0.6);
+    expectVec2Near(t: t, name: "binder: a stick's directions as an entry's x and y take the default on each, not as one stick's pair",
+                   got: stickWithDefaults(entry: "{ \"x\": \"LeftStickRight\", \"y\": \"LeftStickUp\" }", x: 0.45, y: -0.6),
+                   x: 0.40625, y: 0.59375);
+    expectNear(t: t, name: "binder: a stick's direction reads after the stick's default dead zone",
+               got: throttleWithDefaults(entry: "{ \"positive\": \"LeftStickUp\" }", sample: stick(slot: 0, index: 1, value: -0.525, at: 10)),
+               want: 0.5);
+
+    string none = refusalOf(json: "{ \"faster\": { \"gamepad\": \"LeftStickUp\" } }");
+    t.verdict(name: "binder: a stick's direction as a button with no press point anywhere is refused",
+              why: none.contains(substring: "names `LeftStickUp`, a stick's direction, which as a button needs a press point") ? "" : "refused `${none}`");
+    expectRefused(t: t, name: "binder: a threshold letting go at or above its press is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": { \"press\": 0.5, \"release\": 0.5 } } ] } } }",
+                  says: "a `threshold`'s `release` is from 0 to below its `press`, 0.5");
+    expectRefused(t: t, name: "binder: a threshold pressing past 1 is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 1.5 } ] } } }",
+                  says: "a `threshold`'s `press` is above 0 and at most 1");
+    expectRefused(t: t, name: "binder: a threshold pressing at 0 is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0 } ] } } }",
+                  says: "a `threshold`'s `press` is above 0 and at most 1");
+    expectRefused(t: t, name: "binder: a threshold on a key is refused: a key is a button already",
+                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"filters\": [ { \"threshold\": 0.5 } ] } } }",
+                  says: "a key or a mouse button is a button already");
+    expectRefused(t: t, name: "binder: a filter other than a threshold on a digital is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"scale\": 2 } ] } } }",
+                  says: "a `Digital` takes a `threshold` alone of the filters");
+    expectRefused(t: t, name: "binder: two thresholds on one entry are refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightTrigger\", \"filters\": [ { \"threshold\": 0.5 }, { \"threshold\": 0.6 } ] } } }",
+                  says: "lists two thresholds");
+    expectRefused(t: t, name: "binder: a digital's object naming no control is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"filters\": [ { \"threshold\": 0.5 } ] } } }",
+                  says: "names no control");
+    expectRefused(t: t, name: "binder: a digital's gestures are refused until their part",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"hold\": 0.5 } ] } } }",
+                  says: "names gestures");
+    expectRefused(t: t, name: "binder: a misspelt stick direction lists the directions",
+                  json: "{ \"faster\": { \"gamepad\": \"LeftStickUpp\" } }", says: "no stick's direction (`LeftStickUp`, `LeftStickDown`");
+    string wrong = refusalWith(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }", input: "{ \"stickThreshold\": { \"press\": 0.4, \"release\": 0.6 } }");
+    t.verdict(name: "binder: the input record's threshold out of its range is refused, naming the record",
+              why: wrong.contains(substring: "the `input` record's `stickThreshold` has a `threshold` letting go at 0.6") ? "" : "refused `${wrong}`");
+}
+
 fn void binderTests(ref Tally t) {
+    thresholdCases(t: t);
     defaultZoneCases(t: t);
     filterShapeCases(t: t);
     filterOrderCases(t: t);

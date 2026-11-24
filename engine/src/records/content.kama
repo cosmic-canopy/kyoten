@@ -5,7 +5,8 @@
 
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned, std::memory::replace };
 
-export { AppRecord, WindowRecord, BindingRecord, ControlEntry, FilterRecord, FilterKind, DeadZoneShape, InputRecord, ZoneRecord };
+export { AppRecord, WindowRecord, BindingRecord, ControlEntry, FilterRecord, FilterKind, DeadZoneShape, InputRecord, ZoneRecord,
+         PressRecord };
 
 // The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
 // lays its own over, field by field.
@@ -362,15 +363,41 @@ type value ZoneRecord {
     }
 }
 
+// A press point's defaults in the `input` record, each part laid over the layer below's on its own. A `release` no layer
+// names is three quarters of the `press`.
+@generate(Deserializable)
+type value PressRecord {
+    @field(name: "press", default) public Optional<float32> press = Optional::None;
+    @field(name: "release", default) public Optional<float32> release = Optional::None;
+    public default ctor make() { }
+
+    public fn void layOver(PressRecord above) {
+        match (above.press) { case Some(value: v): { this.press = Optional::Some(value: v); } case None: { } };
+        match (above.release) { case Some(value: v): { this.release = Optional::Some(value: v); } case None: { } };
+    }
+
+    // The threshold it makes: press at 0.5 where unnamed, release where named.
+    public const fn FilterRecord filter() {
+        FilterRecord f = FilterRecord.make(kind: FilterKind::Threshold);
+        f.a = 0.5;
+        match (this.press) { case Some(value: v): { f.a = v; } case None: { } };
+        match (this.release) { case Some(value: v): { f.b = v; f.hasB = true; } case None: { } };
+        return f;
+    }
+}
+
 // The engine's defaults for every binding (design/input.md § Decided, 2026-11-23, the third part's question 1): the
 // dead zone every stick an entry reads gets, radial where the entry reads both of one stick's axes and per axis
 // otherwise, and every trigger's travel, unless the entry's own filters name a `deadZone`. The engine's content sets
 // them (engine/content/input.records.json: sticks from 0.125 to 0.925, triggers from 30/255), and each layer above lays
 // its own over them part by part, as the app record's window is. A dead zone no layer names is none: the stick raw.
+// And (question 2) where a stick's direction bound to a `Digital` presses and lets go, `stickThreshold` (0.5 and 0.375,
+// Unity's), unless the entry's own `threshold` says.
 @generate(Deserializable)
 type resource InputRecord {
     @field(name: "stickDeadZone", default) Optional<ZoneRecord> stickZoneField = Optional::None;
     @field(name: "triggerDeadZone", default) Optional<ZoneRecord> triggerZoneField = Optional::None;
+    @field(name: "stickThreshold", default) Optional<PressRecord> stickPressField = Optional::None;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
@@ -379,12 +406,17 @@ type resource InputRecord {
     public fn void layOver(const ref InputRecord above) {
         this.stickZoneField = laidZone(below: this.stickZoneField, above: above.stickZoneField);
         this.triggerZoneField = laidZone(below: this.triggerZoneField, above: above.triggerZoneField);
+        this.stickPressField = laidPress(below: this.stickPressField, above: above.stickPressField);
     }
 
     // Every stick's dead zone, None where no layer names one.
     public const fn Optional<FilterRecord> stickDeadZone() { return zoneFilter(zone: this.stickZoneField); }
     // Every trigger's travel's dead zone, None where no layer names one.
     public const fn Optional<FilterRecord> triggerDeadZone() { return zoneFilter(zone: this.triggerZoneField); }
+    // Where a stick's direction bound to a `Digital` presses and lets go, None where no layer names it.
+    public const fn Optional<FilterRecord> stickThreshold() {
+        return match (this.stickPressField) { case Some(value: s): Optional::Some(value: s.filter()); case None: Optional::None; };
+    }
     public const fn const ref string note() { return this.noteField; }
 }
 
@@ -400,6 +432,22 @@ fn Optional<ZoneRecord> laidZone(Optional<ZoneRecord> below, Optional<ZoneRecord
 
 fn Optional<ZoneRecord> laidOn(ZoneRecord below, ZoneRecord above) {
     ZoneRecord z = below;
+    z.layOver(above: above);
+    return Optional::Some(value: z);
+}
+
+fn Optional<PressRecord> laidPress(Optional<PressRecord> below, Optional<PressRecord> above) {
+    return match (above) {
+        case None: below;
+        case Some(value: a): match (below) {
+            case None: Optional::Some(value: a);
+            case Some(value: b): pressOn(below: b, above: a);
+        };
+    };
+}
+
+fn Optional<PressRecord> pressOn(PressRecord below, PressRecord above) {
+    PressRecord z = below;
     z.layOver(above: above);
     return Optional::Some(value: z);
 }

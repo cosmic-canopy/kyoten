@@ -1,3 +1,4 @@
 { "input": { "stickDeadZone": { "lower": 0.125, "upper": 0.925 },
              "triggerDeadZone": { "lower": 0.11764706 },
-             "note": "the engine's defaults for every binding, the lowest content layer (design/input.md § Decided, 2026-11-23): each stick a scaled dead zone from 0.125 to 0.925, Unity's, radial where an entry reads both of its axes; each trigger's travel from 30/255, @kama/window's press point; an entry's own deadZone filter takes their place, and a game's input record lays its own over them, part by part" } }
+             "stickThreshold": { "press": 0.5, "release": 0.375 },
+             "note": "the engine's defaults for every binding, the lowest content layer (design/input.md § Decided, 2026-11-23): each stick a scaled dead zone from 0.125 to 0.925, Unity's, radial where an entry reads both of its axes; each trigger's travel from 30/255, @kama/window's press point; a stick's direction bound to a Digital pressed at 0.5 and let go at 0.375, Unity's; an entry's own deadZone or threshold takes their place, and a game's input record lays its own over them, part by part" } }
