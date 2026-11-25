@@ -17,10 +17,10 @@ fn void turn(ref Transform t, ref Spin s, const ref Actions input, const ref Tim
     t.rotateY(by: s.rate * time.dt);
 }
 // At 30 Hz, half the base rate: each press of `faster` is seen once, on the first run at or after its step, and so is
-// each code point typed into `chat` (the fifth part of step 8).
+// each code point typed into `chat` (the fifth part of step 8); `note`, a second text action bound to nothing, adds none.
 fn void tally(ref Taps taps, const ref Actions input) {
     if (input.faster.pressed) { taps.slow = taps.slow + 1; }
-    taps.typed = taps.typed + cast<int32>(input.chat.length());
+    taps.typed = taps.typed + cast<int32>(input.chat.length()) + cast<int32>(input.note.length());
     if (!input.chat.isEmpty()) { taps.last = cast<int32>(input.chat.at(index: input.chat.length() - 1)); }
 }
 // What a cube's player gave its `look`, a delta, and its `steer`, an analog state (the first slice's step 8, its second
