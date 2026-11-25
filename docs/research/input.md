@@ -65,7 +65,7 @@ the rest are the pass's own, marked [pass], with the page each came from.
 ## Text, poses and look
 
 - **Typed text is kept apart from actions** in Unity, Godot, Bevy, SDL and Steam; OpenXR's action types are boolean,
-  float, vector2, pose and vibration [pass].
+  float, vector2, pose and vibration [pass]. § Typed text, below, has the fuller survey.
 - **A pose** is an OpenXR action space, located at whatever time the program asks, predicted when it is ahead [pass].
 - **Camera look per frame:** Bevy's fixed-timestep example rotates the camera every frame, since doing it in the fixed
   steps "would sometimes not register player input"; Godot recommends applying mouse motion to the camera directly
@@ -250,3 +250,97 @@ in source where it is public, and are marked [checked].
     (`engine/src/platform/open.kama` 148-149).
   - **A pad's buttons do not repeat,** and a pointer has no click count.
   - **A modifier is a key like any other** (HID 224 to 231), and the `mods` bits on an event go unread by kyoten.
+
+## Typed text (gathered 2026-11-25, the fiftieth session)
+
+For [design/input.md](../design/input.md)'s fifth part, `Text`. Three passes: the peers in their source at the commits
+named, the owner's games in their trees (the-mallow-man `70fe7ef`, FFD `77a2604`), and kyoten's own code.
+
+- **SDL3** ([`a01f519`](https://github.com/libsdl-org/SDL/tree/a01f51916eb3a3989b0bcbc2e2dbcbc724515414), after 3.4.20):
+  - **Off until the program asks:** "Text input events are not received by default", and `SDL_StartTextInput(window)`
+    "On some platforms … shows the screen keyboard and/or activates an IME, which can prevent some key press events from
+    being passed through" (`include/SDL3/SDL_keyboard.h` 360-385) [checked].
+    - `SDL_StartTextInputWithProperties` takes the field's type (text, name, email, username, a password, a number), its
+      capitalization, autocorrect, multiline and maximum length.
+    - `SDL_SetTextInputArea` places the IME's window beside the field [pass].
+  - **Text is committed text only:** one `SDL_EVENT_TEXT_INPUT` per delivery, UTF-8, which may hold several code points.
+    - An event that starts with a control character is not posted ("Don't post text events for unprintable characters",
+      `src/events/SDL_keyboard.c` 736-751) [checked], so Backspace, Enter and Tab are keys.
+    - A composition is `SDL_EVENT_TEXT_EDITING`.
+    - SDL2's 32-byte text event is gone [pass].
+  - **The screen keyboard** shows by default only "if there is no physical keyboard attached"
+    (`SDL_HINT_ENABLE_SCREEN_KEYBOARD`, `"auto"`). On X11 under Steam's Big Picture, SDL opens Steam's floating keyboard
+    through `steam://open/keyboard` (`src/video/x11/SDL_x11keyboard.c` 922-962) [pass].
+- **Unity Input System 1.20.2**
+  ([`062d225`](https://github.com/Unity-Technologies/InputSystem/tree/062d225450794a2575389058c36f362bd04f1196)):
+  - **Text is its own stream:** `Keyboard.onTextInput(char)`, a UTF-16 unit, so a code point past the BMP calls it
+    twice. "Text input does not fit the control-based input model well and thus is represented as its own form of input"
+    (`Runtime/Events/TextEvent.cs`) [pass].
+  - **It is always delivered.** Only the IME is switched (`SetIMEEnabled`: "Typically, this is not desirable while
+    playing a game") [pass]. A composition is `onIMECompositionChange`.
+  - **A field does not stop actions:** "The UI will not consume input such that it will not also trigger in-game
+    actions" (`Documentation~/KnownLimitations.md` 20) [checked].
+- **Godot 4.8-beta**
+  ([`25d0522`](https://github.com/godotengine/godot/tree/25d0522345fb8b58cc469b6760dd73c04b0f0186)):
+  - **Text is a key event's `unicode`,** one code point, 0 below 0x20 and for 0x7F (`core/os/keyboard.cpp`,
+    `fix_unicode`) [pass]. An action carries no text.
+  - **`LineEdit` turns the IME on when it starts editing,** and shows the virtual keyboard with its box, type and
+    maximum length (`scene/gui/line_edit.cpp` 124-152) [pass].
+  - **A field does not stop actions:** `Input` updates every action's state before it hands the event to the GUI
+    (`core/input/input.cpp` 1086-1131) [checked]. Only `_unhandled_input` is filtered.
+- **winit 0.30.13 and Bevy** ([winit](https://github.com/rust-windowing/winit/tree/v0.30.13),
+  [Bevy `93af76a`](https://github.com/bevyengine/bevy/tree/93af76a2a6228281b4c5c486ec2d8fa5807f0ca2)):
+  - **The IME is off by default:** "IME is **not** allowed by default … during the preedit phase the window will NOT get
+    [`KeyboardInput`] events … Not allowing IME is useful for games … iOS / Android: This will show / hide the soft
+    keyboard" (`src/window.rs` 1260-1286) [checked].
+  - **Editing keys stay keys:**
+    - winit's `KeyEvent.text` gives `"\r"` for Enter;
+    - Bevy's `TextInput` widget treats Enter, Backspace and the arrows as keys, and inserts text only for a character key;
+    - it sets `Window.ime_enabled` while an editable field has focus (`crates/bevy_ui_widgets/src/text_input.rs` 632-659)
+      [pass].
+  - **A field does not stop actions:** `ButtonInput<KeyCode>`, which leafwing reads, updates whatever has focus [pass].
+- **Unreal 5.7:**
+  - an Input Action's value is a bool or an axis, never text;
+  - Slate's `FCharacterEvent` carries a UTF-16 unit;
+  - `SetInputMode_UIOnlyEx` "allows only the UI to respond to user input".
+
+  [pass] All three are from Epic's API pages; its source was not read.
+- **leafwing-input-manager 0.22:** an action is a button or an axis, and its network form, `ActionDiff`, holds no text
+  [pass].
+- **Steamworks** ([ISteamUtils](https://partner.steamgames.com/doc/api/ISteamUtils)):
+  - **Two keyboards:**
+    - `ShowGamepadTextInput` is modal, and hands back a whole UTF-8 string when it is dismissed;
+    - `ShowFloatingGamepadTextInput` "sends OS keyboard keys directly to the game", placed beside the field's box [pass].
+  - **Deck Verified:** games must "automatically display an on-screen keyboard when requiring the user to input text"
+    ([recommendations](https://partner.steamgames.com/doc/steamdeck/recommendations)) [checked].
+- **The browser** (the W3C's drafts) [pass]:
+  - a key has its `key`; then `beforeinput` and `input` carry an `inputType` (`insertText`, `deleteContentBackward`);
+  - composition has events of its own;
+  - a phone's keyboard rises for a focused editable element, its `inputmode` choosing which keyboard;
+  - an `EditContext` can attach to a canvas.
+- **No peer records typed text in a replay or sends it per keystroke** [pass].
+- **The owner's games:**
+  - **FFD has no text path:**
+    - no char callback, and its one typed field, a room code, is built from raw key-downs. Its comment says "**NO PASTE
+      AND NO IME**, which is the honest cost and is why a PLAYER NAME is not typed here" (`game/src/game.kama` 1239)
+      [checked];
+    - its chat comes from speech, kept out of the simulation: "A line is not an `InputFrame` bit, it never reaches
+      `World`, it is not hashed" (`engine/src/chat/board.kama` 10) [checked].
+  - **The-mallow-man types into `@kama/ui`'s RmlUi fields:**
+    - one code point per GLFW char event, always on, routed to a field only while a menu or the chat is open
+      (`game/src/menu.kama` 534-539) [pass];
+    - Backspace, Delete, Enter, the arrows, Home and End reach the field as keys, the operating system's repeats
+      included [pass];
+    - **while a field is open, the round steps with an idle input,** "this player's camper stands still"
+      (`game/src/game.kama` 1208-1217 and 2624-2628; `menu.kama` 703-704) [checked];
+    - its chat is sent whole on Enter, at most 64 bytes (`play/src/chat.kama` 49) [checked];
+    - on Steam's hardware or Big Picture, A on a field opens Steam's floating keyboard, then the modal one
+      (`play/src/steamkeyboard.kama`) [pass]. With no Steam, a pad cannot type.
+- **kyoten** (`d19abbd`):
+  - **No text reaches the binder:** the platform's pump drops `@kama/window`'s `Event::Text`, one code point an event,
+    and drops a key's repeats (`engine/src/platform/open.kama` 149 and 176).
+  - **The tool refuses a `Text` action** (`tools/kyoten/src/records.kama` 272).
+  - **Nothing carries a request from a game back to the binder or the platform.**
+  - **An Output processor may write nothing** (`tools/kyoten/src/schedule.kama` 254).
+  - **`@kama/window` has no text input to turn on or off,** no IME and no on-screen keyboard; IME composition is its
+    unbuilt WIN-5.

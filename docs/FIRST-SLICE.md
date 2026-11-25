@@ -728,7 +728,16 @@ forty-fourth). Where the work is:**
 
    142 of 144 mutations were caught, two shown equivalent.
 
-   **Next: `Text`,** its shape to lay out from the code. Then the cursor's position as a control (FFD's aim against the
+   **Step 8's fifth part, `Text`, is decided** (the owner, 2026-11-25, its four questions asked in full at the
+   fiftieth session's start, each "A (Recommended)"; [design/input.md](design/input.md) § Decided):
+   - a `Text` action holds the text that entered in a run's window, as code points;
+   - it is collected only while the game turns a player's text entry on, which also turns on the window's IME and an
+     on-screen keyboard (`@kama/window`'s WIN-5, widened);
+   - the game turns it on through Output's own state, an engine `TextEntry` component, so Output's own state is built
+     first;
+   - while it is on, the player's keyboard drives only their `Text` actions and the entries marked `"typing": true`.
+
+   It is built in four commits: Output's own state; the kind; the masking; the system's key repeat. Then the cursor's position as a control (FFD's aim against the
    camera the player sees, which a simulation processor cannot read: its question), and the game letting go of the
    lock. The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first
    part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the

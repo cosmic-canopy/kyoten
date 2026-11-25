@@ -9,8 +9,13 @@ peers offer that a device kyoten reads can drive, a default dead zone on every s
 engine's `input` record, and a stick's directions as controls, with a press point and a lower release point. The fourth
 part's three questions, gestures, are decided and the part built (2026-11-24, below): a `Digital`'s `progress`, a chord's
 modifiers and a sequence's steps naming a control or an action, a chord masking its control's plain binding, and every
-gesture the peers offer that a device kyoten reads can drive. What the peers and the
-owner's games do is [../research/input.md](../research/input.md).
+gesture the peers offer that a device kyoten reads can drive. The fifth part's four
+questions, `Text`, are decided (2026-11-25, below):
+- a `Text` action holds the text that entered;
+- it is collected only while the game turns a player's text entry on, through Output's own `TextEntry`;
+- the keyboard's other bindings are masked meanwhile.
+
+What the peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
 
@@ -607,3 +612,107 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   - a player's settings reaching the filters and gestures;
   - a game's own filters and gestures;
   - how a higher layer merges an object entry.
+
+- **2026-11-25, the owner, the fifth part's four questions** (`Text`), laid out from the code (the platform's pump, the
+  binder, the tool's refusal, Output's write rule) and from what the peers and the owner's games do
+  ([../research/input.md](../research/input.md) § Typed text), and asked in full at the fiftieth session's start. Each
+  was answered "A (Recommended)".
+  1. **(A): a `Text` action holds the text that entered in a run's window, as code points.**
+     - *The problem:* a chat box, a typing game that scores each letter as it lands, a name on a high-score table. The
+       tool refused a `Text` action, and the platform's pump dropped typed text.
+     - **What entered:**
+       - what a key typed, after the layout, Shift and dead keys;
+       - an IME's committed word;
+       - an on-screen keyboard's keys.
+
+       It never holds a composition under way, and never an editing key.
+     - **Editing keys are `Digital` actions:** erase on Backspace, submit on Enter, cancel on Escape. A processor adds
+       what entered to the line it keeps: `input.chat.appendTo(text: ref line)`.
+     - **Each processor sees each code point once,** on its first run at or after the step it lands in, as an edge.
+     - SDL3, Unity, Godot and Bevy hand text so, and their editing keys are keys.
+     - *Set aside:* (B) a finished line, which the binder edits and hands whole on Enter, as the-mallow-man sends chat.
+       - It is a text field inside the input layer. A caret, a selection, an IME and a paste are a UI field's: RmlUi's
+         natively, the page's own on the web.
+       - A typing game could not score letters as they land.
+       - How a UI field's line reaches the game is KYR-16's to design.
+  2. **(A): typed text is collected only while the game turns the player's text entry on.**
+     - *The problem:*
+       - an IME left on in play swallows keys as it composes (winit: "during the preedit phase the window will NOT get
+         [`KeyboardInput`] events"), so WASD stops;
+       - on a Steam Deck with no keyboard, the player opens chat and has nothing to type with.
+     - **Off, the `Text` action gets nothing.** On, the platform also turns on the window's text input: the IME, and an
+       on-screen keyboard where no physical one is. Three sources agree:
+       - SDL3's model, "Text input events are not received by default";
+       - winit's IME, off by default, "useful for games";
+       - Valve's Deck Verified, games must "automatically display an on-screen keyboard when requiring the user to input
+         text".
+     - **The window's half is `@kama/window`'s,** its WIN-5 widened to text input on and off. Until it is built, the
+       window delivers text as now and only kyoten's gate applies, a stopgap named.
+     - *Set aside:* (B) always collected (Unity, Godot), where no on-screen keyboard ever rises, and the IME is always on
+       or never.
+  3. **(A): the game turns text entry on through Output's own state.** This is an engine component, `TextEntry`, marked
+     `"output": true`, which the platform reads after each frame.
+     - *The problem:* the player presses T and the chat field opens. Nothing carried a request from a game back to the
+       binder or the platform, and an Output processor could write nothing.
+     - **An Output processor writes it:**
+       - a UI field when it takes focus;
+       - or the game's own Output processor, reading its simulation's state (entering a name).
+
+       Bevy's text widget sets `Window.ime_enabled` on focus.
+     - **Output's own state is built first,** as decided (web-and-native § Decided, question 3; REFERENCE: "its own
+       state marked `"output": true`").
+     - **The same path will carry** the game letting go of the pad lock, the cursor's mode and rumble, each asked when it
+       comes.
+     - *Set aside:*
+       - (B) simulation state written in Update. A field's focus is UI-only state, which the decided rule keeps in Output,
+         and it would round-trip through the simulation. Where the field sits on screen is Output's alone to know.
+       - (C) a handle handed to Output processors (SDL's `SDL_StartTextInput` call), the first service a processor would
+         be handed.
+  4. **(A): while a player's text entry is on, their keyboard drives only their `Text` actions and the entries marked
+     `"typing": true`.**
+     - *The problem:* with `faster` on `KeyW`, a player who opens chat and types "wow" presses `faster` twice.
+     - **An entry marked to type:** `"submit": { "keyboard": { "control": "Enter", "typing": true } }`.
+     - **Turning entry on lets go of every masked keyboard action held,** as a focus change does, so a held W does not
+       stick. The mouse and the pads are unchanged.
+     - Unreal's UIOnly input mode is the same idea, and the-mallow-man steps its round with an idle input while a field
+       is open. It is the first input context, which KYR-54's contexts later take in.
+     - *Set aside:* (B) nothing masked, each game gating its own processors. That is the peers' default:
+       - Unity's UI "will not consume input";
+       - Godot sets an action's state before its GUI sees the key;
+       - Bevy and leafwing read held keys whatever has focus.
+
+       Every game would carry the "wow" bug until it handles it.
+
+  **The fifth part, laid out, settled by the decided rules, for the owner to object to:**
+  - **Code points,** as `@kama/window`'s `Text`, Unity's and Godot's are. A `Text` holds up to 64, about 260 bytes per
+    `Text` action in each `Actions` row.
+  - **No window overflows and nothing is lost:**
+    - each step holds at most 64 divided by the steps the world keeps (at least a frame's most, 5);
+    - the binder carries the rest, in order, to the steps after;
+    - a paste of 500 code points lands within a second at 60 Hz.
+  - **`"Text"` is kyoten's own control name,** as the mouse's `Motion` is: `"chat": { "keyboard": "Text" }`.
+    - A `Text` action takes no other control, filter or gesture.
+    - No other kind of action takes `"Text"`.
+    - Each is refused at load, naming why.
+  - **Text that arrives before the entry turned on is dropped,** so the T that opens the chat is not typed into it.
+  - **A held erase repeats at the player's own rate.**
+    - The pump hands the operating system's key repeats on, and `{ "repeat": { "system": true } }` presses again on
+      each of them, as RmlUi's, Godot's and Bevy's fields take them.
+    - The player's repeat rate is an accessibility setting.
+    - A pad's button has no system repeat, so `system` is refused there.
+  - **A composition under way is never in an action;** it is presentation's (WIN-5).
+  - **Output sees the text since its last frame,** by steps, as a `Digital`'s edges.
+  - **A replay keeps the hand-off as it is,** the text included.
+  - **`TextEntry` is `{ player, on }` for now.** Its purpose (text, a number, an email, a password), its longest length,
+    its lines and the field's box arrive with WIN-5, when a platform can use them.
+  - **Output's own state, as decided:**
+    - a component record says `"output": true`;
+    - only an Output processor takes `ref` of one, and an Output processor takes `ref` of nothing else;
+    - an Input, Update or Constraints processor reads none, refused naming why, since it changes with the frame rate;
+    - it is never saved or hashed.
+
+  **Its order, each its own commit:**
+  1. Output's own state, and the engine's first component, `TextEntry`;
+  2. the `Text` kind end to end, collected while text entry is on;
+  3. typing masks the keyboard;
+  4. the system's key repeat.
