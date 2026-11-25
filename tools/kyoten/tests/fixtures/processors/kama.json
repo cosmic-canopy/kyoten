@@ -8,7 +8,8 @@
   "entry": "src/app.kama",
   "preloadFiles": ["content@/processors/content"],
   "dependencies": {
-    "kyoten": { "path": "../../../../../engine" }
+    "kyoten": { "path": "../../../../../engine" },
+    "glow": { "path": "../glow" }
   },
   "modules": {
     ".": { "visibility": "internal" },

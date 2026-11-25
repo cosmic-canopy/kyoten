@@ -1,17 +1,22 @@
 // Every signature the second pass refuses, and processors whose records it refuses. Each reads `Hp`, so none conflicts
 // with another, but `hitA` and `hitB`, which both write `Armor` with no order between them.
 
-import { kyoten::frame::Time, kyoten::world::Handle, std::math::Vec3 };
+import { kyoten::frame::Time, kyoten::frame::TextEntry, kyoten::world::Handle, std::math::Vec3 };
 
 export { Hp, Armor, Mark, Score, Ghostly, refTime, timeByValue, handleByRef, byValue, notKyoten, notBuilt,
          writesInOutput, returns, both, neither, lost, tooSlow, outputRated, iterates, randomly, sorted, nowhere, loopA,
-         loopB, hitA, hitB, outer, inner, seven, eleven, padInUpdate, schemeBlind };
+         loopB, hitA, hitB, outer, inner, seven, eleven, padInUpdate, schemeBlind, Panel, drawsPanel, readsPanel, setsPanel,
+         readsTyping, Lamp };
 
 type value Hp { public int32 hp = 10; public default ctor make() { } }
 type value Armor { public int32 points = 0; public default ctor make() { } }
 type value Mark { public int32 on = 0; public default ctor make() { } }
 type value Score { public int32 n = 0; public default ctor make() { } }
 type value Ghostly { public int32 n = 0; public default ctor make() { } }
+// Output's own state, `"output": true` in its record (design/input.md § Decided, 2026-11-25, the fifth part's question 3).
+type value Panel { public int32 tab = 0; public default ctor make() { } }
+// It requires glow's world component, which a dependency's records file declares.
+type value Lamp { public int32 on = 0; public default ctor make() { } }
 
 fn void refTime(const ref Hp h, ref Time time) { }
 fn void timeByValue(const ref Hp h, Time time) { }
@@ -41,3 +46,9 @@ fn void seven(const ref Hp h) { }
 fn void padInUpdate(const ref Hp h) { }
 fn void schemeBlind(const ref Hp h) { }
 fn void eleven(const ref Hp h) { }
+// Output writes its own state; no other phase reads or writes it, the engine's `TextEntry` included, whose record is the
+// engine's (a dependency's component record).
+fn void drawsPanel(ref Panel p) { }
+fn void readsPanel(const ref Panel p) { }
+fn void setsPanel(ref Panel p) { }
+fn void readsTyping(const ref TextEntry e) { }

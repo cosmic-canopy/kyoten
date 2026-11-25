@@ -1,6 +1,12 @@
-// A component from a package that is not the engine: the generator finds it by asking kama in glow's own scope.
+// A component from a package that is not the engine: the generator finds it by asking kama in glow's own scope. Its
+// records file is a dependency's, read for its component records alone: `Glow` requires `Spark`, and `Glare` is a world
+// component, which no requirement may name.
 
-export { Glow };
+export { Glow, Spark, Glare };
 
 @generate(Serializable, Deserializable)
 type value Glow { @field public float32 strength = 1; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Spark { @field public int32 n = 3; public default ctor make() { } }
+@generate(Serializable, Deserializable)
+type value Glare { @field public int32 n = 0; public default ctor make() { } }

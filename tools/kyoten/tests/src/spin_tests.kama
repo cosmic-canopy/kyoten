@@ -160,6 +160,16 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
     string wantSchemes = "slot 0 keys 0 pad 0 | slot 1 keys 20 pad 40 | slot 0 keys 0 pad 0 | slot 1 keys 20 pad 40";
     t.verdict(name: "spin: ${leg}: a scheme's Input processor runs over the rows whose player's scheme it names, none for no player",
               why: schemes == wantSchemes ? "" : "schemed `${schemes}`");
+    // Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): `typing` writes the
+    // engine's `TextEntry`, on while `faster` is held, and the next frame finds what the last one wrote; the cube whose
+    // entry names no player, and whose `faster` is never held, stays off.
+    DynamicArray<string> typedLines = linesAfter(text: said, prefix: "typed: ");
+    string typed = "";
+    foreach (const ref string l in typedLines.iterConst()) { typed = typed.isEmpty() ? copy l : typed + " | " + l; }
+    string wantTyped = "slot 0 player 0 was false on false | slot 1 player 1 was false on true | "
+        + "slot 0 player 0 was false on false | slot 1 player 1 was true on true";
+    t.verdict(name: "spin: ${leg}: Output writes its own state, the engine's `TextEntry`, and the next frame finds it",
+              why: typed == wantTyped ? "" : "typed `${typed}`");
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's
@@ -224,6 +234,9 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     erase(path: keptByKama);
     string actionsText = read(path: actions);
     string prefabsText = read(path: prefabs);
+    check(t: t, name: "spin: a dependency's component record is read: glow's `Glow` requires its `Spark`",
+          ok: prefabsText.contains(substring: "// Required by `glow::Glow`.\n    public Spark spark;"),
+          why: "prefabs.kama: " + prefabsText);
     check(t: t, name: "spin: actions.kama and prefabs.kama open with the header",
           ok: actionsText.startsWith(prefix: header) && prefabsText.startsWith(prefix: header),
           why: "no header in: ${actionsText}\n${prefabsText}");

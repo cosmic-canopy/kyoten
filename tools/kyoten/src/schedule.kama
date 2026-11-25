@@ -211,8 +211,8 @@ fn string headOf(const ref string written) {
 // One parameter, classified by the declaration its type resolved to, which kama names (KR-360), or none with a
 // refusal naming the fix.
 unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref string game, const ref Index idx,
-                                   const ref SortedMap<string, bool> world, Phase phase, const ref string label,
-                                   const ref string file, ref Refusals no) {
+                                   const ref SortedMap<string, bool> world, const ref SortedMap<string, bool> ownState,
+                                   Phase phase, const ref string label, const ref string file, ref Refusals no) {
     string written = copy p.type();
     string head = headOf(written: written);
     // A type that resolved to nothing, a primitive or a type parameter keeps its spelling, with no `::`.
@@ -251,8 +251,17 @@ unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref string game
         return Optional::None;
     }
     bool writes = mode == "ref";
-    if (writes && phase == Phase::Output) {
-        no.add(where: file, what: "processor `${label}` is in Output and takes `ref ${written}`: Output reads the simulation and never writes it: write `const ref ${written}`");
+    // Output's own state, a component marked `"output": true`, is Output's alone: it changes with the frame rate, so the
+    // simulation never reads it, and it is the one thing Output writes (web-and-native § Decided, question 3;
+    // design/input.md § Decided, 2026-11-25, the fifth part's question 3).
+    bool own = ownState.contains(key: path);
+    if (own && phase != Phase::Output) {
+        string ph = phaseName(phase: phase);
+        no.add(where: file, what: "processor `${label}` is in ${ph} and takes `${shown}`, which is Output's own state (`\"output\": true`): it changes with the frame rate, so only Output reads or writes it");
+        return Optional::None;
+    }
+    if (writes && phase == Phase::Output && !own) {
+        no.add(where: file, what: "processor `${label}` is in Output and takes `ref ${written}`: Output reads the simulation and never writes it: write `const ref ${written}`; Output writes only its own state, a component marked `\"output\": true`");
         return Optional::None;
     }
     Access kind = world.contains(key: path) ? Access::WorldComponent : Access::TableComponent;
@@ -434,10 +443,11 @@ fn int64 nearestFitting(int64 hz, int64 over) {
     return best;
 }
 
-// One component record: a world component goes into `world`, and what is not built yet is refused.
+// One component record, the game's or a dependency's: a world component goes into `world`, Output's own state into
+// `ownState`, and what is not built yet is refused.
 unsafe fn void componentRecord(const ref string module, const ref string name, const ref ComponentRecord rec,
                                const ref string file, const ref Index idx, ref SortedMap<string, bool> world,
-                               ref Refusals no) {
+                               ref SortedMap<string, bool> ownState, ref Refusals no) {
     string path = inModule(module: module, name: name);
     if (idx.kindAt(path: path) != "value") {
         no.add(where: file, what: "component record `${name}` names no `type value` in module `${module}`: a component record describes a component its module declares");
@@ -448,6 +458,7 @@ unsafe fn void componentRecord(const ref string module, const ref string name, c
         no.add(where: file, what: "component record `${name}` names `${path}`, which its module does not export: add `${bare}` to its file's `export { … }`, since a component is an exported `type value`");
         return;
     }
+    if (rec.output()) { ownState.put(key: copy path, value: true); }
     match (rec.store()) {
         case World: { world.put(key: copy path, value: true); }
         case Side: { no.add(where: file, what: "component `${name}` is stored `Side`, and side stores are not built yet: they come with their row"); }
@@ -550,8 +561,8 @@ fn bool readsActions(const ref DynamicArray<Param> params, const ref Manifest ga
 
 // One processor's signature, each parameter classified by its resolved type; false when anything is refused.
 unsafe fn bool signature(const ref FunctionEntry found, const ref Manifest game, const ref Index idx,
-                         const ref SortedMap<string, bool> world, Phase phase, ref DynamicArray<Param> params,
-                         ref Refusals no) {
+                         const ref SortedMap<string, bool> world, const ref SortedMap<string, bool> ownState, Phase phase,
+                         ref DynamicArray<Param> params, ref Refusals no) {
     bool ok = true;
     if (found.returns() != "void") {
         string label = copy found.path();
@@ -561,8 +572,8 @@ unsafe fn bool signature(const ref FunctionEntry found, const ref Manifest game,
     }
     string gameName = copy game.name();
     foreach (const ref ParamEntry p in found.params().iterConst()) {
-        Optional<Param> made = classify(p: p, game: gameName, idx: idx, world: world, phase: phase, label: found.path(),
-                                        file: found.file(), no: no);
+        Optional<Param> made = classify(p: p, game: gameName, idx: idx, world: world, ownState: ownState, phase: phase,
+                                        label: found.path(), file: found.file(), no: no);
         match (give made) { case Some(value: m): { params.add(item: give m); } case None: { ok = false; } };
     }
     return ok;
@@ -613,12 +624,20 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
                                  ref Refusals no) {
     Schedule s = Schedule.make();
 
-    // The component records: world components, and what is not built yet.
+    // The component records, the game's and its dependencies' (the engine's `TextEntry`): world components, Output's own
+    // state, and what is not built yet.
     SortedMap<string, bool> world = SortedMap.empty();
+    SortedMap<string, bool> ownState = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
         foreach (string c in f.record().components()) {
             componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
-                            idx: idx, world: world, no: no);
+                            idx: idx, world: world, ownState: ownState, no: no);
+        }
+    }
+    foreach (const ref CodeFile f in r.dependencyCode().iterConst()) {
+        foreach (string c in f.record().components()) {
+            componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
+                            idx: idx, world: world, ownState: ownState, no: no);
         }
     }
     DynamicArray<string> worldList = DynamicArray.empty();
@@ -686,8 +705,8 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
             bool ok = processorRecord(key: key, rec: f.record().processors().getRef(key: key), module: module, file: f.file(),
                                       s: s, moduleRate: moduleRate, phase: phase, group: group, hz: hz, no: no);
             DynamicArray<Param> params = DynamicArray.empty();
-            bool typed = signature(found: idx.functions()[at], game: game, idx: idx, world: world, phase: phase,
-                                   params: params, no: no);
+            bool typed = signature(found: idx.functions()[at], game: game, idx: idx, world: world, ownState: ownState,
+                                   phase: phase, params: params, no: no);
             groupOf.put(key: copy path, value: copy group);
             if (!ok || !typed) { continue; }
             Optional<Scheme> scheme = f.record().processors().getRef(key: key).scheme();

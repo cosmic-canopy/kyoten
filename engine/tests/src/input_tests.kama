@@ -7,7 +7,7 @@
 import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
-         kyoten::frame::Clock, kyoten::frame::Scheme };
+         kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry };
 
 export { inputTests, spelled, digitalOf };
 
@@ -132,6 +132,14 @@ fn void poseCases(ref Tally t) {
     Pose p = poseAt(x: 1.0, y: 2.0, z: 3.0);
     bool set = p.position.y == 2.0 && p.orientation.y == 1.0 && p.orientation.w == 0.0;
     t.verdict(name: "Pose: a position and an orientation of its own", why: set ? "" : "a field differs");
+}
+
+// A player's text entry, Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): by
+// default it names no player and is off, so a prefab that lists it types nothing until an Output processor says so.
+fn void textEntryCases(ref Tally t) {
+    TextEntry e = TextEntry.default();
+    t.verdict(name: "TextEntry: names no player and is off by default",
+              why: e.player == 0 && !e.on ? "" : "player ${e.player}, on ${e.on}");
 }
 
 fn void sampleCases(ref Tally t) {
@@ -410,6 +418,7 @@ fn void inputTests(ref Tally t) {
     digitalCases(t: t);
     actionListCases(t: t);
     poseCases(t: t);
+    textEntryCases(t: t);
     sampleCases(t: t);
     handoffCases(t: t);
     valueHandoffCases(t: t);

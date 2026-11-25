@@ -2,6 +2,7 @@
   "lockVersion": 1,
   "packages": {
     "@kama/window": { "source": "path", "path": "../../../../../../kama-window", "dependencies": [] },
+    "glow": { "source": "path", "path": "../glow", "dependencies": [] },
     "kyoten": { "source": "path", "path": "../../../../../engine", "dependencies": ["@kama/window"] }
   }
 }

@@ -1,0 +1,17 @@
+{
+  "name": "lostdep",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "executable",
+  "kama": ">=0.9.886",
+  "description": "a fixture: a dependency whose folder is gone, refused from the records alone, since its component records cannot be read",
+  "entry": "src/app.kama",
+  "dependencies": {
+    "kyoten": { "path": "../../../../../engine" },
+    "nowhere": { "path": "../nowhere" }
+  },
+  "modules": {
+    ".": { "visibility": "internal" },
+    "generated": { "visibility": "internal", "importsOnly": ["kyoten::frame"] }
+  }
+}

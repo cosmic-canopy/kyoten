@@ -34,6 +34,12 @@ unsafe fn void install(ref Tally t, ref Setup s, const ref string game) {
 }
 
 unsafe fn void refusalTests(ref Tally t, ref Setup s) {
+    // A dependency whose kama.json cannot be read (design/input.md § Decided, 2026-11-25, the fifth part's question 3):
+    // its component records cannot be read either, so it is refused, naming it, before kama is asked anything.
+    Ran lost = s.kyoten(command: "generate", game: "lostdep", more: none());
+    ranAs(t: t, name: "lostdep: refused", r: lost, want: 1, says: "");
+    says(t: t, name: "lostdep: a dependency whose kama.json cannot be read is refused, naming it", r: lost,
+         words: allOf(a: "dependency `nowhere`", b: "cannot be read", c: "its component records cannot be read"));
     // Names, refused from the records alone, before kama is asked anything.
     install(t: t, s: s, game: "names");
     eraseDir(path: s.fixture(at: "names/src/generated"));
@@ -163,6 +169,20 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`processors::bad::notBuilt`", b: "`Destroy`", c: "not built yet"));
     says(t: t, name: "processors: a write in Output is refused", r: p,
          words: allOf(a: "`processors::bad::writesInOutput`", b: "Output", c: "never writes"));
+    // Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): Output writes it, and no
+    // other phase reads or writes it, a dependency's included, whose component record is read from the dependency.
+    says(t: t, name: "processors: a write in Output names what Output may write, its own state", r: p,
+         words: allOf(a: "`processors::bad::writesInOutput`", b: "Output writes only its own state", c: "`\"output\": true`"));
+    check(t: t, name: "processors: an Output processor writing its own state is not refused",
+          ok: !p.says(what: "processors::bad::drawsPanel"), why: "refused: " + p.said());
+    says(t: t, name: "processors: an Update processor reading Output's own state is refused, naming why", r: p,
+         words: allOf(a: "`processors::bad::readsPanel` is in Update", b: "Output's own state", c: "frame rate"));
+    says(t: t, name: "processors: an Input processor writing Output's own state is refused", r: p,
+         words: allOf(a: "`processors::bad::setsPanel` is in Input", b: "`ref Panel`", c: "Output's own state"));
+    says(t: t, name: "processors: a dependency's world component, from its records file, is no requirement", r: p,
+         words: allOf(a: "component `Lamp`'s `requires` names `glow::Glare`", b: "a world component", c: ""));
+    says(t: t, name: "processors: a dependency's component record is read: the engine's `TextEntry` is Output's own state", r: p,
+         words: allOf(a: "`processors::bad::readsTyping` is in Update", b: "`const ref TextEntry`", c: "Output's own state"));
     says(t: t, name: "processors: a processor that returns a value is refused", r: p,
          words: allOf(a: "`processors::bad::returns`", b: "returns nothing", c: ""));
     says(t: t, name: "processors: a phase and a group both are refused", r: p,

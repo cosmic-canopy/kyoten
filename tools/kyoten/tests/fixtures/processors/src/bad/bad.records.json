@@ -27,10 +27,16 @@
     "eleven":         { "phase": "Update", "rate": 11 },
     "padInUpdate":    { "phase": "Update", "scheme": "Gamepad" },
     "schemeBlind":    { "phase": "Input", "scheme": "KeyboardMouse" },
+    "drawsPanel":     { "phase": "Output" },
+    "readsPanel":     { "phase": "Update" },
+    "setsPanel":      { "phase": "Input" },
+    "readsTyping":    { "phase": "Update" },
     "missing":        { "phase": "Update" },
     "kyoten::physics::solve": { "phase": "Constraints" } },
   "components": {
     "Score":  { "store": "World" },
     "Mark":   { "store": "Side" },
     "Hp":     { "requires": ["kyoten::world::Transform"] },
-    "Ghost":  { } } }
+    "Ghost":  { },
+    "Panel":  { "output": true },
+    "Lamp":   { "requires": ["glow::Glare"] } } }

@@ -1,0 +1,26 @@
+// kyoten::frame::TextEntry — whether a player is typing (the first slice's step 8, its fifth part, KYR-54;
+// design/input.md § Decided, 2026-11-25, questions 2 to 4). It is Output's own state, `"output": true` in the frame
+// tier's records: an Output processor turns it on when the game wants the player to type, a UI field taking focus or the
+// game's own Output processor reading its simulation's state, and no other phase reads it, since it changes with the
+// frame rate. A game's prefab lists it on whatever entity draws the field: `"TextEntry": { "player": 1 }`.
+//
+// The platform reads every one after each frame:
+// - while one naming a player is on, that player's `Text` actions collect what they type, and the window turns on its
+//   text input, the IME and an on-screen keyboard where there is no physical one (`@kama/window`'s WIN-5);
+// - meanwhile the player's keyboard drives only their `Text` actions and the entries marked `"typing": true`.
+//
+// The field's purpose (text, a number, an email, a password), its longest length, its lines and its box on screen join
+// it with WIN-5, when a platform can use them.
+
+export { TextEntry };
+
+@generate(Serializable, Deserializable)
+type value TextEntry {
+    // The player it is for, numbered from 1; 0 names none, and turns nothing on.
+    @field public int32 player = 0;
+    // Whether that player is typing.
+    @field public bool on = false;
+
+    // Naming no player, and off.
+    public default ctor make() { }
+}

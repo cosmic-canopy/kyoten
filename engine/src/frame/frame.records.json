@@ -1,1 +1,2 @@
-{ "tier": "Frame" }
+{ "tier": "Frame",
+  "components": { "TextEntry": { "output": true, "note": "whether a player is typing: Output's own state, read by the platform after each frame" } } }

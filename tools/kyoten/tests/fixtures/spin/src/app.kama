@@ -8,9 +8,9 @@
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
          kyoten::frame::step, kyoten::frame::Handoff, kyoten::frame::Digital, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
          kyoten::content::LoadRefusals, kyoten::content::readContent, std::collections::DynamicArray,
-         std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow,
+         std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow, glow::Spark,
          spin::cube::Spin, spin::cube::Size, spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering,
-         std::math::Vec2, kyoten::frame::Scheme,
+         std::math::Vec2, kyoten::frame::Scheme, kyoten::frame::TextEntry,
          spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
          spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
@@ -132,11 +132,13 @@ fn uint8 main() {
     int32 player = a.player;
     bool held = a.faster.held;
     CubePrefab c = CubePrefab.of(actions: a, aim: Aim.default(), slowAim: SlowAim.default(), spin: Spin.default(),
-                                 steering: Steering.default(), taps: Taps.default(), transform: Transform.default());
+                                 steering: Steering.default(), taps: Taps.default(), textEntry: TextEntry.default(),
+                                 transform: Transform.default());
     float32 rate = c.spin.rate;
     BigCubePrefab b = BigCubePrefab.of(actions: a, aim: Aim.default(), glow: Glow.default(), size: Size.default(),
-                                       slowAim: SlowAim.default(), spin: Spin.default(), steering: Steering.default(),
-                                       taps: Taps.default(), transform: Transform.default());
+                                       slowAim: SlowAim.default(), spark: Spark.default(), spin: Spin.default(),
+                                       steering: Steering.default(),
+                                       taps: Taps.default(), textEntry: TextEntry.default(), transform: Transform.default());
     float32 by = b.size.by;
     float32 strength = b.glow.strength;
     bool differ = CubePrefabId.fastCube() != CubePrefabId.default();
@@ -151,14 +153,17 @@ fn uint8 main() {
     two.rate = 2;
     Actions calm = Actions.forPlayer(player: 0);
     Actions pressed = Actions.forPlayer(player: 1);
+    // Player 1's text entry, Output's own state, which `typing` turns on while `faster` is held (the fifth part of step 8).
+    TextEntry typist = TextEntry.default();
+    typist.player = 1;
     Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, aim: Aim.default(),
                                                                    slowAim: SlowAim.default(), spin: two,
                                                                    steering: Steering.default(), taps: Taps.default(),
-                                                                   transform: Transform.default()));
+                                                                   textEntry: TextEntry.default(), transform: Transform.default()));
     Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, aim: Aim.default(),
                                                                      slowAim: SlowAim.default(), spin: two,
                                                                      steering: Steering.default(), taps: Taps.default(),
-                                                                     transform: Transform.default()));
+                                                                     textEntry: typist, transform: Transform.default()));
     int32 baseHz = GameWorld::baseHz;
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
     Handoff input = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());

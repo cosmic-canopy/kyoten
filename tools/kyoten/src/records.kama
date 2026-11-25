@@ -10,7 +10,7 @@ import { kyoten::records::ModuleRecord, kyoten::records::ActionRecord, kyoten::r
          kyoten::content::ContentFile, kyoten::content::notMainLayer, std::collections::DynamicArray,
          std::collections::SortedMap, std::io::IoError, std::memory::Owned, std::fs::readText,
          std::serialization::text::json::JsonDeserializer, std::serialization::text::json::JsonValue,
-         Manifest, Refusals, filesUnder, dirOf, nameProblem };
+         Manifest, Dependency, readManifest, Refusals, filesUnder, dirOf, nameProblem };
 
 export { Records, PrefabDecl, CodeFile, readRecords };
 
@@ -68,6 +68,7 @@ type resource CodeFile {
 
 type resource Records {
     DynamicArray<CodeFile> codeFiles = DynamicArray.empty();
+    DynamicArray<CodeFile> depCodeFiles = DynamicArray.empty();
     SortedMap<string, string> actionModules = SortedMap.empty();
     SortedMap<string, string> actionFiles = SortedMap.empty();
     SortedMap<string, ActionKind> kindsByAction = SortedMap.empty();
@@ -79,7 +80,7 @@ type resource Records {
     string sceneFirst = "";
     string sceneFirstFile = "";
 
-    friend readRecords[codeFiles, kindsByAction, addAction, addContent, crossCheck];
+    friend readRecords[codeFiles, depCodeFiles, kindsByAction, addAction, addContent, crossCheck];
 
     public ctor make() { }
 
@@ -99,6 +100,10 @@ type resource Records {
     public const fn const ref string firstSceneFile() { return this.sceneFirstFile; }
     // Every module's records files, in the order of their paths.
     public const fn const ref DynamicArray<CodeFile> code() { return this.codeFiles; }
+    // Each dependency's records files that hold component records, each named from its dependency (`kyoten:
+    // src/frame/frame.records.json`), read for those alone: a component a dependency declares, as the engine's
+    // `TextEntry`, is held to its record as the game's own are. Their processors, groups and actions are their package's.
+    public const fn const ref DynamicArray<CodeFile> dependencyCode() { return this.depCodeFiles; }
 
     unsafe fn void addAction(const ref string name, const ref string module, const ref string file, ActionKind kind,
                              bool delta, ref Refusals no) {
@@ -280,6 +285,28 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
         }
         if (!game.isLibrary() && module == game.name() && refusedInRoot(record: m, file: file, no: no)) { continue; }
         r.codeFiles.add(item: CodeFile.of(module: copy module, file: copy file, record: give m));
+    }
+    // Each dependency's component records (design/input.md § Decided, 2026-11-25, the fifth part's question 3).
+    foreach (const ref Dependency d in game.deps().iterConst()) {
+        string dep = copy d.name();
+        string unread = "";
+        Optional<Manifest> read = readManifest(path: d.root() + "/kama.json", why: unread);
+        match (give read) {
+            case Some(value: dm): {
+                DynamicArray<string> depSources = filesUnder(dir: dm.sourceDir());
+                foreach (const ref string rel in depSources.iterConst()) {
+                    if (!rel.endsWith(suffix: ".records.json")) { continue; }
+                    string file = dep + ": src/" + rel;
+                    ModuleRecord m = ModuleRecord.make();
+                    string why = mergeFile(path: dm.root() + "/src/" + rel, into: m);
+                    if (!why.isEmpty()) { no.add(where: file, what: why); continue; }
+                    if (m.components().length() == 0) { continue; }
+                    r.depCodeFiles.add(item: CodeFile.of(module: dm.moduleOf(folder: dirOf(path: rel)), file: give file,
+                                                         record: give m));
+                }
+            }
+            case None: { no.add(where: "kama.json", what: "dependency `${dep}`: ${unread}, so its component records cannot be read"); }
+        };
     }
     // A `Vector2` or `Vector3` action is std::math's `Vec2` or `Vec3` in the generated `Actions`, which the game's
     // `generated` module must be allowed to import (design/input.md § Decided, 2026-11-23).

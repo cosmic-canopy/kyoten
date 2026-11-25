@@ -1,0 +1,3 @@
+// A game whose dependency `nowhere` is gone: the generator refuses it before kama is asked anything.
+
+fn uint8 main() { return 0; }

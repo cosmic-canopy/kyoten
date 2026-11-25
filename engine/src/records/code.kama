@@ -79,6 +79,7 @@ type resource ComponentRecord {
     @field(name: "blend", default) Blend blendField = Blend::Snap;
     @field(name: "history", default) int32 historyField = 0;
     @field(name: "saved", default) bool savedField = true;
+    @field(name: "output", default) bool outputField = false;
     @field(name: "requires", default) DynamicArray<string> requiresField = DynamicArray.empty();
     @field(name: "combine") Optional<Combine> combineField = Optional::None;
     @field(name: "note", default) string noteField = "";
@@ -89,8 +90,12 @@ type resource ComponentRecord {
     public const fn Blend blend() { return this.blendField; }
     // How many past steps are kept, in steps.
     public const fn int32 history() { return this.historyField; }
-    // False: rebuilt for display, never saved.
-    public const fn bool saved() { return this.savedField; }
+    // False: rebuilt for display, never saved. Output's own state is never saved, whatever its record says.
+    public const fn bool saved() { return this.savedField && !this.outputField; }
+    // True: Output's own state (web-and-native § Decided, question 3; design/input.md § Decided, 2026-11-25, the fifth
+    // part's question 3), which only an Output processor writes and no other phase reads, since it changes with the
+    // frame rate: a UI's open tab, a player's text entry.
+    public const fn bool output() { return this.outputField; }
     // Components added with their defaults wherever this one is, by kama path where two share a name.
     public const fn const ref DynamicArray<string> requires() { return this.requiresField; }
     // Needed by a component sent with `Send<C>`.

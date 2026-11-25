@@ -2,10 +2,11 @@
 // bit, so the tool's tests can compare them with the same turns made by hand; and, the first slice's step 8, what
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, spin::cube::Spin,
+import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
+         spin::cube::Spin,
          spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering, spin::generated::Actions };
 
-export { show, seen, aimed, schemed };
+export { show, seen, aimed, schemed, typing };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -45,4 +46,16 @@ fn void schemed(const ref Steering s, Handle me) {
     int32 keys = s.keys;
     int32 pad = s.pad;
     println(s: "schemed: slot ${slot} keys ${keys} pad ${pad}");
+}
+
+// Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): the engine's `TextEntry`,
+// which Output writes and keeps from one frame to the next, here on while `faster` is held. It prints what the frame
+// before left and what this one writes.
+fn void typing(ref TextEntry e, const ref Actions input, Handle me) {
+    uint32 slot = me.slot();
+    int32 player = e.player;
+    bool was = e.on;
+    e.on = input.faster.held;
+    bool now = e.on;
+    println(s: "typed: slot ${slot} player ${player} was ${was} on ${now}");
 }

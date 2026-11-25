@@ -154,9 +154,20 @@ unsafe fn void resolveOwn(const ref Records r, const ref Index idx, ref SortedMa
 // What each component record requires, by the full path of the component whose record it is, resolved. Refused: a
 // world component that requires anything, since no entity holds it; a requirement that does not resolve; and one that
 // names a world component, which the world holds once rather than each entity.
+// The game's component records and its dependencies' are read alike (the engine's `TextEntry`).
 unsafe fn SortedMap<string, DynamicArray<string>> requirements(const ref Records r, const ref Index idx, ref Refusals no) {
     SortedMap<string, bool> world = SortedMap.empty();
-    foreach (const ref CodeFile f in r.code().iterConst()) {
+    worldIn(files: r.code(), world: world);
+    worldIn(files: r.dependencyCode(), world: world);
+    SortedMap<string, DynamicArray<string>> made = SortedMap.empty();
+    requiredIn(files: r.code(), idx: idx, world: world, made: made, no: no);
+    requiredIn(files: r.dependencyCode(), idx: idx, world: world, made: made, no: no);
+    return made;
+}
+
+// The world components these records files declare, into `world`.
+fn void worldIn(const ref DynamicArray<CodeFile> files, ref SortedMap<string, bool> world) {
+    foreach (const ref CodeFile f in files.iterConst()) {
         foreach (string c in f.record().components()) {
             match (f.record().components().getRef(key: c).store()) {
                 case World: { world.put(key: inModule(module: f.module(), name: c), value: true); }
@@ -164,8 +175,12 @@ unsafe fn SortedMap<string, DynamicArray<string>> requirements(const ref Records
             };
         }
     }
-    SortedMap<string, DynamicArray<string>> made = SortedMap.empty();
-    foreach (const ref CodeFile f in r.code().iterConst()) {
+}
+
+// What each component record in these files requires, resolved, into `made`.
+unsafe fn void requiredIn(const ref DynamicArray<CodeFile> files, const ref Index idx, const ref SortedMap<string, bool> world,
+                          ref SortedMap<string, DynamicArray<string>> made, ref Refusals no) {
+    foreach (const ref CodeFile f in files.iterConst()) {
         foreach (string c in f.record().components()) {
             DynamicArray<string> wanted = copy f.record().components().getRef(key: c).requires();
             if (wanted.length() == 0) { continue; }
@@ -188,7 +203,6 @@ unsafe fn SortedMap<string, DynamicArray<string>> requirements(const ref Records
             made.put(key: give path, value: give resolved);
         }
     }
-    return made;
 }
 
 // A prefab's listed components, by full path, sorted: its base's, with its own added and its `null`s dropped.
