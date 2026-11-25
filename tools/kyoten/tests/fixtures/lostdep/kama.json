@@ -4,11 +4,12 @@
   "license": "MIT OR Apache-2.0",
   "kind": "executable",
   "kama": ">=0.9.886",
-  "description": "a fixture: a dependency whose folder is gone, refused from the records alone, since its component records cannot be read",
+  "description": "a fixture: a dependency whose folder is gone, and one whose records file is misspelt, each refused from the records alone",
   "entry": "src/app.kama",
   "dependencies": {
     "kyoten": { "path": "../../../../../engine" },
-    "nowhere": { "path": "../nowhere" }
+    "nowhere": { "path": "../nowhere" },
+    "misread": { "path": "../misread" }
   },
   "modules": {
     ".": { "visibility": "internal" },

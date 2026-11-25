@@ -1934,7 +1934,7 @@ type resource Binder implements InputSource {
             }
             match (b.keyboard()) {
                 case Some(value: e): {
-                    if (e.isObject() || e.names().length() != 1 || e.names()[0] != "Text") {
+                    if (e.names().length() != 1 || e.names()[0] != "Text") {
                         no.add(line: "the keyboard binding of `" + name + "` binds a `Text` action, which reads the keyboard's typed text alone, with no filter or gesture: write `\"keyboard\": \"Text\"`");
                     } else {
                         this.textBound[cast<isize>(index)] = true;

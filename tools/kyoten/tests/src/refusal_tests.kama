@@ -40,6 +40,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
     ranAs(t: t, name: "lostdep: refused", r: lost, want: 1, says: "");
     says(t: t, name: "lostdep: a dependency whose kama.json cannot be read is refused, naming it", r: lost,
          words: allOf(a: "dependency `nowhere`", b: "cannot be read", c: "its component records cannot be read"));
+    says(t: t, name: "lostdep: a dependency's records file that does not read is refused, naming the dependency's file", r: lost,
+         words: allOf(a: "misread: src/misread.records.json", b: "`colour`", c: ""));
     // Names, refused from the records alone, before kama is asked anything.
     install(t: t, s: s, game: "names");
     eraseDir(path: s.fixture(at: "names/src/generated"));

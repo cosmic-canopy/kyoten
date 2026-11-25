@@ -1,0 +1,11 @@
+{
+  "name": "misread",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "kind": "library",
+  "kama": ">=0.9.886",
+  "description": "a fixture: a dependency whose records file names a key no records file has, which a game depending on it refuses, naming the file",
+  "modules": {
+    ".": { "visibility": "public", "importsOnly": [] }
+  }
+}

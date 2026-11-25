@@ -1,0 +1,6 @@
+// A dependency whose records file is misspelt: `colour` is no key of a records file.
+
+export { Lamp };
+
+@generate(Serializable, Deserializable)
+type value Lamp { @field public int32 on = 0; public default ctor make() { } }
