@@ -177,6 +177,67 @@ fn void textCases(ref Tally t) {
                got: textStep(b: odd, step: 0, until: 100, action: 0), want: "b");
 }
 
+// Typing holds the keyboard back (the fifth part's question 4): while player 1's text entry is on, a key bound to an
+// action not marked `typing` drives nothing, a value's keys included; one marked does; a pad drives as ever; a key held
+// when it turns on lets go then, and one still held when it turns off waits for its next press.
+fn void typingCases(ref Tally t) {
+    string json = "{ \"faster\": { \"keyboard\": \"KeyW\", \"gamepad\": \"South\" }, \"jump\": { \"keyboard\": { \"control\": \"Enter\", \"typing\": true } }, \"move\": { \"keyboard\": { \"up\": \"KeyW\", \"down\": \"KeyS\", \"left\": \"KeyA\", \"right\": \"KeyD\" } }, \"throttle\": { \"keyboard\": { \"positive\": \"ArrowUp\", \"negative\": \"ArrowDown\", \"typing\": true } } }";
+    Binder b = binderFor(json: json);
+    hand(b: b, s: key(control: 26, down: true, at: 10));
+    hand(b: b, s: key(control: 40, down: true, at: 20));
+    expectStep(t: t, b: b, step: 0, until: 100, name: "typing: before it, a key drives its action", want: "HP-");
+    b.textEntry(player: 1, on: true, at: 150);
+    string letGo = "";
+    string kept = "";
+    borrow b.handoff(index: 1, until: 200) as h {
+        letGo = spelled(d: h.digital(player: 1, action: 0));
+        kept = spelled(d: h.digital(player: 1, action: 1));
+    }
+    expectText(t: t, name: "typing: a key held when the entry turns on lets go then", got: letGo, want: "--R");
+    expectText(t: t, name: "typing: a key marked `typing` held then stays held", got: kept, want: "H--");
+    hand(b: b, s: key(control: 40, down: false, at: 205));
+    Vec2 still = b.handoff(index: 2, until: 300).vector2(player: 1, action: 0);
+    t.verdict(name: "typing: a value's key held then lets go too", why: still.y == 0.0 ? "" : "move ${still.y}");
+    hand(b: b, s: key(control: 26, down: false, at: 310));
+    hand(b: b, s: key(control: 26, down: true, at: 320));
+    hand(b: b, s: key(control: 40, down: true, at: 330));
+    hand(b: b, s: key(control: 82, down: true, at: 340));
+    string w = "";
+    string enter = "";
+    Vec2 moved = Vec2.zero();
+    float32 throttle = 0.0;
+    borrow b.handoff(index: 3, until: 400) as h {
+        w = spelled(d: h.digital(player: 1, action: 0));
+        enter = spelled(d: h.digital(player: 1, action: 1));
+        moved = h.vector2(player: 1, action: 0);
+        throttle = h.analog(player: 1, action: 0);
+    }
+    t.verdict(name: "typing: a value's keys marked `typing` drive it", why: throttle == 1.0 ? "" : "throttle ${throttle}");
+    expectText(t: t, name: "typing: a key not marked drives nothing while the player types", got: w, want: "---");
+    expectText(t: t, name: "typing: a key marked `typing` drives its action", got: enter, want: "HP-");
+    t.verdict(name: "typing: a value's keys drive nothing while the player types", why: moved.y == 0.0 ? "" : "move ${moved.y}");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 1.0, at: 410));
+    expectStep(t: t, b: b, step: 4, until: 500, name: "typing: a pad drives as ever", want: "HP-");
+    hand(b: b, s: pad(slot: 0, control: 0, value: 0.0, at: 510));
+    expectStep(t: t, b: b, step: 5, until: 550, name: "typing: and lets go as ever", want: "--R");
+    b.textEntry(player: 1, on: false, at: 600);
+    expectStep(t: t, b: b, step: 6, until: 700, name: "typing: a key held through it waits for its next press", want: "---");
+    hand(b: b, s: key(control: 26, down: false, at: 710));
+    hand(b: b, s: key(control: 26, down: true, at: 720));
+    expectStep(t: t, b: b, step: 7, until: 800, name: "typing: after it, a key drives its action again", want: "HP-");
+    Binder padHeld = binderFor(json: "{ \"faster\": { \"gamepad\": \"South\" } }");
+    hand(b: padHeld, s: pad(slot: 0, control: 0, value: 1.0, at: 10));
+    expectStep(t: t, b: padHeld, step: 0, until: 100, name: "typing: a pad pressed before it", want: "HP-");
+    padHeld.textEntry(player: 1, on: true, at: 150);
+    expectStep(t: t, b: padHeld, step: 1, until: 200, name: "typing: a pad held when the entry turns on stays held", want: "H--");
+    expectRefused(t: t, name: "typing: a pad's entry marked `typing` is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"typing\": true } } }",
+                  says: "the gamepad binding of `faster` is marked `typing`, which only a keyboard entry is");
+    expectRefused(t: t, name: "typing: a mouse's value entry marked `typing` is refused",
+                  json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"typing\": true } } }",
+                  says: "the mouse binding of `look` is marked `typing`, which only a keyboard entry is");
+}
+
 // 100 code points typed at once, a paste or an IME's word, into a world keeping `window`'s steps: each step's text, its
 // length a letter (A for 64, digits for fewer), until all 100 are handed.
 fn string spread(int32 window, int64 steps) {
@@ -1964,6 +2025,7 @@ fn void interruptibleCases(ref Tally t) {
 }
 
 fn void binderTests(ref Tally t) {
+    typingCases(t: t);
     textCases(t: t);
     spreadCases(t: t);
     textRefusalCases(t: t);

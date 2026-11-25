@@ -386,10 +386,42 @@ fn void recordsTests(ref Tally t) {
     sceneRefusals(t: t);
     content(t: t);
     bindingEntries(t: t);
+    typingEntries(t: t);
 }
 
 // A binding's entry for each device (design/input.md § Decided, question 2): a control's name, a list of them, or an
 // object, and a layer's entry replacing that device's alone.
+// An entry marked to drive its action while its player types (design/input.md § Decided, 2026-11-25, the fifth part's
+// question 4): an object's `"typing": true`, false where unwritten; a value that is no boolean refused, where it is.
+fn void typingEntries(ref Tally t) {
+    ContentFile c = ContentFile.make();
+    string why = mergeContent(c: c, src: "{ \"bindings\": { \"submit\": { \"keyboard\": { \"control\": \"Enter\", \"typing\": true } }, \"faster\": { \"keyboard\": { \"control\": \"KeyW\" } } } }");
+    if (why.isEmpty()) {
+        bool submit = typingOf(o: c.bindings().getRef(key: "submit").keyboard());
+        bool faster = typingOf(o: c.bindings().getRef(key: "faster").keyboard());
+        bool control = hasPart(o: c.bindings().getRef(key: "submit").keyboard(), part: "control");
+        if (!submit || faster) { why = "submit ${submit}, faster ${faster}"; }
+        else if (!control || hasPart(o: c.bindings().getRef(key: "submit").keyboard(), part: "typing")) { why = "its parts are not `control` alone: `typing` is no part"; }
+    }
+    t.verdict(name: "records: an entry marked `typing` says so, and one unmarked does not", why: why);
+    ContentFile n = ContentFile.make();
+    string bad = mergeContent(c: n, src: "{ \"bindings\": { \"submit\": { \"keyboard\": { \"control\": \"Enter\", \"typing\": \"yes\" } } } }");
+    refused(t: t, name: "records: a `typing` that is no boolean is refused, where it is", why: bad,
+            want: "`bindings.submit.keyboard.typing`");
+    ContentFile d = ContentFile.make();
+    string twice = mergeContent(c: d, src: "{ \"bindings\": { \"submit\": { \"keyboard\": { \"control\": \"Enter\", \"typing\": true, \"typing\": false } } } }");
+    refused(t: t, name: "records: `typing` written twice is refused, where it is", why: twice,
+            want: "`bindings.submit.keyboard.typing`");
+}
+
+fn bool hasPart(const ref Optional<ControlEntry> o, const ref string part) {
+    return match (o) { case Some(value: e): e.parts().contains(key: part); case None: false; };
+}
+
+fn bool typingOf(const ref Optional<ControlEntry> o) {
+    return match (o) { case Some(value: e): e.typing(); case None: false; };
+}
+
 fn void bindingEntries(ref Tally t) {
     ContentFile c = ContentFile.make();
     string why = mergeContent(c: c, src: "{ \"bindings\": { \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyW\"], \"gamepad\": \"RightShoulder\", \"mouse\": { \"control\": \"Left\", \"gestures\": [ { \"multiTap\": 2 } ] } } } }");

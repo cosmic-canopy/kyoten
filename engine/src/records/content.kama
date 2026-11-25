@@ -83,6 +83,9 @@ type resource BindingRecord {
 //   the filters, each an object of one key naming the gesture: `{ "hold": 0.5 }`, `{ "multiTap": { "count": 3 } }`. A
 //   gesture or a parameter misspelt is refused here, naming every one, so the `kyoten` tool refuses it at build; a time
 //   out of its range is the binder's to refuse, at load, naming the action.
+// - **`typing`** (the fifth part, design/input.md § Decided, 2026-11-25, question 4): `true` on a keyboard entry that
+//   drives its action while its player types, an erase, a submit or a cancel; every other keyboard entry is held back
+//   meanwhile. False where unwritten.
 type resource ControlEntry implements Deserializable<This> {
     DynamicArray<string> namesField = DynamicArray.empty();
     bool listedField = false;
@@ -96,6 +99,8 @@ type resource ControlEntry implements Deserializable<This> {
     DynamicArray<FilterRecord> filtersField = DynamicArray.empty();
     DynamicArray<float32> pointsField = DynamicArray.empty();
     bool filtersRead = false;
+    bool typingField = false;
+    bool typingRead = false;
 
     public ctor Result<ControlEntry, Owned<Error>> deserialize(Deserializer r) {
         ValueKind k = r.peekKind();
@@ -180,6 +185,16 @@ type resource ControlEntry implements Deserializable<This> {
                         if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "filters")); }
                         continue;
                     }
+                    if (part == "typing") {
+                        if (this.typingRead) {
+                            r.duplicateKey();
+                            if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "typing")); }
+                        }
+                        this.typingRead = true;
+                        this.typingField = r.readBool();
+                        if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "typing")); }
+                        continue;
+                    }
                     if (this.partsField.contains(key: part)) {
                         r.duplicateKey();
                         if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: give part)); }
@@ -226,6 +241,8 @@ type resource ControlEntry implements Deserializable<This> {
     public const fn const ref DynamicArray<FilterRecord> filters() { return this.filtersField; }
     // Every curve's points, in pairs (in, out): a curve's are `curvePoints()[pointsFrom]` up to `[pointsTo]`.
     public const fn const ref DynamicArray<float32> curvePoints() { return this.pointsField; }
+    // Whether it drives its action while its player types: an object's `"typing": true`.
+    public const fn bool typing() { return this.typingField; }
 }
 
 // What a filter does to a value (design/input.md § Decided, 2026-11-23, the third part).

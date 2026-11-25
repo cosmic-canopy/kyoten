@@ -74,6 +74,11 @@
 //   the moment it turned on, so the key that opened the field is not typed into it; what is typed while it is off is
 //   dropped. A step hands at most what keeps every window of the steps the world keeps within a `Text`'s capacity, and
 //   the rest waits, in order, for the steps after: a paste or an IME's word loses nothing.
+// - **Typing holds the keyboard back** (the fifth part's question 4): while player 1's text entry is on, their keyboard
+//   drives only their `Text` actions and the entries marked `"typing": true` (an erase, a submit, a cancel), a value's
+//   keys included; the mouse and the pads drive as ever. Turning the entry on lets go of every other keyboard control
+//   held, as a focus change does, so a key held then does not stick; one still held when it turns off waits for its
+//   next press. Only a keyboard entry may be marked `typing`.
 // - **Output's newest** (`newest`, frame-phases § Decided: "presentation reads, such as camera look, take the newest
 //   sample each frame"): every sample taken so far applied, each state as of the newest, each delta since Output's last
 //   frame at the frame's seconds, whether or not a step took them. In a frame that owes no step the samples are applied
@@ -215,6 +220,8 @@ type value Bound {
     public float32 release = 1.0;
     // A press a chord or a sequence took for itself, which this control does not see until it lets go.
     public bool hidden = false;
+    // An entry marked `"typing": true`'s, which drives its action while its player types.
+    public bool typing = false;
 
     public ctor make(Device device, int32 control) {
         this.device = device;
@@ -249,6 +256,8 @@ type value Source {
     public bool hidden = false;
     // The value entry whose chord gates it, -1 for none.
     public isize gate = -1;
+    // An entry marked `"typing": true`'s, which drives its value while its player types.
+    public bool typing = false;
 
     public ctor make(Device device, SampleKind kind, int32 control, bool flip) {
         this.device = device;
@@ -552,6 +561,24 @@ type resource Binder implements InputSource {
         this.typingWas = this.typingNow;
         this.typingNow = on;
         this.switchedAt = at;
+        if (on) { this.holdBack(t: at); }
+    }
+
+    // Every keyboard control and source no entry marked `typing` reads let go at `t`, as a focus change lets keys go:
+    // player 1 began to type, and their keyboard drives only their `Text` actions and those entries meanwhile.
+    fn void holdBack(int64 t) {
+        this.advance(to: t);
+        isize i = 0;
+        while (i < this.controls.length()) {
+            if (this.controls[i].device == Device::Keyboard && !this.controls[i].typing) { this.controls[i].on = false; }
+            i = i + 1;
+        }
+        i = 0;
+        while (i < this.sources.length()) {
+            if (this.sources[i].device == Device::Keyboard && !this.sources[i].typing) { this.sources[i].value = 0.0; }
+            i = i + 1;
+        }
+        this.settle(t: t);
     }
 
     // Whether player 1's text entry was on at `t`.
@@ -831,10 +858,11 @@ type resource Binder implements InputSource {
             this.schemeNow = Scheme::KeyboardMouse;
         }
         if (on) { this.maskFor(s: s); }
+        bool heldBack = s.device == Device::Keyboard && this.typingAt(t: s.at);
         isize i = 0;
         while (i < this.controls.length()) {
             if (this.controls[i].device == s.device && this.controls[i].kind == SampleKind::Control && this.controls[i].control == s.control) {
-                this.controls[i].on = on && !this.controls[i].hidden;
+                this.controls[i].on = on && !this.controls[i].hidden && !(heldBack && !this.controls[i].typing);
                 if (!on) { this.controls[i].hidden = false; }
             }
             i = i + 1;
@@ -889,7 +917,8 @@ type resource Binder implements InputSource {
                 float32 v = s.value;
                 if (s.kind == SampleKind::Control) {
                     bool down = s.value >= Gamepad::PressedAt;
-                    v = down && !src.hidden ? 1.0 : 0.0;
+                    bool heldBack = s.device == Device::Keyboard && !src.typing && this.typingAt(t: s.at);
+                    v = down && !src.hidden && !heldBack ? 1.0 : 0.0;
                     if (!down) { this.sources[i].hidden = false; }
                 }
                 if (src.flip) { v = -v; }
@@ -1864,6 +1893,15 @@ type resource Binder implements InputSource {
                 made.gestureFrom = this.gestures.length();
                 bool kept = this.takeGestures(entry: e, at: this.digitalEntries.length(), device: device, whose: whose, no: no);
                 made.gestureTo = this.gestures.length();
+                if (e.typing()) {
+                    if (device != Device::Keyboard) {
+                        no.add(line: whose + " is marked `typing`, which only a keyboard entry is: while a player types, their keyboard alone is held back");
+                        kept = false;
+                    } else {
+                        isize c = first;
+                        while (c < this.controls.length()) { this.controls[c].typing = true; c = c + 1; }
+                    }
+                }
                 if (kept) { this.digitalEntries.add(item: made); }
             }
         };
@@ -2051,6 +2089,14 @@ type resource Binder implements InputSource {
                 while (gated < made.firsts[6]) {
                     this.sources[gated].gate = this.entries.length();
                     gated = gated + 1;
+                }
+                if (e.typing()) {
+                    if (device != Device::Keyboard) {
+                        no.add(line: whose + " is marked `typing`, which only a keyboard entry is: while a player types, their keyboard alone is held back");
+                        return;
+                    }
+                    isize s = first;
+                    while (s < made.firsts[6]) { this.sources[s].typing = true; s = s + 1; }
                 }
                 this.entries.add(item: made);
             }
