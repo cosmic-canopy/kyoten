@@ -6,8 +6,10 @@ are decided and the part built (2026-11-23, below): every kind but `Text`, delta
 its time, the mouse's motion, each player's active scheme, and Output's newest sample. Question 4's lock-in was tried
 with two real pads (2026-11-23). The third part, filters, is decided and built (2026-11-23, below): every filter the
 peers offer that a device kyoten reads can drive, a default dead zone on every stick and trigger, its values in the
-engine's `input` record, and a stick's directions as controls, with a press point and a lower release point. What the
-peers and the owner's games do is [../research/input.md](../research/input.md).
+engine's `input` record, and a stick's directions as controls, with a press point and a lower release point. The fourth
+part's three questions, gestures, are decided (2026-11-24, below): a `Digital`'s `progress`, a chord's modifiers and a
+sequence's steps naming a control or an action, and a chord masking its control's plain binding. What the peers and the
+owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
 
@@ -407,7 +409,114 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
     - commit 3, 38 of 38: two once the right stick's cases pushed the left stick the other way, and one rewritten so
       kama compiles it.
 
-  **Next, KYR-54's later parts, each asked when it comes:** gestures (a hold, a tap, a double tap, a chord, a sequence,
-  and a menu's repeat), `Text`, the cursor's position as a control, the game letting go of the lock, a player's
-  settings reaching the filters (Lyra's settings-driven modifiers, Unity's binding overrides), a game's own filters, and
-  how a higher layer merges an object entry.
+- **2026-11-24, the owner, the fourth part's three questions** (gestures), laid out from the code (the binder, the
+  bindings record, the samples, `@kama/window`'s events) and from what the peers and the owner's games do
+  ([../research/input.md](../research/input.md) § Gestures), and asked in full at the forty-ninth session's start. Each
+  was answered "A (Recommended)".
+  1. **(A): a `Digital` carries its gesture's progress, `progress`, from 0 to 1.**
+     - *The problem:* `"skip": { "gamepad": { "control": "South", "gestures": [ { "hold": 1.0 } ] } }` skips a
+       cutscene on `skip.pressed`, and the cutscene draws a ring filling while South is held. A `Digital` said held,
+       pressed and released, and nothing of how far the hold had come.
+     - **`progress` is how far the gesture under way has come:**
+       - a hold's or a long tap's time, a multi-tap's taps, a sequence's steps;
+       - 1 while the action is on, and 0 while it is off.
+     - **It is in each step's hand-off, and so in the recorded log:**
+       - a replay draws the same ring;
+       - a player's longer hold moves the ring with it.
+     - Unity's `GetTimeoutCompletionPercentage()` and Unreal's `GetElapsedTime()` are the same idea.
+     - *Set aside:*
+       - (B) the progress as an `Analog` bound to the same control with the same gesture: two bindings that must agree;
+       - (C) none: a game times `held` itself, as the-mallow-man's chores do, and the time then lives in the content
+         and the code alike.
+  2. **(A): a chord's modifiers and a sequence's steps name a control or another action.**
+     - *The problem:* Ctrl+S saves, and LB+South on the pad; the-mallow-man's restart is R while the action SPRINT is
+       held (`game/src/roundplay.kama` 706-707). The peers split: Unity, leafwing, Steam and FFD name controls, and
+       Unreal's chord and combo name actions.
+     - **A control** may be any of the scheme's devices':
+       - a mouse entry's chord may name a key (Ctrl+click);
+       - kyoten's own `Shift`, `Control`, `Alt` and `Meta` each mean either side;
+       - several controls named must all be held.
+     - **An action**, `{ "action": "sprint" }`, is held as its own bindings hold it, on any device, so rebinding it
+       moves every chord that names it. A cycle of actions naming each other is refused at load.
+     - **A sequence's steps** take either form too: `{ "sequence": { "steps": ["DpadDown", "DpadRight"], "within":
+       0.25 } }`, followed by the entry's own control.
+     - *Set aside:*
+       - (B) controls only, where a rebound modifier must be found in every chord;
+       - (C) actions only, where every modifier must be declared as an action.
+  3. **(A): a chord masks its control's plain binding, by default.**
+     - *The problem:* with `save` on Ctrl+S and `moveBack` on S, if `moveBack` sees S, saving nudges the character back.
+     - **While a chord's modifiers are held, a press of its control goes to the chord alone.**
+       - Every other binding of that control on the scheme that lacks those modifiers sees nothing of it, a value's
+         key part included. A sequence's last press is masked alike.
+       - FFD's bare D-pad fires only when no bumper or gate is held (`game/src/game.kama` 2928-2934).
+       - Unreal's ChordBlocker is "automatically instantiated to block mappings that are masked by a … chord".
+       - leafwing's default is `PrioritizeLongest`.
+     - **The modifiers are pressed first.** A control already held keeps what it pressed, so S held and then Ctrl
+       keeps moving back and saves nothing.
+     - **The modifier's own bindings keep firing:** a crouch on Ctrl stays on. This is Steam's rule ("Other bindings
+       for the chorded button will continue to fire"), where leafwing's drops them.
+     - **`"masks": false`** on a chord lets both fire.
+     - *Set aside:*
+       - (B) no masking, Unity's default: its input consumption shipped on in 1.4 and was "temporarily moved here as an
+         opt-in feature, while it's issues are investigated" (`InputSettings.cs` 781, 1.11.2);
+       - (C) masking opt-in.
+
+  **The fourth part, laid out, settled by the decided rules, for the owner to object to:**
+  - **Gestures are a list on a device's entry, applied in the order written, after its filters.**
+    - Each reads the on and off of the one before it, and the first reads the entry's controls, after any `threshold`.
+    - Each is an object of one key, its value a number or an object of parameters.
+    - A misspelt gesture or parameter is refused with every name listed, at load and by the `kyoten` tool at build.
+    - A number out of its range is refused at load, naming the action.
+  - **Built, every gesture the peers offer that a device kyoten reads can drive:**
+    - `hold`: on once held for its time, until let go (Unity's Hold, Unreal's Hold, Steam's Long Press);
+    - `tap`: a press for one step when let go within its time;
+    - `longTap`: a press for one step when let go after its time (Unity's SlowTap, which it shows as "Long Tap";
+      Unreal's HoldAndRelease);
+    - `multiTap`: `{ "multiTap": 2 }`, or with its `count`, `tap` and `gap`.
+      - It is on at the last press and held until let go: Steam's Double Press ("If held on the second press, it will
+        remain pressed"), and what Unity's own TODOs ask for ("perform on final press", "stays performed … until the
+        button is released").
+      - Unity's pulse on the last release is `[multiTap, tap]`.
+    - `repeat`: on with its input, then pressed again, with no release, after its `delay` and every `every`, up to an
+      optional `limit` (Unreal's Pulse, Steam's Turbo, the-mallow-man's menus);
+    - `toggle`: each press of its input turns the action on, and the next turns it off (Steam's Toggle);
+    - `delay`: its input's on and off moved later by `start` and `end` (Steam's Fire Start and End Delay);
+    - `chord` and `sequence`, by questions 2 and 3. A sequence's steps come in order, each within `within` of the one
+      before it, and the entry's own control comes last;
+    - `interruptible`, Steam's Interruptable, opt-in: the plain press waits while another action's `hold` or
+      `multiTap` on the same control could still fire, and never fires if that one does.
+  - **Not built, by reason:**
+    - Unity's Press, Unreal's Down, Pressed and Released, and Steam's Start and Release Press: a `Digital` already
+      carries `held`, `pressed` and `released`;
+    - Unreal's one-shot Hold: a reader reads `pressed`;
+    - Steam's Turbo flicker: `repeat` gives the same presses;
+    - Steam's Cycle Binding: an entry binds one action;
+    - Steam's Haptics: they are output, a later pad row's.
+  - **Gestures run in real time,** on the samples' clock, unscaled and unpaused, as Unity's event times and Unreal's
+    timed triggers (not dilated by default) do. A deadline lands in the step whose end passes it.
+  - **Their default times are in the engine's `input` record,** laid over by a game's layer and later a player's (a
+    longer window for a player who needs one). They are Unity's set, as the dead zones were:
+    - `hold` 0.4, `tap` 0.2 and `longTap` 0.5;
+    - `gap` 0.75, which is also a sequence step's `within`;
+    - `repeat` 0.5, then every 0.1.
+
+    The-mallow-man's menus repeat at 0.40 and 0.12.
+  - **Gestures leave the pad lock and the scheme alone:** a press takes the lock and sets the scheme, whatever its
+    gestures make of it.
+  - **On a value action, `chord` alone,** which gates the value while its modifiers are held (a camera orbiting while
+    the right mouse button is held, Alt and a drag). The others are refused there, since only a `Digital` has a press.
+  - **A modifier or a step that names an action** is evaluated before the actions that name it.
+
+  **Its order, each its own commit:**
+  1. gestures on one control and `progress`;
+  2. chords and sequences, masking, and a chord on a value action;
+  3. `interruptible`.
+
+  **Next, KYR-54's later parts, each asked when it comes:**
+  - `Text`;
+  - the cursor's position as a control;
+  - the game letting go of the lock;
+  - a player's settings reaching the filters and gestures (Lyra's settings-driven modifiers, Unity's binding
+    overrides);
+  - a game's own filters and gestures;
+  - how a higher layer merges an object entry.

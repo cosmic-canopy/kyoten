@@ -147,3 +147,106 @@ source by hand and are marked [checked].
 - **`@kama/window`**: a pointer's motion is in logical pixels, and raw counts while the cursor is `Locked` (GLFW's raw
   motion where supported, Pointer Lock's `unadjustedMovement` with a fallback); a pad's button is pressed at 30/255
   both ways, with no hysteresis; consecutive moves of a pointer are joined, their motion summed (its SPEC).
+
+## Gestures (gathered 2026-11-24, the forty-ninth session)
+
+For the fourth part of step 8 ([design/input.md](../design/input.md) § Decided, 2026-11-24). Three passes read the
+peers' source and documentation and the owner's games. The claims the three questions rest on were re-checked by hand,
+in source where it is public, and are marked [checked].
+
+- **Unity Input System 1.11.2**
+  ([source](https://github.com/Unity-Technologies/InputSystem/tree/1.11.2/Packages/com.unity.inputsystem/InputSystem)):
+  - **Its defaults, in `InputSettings.cs` 773 to 781** [checked]:
+    - a tap 0.2 and a slow tap 0.5;
+    - a hold 0.4;
+    - a multi-tap's gap `m_MultiTapDelayTime = 0.75f`.
+  - **Its five interactions** (`Actions/Interactions/`) [pass, except where marked]:
+    - **Press:** press only, release only, or both.
+    - **Hold:** started at the press and performed when its time passes while held; it stays performed until released
+      (`PerformedAndStayPerformed`, `HoldInteraction.cs` 63, 84) [checked].
+    - **Tap:** performed at a release within its time, and cancelled once the time passes while held.
+    - **SlowTap:** shown as "Long Tap" (`SlowTapInteraction.cs` 19) [checked], and performed at a release after its
+      time.
+    - **MultiTap:** each tap released within `tapTime`, the next pressed within `tapDelay`; it performs on the last
+      release. Its own TODOs ask for "perform on final press rather than on release", and that it "stays performed
+      when the tap count is reached until the button is released" (`MultiTapInteraction.cs` 10 to 15) [checked].
+  - **Several interactions on a binding:** they are checked in order, the first to start drives the action until it
+    performs or cancels, and an action's interactions are appended to each binding's [pass]
+    ([Interactions](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.11/manual/Interactions.html)).
+  - **What a reader sees:**
+    - `IsPressed`, `WasPressedThisFrame` and `WasReleasedThisFrame` read the raw press, whatever the interaction
+      [pass];
+    - `WasPerformedThisFrame` reads the interaction [pass];
+    - `GetTimeoutCompletionPercentage()` gives a hold's progress, 0 to 1 (`Actions/InputAction.cs` 1508) [checked].
+  - **Interactions run on value actions too,** on a control's magnitude (a stick's Hold) [pass].
+  - **Chords are composites:** `OneModifier` and `TwoModifiers`.
+    - **Consumption is off** (`m_ShortcutKeysConsumeInputs = false`, "This is the shortcut support from v1.4.
+      Temporarily moved here as an opt-in feature, while it's issues are investigated", `InputSettings.cs` 781)
+      [checked].
+    - So by default Shift+B fires B's binding too, and the modifier need not be pressed first; the composites hold to
+      that order only when consumption is on [pass].
+  - **UI navigation repeats** in `InputSystemUIInputModule`: the first move at once, the next after
+    `m_MoveRepeatDelay = 0.5f`, then every `m_MoveRepeatRate = 0.1f` (829, 834) [checked]. It has no repeat interaction
+    and no sequence [pass].
+  - **A timeout runs from the press event's time,** checked at each update: timed by events, not game time [pass].
+- **Unreal Enhanced Input** (Epic's C++ is not public. Descriptions are from Epic's Python and C++ API pages; defaults
+  are from a third-party quote of `InputTriggers.h` [pass]):
+  - **Its triggers:**
+    - Down, Pressed and Released;
+    - Hold: `HoldTimeThreshold` 1.0, `bIsOneShot` false, triggered every tick once held past it;
+    - HoldAndRelease: 0.5, at a release after it;
+    - Tap: `TapReleaseTimeThreshold` 0.2;
+    - Pulse: `Interval` 1.0, `bTriggerOnStart` true, `TriggerLimit` 0 for none, with no initial delay apart from its
+      interval;
+    - ChordAction: "the action that must be triggering for this trigger's action to trigger", which names an action;
+    - Combo: steps of actions in order, each within `TimeToPressKey`;
+    - RepeatedTap: a double tap, in 5.6 and later.
+  - **How triggers combine on a mapping:** any explicit, all implicit, and a blocker overrides.
+  - **ChordBlocker** is "Automatically instantiated to block mappings that are masked by a UInputTriggerChordAction
+    chord from firing whilst the chording key is active" [pass, Epic's C++ API page]. The forums report that it fails
+    with several mappings of one action [pass].
+  - **Reading a hold:** `FInputActionInstance::GetElapsedTime()` and `GetTriggeredTime()`.
+  - **Timed triggers ignore time dilation by default** (`bAffectedByTimeDilation`, false) [pass].
+- **leafwing-input-manager 0.22**
+  ([source](https://github.com/Leafwing-Studios/leafwing-input-manager/tree/v0.22)):
+  - **Chords:** `ButtonlikeChord` is pressed while all its inputs are, in any order [pass].
+  - **Clashes:** inputs clash when "the Buttonlike components of one user input is a strict subset of the other", and
+    the default strategy is `PrioritizeLongest`, "Only press the action that corresponds to the longest chord"
+    (`src/clashing_inputs.rs` 17 to 40) [checked]. So the shorter action is dropped while the longer is held, the
+    modifier's own action included [pass].
+  - **No hold, tap, double tap or sequence;** a `timing` feature reports how long an action has been held [pass].
+  - **Bevy's `bevy_input` has no button gestures,** only the operating system's touch gestures [pass].
+- **Steam Input** ([activators](https://partner.steamgames.com/doc/features/steam_controller/activators)) [checked]:
+  - **Double Press** "requires a quick double tap of the input to activate. If held on the second press, it will
+    remain pressed. Any interruptable activators on the same button will not fire if a double press is fired, and will
+    be paused until the double press time has passed."
+  - **Long Press:** "interruptable activators on the same button will not fire if a long press is fired, and will be
+    paused until the button is released while under the long press time."
+  - **Chorded Press** is "Like the regular press, but additionally, a specific button must be held down at the same
+    time that the regular activation input is pressed. Other bindings for the chorded button will continue to fire."
+  - **The other press types** are Regular, Start Press and Release Press.
+  - **Every activator's settings:** Toggle, Fire Start and End Delay, Haptics and Cycle Binding; Turbo with its repeat
+    rate on some. Most defaults are not documented [pass].
+- **The owner's games** (read in their trees):
+  - **FFD:**
+    - **Chords are modal holds:** a bumper or a gate held masks the bare D-pad, which fires only "when no bumper or
+      gate is held" (`game/src/game.kama` 2928-2934) [checked].
+    - **Its other patterns over time:** a 3-second hold of the lighter, timed in the simulation; tool swaps and
+      accusations toggled on a press.
+    - **Its menus do not repeat.**
+  - **The-mallow-man:**
+    - **Its restart is a chord on an action:** R pressed while the action SPRINT is held
+      (`game/src/roundplay.kama` 706-707) [checked].
+    - **Its pad menus repeat:** pressed at 0.55, let go below 0.35, the first press at once, then 0.40 and every 0.12
+      (`ui/src/nav.kama` 12-24 at `2e1988b^`, the last copy in its tree before it moved to `@kama/ui`) [checked]. Its
+      keyboard menus use the operating system's key repeat.
+    - **Its radio cursor** repeats at `wireRepeatS = 0.35` and `wireRepeatEveryS = 0.15` (`sim/src/round/tuning.kama`
+      376-377) [checked].
+    - **Its holds, charges and timing windows are the simulation's own timers,** chosen by what is near, not by how
+      long a button is held.
+  - **Neither game has** a double tap, a combo or a hold-to-confirm screen.
+- **`@kama/window`:**
+  - **A key's down carries `repeat`,** the window's own reading, and kyoten's pump drops a repeat
+    (`engine/src/platform/open.kama` 148-149).
+  - **A pad's buttons do not repeat,** and a pointer has no click count.
+  - **A modifier is a key like any other** (HID 224 to 231), and the `mods` bits on an event go unread by kyoten.
