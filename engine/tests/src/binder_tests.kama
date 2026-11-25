@@ -1381,9 +1381,9 @@ fn void gestureRefusalCases(ref Tally t) {
     string record = refusalWith(json: "{ }", input: "{ \"gestures\": { \"tap\": 0 } }");
     t.verdict(name: "gesture: the input record's time out of range is refused, naming the record",
               why: record.contains(substring: "the `input` record's `gestures.tap`") ? "" : "refused `${record}`");
-    string chord = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"chord\": \"ShiftLeft\" } ] } } }", input: times);
-    t.verdict(name: "gesture: a chord waits for the fourth part's next commit",
-              why: chord.contains(substring: "lists a `chord`, which the fourth part's next commit reads") ? "" : "refused `${chord}`");
+    string later = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } } }", input: times);
+    t.verdict(name: "gesture: interruptible waits for the fourth part's next commit",
+              why: later.contains(substring: "lists a `interruptible`, which the fourth part's next commit reads") ? "" : "refused `${later}`");
     string value = refusalWith(json: "{ \"throttle\": { \"gamepad\": { \"positive\": \"RightTrigger\", \"gestures\": [ { \"hold\": 0.5 } ] } } }", input: times);
     t.verdict(name: "gesture: a value action's entry takes no press-making gesture",
               why: value.contains(substring: "the gamepad binding of `throttle` lists a `hold`, which makes a press: only a `Digital` has one") ? "" : "refused `${value}`");
@@ -1392,7 +1392,353 @@ fn void gestureRefusalCases(ref Tally t) {
               why: two.contains(substring: "`hold` of 0") && two.contains(substring: "`multiTap` of 1") ? "" : "refused `${two}`");
 }
 
+// Keys by their HID usage ids: KeyS 22, KeyW 26, KeyA 4, KeyD 7, KeyP 19, KeyR 21, KeyJ 13, ArrowDown 81, ArrowRight 79,
+// ControlLeft 224, ShiftLeft 225, ControlRight 228; the mouse's Left 0 and Right 2; a pad's South 0 and LeftShoulder 4.
+fn void keyAt(ref Binder b, int32 control, bool down, int64 at) { hand(b: b, s: key(control: control, down: down, at: at)); }
+
+// `faster` and `jump` in one step's hand-off, spelled ("HP- ---").
+fn string bothAt(ref Binder b, int64 step, int64 until) {
+    string got = "";
+    borrow b.handoff(index: step, until: until) as h {
+        Digital f = h.digital(player: 1, action: 0);
+        Digital j = h.digital(player: 1, action: 1);
+        got = spelled(d: f) + " " + spelled(d: j);
+    }
+    return got;
+}
+
+fn void expectBoth(ref Tally t, ref Binder b, int64 step, int64 until, const ref string name, const ref string want) {
+    string got = bothAt(b: b, step: step, until: until);
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+// `faster` spelled and `move` in one step's hand-off ("HP- 0,-1").
+fn string fasterAndMove(ref Binder b, int64 step, int64 until) {
+    string got = "";
+    borrow b.handoff(index: step, until: until) as h {
+        Digital f = h.digital(player: 1, action: 0);
+        Vec2 m = h.vector2(player: 1, action: 0);
+        int32 x = cast<int32>(m.x);
+        int32 y = cast<int32>(m.y);
+        got = spelled(d: f) + " ${x},${y}";
+    }
+    return got;
+}
+
+fn void chordCases(ref Tally t) {
+    string times = gestureTimes();
+    Binder b = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": \"Control\" } ] } } }", input: times);
+    int64 t0 = 10 * S;
+    keyAt(b: b, control: 22, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 50 * MS, name: "chord: its control alone presses nothing", want: "--- 0");
+    keyAt(b: b, control: 22, down: false, at: t0 + 100 * MS);
+    keyAt(b: b, control: 224, down: true, at: t0 + 200 * MS);
+    keyAt(b: b, control: 22, down: true, at: t0 + 300 * MS);
+    expectGesture(t: t, b: b, step: 1, until: t0 + 350 * MS, name: "chord: its control pressed while its modifier is held presses", want: "HP- 100");
+    keyAt(b: b, control: 22, down: false, at: t0 + 400 * MS);
+    expectGesture(t: t, b: b, step: 2, until: t0 + 450 * MS, name: "chord: and lets go with its control", want: "--R 0");
+    keyAt(b: b, control: 22, down: true, at: t0 + 500 * MS);
+    expectGesture(t: t, b: b, step: 3, until: t0 + 550 * MS, name: "chord: pressed again, the modifier still held", want: "HP- 100");
+    keyAt(b: b, control: 224, down: false, at: t0 + 600 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t0 + 650 * MS, name: "chord: lets go when its modifier does", want: "--R 0");
+    keyAt(b: b, control: 224, down: true, at: t0 + 700 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t0 + 750 * MS, name: "chord: the modifier pressed after its control presses nothing: modifiers first",
+                  want: "--- 0");
+    keyAt(b: b, control: 22, down: false, at: t0 + 800 * MS);
+    keyAt(b: b, control: 224, down: false, at: t0 + 810 * MS);
+    keyAt(b: b, control: 228, down: true, at: t0 + 900 * MS);
+    keyAt(b: b, control: 22, down: true, at: t0 + 950 * MS);
+    expectGesture(t: t, b: b, step: 6, until: t0 + 1000 * MS, name: "chord: kyoten's `Control` is either side's", want: "HP- 100");
+
+    Binder two = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": [\"ControlLeft\", \"ShiftLeft\"] } ] } } }", input: times);
+    keyAt(b: two, control: 224, down: true, at: t0);
+    keyAt(b: two, control: 22, down: true, at: t0 + 100 * MS);
+    expectGesture(t: t, b: two, step: 0, until: t0 + 150 * MS, name: "chord: of two modifiers, one held is not enough", want: "--- 0");
+    keyAt(b: two, control: 22, down: false, at: t0 + 200 * MS);
+    keyAt(b: two, control: 225, down: true, at: t0 + 300 * MS);
+    keyAt(b: two, control: 22, down: true, at: t0 + 400 * MS);
+    expectGesture(t: t, b: two, step: 1, until: t0 + 450 * MS, name: "chord: both held, it presses", want: "HP- 100");
+
+    Binder click = binderWith(json: "{ \"faster\": { \"mouse\": { \"control\": \"Left\", \"gestures\": [ { \"chord\": \"Control\" } ] } } }", input: times);
+    keyAt(b: click, control: 224, down: true, at: t0);
+    hand(b: click, s: Sample.make(device: Device::Mouse, slot: 0, control: 0, value: 1.0, at: t0 + 100 * MS));
+    expectGesture(t: t, b: click, step: 0, until: t0 + 150 * MS, name: "chord: a mouse button's chord may hold a key: Ctrl and a click", want: "HP- 100");
+
+    Binder pads = binderWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"chord\": \"LeftShoulder\" } ] } } }", input: times);
+    hand(b: pads, s: pad(slot: 0, control: 0, value: 1.0, at: t0));
+    expectGesture(t: t, b: pads, step: 0, until: t0 + 50 * MS, name: "chord: a pad's South alone presses nothing", want: "--- 0");
+    hand(b: pads, s: pad(slot: 0, control: 0, value: 0.0, at: t0 + 100 * MS));
+    hand(b: pads, s: pad(slot: 0, control: 4, value: 1.0, at: t0 + 200 * MS));
+    hand(b: pads, s: pad(slot: 0, control: 0, value: 1.0, at: t0 + 300 * MS));
+    expectGesture(t: t, b: pads, step: 1, until: t0 + 350 * MS, name: "chord: a pad's LeftShoulder held, its South presses", want: "HP- 100");
+
+    Binder act = binderWith(json: "{ \"faster\": { \"keyboard\": \"ShiftLeft\" }, \"jump\": { \"keyboard\": { \"control\": \"KeyR\", \"gestures\": [ { \"chord\": { \"action\": \"faster\" } } ] } } }", input: times);
+    keyAt(b: act, control: 21, down: true, at: t0);
+    expectBoth(t: t, b: act, step: 0, until: t0 + 50 * MS, name: "chord: R alone, with the action it holds off, presses nothing", want: "--- ---");
+    keyAt(b: act, control: 21, down: false, at: t0 + 100 * MS);
+    keyAt(b: act, control: 225, down: true, at: t0 + 200 * MS);
+    keyAt(b: act, control: 21, down: true, at: t0 + 300 * MS);
+    expectBoth(t: t, b: act, step: 1, until: t0 + 350 * MS, name: "chord: R while the action `faster` is held presses: a chord on an action",
+               want: "HP- HP-");
+    keyAt(b: act, control: 225, down: false, at: t0 + 400 * MS);
+    expectBoth(t: t, b: act, step: 2, until: t0 + 450 * MS, name: "chord: and lets go when that action does", want: "--R --R");
+
+    Binder deep = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"jump\" } } ] } }, \"jump\": { \"keyboard\": { \"control\": \"KeyJ\", \"gestures\": [ { \"chord\": \"ShiftLeft\" } ] } } }",
+                             input: times);
+    keyAt(b: deep, control: 225, down: true, at: t0);
+    keyAt(b: deep, control: 13, down: true, at: t0 + 100 * MS);
+    keyAt(b: deep, control: 22, down: true, at: t0 + 200 * MS);
+    expectBoth(t: t, b: deep, step: 0, until: t0 + 250 * MS, name: "chord: a chord holding an action whose own chord is held", want: "HP- HP-");
+    keyAt(b: deep, control: 225, down: false, at: t0 + 300 * MS);
+    expectBoth(t: t, b: deep, step: 1, until: t0 + 350 * MS, name: "chord: one modifier let go lets go of both chords at once, the one holding the other too",
+               want: "--R --R");
+
+    Binder order = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"jump\" } } ] } }, \"jump\": { \"keyboard\": \"KeyS\" } }",
+                              input: times);
+    keyAt(b: order, control: 22, down: true, at: t0);
+    expectBoth(t: t, b: order, step: 0, until: t0 + 50 * MS, name: "chord: an action is settled after the action its chord holds, so one press of both presses both",
+               want: "HP- HP-");
+
+    Binder upStick = binderWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"chord\": \"LeftStickUp\" } ] } } }",
+                              input: "{ \"stickThreshold\": { \"press\": 0.5, \"release\": 0.375 } }");
+    hand(b: upStick, s: pad(slot: 1, control: 9, value: 1.0, at: t0));
+    hand(b: upStick, s: Sample.padAxis(slot: 1, index: 1, value: -0.8, at: t0 + 100 * MS));
+    hand(b: upStick, s: pad(slot: 1, control: 0, value: 1.0, at: t0 + 200 * MS));
+    expectGesture(t: t, b: upStick, step: 0, until: t0 + 250 * MS, name: "chord: a stick's direction past its press point holds as a modifier", want: "HP- 100");
+}
+
+fn void maskCases(ref Tally t) {
+    string times = gestureTimes();
+    string json = "{ \"faster\": { \"keyboard\": \"KeyS\" }, \"jump\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": \"Control\" } ] } } }";
+    Binder b = binderWith(json: json, input: times);
+    int64 t0 = 10 * S;
+    keyAt(b: b, control: 224, down: true, at: t0);
+    keyAt(b: b, control: 22, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: b, step: 0, until: t0 + 150 * MS, name: "mask: Ctrl+S presses the chord alone, not S's plain binding", want: "--- HP-");
+    keyAt(b: b, control: 22, down: false, at: t0 + 200 * MS);
+    expectBoth(t: t, b: b, step: 1, until: t0 + 250 * MS, name: "mask: and its release is the chord's alone", want: "--- --R");
+    keyAt(b: b, control: 224, down: false, at: t0 + 300 * MS);
+    keyAt(b: b, control: 22, down: true, at: t0 + 400 * MS);
+    expectBoth(t: t, b: b, step: 2, until: t0 + 450 * MS, name: "mask: S alone presses its plain binding", want: "HP- ---");
+    keyAt(b: b, control: 224, down: true, at: t0 + 500 * MS);
+    expectBoth(t: t, b: b, step: 3, until: t0 + 550 * MS, name: "mask: S held, then Ctrl: S keeps what it pressed, and nothing saves", want: "H-- ---");
+    keyAt(b: b, control: 22, down: false, at: t0 + 600 * MS);
+    expectBoth(t: t, b: b, step: 4, until: t0 + 650 * MS, name: "mask: and lets it go", want: "--R ---");
+    keyAt(b: b, control: 22, down: true, at: t0 + 700 * MS);
+    keyAt(b: b, control: 224, down: false, at: t0 + 750 * MS);
+    expectBoth(t: t, b: b, step: 5, until: t0 + 800 * MS, name: "mask: a press masked stays masked though Ctrl lets go first, the chord letting go", want: "--- HP-");
+    keyAt(b: b, control: 22, down: false, at: t0 + 850 * MS);
+    expectBoth(t: t, b: b, step: 6, until: t0 + 900 * MS, name: "mask: until S lets go", want: "--- --R");
+
+    Binder open = binderWith(json: "{ \"faster\": { \"keyboard\": \"KeyS\" }, \"jump\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"control\": \"Control\", \"masks\": false } } ] } } }",
+                             input: times);
+    keyAt(b: open, control: 224, down: true, at: t0);
+    keyAt(b: open, control: 22, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: open, step: 0, until: t0 + 150 * MS, name: "mask: a chord written masks false lets both see the press", want: "HP- HP-");
+
+    Binder own = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": \"ControlLeft\" } ] } }, \"jump\": { \"keyboard\": \"ControlLeft\" } }",
+                            input: times);
+    keyAt(b: own, control: 224, down: true, at: t0);
+    expectBoth(t: t, b: own, step: 0, until: t0 + 50 * MS, name: "mask: a modifier's own binding presses", want: "--- HP-");
+    keyAt(b: own, control: 22, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: own, step: 1, until: t0 + 150 * MS, name: "mask: and stays held through the chord", want: "HP- H--");
+
+    Binder moved = binderWith(json: "{ \"move\": { \"keyboard\": { \"up\": \"KeyW\", \"down\": \"KeyS\", \"left\": \"KeyA\", \"right\": \"KeyD\" } }, \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": \"Control\" } ] } } }",
+                              input: times);
+    keyAt(b: moved, control: 224, down: true, at: t0);
+    keyAt(b: moved, control: 22, down: true, at: t0 + 100 * MS);
+    string first = fasterAndMove(b: moved, step: 0, until: t0 + 150 * MS);
+    t.verdict(name: "mask: a value's key part sees nothing of a press a chord took", why: first == "HP- 0,0" ? "" : "got ${first}");
+    keyAt(b: moved, control: 22, down: false, at: t0 + 200 * MS);
+    keyAt(b: moved, control: 224, down: false, at: t0 + 250 * MS);
+    keyAt(b: moved, control: 22, down: true, at: t0 + 300 * MS);
+    string second = fasterAndMove(b: moved, step: 1, until: t0 + 350 * MS);
+    t.verdict(name: "mask: S alone moves back", why: second == "--R 0,-1" ? "" : "got ${second}");
+
+    Binder pads = binderWith(json: "{ \"faster\": { \"gamepad\": \"South\" }, \"jump\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"chord\": \"LeftShoulder\" } ] } } }",
+                             input: times);
+    hand(b: pads, s: pad(slot: 0, control: 4, value: 1.0, at: t0));
+    hand(b: pads, s: pad(slot: 0, control: 0, value: 1.0, at: t0 + 100 * MS));
+    expectBoth(t: t, b: pads, step: 0, until: t0 + 150 * MS, name: "mask: a pad's LeftShoulder and South press the chord alone, FFD's bumper", want: "--- HP-");
+}
+
+fn void sequenceCases(ref Tally t) {
+    string times = gestureTimes();
+    string steps = "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": { \"steps\": [\"ArrowDown\", \"ArrowRight\"], \"within\": 0.3 } } ] } } }";
+    Binder b = binderWith(json: steps, input: times);
+    int64 t0 = 10 * S;
+    keyAt(b: b, control: 81, down: true, at: t0);
+    keyAt(b: b, control: 81, down: false, at: t0 + 50 * MS);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 80 * MS, name: "sequence: its first step is a third of it, with its control", want: "--- 33");
+    keyAt(b: b, control: 79, down: true, at: t0 + 100 * MS);
+    keyAt(b: b, control: 79, down: false, at: t0 + 150 * MS);
+    expectGesture(t: t, b: b, step: 1, until: t0 + 180 * MS, name: "sequence: its second, two thirds", want: "--- 67");
+    keyAt(b: b, control: 19, down: true, at: t0 + 200 * MS);
+    expectGesture(t: t, b: b, step: 2, until: t0 + 250 * MS, name: "sequence: its control last presses", want: "HP- 100");
+    keyAt(b: b, control: 19, down: false, at: t0 + 300 * MS);
+    expectGesture(t: t, b: b, step: 3, until: t0 + 350 * MS, name: "sequence: and lets go with it", want: "--R 0");
+    keyAt(b: b, control: 19, down: true, at: t0 + 400 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t0 + 450 * MS, name: "sequence: its control again, its steps spent, presses nothing", want: "--- 0");
+    keyAt(b: b, control: 19, down: false, at: t0 + 500 * MS);
+
+    int64 t1 = 20 * S;
+    keyAt(b: b, control: 81, down: true, at: t1);
+    keyAt(b: b, control: 79, down: true, at: t1 + 400 * MS);
+    keyAt(b: b, control: 19, down: true, at: t1 + 500 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t1 + 550 * MS, name: "sequence: a step later than its time starts nothing", want: "--- 0");
+    keyAt(b: b, control: 81, down: false, at: t1 + 600 * MS);
+    keyAt(b: b, control: 79, down: false, at: t1 + 600 * MS);
+    keyAt(b: b, control: 19, down: false, at: t1 + 600 * MS);
+
+    int64 t2 = 30 * S;
+    keyAt(b: b, control: 79, down: true, at: t2);
+    keyAt(b: b, control: 79, down: false, at: t2 + 10 * MS);
+    keyAt(b: b, control: 81, down: true, at: t2 + 50 * MS);
+    keyAt(b: b, control: 81, down: false, at: t2 + 60 * MS);
+    keyAt(b: b, control: 19, down: true, at: t2 + 100 * MS);
+    expectGesture(t: t, b: b, step: 6, until: t2 + 150 * MS, name: "sequence: steps out of order are passed over: Right, Down, then P presses nothing",
+                  want: "--- 33");
+    keyAt(b: b, control: 19, down: false, at: t2 + 200 * MS);
+
+    int64 t3 = 40 * S;
+    keyAt(b: b, control: 81, down: true, at: t3);
+    keyAt(b: b, control: 81, down: false, at: t3 + 10 * MS);
+    keyAt(b: b, control: 81, down: true, at: t3 + 100 * MS);
+    keyAt(b: b, control: 81, down: false, at: t3 + 110 * MS);
+    keyAt(b: b, control: 79, down: true, at: t3 + 350 * MS);
+    keyAt(b: b, control: 19, down: true, at: t3 + 500 * MS);
+    expectGesture(t: t, b: b, step: 7, until: t3 + 550 * MS, name: "sequence: its first step again starts it again from then", want: "HP- 100");
+    keyAt(b: b, control: 79, down: false, at: t3 + 600 * MS);
+    keyAt(b: b, control: 19, down: false, at: t3 + 600 * MS);
+
+    Binder masked = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": [\"ArrowDown\"] } ] } }, \"jump\": { \"keyboard\": \"KeyP\" } }",
+                               input: times);
+    keyAt(b: masked, control: 81, down: true, at: t0);
+    keyAt(b: masked, control: 19, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: masked, step: 0, until: t0 + 150 * MS, name: "sequence: its last press is its alone, the plain binding masked", want: "HP- ---");
+    keyAt(b: masked, control: 19, down: false, at: t0 + 200 * MS);
+    keyAt(b: masked, control: 19, down: true, at: t0 + 300 * MS);
+    expectBoth(t: t, b: masked, step: 1, until: t0 + 350 * MS, name: "sequence: then P alone is the plain binding's", want: "--R HP-");
+
+    Binder act = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": [ { \"action\": \"jump\" } ] } ] } }, \"jump\": { \"keyboard\": \"KeyJ\" } }",
+                            input: times);
+    keyAt(b: act, control: 13, down: true, at: t0);
+    keyAt(b: act, control: 13, down: false, at: t0 + 50 * MS);
+    keyAt(b: act, control: 19, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: act, step: 0, until: t0 + 150 * MS, name: "sequence: a step may be an action: `jump`, then P", want: "HP- HP-");
+
+    Binder any = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": [ { \"control\": [\"ArrowDown\", \"KeyS\"] } ] } ] } } }",
+                            input: times);
+    keyAt(b: any, control: 22, down: true, at: t0);
+    keyAt(b: any, control: 19, down: true, at: t0 + 100 * MS);
+    expectGesture(t: t, b: any, step: 0, until: t0 + 150 * MS, name: "sequence: a step of several controls takes any of them", want: "HP- 100");
+
+    Binder twice = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"sequence\": [\"Space\"] } ] } } }", input: times);
+    space(b: twice, down: true, at: t0);
+    space(b: twice, down: false, at: t0 + 50 * MS);
+    expectGesture(t: t, b: twice, step: 0, until: t0 + 80 * MS, name: "sequence: on its own control, the first press a step", want: "--- 50");
+    space(b: twice, down: true, at: t0 + 100 * MS);
+    space(b: twice, down: false, at: t0 + 150 * MS);
+    expectGesture(t: t, b: twice, step: 1, until: t0 + 180 * MS, name: "sequence: the second its control", want: "HP- 100");
+    space(b: twice, down: true, at: t0 + 200 * MS);
+    expectGesture(t: t, b: twice, step: 2, until: t0 + 250 * MS, name: "sequence: the press it took starts no new one: the third a step again",
+                  want: "--R 50");
+
+    Binder open = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": { \"steps\": [\"ArrowDown\"], \"masks\": false } } ] } }, \"jump\": { \"keyboard\": \"KeyP\" } }",
+                             input: times);
+    keyAt(b: open, control: 81, down: true, at: t0);
+    keyAt(b: open, control: 19, down: true, at: t0 + 100 * MS);
+    expectBoth(t: t, b: open, step: 0, until: t0 + 150 * MS, name: "sequence: written masks false, its last press is the plain binding's too", want: "HP- HP-");
+
+    Binder late = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": 0.2 } ] } }, \"jump\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": [ { \"action\": \"faster\" } ] } ] } } }",
+                             input: times);
+    space(b: late, down: true, at: t0);
+    keyAt(b: late, control: 19, down: true, at: t0 + 300 * MS);
+    expectBoth(t: t, b: late, step: 0, until: t0 + 350 * MS, name: "sequence: a step's action turned on by a deadline is a step at that time", want: "HP- HP-");
+
+    Binder record = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyP\", \"gestures\": [ { \"sequence\": [\"ArrowDown\"] } ] } } }", input: times);
+    keyAt(b: record, control: 81, down: true, at: t0);
+    keyAt(b: record, control: 19, down: true, at: t0 + 700 * MS);
+    expectGesture(t: t, b: record, step: 0, until: t0 + 750 * MS, name: "sequence: naming no time, it takes the input record's gap, 0.75", want: "HP- 100");
+}
+
+fn void gateCases(ref Tally t) {
+    string times = gestureTimes();
+    Binder b = binderWith(json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"MotionY\", \"gestures\": [ { \"chord\": \"Right\" } ] } } }", input: times);
+    int64 t0 = 10 * S;
+    hand(b: b, s: motion(index: 0, value: 5.0, at: t0));
+    expectVec2(t: t, name: "gate: the mouse's motion with its chord's button up moves nothing", got: lookAt(b: b, step: 0, until: t0 + 50 * MS),
+               x: 0.0, y: 0.0);
+    hand(b: b, s: Sample.make(device: Device::Mouse, slot: 0, control: 2, value: 1.0, at: t0 + 100 * MS));
+    hand(b: b, s: motion(index: 0, value: 3.0, at: t0 + 150 * MS));
+    expectVec2(t: t, name: "gate: with the right button held, the motion counts: a camera orbiting", got: lookAt(b: b, step: 1, until: t0 + 200 * MS),
+               x: 3.0, y: 0.0);
+    hand(b: b, s: motion(index: 0, value: 4.0, at: t0 + 250 * MS));
+    hand(b: b, s: Sample.make(device: Device::Mouse, slot: 0, control: 2, value: 0.0, at: t0 + 300 * MS));
+    hand(b: b, s: motion(index: 0, value: 6.0, at: t0 + 350 * MS));
+    expectVec2(t: t, name: "gate: the motion while it was held counts, after it let go none", got: lookAt(b: b, step: 2, until: t0 + 400 * MS),
+               x: 4.0, y: 0.0);
+
+    Binder held = binderWith(json: "{ \"move\": { \"keyboard\": { \"up\": \"KeyW\", \"down\": \"KeyS\", \"left\": \"KeyA\", \"right\": \"KeyD\", \"gestures\": [ { \"chord\": \"Shift\" } ] } } }",
+                             input: times);
+    keyAt(b: held, control: 26, down: true, at: t0);
+    expectVec2(t: t, name: "gate: a state's keys with its chord's modifier up read nothing", got: moveAt(b: held, step: 0, until: t0 + 50 * MS),
+               x: 0.0, y: 0.0);
+    keyAt(b: held, control: 225, down: true, at: t0 + 100 * MS);
+    expectVec2(t: t, name: "gate: with it held, the state reads: a modifier first is not asked of a value",
+               got: moveAt(b: held, step: 1, until: t0 + 150 * MS), x: 0.0, y: 1.0);
+}
+
+fn void chordRefusalCases(ref Tally t) {
+    string times = gestureTimes();
+    string loop = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"jump\" } } ] } }, \"jump\": { \"keyboard\": { \"control\": \"KeyJ\", \"gestures\": [ { \"chord\": { \"action\": \"faster\" } } ] } } }",
+                              input: times);
+    t.verdict(name: "chord: actions holding each other are refused, naming the circle",
+              why: loop.contains(substring: "the actions `faster` -> `jump` -> `faster` hold each other in their chords and sequences") ? "" : "refused `${loop}`");
+    string self = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"faster\" } } ] } } }", input: times);
+    t.verdict(name: "chord: an action holding itself is refused",
+              why: self.contains(substring: "the actions `faster` -> `faster` hold each other") ? "" : "refused `${self}`");
+    string unknown = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"dash\" } } ] } } }", input: times);
+    t.verdict(name: "chord: an action the game declares no `Digital` of is refused",
+              why: unknown.contains(substring: "names the action `dash` to hold, which is no `Digital` of the game's") ? "" : "refused `${unknown}`");
+    string valued = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"action\": \"throttle\" } } ] } } }", input: times);
+    t.verdict(name: "chord: a value action is no modifier",
+              why: valued.contains(substring: "names the action `throttle` to hold, which is no `Digital`") ? "" : "refused `${valued}`");
+    string misspeltKey = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": \"Shfit\" } ] } } }", input: times);
+    t.verdict(name: "chord: a misspelt modifier is refused, naming the keys",
+              why: misspeltKey.contains(substring: "names `Shfit` to hold, which is no key or mouse button") && misspeltKey.contains(substring: "ShiftLeft") ? "" : "refused `${misspeltKey}`");
+    string padKey = refusalWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"chord\": \"Shift\" } ] } } }", input: times);
+    t.verdict(name: "chord: a pad's chord holds a pad's controls, not a key",
+              why: padKey.contains(substring: "names `Shift` to hold, which is no gamepad control") ? "" : "refused `${padKey}`");
+    string none = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": [] } ] } } }", input: times);
+    t.verdict(name: "chord: a chord holding nothing is refused",
+              why: none.contains(substring: "lists a `chord` holding nothing") ? "" : "refused `${none}`");
+    string noSteps = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"sequence\": [] } ] } } }", input: times);
+    t.verdict(name: "sequence: a sequence of no steps is refused",
+              why: noSteps.contains(substring: "lists a `sequence` of no steps") ? "" : "refused `${noSteps}`");
+    string quick = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"sequence\": { \"steps\": [\"KeyA\"], \"within\": 0 } } ] } } }", input: times);
+    t.verdict(name: "sequence: a step's time of none is refused",
+              why: quick.contains(substring: "lists a `sequence`'s `within` of 0") ? "" : "refused `${quick}`");
+    string onValue = refusalWith(json: "{ \"move\": { \"keyboard\": { \"up\": \"KeyW\", \"gestures\": [ { \"sequence\": [\"KeyA\"] } ] } } }", input: times);
+    t.verdict(name: "sequence: a value's entry takes a chord alone",
+              why: onValue.contains(substring: "lists a `sequence`, which makes a press: only a `Digital` has one, and a `Vector2` takes a `chord` alone") ? "" : "refused `${onValue}`");
+    expectReadRefused(t: t, name: "chord: a misspelt part is refused by the reader",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"chord\": { \"controll\": \"Shift\" } } ] } } }",
+                      says: "`controll` is not a `chord's part`");
+    expectReadRefused(t: t, name: "sequence: a misspelt part is refused by the reader",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"sequence\": { \"stepz\": [] } } ] } } }",
+                      says: "`stepz` is not a `sequence's part`");
+    expectReadRefused(t: t, name: "sequence: a step's misspelt part is refused by the reader",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyS\", \"gestures\": [ { \"sequence\": [ { \"acton\": \"jump\" } ] } ] } } }",
+                      says: "`acton` is not a `sequence step's part`");
+}
+
 fn void binderTests(ref Tally t) {
+    chordCases(t: t);
+    maskCases(t: t);
+    sequenceCases(t: t);
+    gateCases(t: t);
+    chordRefusalCases(t: t);
     holdCases(t: t);
     tapCases(t: t);
     longTapCases(t: t);

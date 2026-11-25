@@ -8,11 +8,22 @@
 //   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis.
 // - **A `Digital` entry's gestures** (the fourth part, design/input.md § Decided, 2026-11-24) recognize a pattern over
 //   time in the order written, each reading the on and off of the one before it, the first the entry's controls:
-//   `hold`, `tap`, `longTap`, `multiTap`, `repeat` (a press again while held), `toggle` and `delay`. They run in real
-//   time, on the samples' clock: a deadline (a hold's time passing) lands in the step whose end passes it, and each
-//   step's hand-off carries each digital's `progress`, how far the gesture under way has come. A gesture naming no time
-//   takes the `input` record's. `chord`, `sequence` and `interruptible` come with the fourth part's later commits, and
-//   a value action's entry takes none yet.
+//   `hold`, `tap`, `longTap`, `multiTap`, `repeat` (a press again while held), `toggle`, `delay`, `chord` and
+//   `sequence`. They run in real time, on the samples' clock: a deadline (a hold's time passing) lands in the step whose
+//   end passes it, and each step's hand-off carries each digital's `progress`, how far the gesture under way has come.
+//   A gesture naming no time takes the `input` record's. `interruptible` comes with the fourth part's later commit.
+// - **A chord's modifiers and a sequence's steps** (question 2) are controls of the entry's scheme, the keyboard and the
+//   mouse together or the pad, with kyoten's `Shift`, `Control`, `Alt` and `Meta` for either side, or digital actions,
+//   held as their own bindings hold them; actions holding each other in a circle are refused, and each action is
+//   settled after every action it holds. A chord turns on only when its control presses while every modifier is
+//   already held, and lets go when either does; a sequence's steps come in order, each within its time of the one
+//   before (a step out of order passed over, the first step again starting it again), and its control last.
+// - **A chord masks** (question 3): a press of its control while its modifiers are held, or the last press of a
+//   sequence whose steps all came, goes to that entry alone; every other entry reading the control, a value's part
+//   included, sees none of it until it lets go. A chord's own modifiers keep their bindings. `"masks": false` lets both
+//   see it.
+// - **A value action's entry takes a `chord` alone,** which gates it: its value counts only while every modifier is
+//   held, the mouse's motion only what moved while they were.
 // - **An entry's filters** (the third part, design/input.md § Decided, 2026-11-23) reshape the value its parts make, in
 //   the order written, before a delta's seconds, on a step's hand-off and on Output's newest alike: `deadZone`, `scale`,
 //   `invert`, `curve`, `clamp`, `remap`, `normalize`, `digital` and `smooth`, whose state each path keeps apart. On the
@@ -70,7 +81,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
          std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
-         kyoten::records::GestureTimes,
+         kyoten::records::GestureTimes, kyoten::records::GestureName,
          window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -116,11 +127,32 @@ type value Gesture {
     public int64 due = NOT_DUE;
     public int32 taps = 0;
     public int64 queuedTo = 0;
+    // A chord's modifiers or a sequence's steps, `modifiers[modFrom]` up to `modTo`; whether it masks; and the time of the
+    // last press a sequence took, which no step may take again.
+    public isize modFrom = 0;
+    public isize modTo = 0;
+    public bool masks = true;
+    public int64 tookAt = -1;
 
     public ctor make(GestureKind kind, isize entry) {
         this.kind = kind;
         this.entry = entry;
     }
+}
+
+// One thing a chord holds, or one step of a sequence: a group of controls, `controls[from]` up to `controls[to]`, any of
+// which counts (kyoten's `Shift` is both shift keys), or a digital action, where `action` is 0 or more; the gesture it
+// is of, or -1 for a value entry's chord, which gates the value; its step in a sequence; and whether it was on when last
+// looked at, so a change is seen once.
+type value Modifier {
+    public isize gesture;
+    public isize from = 0;
+    public isize to = 0;
+    public int32 action = -1;
+    public int32 step = 0;
+    public bool was = false;
+
+    public ctor make(isize gesture) { this.gesture = gesture; }
 }
 
 // A change a `delay` holds back until `at`; `done` once handed on.
@@ -166,6 +198,8 @@ type value Bound {
     public Zone zone = Zone::None;
     public float32 press = 1.0;
     public float32 release = 1.0;
+    // A press a chord or a sequence took for itself, which this control does not see until it lets go.
+    public bool hidden = false;
 
     public ctor make(Device device, int32 control) {
         this.device = device;
@@ -196,6 +230,10 @@ type value Source {
     // The mouse's motion since the last hand-off, and since Output's last frame.
     public float32 moved = 0.0;
     public float32 shown = 0.0;
+    // A press a chord or a sequence took for itself, which this source does not see until it lets go.
+    public bool hidden = false;
+    // The value entry whose chord gates it, -1 for none.
+    public isize gate = -1;
 
     public ctor make(Device device, SampleKind kind, int32 control, bool flip) {
         this.device = device;
@@ -216,6 +254,9 @@ type value Entry {
     public InlineArray<isize>#(7) firsts;
     public isize filterFrom = 0;
     public isize filterTo = 0;
+    // Its chord's modifiers, `modifiers[gateFrom]` up to `gateTo`, every one held for its value to count.
+    public isize gateFrom = 0;
+    public isize gateTo = 0;
 
     public ctor make(ActionKind kind, int32 action, Shape shape) {
         this.kind = kind;
@@ -241,6 +282,11 @@ type resource Binder implements InputSource {
     DynamicArray<isize> entryFirsts = DynamicArray.empty();
     DynamicArray<Gesture> gestures = DynamicArray.empty();
     DynamicArray<Pending> pending = DynamicArray.empty();
+    // Every chord's and sequence's modifiers and steps; the digital actions' names; and the order the actions are settled
+    // in, each after every action its chords and sequences hold.
+    DynamicArray<Modifier> modifiers = DynamicArray.empty();
+    DynamicArray<string> actionNames = DynamicArray.empty();
+    DynamicArray<int32> actionOrder = DynamicArray.empty();
     // The `input` record's gestures' default times, in seconds.
     GestureTimes times = GestureTimes.make();
     // Every value action's entries, and the controls they read.
@@ -286,6 +332,7 @@ type resource Binder implements InputSource {
         this.digitalCount = actions.digitalCount();
         this.stepSeconds = Time::dtAt(hz: hz);
         this.out = Handoff.make(players: players, actions: actions);
+        foreach (const ref string n in actions.digitalNames().iterConst()) { this.actionNames.add(item: copy n); }
         this.view = Handoff.make(players: players, actions: actions);
         BindingError no = BindingError.make();
         DynamicArray<float32> noPoints = DynamicArray.empty();
@@ -368,6 +415,7 @@ type resource Binder implements InputSource {
                            bindings: bindings, no: no);
             a = a + 1;
         }
+        this.orderActions(no: no);
         if (no.any()) { return Result::Err(error: give no); }
         return Result::Ok(value: give this);
     }
@@ -483,6 +531,10 @@ type resource Binder implements InputSource {
         isize e = 0;
         while (e < this.entries.length()) {
             Entry entry = this.entries[e];
+            if (!entry.motion && !this.allOn(from: entry.gateFrom, to: entry.gateTo)) {
+                e = e + 1;
+                continue;
+            }
             Vec3 parts = this.entryValue(e: entry, forOutput: forOutput);
             Vec3 v = this.filtered(e: entry, value: parts, forOutput: forOutput);
             bool delta = this.isDelta(kind: entry.kind, action: entry.action);
@@ -681,10 +733,12 @@ type resource Binder implements InputSource {
         } else if (on) {
             this.schemeNow = Scheme::KeyboardMouse;
         }
+        if (on) { this.maskFor(s: s); }
         isize i = 0;
         while (i < this.controls.length()) {
             if (this.controls[i].device == s.device && this.controls[i].kind == SampleKind::Control && this.controls[i].control == s.control) {
-                this.controls[i].on = on;
+                this.controls[i].on = on && !this.controls[i].hidden;
+                if (!on) { this.controls[i].hidden = false; }
             }
             i = i + 1;
         }
@@ -736,11 +790,17 @@ type resource Binder implements InputSource {
             Source src = this.sources[i];
             if (src.device == s.device && src.kind == s.kind && src.control == s.control) {
                 float32 v = s.value;
-                if (s.kind == SampleKind::Control) { v = s.value >= Gamepad::PressedAt ? 1.0 : 0.0; }
+                if (s.kind == SampleKind::Control) {
+                    bool down = s.value >= Gamepad::PressedAt;
+                    v = down && !src.hidden ? 1.0 : 0.0;
+                    if (!down) { this.sources[i].hidden = false; }
+                }
                 if (src.flip) { v = -v; }
                 if (s.kind == SampleKind::Motion) {
-                    this.sources[i].moved = src.moved + v;
-                    this.sources[i].shown = src.shown + v;
+                    if (src.gate < 0 || this.gateOn(entry: src.gate)) {
+                        this.sources[i].moved = src.moved + v;
+                        this.sources[i].shown = src.shown + v;
+                    }
                 }
                 else { this.sources[i].value = v; }
             }
@@ -766,21 +826,325 @@ type resource Binder implements InputSource {
     // Each digital entry's controls at `t`: where whether any is on changed, its first gesture takes the change, or the
     // action, where it has none.
     fn void settle(int64 t) {
+        isize o = 0;
+        while (o < this.actionOrder.length()) {
+            isize ai = cast<isize>(this.actionOrder[o]);
+            isize e = this.entryFirsts[ai];
+            while (e < this.entryFirsts[ai + 1]) {
+                DigitalEntry de = this.digitalEntries[e];
+                bool any = false;
+                isize c = de.from;
+                while (c < de.to) {
+                    if (this.controls[c].on) { any = true; }
+                    c = c + 1;
+                }
+                if (any != de.raw) {
+                    this.digitalEntries[e].raw = any;
+                    this.feed(e: e, g: de.gestureFrom, change: any ? Change::On : Change::Off, t: t);
+                }
+                e = e + 1;
+            }
+            o = o + 1;
+        }
+        this.recheck(t: t);
+    }
+
+    // Whether modifier `m` is held: its action on, or any control of its group.
+    const fn bool modifierOn(isize m) {
+        Modifier x = this.modifiers[m];
+        if (x.action >= 0) { return this.combined[cast<isize>(x.action)]; }
+        isize c = x.from;
+        while (c < x.to) {
+            if (this.controls[c].on) { return true; }
+            c = c + 1;
+        }
+        return false;
+    }
+
+    // Whether modifiers `from` up to `to` are all held: none is, vacuously.
+    const fn bool allOn(isize from, isize to) {
+        isize m = from;
+        while (m < to) {
+            if (!this.modifierOn(m: m)) { return false; }
+            m = m + 1;
+        }
+        return true;
+    }
+
+    // Every modifier and step looked at again after a change at `t`: a chord whose modifier let go lets go, and a
+    // sequence's step pressed moves it on; again until nothing changes, since a chord letting go may let go of an action
+    // another chord holds.
+    fn void recheck(int64 t) {
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            isize m = 0;
+            while (m < this.modifiers.length()) {
+                bool now = this.modifierOn(m: m);
+                Modifier x = this.modifiers[m];
+                if (now != x.was) {
+                    this.modifiers[m].was = now;
+                    changed = true;
+                    if (x.gesture >= 0) { this.modifierMoved(g: x.gesture, step: x.step, rose: now, t: t); }
+                }
+                m = m + 1;
+            }
+        }
+    }
+
+    // A modifier or a step of gesture `g` held (`rose`) or let go at `t`. A chord lets go when one of its modifiers does.
+    // A sequence takes the step it waits for, or its first step again; one press moves it once.
+    fn void modifierMoved(isize g, int32 step, bool rose, int64 t) {
+        Gesture x = this.gestures[g];
+        isize e = x.entry;
+        match (x.kind) {
+            case Chord: {
+                if (!rose && x.out) {
+                    this.gestures[g].out = false;
+                    this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                }
+            }
+            case Sequence: {
+                if (rose && x.tookAt != t) {
+                    int32 next = -1;
+                    if (step == x.taps && x.taps < x.count) { next = x.taps + 1; }
+                    else if (step == 0) { next = 1; }
+                    if (next > 0) {
+                        this.gestures[g].taps = next;
+                        this.gestures[g].tookAt = t;
+                        this.gestures[g].due = later(t: t, by: x.a + 1);
+                    }
+                }
+            }
+            case _: { }
+        };
+    }
+
+    // A press a chord or a sequence takes for itself (design/input.md § Decided, 2026-11-24, question 3): where a digital
+    // entry reading `s`'s control has a masking chord whose modifiers are all held, or a masking sequence whose steps all
+    // came, every other entry reading it is masked from this press until it lets go, a value's part included.
+    fn void maskFor(Sample s) {
+        bool any = false;
         isize e = 0;
         while (e < this.digitalEntries.length()) {
-            DigitalEntry de = this.digitalEntries[e];
-            bool any = false;
-            isize c = de.from;
-            while (c < de.to) {
-                if (this.controls[c].on) { any = true; }
-                c = c + 1;
-            }
-            if (any != de.raw) {
-                this.digitalEntries[e].raw = any;
-                this.feed(e: e, g: de.gestureFrom, change: any ? Change::On : Change::Off, t: t);
+            if (this.claims(e: e, s: s)) { any = true; }
+            e = e + 1;
+        }
+        if (!any) { return; }
+        e = 0;
+        while (e < this.digitalEntries.length()) {
+            if (!this.claims(e: e, s: s)) {
+                DigitalEntry de = this.digitalEntries[e];
+                isize c = de.from;
+                while (c < de.to) {
+                    if (this.controls[c].device == s.device && this.controls[c].kind == SampleKind::Control && this.controls[c].control == s.control) {
+                        this.controls[c].hidden = true;
+                    }
+                    c = c + 1;
+                }
             }
             e = e + 1;
         }
+        isize i = 0;
+        while (i < this.sources.length()) {
+            if (this.sources[i].device == s.device && this.sources[i].kind == SampleKind::Control && this.sources[i].control == s.control) {
+                this.sources[i].hidden = true;
+            }
+            i = i + 1;
+        }
+    }
+
+    // Whether digital entry `e` takes a press of `s`'s control for itself: it reads the control, and a masking chord of
+    // its holds every modifier, or a masking sequence of its has every step.
+    const fn bool claims(isize e, Sample s) {
+        DigitalEntry de = this.digitalEntries[e];
+        bool reads = false;
+        isize c = de.from;
+        while (c < de.to) {
+            if (this.controls[c].device == s.device && this.controls[c].kind == SampleKind::Control && this.controls[c].control == s.control) {
+                reads = true;
+            }
+            c = c + 1;
+        }
+        if (!reads) { return false; }
+        isize g = de.gestureFrom;
+        while (g < de.gestureTo) {
+            Gesture x = this.gestures[g];
+            if (x.masks && x.kind == GestureKind::Chord && this.allOn(from: x.modFrom, to: x.modTo)) { return true; }
+            if (x.masks && x.kind == GestureKind::Sequence && x.taps >= x.count) { return true; }
+            g = g + 1;
+        }
+        return false;
+    }
+
+    // The digital actions in the order they are settled, each after every action its chords and sequences hold; a circle
+    // of actions holding each other refused, naming it.
+    fn void orderActions(ref BindingError no) {
+        DynamicArray<int32> state = DynamicArray.empty();
+        DynamicArray<int32> parent = DynamicArray.empty();
+        int32 a = 0;
+        while (a < this.digitalCount) {
+            state.add(item: 0);
+            parent.add(item: -1);
+            a = a + 1;
+        }
+        a = 0;
+        while (a < this.digitalCount) {
+            if (state[cast<isize>(a)] == 0) {
+                bool fine = this.visit(a: a, state: state, parent: parent, no: no);
+                if (!fine) { return; }
+            }
+            a = a + 1;
+        }
+    }
+
+    // Action `a` and every action its chords and sequences hold, depth first: false, the circle refused, where one holds
+    // an action still being visited. `state` is 0 unvisited, 1 under way, 2 done.
+    fn bool visit(int32 a, ref DynamicArray<int32> state, ref DynamicArray<int32> parent, ref BindingError no) {
+        isize ai = cast<isize>(a);
+        state[ai] = 1;
+        isize k = this.entryFirsts[ai];
+        while (k < this.entryFirsts[ai + 1]) {
+            DigitalEntry de = this.digitalEntries[k];
+            isize g = de.gestureFrom;
+            while (g < de.gestureTo) {
+                Gesture x = this.gestures[g];
+                isize m = x.modFrom;
+                while (m < x.modTo) {
+                    int32 b = this.modifiers[m].action;
+                    if (b >= 0) {
+                        int32 seen = state[cast<isize>(b)];
+                        if (seen == 1) {
+                            string loop = "`" + this.actionNames[cast<isize>(b)] + "`";
+                            int32 at = a;
+                            string back = "";
+                            while (at != b && at >= 0) {
+                                back = " -> `" + this.actionNames[cast<isize>(at)] + "`" + back;
+                                at = parent[cast<isize>(at)];
+                            }
+                            no.add(line: "the actions " + loop + back + " -> " + loop + " hold each other in their chords and sequences: one of them must be held first");
+                            return false;
+                        }
+                        if (seen == 0) {
+                            parent[cast<isize>(b)] = a;
+                            if (!this.visit(a: b, state: state, parent: parent, no: no)) { return false; }
+                        }
+                    }
+                    m = m + 1;
+                }
+                g = g + 1;
+            }
+            k = k + 1;
+        }
+        state[ai] = 2;
+        this.actionOrder.add(item: a);
+        return true;
+    }
+
+    // A chord's or a sequence's names into modifiers of gesture `gesture` (-1 for a value's chord, which gates it), each
+    // a group of the scheme's controls or a digital action: why one is refused, or "".
+    fn string takeNames(const ref ControlEntry entry, GestureRecord r, isize gesture, Device device) {
+        isize k = r.namesFrom;
+        while (k < r.namesTo) {
+            string name = copy entry.gestureNames()[k];
+            GestureName mark = entry.gestureMarks()[k];
+            Modifier m = Modifier.make(gesture: gesture);
+            m.step = mark.step;
+            if (mark.action) {
+                isize found = -1;
+                isize n = 0;
+                while (n < this.actionNames.length()) {
+                    if (this.actionNames[n] == name) { found = n; }
+                    n = n + 1;
+                }
+                if (found < 0) {
+                    return "names the action `" + name + "` to hold, which is no `Digital` of the game's: a chord and a sequence hold a `Digital`";
+                }
+                m.action = cast<int32>(found);
+            } else {
+                m.from = this.controls.length();
+                string why = this.modifierControls(name: name, device: device);
+                if (!why.isEmpty()) { return why; }
+                m.to = this.controls.length();
+            }
+            this.modifiers.add(item: m);
+            k = k + 1;
+        }
+        return "";
+    }
+
+    // The controls a chord's or a sequence's name holds, added to the binder's, on the entry's scheme: a pad's button or a
+    // stick's direction; or a key, kyoten's either-side `Shift`, `Control`, `Alt` and `Meta`, or a mouse button. Why the
+    // name is refused, or "".
+    fn string modifierControls(const ref string name, Device device) {
+        string quoted = "\"" + name + "\"";
+        if (device == Device::Gamepad) {
+            Result<PadButton, Owned<Error>> p = deserializeJsonBuffer::<PadButton>(src: copy quoted, strict: true);
+            match (give p) {
+                case Ok(value: button): {
+                    this.controls.add(item: Bound.make(device: Device::Gamepad, control: cast<int32>(button)));
+                    return "";
+                }
+                case Err(error: e): {
+                    Optional<Source> direction = stickDirection(name: name);
+                    match (direction) {
+                        case Some(value: d): {
+                            match (this.stickPress) {
+                                case Some(value: f): {
+                                    Bound b = Bound.make(device: Device::Gamepad, control: d.control);
+                                    b.kind = SampleKind::Axis;
+                                    b.flip = d.flip;
+                                    b.half = d.half;
+                                    b.zone = Zone::Stick;
+                                    b.press = f.a;
+                                    b.release = releaseOf(f: f);
+                                    this.controls.add(item: b);
+                                    return "";
+                                }
+                                case None: {
+                                    return "names `" + name + "` to hold, a stick's direction, which as a button needs the `input` record's `stickThreshold`";
+                                }
+                            };
+                        }
+                        case None: {
+                            string why = e.message();
+                            return "names `" + name + "` to hold, which is no gamepad control: no button (" + why + ") and no stick's direction (" + directionNames() + ")";
+                        }
+                    };
+                }
+            };
+        }
+        int32 left = -1;
+        int32 right = -1;
+        if (name == "Shift") { left = cast<int32>(Key::ShiftLeft); right = cast<int32>(Key::ShiftRight); }
+        else if (name == "Control") { left = cast<int32>(Key::ControlLeft); right = cast<int32>(Key::ControlRight); }
+        else if (name == "Alt") { left = cast<int32>(Key::AltLeft); right = cast<int32>(Key::AltRight); }
+        else if (name == "Meta") { left = cast<int32>(Key::MetaLeft); right = cast<int32>(Key::MetaRight); }
+        if (left >= 0) {
+            this.controls.add(item: Bound.make(device: Device::Keyboard, control: left));
+            this.controls.add(item: Bound.make(device: Device::Keyboard, control: right));
+            return "";
+        }
+        Result<int32, Owned<Error>> k = controlOf(device: Device::Keyboard, name: name);
+        match (give k) {
+            case Ok(value: v): {
+                this.controls.add(item: Bound.make(device: Device::Keyboard, control: v));
+                return "";
+            }
+            case Err(error: e): {
+                Result<int32, Owned<Error>> b = controlOf(device: Device::Mouse, name: name);
+                match (give b) {
+                    case Ok(value: v): {
+                        this.controls.add(item: Bound.make(device: Device::Mouse, control: v));
+                        return "";
+                    }
+                    case Err(error: f): {
+                        string asKey = e.message();
+                        return "names `" + name + "` to hold, which is no key or mouse button: " + asKey + "; nor `Shift`, `Control`, `Alt` or `Meta`, either side's";
+                    }
+                };
+            }
+        };
     }
 
     // What an entry's last gesture makes reaches its action: the action is on while any of its entries is, an edge
@@ -919,6 +1283,47 @@ type resource Binder implements InputSource {
                 this.pending.add(item: Pending.make(gesture: g, at: at, change: change));
                 if (x.due == NOT_DUE) { this.gestures[g].due = at; }
             }
+            case Chord: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        if (this.allOn(from: x.modFrom, to: x.modTo)) {
+                            this.gestures[g].out = true;
+                            this.feed(e: e, g: g + 1, change: Change::On, t: t);
+                        }
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        if (x.out) {
+                            this.gestures[g].out = false;
+                            this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                        }
+                    }
+                    case Again: { if (x.out) { this.feed(e: e, g: g + 1, change: Change::Again, t: t); } }
+                };
+            }
+            case Sequence: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        if (x.taps >= x.count) {
+                            this.gestures[g].taps = 0;
+                            this.gestures[g].due = NOT_DUE;
+                            this.gestures[g].tookAt = t;
+                            this.gestures[g].out = true;
+                            this.feed(e: e, g: g + 1, change: Change::On, t: t);
+                        }
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        if (x.out) {
+                            this.gestures[g].out = false;
+                            this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                        }
+                    }
+                    case Again: { if (x.out) { this.feed(e: e, g: g + 1, change: Change::Again, t: t); } }
+                };
+            }
             case _: { }
         };
     }
@@ -945,7 +1350,10 @@ type resource Binder implements InputSource {
                 g = g + 1;
             }
             if (next < 0 || when > to) { more = false; }
-            else { this.fire(g: next, t: when, to: to); }
+            else {
+                this.fire(g: next, t: when, to: to);
+                this.recheck(t: when);
+            }
         }
     }
 
@@ -965,6 +1373,7 @@ type resource Binder implements InputSource {
                 this.feed(e: e, g: g + 1, change: Change::On, t: t);
             }
             case MultiTap: { this.gestures[g].taps = 0; }
+            case Sequence: { this.gestures[g].taps = 0; }
             case Repeat: {
                 int32 made = x.taps + 1;
                 this.gestures[g].taps = made;
@@ -1007,6 +1416,12 @@ type resource Binder implements InputSource {
         };
     }
 
+    // Whether value entry `entry`'s chord holds every modifier: an entry with none, always.
+    const fn bool gateOn(isize entry) {
+        Entry x = this.entries[entry];
+        return this.allOn(from: x.gateFrom, to: x.gateTo);
+    }
+
     // How far digital action `action`'s gesture under way has come at `at`: the most of its entries'.
     const fn float32 progressOf(int32 action, int64 at) {
         isize ai = cast<isize>(action);
@@ -1042,13 +1457,14 @@ type resource Binder implements InputSource {
             case Hold: x.input ? shareOf(from: x.since, to: at, of: x.a) : 0.0;
             case LongTap: x.input ? shareOf(from: x.since, to: at, of: x.a) : 0.0;
             case MultiTap: x.taps > 0 ? cast<float32>(x.taps) / cast<float32>(x.count) : 0.0;
+            case Sequence: x.taps > 0 ? cast<float32>(x.taps) / cast<float32>(x.count + 1) : 0.0;
             case _: 0.0;
         };
     }
 
     // An entry's gestures into the binder's, each held to its range, its times its own or the `input` record's: false,
     // with every refusal added, when any is refused.
-    fn bool takeGestures(const ref ControlEntry entry, isize at, const ref string whose, ref BindingError no) {
+    fn bool takeGestures(const ref ControlEntry entry, isize at, Device device, const ref string whose, ref BindingError no) {
         bool fine = true;
         foreach (const ref GestureRecord read in entry.gestures().iterConst()) {
             GestureRecord r = read;
@@ -1088,6 +1504,24 @@ type resource Binder implements InputSource {
                     if (g.a < 0 || g.b < 0) {
                         why = "lists a `delay` of ${r.a} and ${r.b} seconds: a delay's `start` and `end` are 0 or more";
                     }
+                }
+                case Chord: {
+                    g.masks = r.masks;
+                    g.modFrom = this.modifiers.length();
+                    if (r.namesTo == r.namesFrom) { why = "lists a `chord` holding nothing: a chord names a control or an action to hold"; }
+                    else { why = this.takeNames(entry: entry, r: r, gesture: this.gestures.length(), device: device); }
+                    g.modTo = this.modifiers.length();
+                }
+                case Sequence: {
+                    g.masks = r.masks;
+                    g.count = r.count;
+                    g.modFrom = this.modifiers.length();
+                    if (r.count == 0) { why = "lists a `sequence` of no steps: a sequence names the steps before its own control"; }
+                    if (why.isEmpty()) {
+                        g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.gap, word: "sequence`'s `within", part: "gap", why: why);
+                    }
+                    if (why.isEmpty()) { why = this.takeNames(entry: entry, r: r, gesture: this.gestures.length(), device: device); }
+                    g.modTo = this.modifiers.length();
                 }
                 case _: { why = "lists a `" + word + "`, which the fourth part's next commit reads"; }
             };
@@ -1229,7 +1663,7 @@ type resource Binder implements InputSource {
                 made.from = first;
                 made.to = this.controls.length();
                 made.gestureFrom = this.gestures.length();
-                bool kept = this.takeGestures(entry: e, at: this.digitalEntries.length(), whose: whose, no: no);
+                bool kept = this.takeGestures(entry: e, at: this.digitalEntries.length(), device: device, whose: whose, no: no);
                 made.gestureTo = this.gestures.length();
                 if (kept) { this.digitalEntries.add(item: made); }
             }
@@ -1306,11 +1740,13 @@ type resource Binder implements InputSource {
         match (entry) {
             case None: { }
             case Some(value: e): {
-                if (e.gestures().length() > 0) {
-                    string word = gestureWord(kind: e.gestures()[0].kind);
-                    no.add(line: whose + " lists a `" + word + "`, which makes a press: only a `Digital` has one, and the `chord` that gates a `"
-                           + kindWord + "` comes with the fourth part's next commit");
-                    return;
+                foreach (const ref GestureRecord gr in e.gestures().iterConst()) {
+                    if (gr.kind != GestureKind::Chord) {
+                        string word = gestureWord(kind: gr.kind);
+                        no.add(line: whose + " lists a `" + word + "`, which makes a press: only a `Digital` has one, and a `"
+                               + kindWord + "` takes a `chord` alone, which gates it while its modifiers are held");
+                        return;
+                    }
                 }
                 DynamicArray<string> words = DynamicArray.empty();
                 Shape shape = Shape::One;
@@ -1375,6 +1811,22 @@ type resource Binder implements InputSource {
                 bool kept = this.takeFilters(entry: e, motion: made.motion, whose: whose, no: no);
                 made.filterTo = this.filters.length();
                 if (!kept) { return; }
+                made.gateFrom = this.modifiers.length();
+                foreach (const ref GestureRecord gr in e.gestures().iterConst()) {
+                    string why = "";
+                    if (gr.namesTo == gr.namesFrom) { why = "lists a `chord` holding nothing: a chord names a control or an action to hold"; }
+                    else { why = this.takeNames(entry: e, r: gr, gesture: -1, device: device); }
+                    if (!why.isEmpty()) {
+                        no.add(line: whose + " " + why);
+                        return;
+                    }
+                }
+                made.gateTo = this.modifiers.length();
+                isize gated = first;
+                while (gated < made.firsts[6]) {
+                    this.sources[gated].gate = this.entries.length();
+                    gated = gated + 1;
+                }
                 this.entries.add(item: made);
             }
         };

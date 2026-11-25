@@ -70,6 +70,8 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "content/bindings.records.json: `deadzone` is not a `filter`", b: "expected `deadZone`, `scale`", c: ""));
     says(t: t, name: "names: a misspelt gesture is refused at build, by the engine's own reader, naming every gesture", r: n,
          words: allOf(a: "content/gestures.records.json: `hodl` is not a `gesture`", b: "expected `hold`, `tap`, `longTap`", c: ""));
+    says(t: t, name: "names: a chord's misspelt part is refused at build, by the engine's own reader", r: n,
+         words: allOf(a: "content/chords.records.json: `controll` is not a `chord's part`", b: "expected `control`, `action` or `masks`", c: ""));
     says(t: t, name: "names: a key written twice in a content file is refused, naming it and its file", r: n,
          words: allOf(a: "content/twice.records.json: duplicate key `prefabs.twice`", b: "", c: ""));
     says(t: t, name: "names: a content layer's second input record is refused, naming both files", r: n,

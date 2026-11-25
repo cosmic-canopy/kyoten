@@ -6,7 +6,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned, std::memory::replace };
 
 export { AppRecord, WindowRecord, BindingRecord, ControlEntry, FilterRecord, FilterKind, DeadZoneShape, InputRecord, ZoneRecord,
-         GestureRecord, GestureKind, GestureTimes,
+         GestureRecord, GestureKind, GestureTimes, GestureName,
          PressRecord };
 
 // The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
@@ -89,6 +89,9 @@ type resource ControlEntry implements Deserializable<This> {
     bool objectField = false;
     SortedMap<string, DynamicArray<string>> partsField = SortedMap.empty();
     DynamicArray<GestureRecord> gesturesField = DynamicArray.empty();
+    // The names chords and sequences list, each marked a control's or an action's and with its step.
+    DynamicArray<string> gestureNamesField = DynamicArray.empty();
+    DynamicArray<GestureName> gestureMarksField = DynamicArray.empty();
     bool gesturesRead = false;
     DynamicArray<FilterRecord> filtersField = DynamicArray.empty();
     DynamicArray<float32> pointsField = DynamicArray.empty();
@@ -138,7 +141,7 @@ type resource ControlEntry implements Deserializable<This> {
                         r.beginArray();
                         isize at = 0;
                         while (r.moreElems()) {
-                            Result<GestureRecord, Owned<Error>> one = readGesture(r: r);
+                            Result<GestureRecord, Owned<Error>> one = readGesture(r: r, names: this.gestureNamesField, marks: this.gestureMarksField);
                             match (give one) {
                                 case Ok(value: g): { this.gesturesField.add(item: g); }
                                 case Err(error: e): {
@@ -215,6 +218,10 @@ type resource ControlEntry implements Deserializable<This> {
     public const fn const ref SortedMap<string, DynamicArray<string>> parts() { return this.partsField; }
     // Its gestures, in the order written.
     public const fn const ref DynamicArray<GestureRecord> gestures() { return this.gesturesField; }
+    // The names its chords and sequences list: a gesture's are `gestureNames()[namesFrom]` up to `[namesTo]`, each marked
+    // in `gestureMarks()` alike.
+    public const fn const ref DynamicArray<string> gestureNames() { return this.gestureNamesField; }
+    public const fn const ref DynamicArray<GestureName> gestureMarks() { return this.gestureMarksField; }
     // Its filters, in the order written.
     public const fn const ref DynamicArray<FilterRecord> filters() { return this.filtersField; }
     // Every curve's points, in pairs (in, out): a curve's are `curvePoints()[pointsFrom]` up to `[pointsTo]`.
@@ -371,7 +378,12 @@ type enum GestureKind { Hold, Tap, LongTap, MultiTap, Repeat, Toggle, Delay, Cho
 //   and `count` the most presses it makes, 0 for no limit;
 // - `Toggle`: `on`, false where written `false`, when it passes its input on as it is;
 // - `Delay`: `a` how much later its input's on comes, and `b` how much later its off;
-// - `Chord`, `Sequence` and `Interruptible`: read by the fourth part's later commits.
+// - `Chord`: the names it holds, its entry's `gestureNames()` from `namesFrom` up to `namesTo`, each a control or an
+//   action, all of which must be held; `masks`, false where it lets the control's other bindings see its press;
+// - `Sequence`: its steps, `count` of them, by those names, each marked with its step (a step may name several
+//   controls, any of which counts); `a` the time each comes within, where `hasA` (else the `input` record's `gap`); and
+//   `masks`;
+// - `Interruptible`: read by the fourth part's later commit.
 type value GestureRecord {
     public GestureKind kind;
     public float64 a = 0.0;
@@ -380,8 +392,22 @@ type value GestureRecord {
     public bool hasB = false;
     public int32 count = 0;
     public bool on = true;
+    public isize namesFrom = 0;
+    public isize namesTo = 0;
+    public bool masks = true;
 
     public ctor make(GestureKind kind) { this.kind = kind; }
+}
+
+// How a chord or a sequence lists one name: an action's, where `action`, else a control's; and the step it is of.
+type value GestureName {
+    public bool action = false;
+    public int32 step = 0;
+
+    public ctor make(bool action, int32 step) {
+        this.action = action;
+        this.step = step;
+    }
 }
 
 // `{ "hold": { … } }`'s, `tap`'s and `longTap`'s parameters: its time, the `input` record's where unnamed.
@@ -802,8 +828,12 @@ fn Optional<GestureKind> gestureKindOf(const ref string name) {
 // - `repeat`: `true` for the `input` record's times, or `{ "delay": …, "every": …, "limit": … }`;
 // - `toggle`: `true` or `false`;
 // - `delay`: one time for its on and its off alike, or `{ "start": …, "end": … }`;
-// - `chord`, `sequence` and `interruptible`: their value passed over, for the fourth part's later commits to read.
-fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r) {
+// - `chord`: a control's name, a list of them, or `{ "control": …, "action": …, "masks": … }`, each part a name or a list;
+// - `sequence`: a list of steps, or `{ "steps": […], "within": …, "masks": … }`, each step a control's name, or
+//   `{ "control": … }` (a name or a list, any of which counts) or `{ "action": … }`;
+// - `interruptible`: its value passed over, for the fourth part's later commit to read.
+fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r, ref DynamicArray<string> names,
+                                                   ref DynamicArray<GestureName> marks) {
     ValueKind k = r.peekKind();
     if (!isKind(k: k, want: ValueKind::Object)) {
         r.failWith(kind: DeErrorKind::TypeMismatch);
@@ -890,6 +920,20 @@ fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r) {
                 };
             } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
         }
+        case Chord: {
+            Optional<Owned<Error>> wrong = readChord(r: r, g: g, names: names, marks: marks);
+            match (give wrong) {
+                case Some(value: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                case None: { }
+            };
+        }
+        case Sequence: {
+            Optional<Owned<Error>> wrong = readSequence(r: r, g: g, names: names, marks: marks);
+            match (give wrong) {
+                case Some(value: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                case None: { }
+            };
+        }
         case _: { r.skipValue(); }
     };
     if (r.failed()) { return Result::Err(error: failedIn(r: r, name: name)); }
@@ -922,4 +966,134 @@ fn Result<GestureRecord, Owned<Error>> readTime(Deserializer r, GestureRecord g,
         };
     } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
     return Result::Ok(value: made);
+}
+
+// Names the reader stands at, a string or a list of them, into `names`, each marked an action's where `action`, of step
+// `step`.
+fn void readNames(Deserializer r, ref DynamicArray<string> names, ref DynamicArray<GestureName> marks, bool action,
+                  int32 step) {
+    ValueKind k = r.peekKind();
+    if (isKind(k: k, want: ValueKind::String)) {
+        names.add(item: r.readString());
+        marks.add(item: GestureName.make(action: action, step: step));
+    } else if (isKind(k: k, want: ValueKind::Array)) {
+        r.beginArray();
+        while (r.moreElems()) {
+            names.add(item: r.readString());
+            marks.add(item: GestureName.make(action: action, step: step));
+        }
+    } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+}
+
+// A chord: a control's name, a list of them, or `{ "control": …, "action": …, "masks": … }`; why it is refused, or None.
+fn Optional<Owned<Error>> readChord(Deserializer r, ref GestureRecord g, ref DynamicArray<string> names,
+                                    ref DynamicArray<GestureName> marks) {
+    g.namesFrom = names.length();
+    ValueKind k = r.peekKind();
+    if (isKind(k: k, want: ValueKind::Object)) {
+        r.beginObject(count: 0);
+        while (r.moreFields()) {
+            FieldKey key = r.field();
+            string part = match (key) { case Name(name: n): copy n; case _: ""; };
+            if (part == "control") { readNames(r: r, names: names, marks: marks, action: false, step: 0); }
+            else if (part == "action") { readNames(r: r, names: names, marks: marks, action: true, step: 0); }
+            else if (part == "masks") { g.masks = r.readBool(); }
+            else { return Optional::Some(value: DeError.unknownCase(key: key, type: "chord's part", cases: "`control`, `action` or `masks`")); }
+            if (r.failed()) { return Optional::Some(value: DeError::inField(error: DeError.make(kind: r.errorKind()), name: give part)); }
+        }
+        r.endObject();
+    } else {
+        readNames(r: r, names: names, marks: marks, action: false, step: 0);
+    }
+    g.namesTo = names.length();
+    if (r.failed()) { return Optional::Some(value: DeError.make(kind: r.errorKind())); }
+    return Optional::None;
+}
+
+// One step of a sequence, numbered `step`: a control's name, or `{ "control": … }` or `{ "action": … }`.
+fn Optional<Owned<Error>> readStep(Deserializer r, ref DynamicArray<string> names, ref DynamicArray<GestureName> marks,
+                                   int32 step) {
+    ValueKind k = r.peekKind();
+    if (isKind(k: k, want: ValueKind::String)) {
+        names.add(item: r.readString());
+        marks.add(item: GestureName.make(action: false, step: step));
+        return Optional::None;
+    }
+    if (!isKind(k: k, want: ValueKind::Object)) {
+        r.failWith(kind: DeErrorKind::TypeMismatch);
+        return Optional::Some(value: DeError.make(kind: r.errorKind()));
+    }
+    r.beginObject(count: 0);
+    while (r.moreFields()) {
+        FieldKey key = r.field();
+        string part = match (key) { case Name(name: n): copy n; case _: ""; };
+        if (part == "control") { readNames(r: r, names: names, marks: marks, action: false, step: step); }
+        else if (part == "action") { readNames(r: r, names: names, marks: marks, action: true, step: step); }
+        else { return Optional::Some(value: DeError.unknownCase(key: key, type: "sequence step's part", cases: "`control` or `action`")); }
+        if (r.failed()) { return Optional::Some(value: DeError::inField(error: DeError.make(kind: r.errorKind()), name: give part)); }
+    }
+    r.endObject();
+    if (r.failed()) { return Optional::Some(value: DeError.make(kind: r.errorKind())); }
+    return Optional::None;
+}
+
+// A list of steps, the reader at its `[`, into `names`; why it is refused, or None. `count` takes how many.
+fn Optional<Owned<Error>> readSteps(Deserializer r, ref GestureRecord g, ref DynamicArray<string> names,
+                                    ref DynamicArray<GestureName> marks) {
+    r.beginArray();
+    int32 step = 0;
+    while (r.moreElems()) {
+        Optional<Owned<Error>> wrong = readStep(r: r, names: names, marks: marks, step: step);
+        match (give wrong) {
+            case Some(value: e): { return Optional::Some(value: DeError::inElement(error: give e, index: cast<isize>(step))); }
+            case None: { }
+        };
+        step = step + 1;
+    }
+    g.count = step;
+    if (r.failed()) { return Optional::Some(value: DeError.make(kind: r.errorKind())); }
+    return Optional::None;
+}
+
+// A sequence: a list of steps, or `{ "steps": […], "within": …, "masks": … }`; why it is refused, or None.
+fn Optional<Owned<Error>> readSequence(Deserializer r, ref GestureRecord g, ref DynamicArray<string> names,
+                                       ref DynamicArray<GestureName> marks) {
+    g.namesFrom = names.length();
+    ValueKind k = r.peekKind();
+    if (isKind(k: k, want: ValueKind::Array)) {
+        Optional<Owned<Error>> wrong = readSteps(r: r, g: g, names: names, marks: marks);
+        match (give wrong) { case Some(value: e): { return Optional::Some(value: give e); } case None: { } };
+    } else if (isKind(k: k, want: ValueKind::Object)) {
+        r.beginObject(count: 0);
+        while (r.moreFields()) {
+            FieldKey key = r.field();
+            string part = match (key) { case Name(name: n): copy n; case _: ""; };
+            if (part == "steps") {
+                ValueKind sk = r.peekKind();
+                if (!isKind(k: sk, want: ValueKind::Array)) {
+                    r.failWith(kind: DeErrorKind::TypeMismatch);
+                    return Optional::Some(value: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "steps"));
+                }
+                Optional<Owned<Error>> wrong = readSteps(r: r, g: g, names: names, marks: marks);
+                match (give wrong) {
+                    case Some(value: e): { return Optional::Some(value: DeError::inField(error: give e, name: "steps")); }
+                    case None: { }
+                };
+            } else if (part == "within") {
+                g.a = r.readF64();
+                g.hasA = true;
+            } else if (part == "masks") {
+                g.masks = r.readBool();
+            } else {
+                return Optional::Some(value: DeError.unknownCase(key: key, type: "sequence's part", cases: "`steps`, `within` or `masks`"));
+            }
+            if (r.failed()) { return Optional::Some(value: DeError::inField(error: DeError.make(kind: r.errorKind()), name: give part)); }
+        }
+        r.endObject();
+    } else {
+        r.failWith(kind: DeErrorKind::TypeMismatch);
+    }
+    g.namesTo = names.length();
+    if (r.failed()) { return Optional::Some(value: DeError.make(kind: r.errorKind())); }
+    return Optional::None;
 }
