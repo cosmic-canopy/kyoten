@@ -387,6 +387,7 @@ fn void recordsTests(ref Tally t) {
     content(t: t);
     bindingEntries(t: t);
     typingEntries(t: t);
+    systemRepeatEntries(t: t);
 }
 
 // A binding's entry for each device (design/input.md § Decided, question 2): a control's name, a list of them, or an
@@ -416,6 +417,25 @@ fn void typingEntries(ref Tally t) {
 
 fn bool hasPart(const ref Optional<ControlEntry> o, const ref string part) {
     return match (o) { case Some(value: e): e.parts().contains(key: part); case None: false; };
+}
+
+// A `repeat` on the system's repeats (the fifth part of step 8): `system` read, false where unwritten.
+fn void systemRepeatEntries(ref Tally t) {
+    ContentFile c = ContentFile.make();
+    string why = mergeContent(c: c, src: "{ \"bindings\": { \"erase\": { \"keyboard\": { \"control\": \"Backspace\", \"gestures\": [ { \"repeat\": { \"system\": true } }, { \"repeat\": true } ] } } } }");
+    if (why.isEmpty()) {
+        bool first = false;
+        bool second = true;
+        match (c.bindings().getRef(key: "erase").keyboard()) {
+            case Some(value: e): {
+                first = e.gestures()[0].system;
+                second = e.gestures()[1].system;
+            }
+            case None: { }
+        };
+        if (!first || second) { why = "the first `system` ${first}, the second ${second}"; }
+    }
+    t.verdict(name: "records: a `repeat` on the system's repeats says so, one unmarked does not", why: why);
 }
 
 fn bool typingOf(const ref Optional<ControlEntry> o) {

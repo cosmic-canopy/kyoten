@@ -18,12 +18,14 @@
 //   § Decided, the second part's question 2).
 // - **Typed text is a sample of its own,** `Text`, a code point at a time (the fifth part of step 8): what a key typed,
 //   an IME's committed word or an on-screen keyboard's keys, never an editing key, which is a `Control`.
+// - **So is a key's system repeat,** `Repeat`: the operating system's own repeat of a key held, at the player's rate,
+//   which a `repeat` on the system's repeats presses again on (a held erase).
 
 export { Sample, SampleKind, Device };
 
 // What a sample says: a control's edge, a pad button's travel, a stick's axis, the mouse's motion, a pad's connection,
-// or a code point typed.
-type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected, Text }
+// a code point typed, or a key's system repeat.
+type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected, Text, Repeat }
 
 // Which kind of device it came from: the bindings record's keys.
 type enum Device { Keyboard, Mouse, Gamepad }
@@ -101,6 +103,17 @@ type value Sample {
         this.slot = 0;
         this.control = cast<int32>(point);
         this.value = 0.0;
+        this.at = at;
+    }
+
+    // The key `key` (its USB HID usage id) repeated, held, as the operating system repeats it (design/input.md §
+    // Decided, 2026-11-25, the fifth part).
+    public ctor repeated(int32 key, int64 at) {
+        this.kind = SampleKind::Repeat;
+        this.device = Device::Keyboard;
+        this.slot = 0;
+        this.control = key;
+        this.value = 1.0;
         this.at = at;
     }
 

@@ -238,6 +238,79 @@ fn void typingCases(ref Tally t) {
                   says: "the mouse binding of `look` is marked `typing`, which only a keyboard entry is");
 }
 
+// A `repeat` on the system's repeats (the fifth part of step 8): pressed again on each of the operating system's
+// repeats of the key held, at the player's own rate, and at no time of its own; a repeat of a key no such entry reads
+// presses nothing; held back while the player types unless its entry is marked `typing`.
+fn void systemRepeatCases(ref Tally t) {
+    string json = "{ \"faster\": { \"keyboard\": { \"control\": \"Backspace\", \"gestures\": [ { \"repeat\": { \"system\": true } } ] } }, \"jump\": { \"keyboard\": \"KeyW\" } }";
+    Binder b = binderFor(json: json);
+    hand(b: b, s: key(control: 42, down: true, at: 10));
+    expectStep(t: t, b: b, step: 0, until: 100, name: "system repeat: the first press", want: "HP-");
+    expectStep(t: t, b: b, step: 1, until: 2000000000, name: "system repeat: no press of its own over time, however long", want: "H--");
+    hand(b: b, s: Sample.repeated(key: 42, at: 2000000010));
+    expectStep(t: t, b: b, step: 2, until: 2100000000, name: "system repeat: pressed again on the system's repeat", want: "HP-");
+    hand(b: b, s: Sample.repeated(key: 26, at: 2100000010));
+    expectStep(t: t, b: b, step: 3, until: 2200000000, name: "system repeat: a repeat of another key presses nothing", want: "H--");
+    hand(b: b, s: key(control: 26, down: true, at: 2200000010));
+    hand(b: b, s: Sample.repeated(key: 26, at: 2200000020));
+    string jump = stepped(b: b, step: 4, until: 2300000000, action: 1);
+    expectText(t: t, name: "system repeat: a key with no system repeat is pressed once, its repeats nothing", got: jump, want: "HP-");
+    string again = stepped(b: b, step: 5, until: 2400000000, action: 1);
+    hand(b: b, s: Sample.repeated(key: 26, at: 2400000010));
+    string still = stepped(b: b, step: 6, until: 2500000000, action: 1);
+    expectText(t: t, name: "system repeat: ...and stays held", got: again + " " + still, want: "H-- H--");
+    hand(b: b, s: key(control: 42, down: false, at: 2500000010));
+    expectStep(t: t, b: b, step: 7, until: 2600000000, name: "system repeat: let go", want: "--R");
+    hand(b: b, s: Sample.repeated(key: 42, at: 2600000010));
+    expectStep(t: t, b: b, step: 8, until: 2700000000, name: "system repeat: a repeat after the release presses nothing", want: "---");
+
+    Binder typing = binderFor(json: json);
+    typing.textEntry(player: 1, on: true, at: 0);
+    hand(b: typing, s: key(control: 42, down: true, at: 10));
+    hand(b: typing, s: Sample.repeated(key: 42, at: 20));
+    expectStep(t: t, b: typing, step: 0, until: 100, name: "system repeat: held back while the player types, its entry unmarked", want: "---");
+
+    // A timed `repeat` takes no system repeat: it presses again at its own times alone.
+    Binder timed = binderFor(json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyW\", \"gestures\": [ { \"repeat\": { \"delay\": 1, \"every\": 1 } } ] } } }");
+    hand(b: timed, s: key(control: 26, down: true, at: 10));
+    expectStep(t: t, b: timed, step: 0, until: 100, name: "system repeat: a timed repeat's first press", want: "HP-");
+    hand(b: timed, s: Sample.repeated(key: 26, at: 110));
+    expectStep(t: t, b: timed, step: 1, until: 200, name: "system repeat: a timed repeat ignores the system's repeats", want: "H--");
+
+    // A system repeat chained into a `toggle`, and a chord on the toggled action: a repeat while held flips the toggle,
+    // and the chord lets go with it; a repeat after the release, which no system sends, flips nothing.
+    Binder chain = binderFor(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Backspace\", \"gestures\": [ { \"repeat\": { \"system\": true } }, { \"toggle\": true } ] } }, \"jump\": { \"keyboard\": { \"control\": \"KeyR\", \"gestures\": [ { \"chord\": { \"action\": \"faster\" } } ] } } }");
+    hand(b: chain, s: key(control: 42, down: true, at: 10));
+    hand(b: chain, s: key(control: 21, down: true, at: 20));
+    string f0 = "";
+    string j0 = "";
+    borrow chain.handoff(index: 0, until: 100) as h {
+        f0 = spelled(d: h.digital(player: 1, action: 0));
+        j0 = spelled(d: h.digital(player: 1, action: 1));
+    }
+    expectText(t: t, name: "system repeat: chained into a toggle, the press turns it on, and the chord on it presses",
+               got: f0 + " " + j0, want: "HP- HP-");
+    hand(b: chain, s: Sample.repeated(key: 42, at: 110));
+    string f1 = "";
+    string j1 = "";
+    borrow chain.handoff(index: 1, until: 200) as h {
+        f1 = spelled(d: h.digital(player: 1, action: 0));
+        j1 = spelled(d: h.digital(player: 1, action: 1));
+    }
+    expectText(t: t, name: "system repeat: a repeat flips the toggle off, and the chord on it lets go with it",
+               got: f1 + " " + j1, want: "--R --R");
+    hand(b: chain, s: key(control: 42, down: false, at: 210));
+    hand(b: chain, s: Sample.repeated(key: 42, at: 220));
+    expectStep(t: t, b: chain, step: 2, until: 300, name: "system repeat: a repeat after the release flips nothing", want: "---");
+
+    expectRefused(t: t, name: "system repeat: with an `every` of its own is refused",
+                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"Backspace\", \"gestures\": [ { \"repeat\": { \"system\": true, \"every\": 0.1 } } ] } } }",
+                  says: "on the system's repeats with a `delay`, an `every` or a `limit` of its own");
+    expectRefused(t: t, name: "system repeat: on a pad is refused, since only a key repeats so",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"repeat\": { \"system\": true } } ] } } }",
+                  says: "only a key repeats so");
+}
+
 // 100 code points typed at once, a paste or an IME's word, into a world keeping `window`'s steps: each step's text, its
 // length a letter (A for 64, digits for fewer), until all 100 are handed.
 fn string spread(int32 window, int64 steps) {
@@ -2025,6 +2098,7 @@ fn void interruptibleCases(ref Tally t) {
 }
 
 fn void binderTests(ref Tally t) {
+    systemRepeatCases(t: t);
     typingCases(t: t);
     textCases(t: t);
     spreadCases(t: t);

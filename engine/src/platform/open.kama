@@ -153,6 +153,7 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                     case CloseRequested: { open = false; }
                     case KeyDown(key: k, mods: m, repeat: r): {
                         if (!r) { into.add(item: Sample.make(device: Device::Keyboard, slot: 0, control: cast<int32>(k), value: 1.0, at: at)); }
+                        else { into.add(item: Sample.repeated(key: cast<int32>(k), at: at)); }
                     }
                     case KeyUp(key: k, mods: m): {
                         into.add(item: Sample.make(device: Device::Keyboard, slot: 0, control: cast<int32>(k), value: 0.0, at: at));

@@ -392,7 +392,8 @@ type enum GestureKind { Hold, Tap, LongTap, MultiTap, Repeat, Toggle, Delay, Cho
 // - `MultiTap`: `count` its taps (2), `a` the time each tap is let go within, where `hasA`, and `b` the gap the next
 //   press comes within, where `hasB`;
 // - `Repeat`: `a` the delay before its second press, where `hasA`, `b` the time between the next ones, where `hasB`,
-//   and `count` the most presses it makes, 0 for no limit;
+//   and `count` the most presses it makes, 0 for no limit; `system`, true where it presses again on the system's own
+//   repeats of a key instead, at the player's rate;
 // - `Toggle`: `on`, false where written `false`, when it passes its input on as it is;
 // - `Delay`: `a` how much later its input's on comes, and `b` how much later its off;
 // - `Chord`: the names it holds, its entry's `gestureNames()` from `namesFrom` up to `namesTo`, each a control or an
@@ -412,6 +413,7 @@ type value GestureRecord {
     public isize namesFrom = 0;
     public isize namesTo = 0;
     public bool masks = true;
+    public bool system = false;
 
     public ctor make(GestureKind kind) { this.kind = kind; }
 }
@@ -449,6 +451,7 @@ type value RepeatParams {
     @field(name: "delay", default) public Optional<float64> delay = Optional::None;
     @field(name: "every", default) public Optional<float64> every = Optional::None;
     @field(name: "limit", default) public int32 limit = 0;
+    @field(name: "system", default) public bool system = false;
     public default ctor make() { }
 }
 
@@ -916,6 +919,7 @@ fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r, ref DynamicAr
                         match (p.delay) { case Some(value: v): { g.a = v; g.hasA = true; } case None: { } };
                         match (p.every) { case Some(value: v): { g.b = v; g.hasB = true; } case None: { } };
                         g.count = p.limit;
+                        g.system = p.system;
                     }
                     case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
                 };

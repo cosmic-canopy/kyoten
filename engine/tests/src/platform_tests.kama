@@ -482,6 +482,7 @@ fn string sampleText(const ref Sample s) {
         case Axis: { return "A${slot}:${control}=${v}@${ms}"; }
         case Motion: { return "D${control}=${v}@${ms}"; }
         case Text: { return "X${control}@${ms}"; }
+        case Repeat: { return "R${control}@${ms}"; }
         case Control: { }
     };
     return match (s.device) {
@@ -494,7 +495,8 @@ fn string sampleText(const ref Sample s) {
 fn Instant msAfter(Instant began, int64 ms) { return began + Duration.fromMillis(ms: ms); }
 
 // The open platforms' pump, on a headless window with posted events: a key, a mouse's button, a pad's button and its
-// connection, each a sample at its event's time; a key's repeat and a touch are none; a close request ends it.
+// connection, each a sample at its event's time; a key's system repeat a sample of its own; a touch none; a close request
+// ends it.
 unsafe fn void pumpCases(ref Tally t) {
     Window w = Window.headless(width: 64, height: 48);
     Instant began = monotonicNow();
@@ -518,8 +520,8 @@ unsafe fn void pumpCases(ref Tally t) {
     PadReadings pads = PadReadings.make();
     bool open = pumpInto(w: w, began: began, into: samples, pads: pads);
     string got = textOf(samples: samples);
-    t.verdict(name: "OpenPlatform: a window's input is samples at their events' times, a repeat and a touch none",
-              why: got == "K82=1@5 K82=0@7 M0=1@8 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15 X233@15" ? "" : "got `${got}`");
+    t.verdict(name: "OpenPlatform: a window's input is samples at their events' times, a key's repeat its own, a touch none",
+              why: got == "K82=1@5 R82@6 K82=0@7 M0=1@8 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15 X233@15" ? "" : "got `${got}`");
     t.verdict(name: "OpenPlatform: a pump with no close request keeps the window open", why: open ? "" : "it closed");
     w.post(event: Event::CloseRequested, at: msAfter(began: began, ms: 16));
     DynamicArray<Sample> after = DynamicArray.empty();

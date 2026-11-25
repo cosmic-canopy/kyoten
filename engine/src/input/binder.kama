@@ -79,6 +79,9 @@
 //   keys included; the mouse and the pads drive as ever. Turning the entry on lets go of every other keyboard control
 //   held, as a focus change does, so a key held then does not stick; one still held when it turns off waits for its
 //   next press. Only a keyboard entry may be marked `typing`.
+// - **A `repeat` on the system's repeats** (`{ "repeat": { "system": true } }`) presses again on each of the operating
+//   system's repeats of a key held, at the player's own rate, an accessibility setting, as a text field's erase does in
+//   RmlUi, Godot and Bevy; it takes no `delay`, `every` or `limit`, and only a key repeats.
 // - **Output's newest** (`newest`, frame-phases § Decided: "presentation reads, such as camera look, take the newest
 //   sample each frame"): every sample taken so far applied, each state as of the newest, each delta since Output's last
 //   frame at the frame's seconds, whether or not a step took them. In a frame that owes no step the samples are applied
@@ -153,6 +156,8 @@ type value Gesture {
     public isize rivalFrom = 0;
     public isize rivalTo = 0;
     public bool waiting = false;
+    // A `repeat` that presses again on the system's repeats alone.
+    public bool system = false;
 
     public ctor make(GestureKind kind, isize entry) {
         this.kind = kind;
@@ -839,6 +844,10 @@ type resource Binder implements InputSource {
                 this.setValues(s: s);
                 return;
             }
+            case Repeat: {
+                this.systemRepeat(s: s);
+                return;
+            }
             case Text: {
                 if (!this.anyText || !this.typingAt(t: s.at)) { return; }
                 Optional<char> point = try cast<char>(s.control);
@@ -889,6 +898,34 @@ type resource Binder implements InputSource {
             i = i + 1;
         }
         if (moved) { this.settle(t: s.at); }
+    }
+
+    // A key's system repeat: each `repeat` on the system's repeats whose input is on, on an entry reading that key,
+    // presses again.
+    fn void systemRepeat(Sample s) {
+        bool any = false;
+        isize g = 0;
+        while (g < this.gestures.length()) {
+            Gesture x = this.gestures[g];
+            if (x.kind == GestureKind::Repeat && x.system && x.input && this.entryReads(entry: x.entry, s: s)) {
+                this.feed(e: x.entry, g: g + 1, change: Change::Again, t: s.at);
+                any = true;
+            }
+            g = g + 1;
+        }
+        if (any) { this.recheck(t: s.at); }
+    }
+
+    // Whether digital entry `entry` reads the key `s` names: a key is always an edge's control.
+    const fn bool entryReads(isize entry, Sample s) {
+        DigitalEntry de = this.digitalEntries[entry];
+        isize i = de.from;
+        while (i < de.to) {
+            Bound c = this.controls[i];
+            if (c.device == s.device && c.control == s.control) { return true; }
+            i = i + 1;
+        }
+        return false;
     }
 
     // A pad value through its default dead zone, on its own axis, then the half of it a stick's direction reads.
@@ -1460,7 +1497,7 @@ type resource Binder implements InputSource {
                         this.gestures[g].input = true;
                         this.gestures[g].out = true;
                         this.gestures[g].taps = 1;
-                        this.gestures[g].due = x.count == 0 || x.count > 1 ? later(t: t, by: x.a) : NOT_DUE;
+                        this.gestures[g].due = !x.system && (x.count == 0 || x.count > 1) ? later(t: t, by: x.a) : NOT_DUE;
                         this.feed(e: e, g: g + 1, change: Change::On, t: t);
                     }
                     case Off: {
@@ -1711,12 +1748,19 @@ type resource Binder implements InputSource {
                 }
                 case Repeat: {
                     g.count = r.count;
+                    g.system = r.system;
                     if (r.count < 0) { why = "lists a `repeat` whose `limit` is ${r.count}: its most presses are 0, for no limit, or more"; }
-                    if (why.isEmpty()) {
-                        g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.repeatDelay, word: "repeat`'s `delay", part: "repeatDelay", why: why);
-                    }
-                    if (why.isEmpty()) {
-                        g.b = nanosFor(own: r.hasB, value: r.b, fallback: this.times.repeatEvery, word: "repeat`'s `every", part: "repeatEvery", why: why);
+                    if (r.system && (r.hasA || r.hasB || r.count != 0)) {
+                        why = "lists a `repeat` on the system's repeats with a `delay`, an `every` or a `limit` of its own: it takes the player's own rate";
+                    } else if (r.system && device != Device::Keyboard) {
+                        why = "lists a `repeat` on the system's repeats, and only a key repeats so";
+                    } else if (!r.system) {
+                        if (why.isEmpty()) {
+                            g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.repeatDelay, word: "repeat`'s `delay", part: "repeatDelay", why: why);
+                        }
+                        if (why.isEmpty()) {
+                            g.b = nanosFor(own: r.hasB, value: r.b, fallback: this.times.repeatEvery, word: "repeat`'s `every", part: "repeatEvery", why: why);
+                        }
                     }
                 }
                 case Toggle: { g.enabled = r.on; }
