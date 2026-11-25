@@ -219,3 +219,16 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     reader of Chromium, WebKit and FMOD's default: cheap, exact on whole frames, and aliasing when pitched;
   - **cubic and band-limited reading come with AUD-30,** and with them the choice of rung per source that a sound record
     names (2026-11-14, above, KYR-15's).
+- **2026-11-24, built in `@kama/audio`: what its buffer player adds to kyoten's Budget record for audio** (its SPEC.md
+  § The buffer player, measured by its `param` and `buffer source` cases; the counts in the entries of 2026-11-20 and
+  2026-11-21 above stand, and these come beside them):
+  - **`OfflineAudioContextOptions.bufferCapacity`, 1,024 by default,** is how many buffers a context holds for its
+    audio side at once (decision 44's declared count), one each however many sources play it. Each costs 128 bytes on
+    a 64-bit target and 104 on wasm32, 128 KiB at the default, besides its samples. A full table is `TooManyBuffers`
+    at a source's start, never while rendering, and a buffer comes back once the last source playing it has ended;
+  - **a node row costs 1,485 bytes in stereo on a 64-bit target, 1,457 on wasm32,** where it cost 1,277: a buffer
+    source's second parameter (48 bytes, so the parameters' state is 96 bytes a row, 96 KiB at 1,024 rows), its
+    `buffer` attribute (56 bytes, 28 on wasm32), its playback (56, the id of the buffer it plays and the audio side's
+    player with its start's fraction) and its loop (48, the attributes on each side);
+  - **a buffer's samples live until the last source playing them is done,** though kyoten has dropped every handle on
+    it, so the record's samples are the buffers loaded plus any still playing after their sound was unloaded.
