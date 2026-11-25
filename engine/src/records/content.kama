@@ -383,7 +383,7 @@ type enum GestureKind { Hold, Tap, LongTap, MultiTap, Repeat, Toggle, Delay, Cho
 // - `Sequence`: its steps, `count` of them, by those names, each marked with its step (a step may name several
 //   controls, any of which counts); `a` the time each comes within, where `hasA` (else the `input` record's `gap`); and
 //   `masks`;
-// - `Interruptible`: read by the fourth part's later commit.
+// - `Interruptible`: `on`, false where written `false`, which the binder refuses.
 type value GestureRecord {
     public GestureKind kind;
     public float64 a = 0.0;
@@ -831,7 +831,7 @@ fn Optional<GestureKind> gestureKindOf(const ref string name) {
 // - `chord`: a control's name, a list of them, or `{ "control": …, "action": …, "masks": … }`, each part a name or a list;
 // - `sequence`: a list of steps, or `{ "steps": […], "within": …, "masks": … }`, each step a control's name, or
 //   `{ "control": … }` (a name or a list, any of which counts) or `{ "action": … }`;
-// - `interruptible`: its value passed over, for the fourth part's later commit to read.
+// - `interruptible`: `true`.
 fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r, ref DynamicArray<string> names,
                                                    ref DynamicArray<GestureName> marks) {
     ValueKind k = r.peekKind();
@@ -934,7 +934,9 @@ fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r, ref DynamicAr
                 case None: { }
             };
         }
-        case _: { r.skipValue(); }
+        case Interruptible: {
+            if (truth) { g.on = r.readBool(); } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
     };
     if (r.failed()) { return Result::Err(error: failedIn(r: r, name: name)); }
     if (r.moreFields()) {

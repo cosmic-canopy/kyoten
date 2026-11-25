@@ -1381,9 +1381,12 @@ fn void gestureRefusalCases(ref Tally t) {
     string record = refusalWith(json: "{ }", input: "{ \"gestures\": { \"tap\": 0 } }");
     t.verdict(name: "gesture: the input record's time out of range is refused, naming the record",
               why: record.contains(substring: "the `input` record's `gestures.tap`") ? "" : "refused `${record}`");
-    string later = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } } }", input: times);
-    t.verdict(name: "gesture: interruptible waits for the fourth part's next commit",
-              why: later.contains(substring: "lists a `interruptible`, which the fourth part's next commit reads") ? "" : "refused `${later}`");
+    string later = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": false } ] } } }", input: times);
+    t.verdict(name: "gesture: an interruptible written false is refused",
+              why: later.contains(substring: "lists an `interruptible` written false") ? "" : "refused `${later}`");
+    expectReadRefused(t: t, name: "gesture: an interruptible of a number is refused by the reader",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": 1 } ] } } }",
+                      says: "type mismatch at `faster.keyboard.gestures[0].interruptible`");
     string value = refusalWith(json: "{ \"throttle\": { \"gamepad\": { \"positive\": \"RightTrigger\", \"gestures\": [ { \"hold\": 0.5 } ] } } }", input: times);
     t.verdict(name: "gesture: a value action's entry takes no press-making gesture",
               why: value.contains(substring: "the gamepad binding of `throttle` lists a `hold`, which makes a press: only a `Digital` has one") ? "" : "refused `${value}`");
@@ -1733,7 +1736,73 @@ fn void chordRefusalCases(ref Tally t) {
                       says: "`acton` is not a `sequence step's part`");
 }
 
+fn void interruptibleCases(ref Tally t) {
+    string times = gestureTimes();
+    Binder b = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } }, \"jump\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": true } ] } } }",
+                          input: times);
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectBoth(t: t, b: b, step: 0, until: t0 + 100 * MS, name: "interruptible: its press waits while another action's hold on its control could fire",
+               want: "--- ---");
+    space(b: b, down: false, at: t0 + 200 * MS);
+    expectBoth(t: t, b: b, step: 1, until: t0 + 250 * MS, name: "interruptible: let go short of the hold's time, it presses then, for one step",
+               want: "HP- ---");
+    expectBoth(t: t, b: b, step: 2, until: t0 + 300 * MS, name: "interruptible: and releases on the next step", want: "--R ---");
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    expectBoth(t: t, b: b, step: 3, until: t1 + 500 * MS, name: "interruptible: the hold firing, it never comes", want: "--- HP-");
+    space(b: b, down: false, at: t1 + 600 * MS);
+    expectBoth(t: t, b: b, step: 4, until: t1 + 650 * MS, name: "interruptible: nor at the release", want: "--- --R");
+    expectBoth(t: t, b: b, step: 5, until: t1 + 2000 * MS, name: "interruptible: nor later", want: "--- ---");
+
+    Binder m = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } }, \"jump\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"multiTap\": 2 } ] } } }",
+                          input: times);
+    space(b: m, down: true, at: t0);
+    space(b: m, down: false, at: t0 + 100 * MS);
+    expectBoth(t: t, b: m, step: 0, until: t0 + 150 * MS, name: "interruptible: a tap waits while a double tap could still come", want: "--- ---");
+    expectBoth(t: t, b: m, step: 1, until: t0 + 800 * MS, name: "interruptible: through the double tap's gap", want: "--- ---");
+    expectBoth(t: t, b: m, step: 2, until: t0 + 900 * MS, name: "interruptible: its gap passed, the tap comes, for one step", want: "HP- ---");
+    expectBoth(t: t, b: m, step: 3, until: t0 + 950 * MS, name: "interruptible: and releases on the next step", want: "--R ---");
+    space(b: m, down: true, at: t1);
+    space(b: m, down: false, at: t1 + 100 * MS);
+    space(b: m, down: true, at: t1 + 300 * MS);
+    expectBoth(t: t, b: m, step: 4, until: t1 + 350 * MS, name: "interruptible: a double tap coming, neither of its presses is the plain one's",
+               want: "--- HP-");
+    space(b: m, down: false, at: t1 + 400 * MS);
+    expectBoth(t: t, b: m, step: 5, until: t1 + 2000 * MS, name: "interruptible: nor later", want: "--- --R");
+    int64 t2 = 30 * S;
+    space(b: m, down: true, at: t2);
+    expectBoth(t: t, b: m, step: 6, until: t2 + 150 * MS, name: "interruptible: a press waits within a tap's time", want: "--- ---");
+    expectBoth(t: t, b: m, step: 7, until: t2 + 250 * MS, name: "interruptible: held past it, no double tap can come: it presses, held",
+               want: "HP- ---");
+    expectBoth(t: t, b: m, step: 8, until: t2 + 350 * MS, name: "interruptible: and stays held", want: "H-- ---");
+    space(b: m, down: false, at: t2 + 400 * MS);
+    expectBoth(t: t, b: m, step: 9, until: t2 + 450 * MS, name: "interruptible: and lets go with its control", want: "--R ---");
+
+    Binder alone = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } }, \"jump\": { \"keyboard\": { \"control\": \"KeyJ\", \"gestures\": [ { \"hold\": true } ] } } }",
+                              input: times);
+    space(b: alone, down: true, at: t0);
+    expectBoth(t: t, b: alone, step: 0, until: t0 + 50 * MS, name: "interruptible: with no rival on its control, it presses at once", want: "HP- ---");
+    space(b: alone, down: false, at: t0 + 100 * MS);
+    keyAt(b: alone, control: 13, down: true, at: t0 + 200 * MS);
+    space(b: alone, down: true, at: t0 + 250 * MS);
+    expectBoth(t: t, b: alone, step: 1, until: t0 + 300 * MS, name: "interruptible: a hold under way on another key of its device is no rival either: its release and press",
+               want: "HPR ---");
+
+    Binder own = spaceWith(gestures: "[ { \"hold\": 0.2 }, { \"interruptible\": true } ]");
+    space(b: own, down: true, at: t0);
+    expectGesture(t: t, b: own, step: 0, until: t0 + 250 * MS, name: "interruptible: its own entry's hold before it is no rival", want: "HP- 100");
+
+    Binder chained = binderWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"interruptible\": true } ] } }, \"jump\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"multiTap\": 2 } ] }, \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"sequence\": [ { \"action\": \"faster\" } ] } ] } } }",
+                                input: times);
+    space(b: chained, down: true, at: t0);
+    hand(b: chained, s: pad(slot: 0, control: 0, value: 1.0, at: t0 + 300 * MS));
+    expectBoth(t: t, b: chained, step: 0, until: t0 + 350 * MS,
+               name: "interruptible: a press it decides is an action's at that time, a sequence's step already when the next press comes", want: "HP- HP-");
+}
+
 fn void binderTests(ref Tally t) {
+    interruptibleCases(t: t);
     chordCases(t: t);
     maskCases(t: t);
     sequenceCases(t: t);

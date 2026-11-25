@@ -11,7 +11,11 @@
 //   `hold`, `tap`, `longTap`, `multiTap`, `repeat` (a press again while held), `toggle`, `delay`, `chord` and
 //   `sequence`. They run in real time, on the samples' clock: a deadline (a hold's time passing) lands in the step whose
 //   end passes it, and each step's hand-off carries each digital's `progress`, how far the gesture under way has come.
-//   A gesture naming no time takes the `input` record's. `interruptible` comes with the fourth part's later commit.
+//   A gesture naming no time takes the `input` record's.
+// - **`interruptible`,** Steam's Interruptable, opt-in: a press waits while another action's `hold` or `multiTap` on
+//   the same control could still fire, and never comes if that one does. A hold let go short of its time, or a
+//   multi-tap's gap passing with no next press, lets it come then: held where its control still is, else a press for
+//   one step.
 // - **A chord's modifiers and a sequence's steps** (question 2) are controls of the entry's scheme, the keyboard and the
 //   mouse together or the pad, with kyoten's `Shift`, `Control`, `Alt` and `Meta` for either side, or digital actions,
 //   held as their own bindings hold them; actions holding each other in a circle are refused, and each action is
@@ -133,6 +137,11 @@ type value Gesture {
     public isize modTo = 0;
     public bool masks = true;
     public int64 tookAt = -1;
+    // An `interruptible`'s rivals, `rivals[rivalFrom]` up to `rivalTo`: the other actions' holds and multi-taps on its
+    // control; and whether a press of its waits on them.
+    public isize rivalFrom = 0;
+    public isize rivalTo = 0;
+    public bool waiting = false;
 
     public ctor make(GestureKind kind, isize entry) {
         this.kind = kind;
@@ -285,6 +294,8 @@ type resource Binder implements InputSource {
     // Every chord's and sequence's modifiers and steps; the digital actions' names; and the order the actions are settled
     // in, each after every action its chords and sequences hold.
     DynamicArray<Modifier> modifiers = DynamicArray.empty();
+    // Every `interruptible`'s rivals, by gesture.
+    DynamicArray<isize> rivals = DynamicArray.empty();
     DynamicArray<string> actionNames = DynamicArray.empty();
     DynamicArray<int32> actionOrder = DynamicArray.empty();
     // The `input` record's gestures' default times, in seconds.
@@ -415,6 +426,7 @@ type resource Binder implements InputSource {
                            bindings: bindings, no: no);
             a = a + 1;
         }
+        this.findRivals();
         this.orderActions(no: no);
         if (no.any()) { return Result::Err(error: give no); }
         return Result::Ok(value: give this);
@@ -889,7 +901,87 @@ type resource Binder implements InputSource {
                 }
                 m = m + 1;
             }
+            if (this.settleWaits(t: t)) { changed = true; }
         }
+    }
+
+    // Every `interruptible` press waiting at `t`: one whose rival fired never comes; one no rival can still fire comes now,
+    // held where its control still is, else a press for one step. True where any was decided.
+    fn bool settleWaits(int64 t) {
+        bool decided = false;
+        isize g = 0;
+        while (g < this.gestures.length()) {
+            Gesture x = this.gestures[g];
+            if (x.kind == GestureKind::Interruptible && x.waiting) {
+                bool fired = false;
+                bool open = false;
+                isize k = x.rivalFrom;
+                while (k < x.rivalTo) {
+                    Gesture r = this.gestures[this.rivals[k]];
+                    if (r.out) { fired = true; }
+                    else if ((r.kind == GestureKind::Hold && r.input) || (r.kind == GestureKind::MultiTap && r.taps > 0)) { open = true; }
+                    k = k + 1;
+                }
+                if (fired) {
+                    this.gestures[g].waiting = false;
+                    decided = true;
+                } else if (!open) {
+                    this.gestures[g].waiting = false;
+                    decided = true;
+                    if (x.input) {
+                        this.gestures[g].out = true;
+                        this.feed(e: x.entry, g: g + 1, change: Change::On, t: t);
+                    } else {
+                        this.pulse(e: x.entry, g: g, t: t);
+                    }
+                }
+            }
+            g = g + 1;
+        }
+        return decided;
+    }
+
+    // Each `interruptible`'s rivals: every `hold` and `multiTap` of another action's entry that reads a control its own
+    // entry reads.
+    fn void findRivals() {
+        isize g = 0;
+        while (g < this.gestures.length()) {
+            if (this.gestures[g].kind == GestureKind::Interruptible) {
+                this.gestures[g].rivalFrom = this.rivals.length();
+                DigitalEntry mine = this.digitalEntries[this.gestures[g].entry];
+                isize e = 0;
+                while (e < this.digitalEntries.length()) {
+                    DigitalEntry other = this.digitalEntries[e];
+                    if (other.action != mine.action && this.shareControl(a: mine, b: other)) {
+                        isize k = other.gestureFrom;
+                        while (k < other.gestureTo) {
+                            GestureKind kind = this.gestures[k].kind;
+                            if (kind == GestureKind::Hold || kind == GestureKind::MultiTap) { this.rivals.add(item: k); }
+                            k = k + 1;
+                        }
+                    }
+                    e = e + 1;
+                }
+                this.gestures[g].rivalTo = this.rivals.length();
+            }
+            g = g + 1;
+        }
+    }
+
+    // Whether entries `a` and `b` read a control in common.
+    const fn bool shareControl(DigitalEntry a, DigitalEntry b) {
+        isize i = a.from;
+        while (i < a.to) {
+            isize j = b.from;
+            while (j < b.to) {
+                Bound x = this.controls[i];
+                Bound y = this.controls[j];
+                if (x.device == y.device && x.kind == y.kind && x.control == y.control) { return true; }
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+        return false;
     }
 
     // A modifier or a step of gesture `g` held (`rose`) or let go at `t`. A chord lets go when one of its modifiers does.
@@ -1302,6 +1394,22 @@ type resource Binder implements InputSource {
                     case Again: { if (x.out) { this.feed(e: e, g: g + 1, change: Change::Again, t: t); } }
                 };
             }
+            case Interruptible: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        this.gestures[g].waiting = true;
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        if (x.out) {
+                            this.gestures[g].out = false;
+                            this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                        }
+                    }
+                    case Again: { if (x.out) { this.feed(e: e, g: g + 1, change: Change::Again, t: t); } }
+                };
+            }
             case Sequence: {
                 match (change) {
                     case On: {
@@ -1523,7 +1631,9 @@ type resource Binder implements InputSource {
                     if (why.isEmpty()) { why = this.takeNames(entry: entry, r: r, gesture: this.gestures.length(), device: device); }
                     g.modTo = this.modifiers.length();
                 }
-                case _: { why = "lists a `" + word + "`, which the fourth part's next commit reads"; }
+                case Interruptible: {
+                    if (!r.on) { why = "lists an `interruptible` written false: leave it out where a press need not wait"; }
+                }
             };
             if (!why.isEmpty()) {
                 no.add(line: whose + " " + why);
