@@ -187,8 +187,9 @@ package's design pass answers 1, 2, 4 and 5 in its own `AGENTS.audio.md`, and 3,
     channels when more). So the record sizes it as the node rows, plus one for the destination, times the channels
     times 512 bytes: 1 MiB at 1,024 rows in stereo, 6 MiB at 12 channels;
   - **it never runs out while rendering,** so the record is the whole of it: no graph a program builds asks for more.
-  - **A source's start is `start(startTime:)`** where the 2026-11-15 entry above wrote `start(when:)`: kama reserves
-    `when` (`@kama/audio`'s KAMA_GAPS.md KAUD-11), so the time takes the name Web Audio gives its other times.
+  - **A source's start is `start(when:)`,** as the 2026-11-15 entry above wrote it, since 2026-11-24. From 2026-11-19
+    it was `start(startTime:)`, and its stop `stop(stopTime:)`, because kama reserved `when` (`@kama/audio`'s
+    KAMA_GAPS.md KAUD-11); kama 0.9.1015 lets `when` name a parameter, and both took Web Audio's name on the pin.
 - **2026-11-20, the owner: `@kama/audio`'s automation events live in one pool per context** (its `AGENTS.audio.md`
   § Decided, 40 to 42). This is the second thing kyoten's Budget record for audio must hold:
   - **`OfflineAudioContextOptions.eventCapacity`, 4,096 by default,** is how many events every parameter of the context
