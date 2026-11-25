@@ -10,10 +10,12 @@ engine's `input` record, and a stick's directions as controls, with a press poin
 part's three questions, gestures, are decided and the part built (2026-11-24, below): a `Digital`'s `progress`, a chord's
 modifiers and a sequence's steps naming a control or an action, a chord masking its control's plain binding, and every
 gesture the peers offer that a device kyoten reads can drive. The fifth part's four
-questions, `Text`, are decided (2026-11-25, below):
+questions, `Text`, are decided and the part built (2026-11-25, below):
 - a `Text` action holds the text that entered;
-- it is collected only while the game turns a player's text entry on, through Output's own `TextEntry`;
-- the keyboard's other bindings are masked meanwhile.
+- it is collected only while the game turns a player's text entry on, through Output's own `TextEntry`, which the
+  world gathers after Output into `Requests`;
+- the keyboard's other bindings are masked meanwhile, except the entries marked `"typing": true`;
+- a held erase repeats at the player's own rate, `{ "repeat": { "system": true } }`.
 
 What the peers and the owner's games do is [../research/input.md](../research/input.md).
 
@@ -716,3 +718,85 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   2. the `Text` kind end to end, collected while text entry is on;
   3. typing masks the keyboard;
   4. the system's key repeat.
+
+- **2026-11-25, built: step 8's fifth part, `Text`** (the fiftieth session), in four commits and two of what their
+  mutations found, on kyoten's pin, `0.9.1027+g25d97c29`, each gated by `tools/test.sh`.
+  1. **Output's own state, and the engine's first component, `TextEntry`** (kyoten `f9b1257`):
+     - a component record's `"output": true` (`ComponentRecord.output()`), never saved, whatever its record says of
+       `saved`;
+     - only an Output processor takes `ref` of one, and an Output processor takes `ref` of nothing else; an Input,
+       Update or Constraints processor taking one, `ref` or `const ref`, is refused, naming why;
+     - `kyoten::frame::TextEntry { player, on }`, its record in the frame tier's records file;
+     - the tool reads each dependency's records files for their component records, as it reads the game's: the
+       engine's `TextEntry`, a dependency's requirements and world components; a dependency whose `kama.json` cannot
+       be read, or whose records file does not read, is refused from the records alone, naming it.
+  2. **The `Text` kind end to end, collected while text entry is on** (kyoten `3a3a02e`):
+     - `kyoten::frame::Text`, up to 64 code points: `length()`, `at(index:)`, `chars()` to `foreach` over, and
+       `appendTo(text:)`;
+     - `SampleKind::Text`, the pump's `Event::Text` a sample at its time;
+     - `ActionList.addText`, and `Handoff` and `PlayerActions` holding each step's text, a run's view joining its
+       window's steps, oldest first; `PlayerActions::keptFor(window:)`;
+     - the binder: `"keyboard": "Text"`, and every other device, control, filter and gesture on a `Text` action refused,
+       as `Text` on any other kind is; player 1's text taken from the moment the entry turned on and dropped while it is
+       off; a step handing no more than keeps every run of the steps kept within 64, the rest after it, in order;
+     - `kyoten::frame::Requests`, `World.requests(into:)` after Output, `InputSource.textEntry(player:, on:, at:)` and
+       `Platform.textEntry(player:, on:)`, which `Play` hands each change to at its frame's timestamp; the open
+       platforms' a stopgap until `@kama/window`'s WIN-5;
+     - the generator: the field and its two views, the world's `window` and `requests`, `pass_requests` over every
+       family holding a `TextEntry`, and the binder made with the world's window.
+  3. **Typing holds the keyboard back** (kyoten `92cc831`): an entry's `"typing": true`; while player 1's entry is on, a
+     key drives only their `Text` actions and the entries marked so, a value's keys included, and the mouse and the
+     pads drive as ever; turning it on lets go of every other key held, a marked key and a pad held then staying held;
+     one held through it waits for its next press; a mouse's or a pad's entry marked `typing` refused.
+  4. **The system's key repeat** (kyoten `12f7f01`): the pump hands a key's operating-system repeat on as `SampleKind::Repeat`,
+     and `{ "repeat": { "system": true } }` presses again on each, held back while the player types like any key, and
+     ignored by a timed `repeat`; with a `delay`, an `every` or a `limit` of its own, or on a pad or the mouse, it is
+     refused.
+
+  What the mutations found, each its own commit: a dependency's records file that does not read, and a redundant
+  check on a text binding's object, removed (kyoten `43a690c`); spin's `tally` counting `note`, so a step's view of the
+  wrong text action shows (kyoten `1bbfc7f`).
+  - **Settled while building, for the owner to object to:**
+    - **The requests' path is `Requests`,** gathered by the world after Output (`World.requests(into:)`) and handed on
+      by `Play` as it changes: one contract call, where each later request (the lock's let-go, the cursor's mode,
+      rumble) adds a field.
+    - **A burst is spread by a sliding window:** a step hands at most 64 less what the steps kept before it handed, so
+      an IME's word lands at once, and a paste of 100 code points comes in two steps, the second after the steps kept.
+    - **A sample at the very moment the entry turns on is taken, and one at the moment it turns off is not:** the entry
+      holds from its moment on.
+    - **A dependency's component records are read** wherever the game's are (its world components, its requirements,
+      Output's own state); its processors, groups and actions stay its own.
+    - **The engine declares its first component of its own,** in the frame tier, read by the tool from the engine's
+      records file as a dependency's.
+  - **Counts:** the engine's tests 894 cases (814 at the session's start), the tool's 272 (253), natively and on
+    wasm, debug and release; fps and vr as before.
+  - **Mutations:** 88 of 92 caught, two shown equivalent, two dead checks removed (kyoten's `.scratch/s50/mutate_c1.py`,
+    `mutate_c2.py`, `mutate_c34.py`):
+    - **Commit 1, 17 of 17:** 5 on the engine and 12 on the tool. One was rewritten to compile (code after a bare
+      `continue`), and one caught once its case was added (a dependency's records file that does not read).
+    - **Commit 2, 44 of 46:**
+      - one equivalent: a text sample taken with no text action bound reaches nothing, since every step drains the
+        queue and hands to bound actions alone;
+      - one showed the object check on a text binding redundant, since an object has no names, so it was removed;
+      - one rewritten to compile (a smaller `Text` needs its `chars()` too);
+      - two caught once their cases were sharpened: a text of one code point is not empty, and spin's `tally` reading
+        `note`;
+      - three while the batch was planned: a sample at the very moment the entry turns on and off, a second text
+        action in spin, and the generated `run`'s binder window, read from its code since a headless run cannot show
+        it.
+    - **Commit 3, 16 of 17:**
+      - one equivalent: letting keys go when the entry turns off too, since while it is on no unmarked key is on;
+      - one caught once a case held a pad when the entry turns on;
+      - three cases added while it was planned: `typing` twice, a marked key held across, a marked value's keys.
+    - **Commit 4, 11 of 12:**
+      - one showed a check dead, a key's kind in `entryReads`, since a key is always an edge's, so it was removed;
+      - three caught once their cases were added: a timed `repeat` ignoring the system's repeats, and a system repeat
+        chained into a `toggle`, after its release and under a chord on the toggled action.
+
+  **Next, KYR-54's later parts, each asked when it comes:**
+  - the cursor's position as a control;
+  - the game letting go of the lock, through `Requests`;
+  - `@kama/window`'s WIN-5, so the window's text input turns on and off, with the IME and an on-screen keyboard;
+  - a player's settings reaching the filters and gestures;
+  - a game's own filters and gestures;
+  - how a higher layer merges an object entry.
