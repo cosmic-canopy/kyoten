@@ -24,7 +24,13 @@ fn void seen(const ref Actions input, const ref Taps taps, Handle me) {
     bool held = input.faster.held;
     float32 progress = input.faster.progress;
     int32 slow = taps.slow;
-    println(s: "seen: slot ${slot} pressed ${pressed} held ${held} progress ${progress} slow ${slow}");
+    int32 typed = taps.typed;
+    int32 last = taps.last;
+    string said = "";
+    input.chat.appendTo(text: said);
+    string noted = "";
+    input.note.appendTo(text: noted);
+    println(s: "seen: slot ${slot} pressed ${pressed} held ${held} progress ${progress} slow ${slow} typed ${typed} last ${last} chat [${said}] note [${noted}]");
 }
 
 // What `aimTrack` and `aimTally` made of each cube's look and steer, and what Output itself sees of `look`: every step's

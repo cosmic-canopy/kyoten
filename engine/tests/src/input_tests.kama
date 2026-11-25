@@ -7,9 +7,10 @@
 import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
-         kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry };
+         kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text,
+         kyoten::frame::Requests };
 
-export { inputTests, spelled, digitalOf };
+export { inputTests, spelled, digitalOf, lineOf };
 
 // A processor reads an action through a `const ref`, so its fields must read there.
 fn bool heldThrough(const ref Digital d) { return d.held; }
@@ -132,6 +133,117 @@ fn void poseCases(ref Tally t) {
     Pose p = poseAt(x: 1.0, y: 2.0, z: 3.0);
     bool set = p.position.y == 2.0 && p.orientation.y == 1.0 && p.orientation.w == 0.0;
     t.verdict(name: "Pose: a position and an orientation of its own", why: set ? "" : "a field differs");
+}
+
+// What a `Text` holds, as a line.
+fn string lineOf(Text x) {
+    string line = "";
+    x.appendTo(text: line);
+    return line;
+}
+
+fn Text textOf(const ref string s) {
+    Text x = Text.empty();
+    foreach (char c in s.chars()) { _ = x.add(point: c); }
+    return x;
+}
+
+// The text that entered (design/input.md § Decided, 2026-11-25, the fifth part's question 1): code points in order, up
+// to its capacity, read by index, by `foreach`, and added to a line.
+fn void textCases(ref Tally t) {
+    Text e = Text.default();
+    t.verdict(name: "Text: empty by default", why: e.isEmpty() && e.length() == 0 ? "" : "not empty");
+    Text one = Text.empty();
+    _ = one.add(point: 'z');
+    t.verdict(name: "Text: one code point is not empty", why: !one.isEmpty() && one.length() == 1 ? "" : "it is");
+    Text x = Text.empty();
+    bool a = x.add(point: 'h');
+    bool b = x.add(point: '\u{00E9}');
+    t.verdict(name: "Text: code points added in order, read by index",
+              why: a && b && x.length() == 2 && x.at(index: 0) == 'h' && x.at(index: 1) == '\u{00E9}' && !x.isEmpty() ? "" : "they differ");
+    int32 sum = 0;
+    foreach (char c in x.chars()) { sum = sum + cast<int32>(c); }
+    t.verdict(name: "Text: its code points by `foreach`, oldest first", why: sum == 104 + 233 ? "" : "summed ${sum}");
+    string line = "say ";
+    x.appendTo(text: line);
+    t.verdict(name: "Text: added to the end of a line", why: line == "say hé" ? "" : "got `${line}`");
+    Text full = Text.empty();
+    int32 i = 0;
+    bool kept = true;
+    while (i < Text::capacity) { kept = kept && full.add(point: 'x'); i = i + 1; }
+    bool past = full.add(point: 'y');
+    t.verdict(name: "Text: holds its capacity, 64, and refuses one past it",
+              why: kept && !past && full.length() == 64 && full.at(index: 63) == 'x' ? "" : "it did not");
+}
+
+// A game's text actions in the list, the hand-off and the world's record: each step's joined over a run's window,
+// oldest first, so a run sees each code point once (the fifth part's question 1).
+fn void textActionCases(ref Tally t) {
+    ActionList only = ActionList.make();
+    only.addText(name: "chat");
+    t.verdict(name: "ActionList: a game with a text action alone is not empty",
+              why: !only.isEmpty() && only.textCount() == 1 && only.textNames()[0] == "chat" ? "" : "it is");
+    ActionList two = ActionList.make();
+    two.addDigital(name: "faster");
+    two.addText(name: "chat");
+    two.addText(name: "note");
+    Handoff h = Handoff.make(players: 2, actions: two);
+    t.verdict(name: "Handoff: a text action is empty until set", why: h.text(player: 1, action: 1).isEmpty() && h.textActions() == 2 ? "" : "not");
+    h.setText(player: 2, action: 1, value: textOf(s: "ok"));
+    string set = lineOf(x: h.text(player: 2, action: 1));
+    string other = lineOf(x: h.text(player: 1, action: 1));
+    t.verdict(name: "Handoff: a text set is read back by its player and action alone",
+              why: set == "ok" && other.isEmpty() ? "" : "player 2 `${set}`, player 1 `${other}`");
+    t.verdict(name: "Handoff: a text past its room reads empty",
+              why: h.text(player: 3, action: 0).isEmpty() && h.text(player: 1, action: 2).isEmpty() ? "" : "it is not");
+    h.clear();
+    t.verdict(name: "Handoff: clear empties every text", why: h.text(player: 2, action: 1).isEmpty() ? "" : "it did not");
+
+    PlayerActions w = PlayerActions.make(players: 1, actions: two, window: 1);
+    Handoff s = Handoff.make(players: 1, actions: two);
+    s.setText(player: 1, action: 0, value: textOf(s: "ab"));
+    s.setText(player: 1, action: 1, value: textOf(s: "N"));
+    w.take(handoff: s, step: 0);
+    s.clear();
+    s.setText(player: 1, action: 0, value: textOf(s: "c"));
+    w.take(handoff: s, step: 1);
+    s.clear();
+    w.take(handoff: s, step: 2);
+    string all = lineOf(x: w.text(player: 1, action: 0, after: -1, upTo: 2));
+    string last = lineOf(x: w.text(player: 1, action: 0, after: 1, upTo: 2));
+    string middle = lineOf(x: w.text(player: 1, action: 0, after: 0, upTo: 1));
+    string note = lineOf(x: w.text(player: 1, action: 1, after: -1, upTo: 2));
+    t.verdict(name: "PlayerActions: a text joins its window's steps, oldest first",
+              why: all == "abc" ? "" : "got `${all}`");
+    t.verdict(name: "PlayerActions: a run sees only its window's text, so each code point once",
+              why: last.isEmpty() && middle == "c" ? "" : "after step 1 `${last}`, step 1 alone `${middle}`");
+    t.verdict(name: "PlayerActions: each text action its own", why: note == "N" ? "" : "got `${note}`");
+    t.verdict(name: "PlayerActions: a text for a player or an action it has no room for is empty",
+              why: w.text(player: 2, action: 0, after: -1, upTo: 2).isEmpty() && w.text(player: 1, action: 2, after: -1, upTo: 2).isEmpty() ? "" : "not");
+    expectInt(t: t, name: "PlayerActions: a world keeps a frame's most steps at least", got: PlayerActions::keptFor(window: 3), want: 5);
+    expectInt(t: t, name: "PlayerActions: and a wider window whole", got: PlayerActions::keptFor(window: 8), want: 8);
+}
+
+fn void expectInt(ref Tally t, const ref string name, int64 got, int64 want) {
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+// What a game asks of its devices (the fifth part's question 3): whether each player is typing.
+fn void requestCases(ref Tally t) {
+    Requests r = Requests.make();
+    t.verdict(name: "Requests: name no player at first", why: r.players() == 0 && !r.typing(player: 1) ? "" : "they do");
+    r.reset(players: 2);
+    r.setTyping(player: 2, on: true);
+    t.verdict(name: "Requests: a player typing, the other not",
+              why: r.players() == 2 && r.typing(player: 2) && !r.typing(player: 1) ? "" : "read wrong");
+    t.verdict(name: "Requests: a player it does not name is not typing",
+              why: !r.typing(player: 0) && !r.typing(player: 3) ? "" : "one is");
+    Requests c = Requests.make();
+    c.copyFrom(other: r);
+    r.reset(players: 1);
+    t.verdict(name: "Requests: reset turns every request off, sized anew",
+              why: r.players() == 1 && !r.typing(player: 1) && !r.typing(player: 2) ? "" : "it did not");
+    t.verdict(name: "Requests: a copy keeps what it copied", why: c.players() == 2 && c.typing(player: 2) ? "" : "it did not");
 }
 
 // A player's text entry, Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): by
@@ -419,6 +531,9 @@ fn void inputTests(ref Tally t) {
     actionListCases(t: t);
     poseCases(t: t);
     textEntryCases(t: t);
+    textCases(t: t);
+    textActionCases(t: t);
+    requestCases(t: t);
     sampleCases(t: t);
     handoffCases(t: t);
     valueHandoffCases(t: t);

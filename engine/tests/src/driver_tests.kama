@@ -9,6 +9,7 @@ import {
     kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale,
     kyoten::frame::step, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample,
     kyoten::frame::ActionList,
+    kyoten::frame::Requests,
 };
 
 export { driverTests };
@@ -60,6 +61,9 @@ type resource Recorder implements World {
         this.log = "${was}${phase}${s} ";
     }
 
+    // It asks nothing of its devices.
+    public fn void requests(ref Requests into) { into.reset(players: 1); }
+
     public const fn string calls() { return copy this.log; }
     public const fn string pressedSteps() { return copy this.pressedLog; }
     public const fn float32 lastUpdateDt() { return this.updateDt; }
@@ -92,6 +96,8 @@ type resource Script implements InputSource {
         if (index == this.pressOn) { this.out.setDigital(player: 1, action: 0, value: digitalOf(held: true, pressed: true, released: false)); }
         return this.out;
     }
+
+    public fn void textEntry(int32 player, bool on, int64 at) { }
 
     public const fn string windows() { return copy this.asked; }
 

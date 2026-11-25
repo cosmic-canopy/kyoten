@@ -68,6 +68,12 @@
 //     most actuated of its devices' entries, as of the step's end (Unity's default, Godot's strongest);
 //   - **a delta** sums them: the mouse's motion that landed in the step, and each control held times the step's
 //     seconds, so a stick turns as far each second whatever the rate. The mouse's motion bound to a state is refused.
+// - **A `Text` action** (the fifth part, design/input.md § Decided, 2026-11-25) is bound to the keyboard's typed text,
+//   `"keyboard": "Text"`, kyoten's own name, and to nothing else: no other device, control, filter or gesture. It takes
+//   what player 1 types while their text entry is on (`textEntry`, as the world's `TextEntry` asks after a frame), from
+//   the moment it turned on, so the key that opened the field is not typed into it; what is typed while it is off is
+//   dropped. A step hands at most what keeps every window of the steps the world keeps within a `Text`'s capacity, and
+//   the rest waits, in order, for the steps after: a paste or an IME's word loses nothing.
 // - **Output's newest** (`newest`, frame-phases § Decided: "presentation reads, such as camera look, take the newest
 //   sample each frame"): every sample taken so far applied, each state as of the newest, each delta since Output's last
 //   frame at the frame's seconds, whether or not a step took them. In a frame that owes no step the samples are applied
@@ -81,7 +87,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          std::math::Vec3, std::math::sqrt, std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
-         kyoten::frame::Scheme,
+         kyoten::frame::Scheme, kyoten::frame::Text, kyoten::frame::PlayerActions,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
          std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
@@ -330,17 +336,36 @@ type resource Binder implements InputSource {
     // What Output reads, and the seconds a held control counts for in a delta: the step's, or Output's frame's.
     Handoff view;
     float32 seconds = 0.0;
+    // The text actions (the fifth part of step 8): how many, which are bound to the keyboard's typed text, and whether
+    // any is; what player 1 typed while their entry was on and no step has handed yet, those before `typedHead` handed;
+    // how many code points each of the last steps kept handed, `textCounts[textSlot]` the next step's; and player 1's text
+    // entry, on or off from `switchedAt`, and as it was before.
+    int32 textCount;
+    DynamicArray<bool> textBound = DynamicArray.empty();
+    bool anyText = false;
+    DynamicArray<char> typed = DynamicArray.empty();
+    isize typedHead = 0;
+    DynamicArray<int32> textCounts = DynamicArray.empty();
+    isize textSlot = 0;
+    bool typingNow = false;
+    bool typingWas = false;
+    int64 switchedAt = 0;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
     // `bindings`, every content layer's merged, with `input`'s defaults; `hz` the base rate, whose step's seconds a
-    // control held counts for in a delta. A binding naming no action, a control that names none of its device's, an
+    // control held counts for in a delta; `window` the widest window of steps a run reaches back over, as the world's
+    // `PlayerActions` is made with, whose steps a `Text`'s code points are spread over. A binding naming no action, a control that names none of its device's, an
     // entry its action's kind cannot read, a filter or a default out of its range, or what KYR-54 does not read yet is
     // refused, every one at once.
     public ctor Result<Binder, BindingError> make(int32 players, const ref ActionList actions,
                                                   const ref SortedMap<string, BindingRecord> bindings,
-                                                  const ref InputRecord input, int32 hz) {
+                                                  const ref InputRecord input, int32 hz, int32 window) {
         this.playerCount = players;
         this.digitalCount = actions.digitalCount();
+        this.textCount = actions.textCount();
+        int64 kept = PlayerActions::keptFor(window: window);
+        int64 k = 0;
+        while (k < kept) { this.textCounts.add(item: 0); k = k + 1; }
         this.stepSeconds = Time::dtAt(hz: hz);
         this.out = Handoff.make(players: players, actions: actions);
         foreach (const ref string n in actions.digitalNames().iterConst()) { this.actionNames.add(item: copy n); }
@@ -426,6 +451,12 @@ type resource Binder implements InputSource {
                            bindings: bindings, no: no);
             a = a + 1;
         }
+        a = 0;
+        while (a < actions.textCount()) {
+            this.textBound.add(item: false);
+            this.bindText(index: a, name: actions.textNames()[cast<isize>(a)], bindings: bindings, no: no);
+            a = a + 1;
+        }
         this.findRivals();
         this.orderActions(no: no);
         if (no.any()) { return Result::Err(error: give no); }
@@ -499,6 +530,7 @@ type resource Binder implements InputSource {
             this.handValues(forOutput: false);
             this.out.setScheme(player: 1, value: this.schemeNow);
         }
+        this.handText();
         a = 0;
         while (a < this.digitalCount) {
             this.onEdge[cast<isize>(a)] = false;
@@ -511,6 +543,50 @@ type resource Binder implements InputSource {
             k = k + 1;
         }
         return this.out;
+    }
+
+    // Player `player`'s text entry turned on or off at `at`: player 1's, the one this binder drives, takes what is typed
+    // from `at` on while it is on.
+    public fn void textEntry(int32 player, bool on, int64 at) {
+        if (player != 1 || on == this.typingNow) { return; }
+        this.typingWas = this.typingNow;
+        this.typingNow = on;
+        this.switchedAt = at;
+    }
+
+    // Whether player 1's text entry was on at `t`.
+    const fn bool typingAt(int64 t) { return t >= this.switchedAt ? this.typingNow : this.typingWas; }
+
+    // The step's text, into player 1's hand-off for every text action bound to the keyboard's: what was typed and not
+    // handed yet, oldest first, no more than keeps the last steps' together within a `Text`'s capacity.
+    fn void handText() {
+        int32 room = Text::capacity;
+        isize k = 0;
+        while (k < this.textCounts.length()) {
+            if (k != this.textSlot) { room = room - this.textCounts[k]; }
+            k = k + 1;
+        }
+        Text step = Text.empty();
+        int32 took = 0;
+        while (took < room && this.typedHead < this.typed.length()) {
+            _ = step.add(point: this.typed[this.typedHead]);
+            this.typedHead = this.typedHead + 1;
+            took = took + 1;
+        }
+        if (this.typedHead == this.typed.length()) {
+            this.typed.clear();
+            this.typedHead = 0;
+        }
+        if (this.textCounts.length() > 0) {
+            this.textCounts[this.textSlot] = took;
+            this.textSlot = (this.textSlot + 1) % this.textCounts.length();
+        }
+        if (this.playerCount < 1) { return; }
+        int32 a = 0;
+        while (a < this.textCount) {
+            if (this.textBound[cast<isize>(a)]) { this.out.setText(player: 1, action: a, value: step); }
+            a = a + 1;
+        }
     }
 
     // What Output reads this frame: every sample taken so far applied, each state as of the newest, each delta since
@@ -734,6 +810,15 @@ type resource Binder implements InputSource {
             case Motion: {
                 this.schemeNow = Scheme::KeyboardMouse;
                 this.setValues(s: s);
+                return;
+            }
+            case Text: {
+                if (!this.anyText || !this.typingAt(t: s.at)) { return; }
+                Optional<char> point = try cast<char>(s.control);
+                match (point) {
+                    case Some(value: c): { this.typed.add(item: c); }
+                    case None: { }
+                };
                 return;
             }
         };
@@ -1756,6 +1841,10 @@ type resource Binder implements InputSource {
                     foreach (const ref string n in e.names().iterConst()) { names.add(item: copy n); }
                 }
                 foreach (const ref string name in names.iterConst()) {
+                    if (device == Device::Keyboard && name == "Text") {
+                        no.add(line: whose + " names `Text`, the keyboard's typed text, which only a `Text` action reads");
+                        continue;
+                    }
                     if (device == Device::Gamepad) {
                         this.bindPad(name: name, threshold: threshold, whose: whose, no: no);
                         continue;
@@ -1831,6 +1920,32 @@ type resource Binder implements InputSource {
     }
 
     // A value action's binding: each device's entry, refused where its kind cannot read it.
+    // A text action's bindings: the keyboard's typed text, `"Text"`, kyoten's own name, as the mouse's `Motion` is,
+    // and nothing else, since only the keyboard, and what types as one, types (the fifth part of step 8).
+    fn void bindText(int32 index, const ref string name, const ref SortedMap<string, BindingRecord> bindings,
+                     ref BindingError no) {
+        if (!bindings.contains(key: name)) { return; }
+        borrow bindings.getRef(key: name) as b {
+            if (b.mouse().isSome()) {
+                no.add(line: "the mouse binding of `" + name + "` binds a `Text` action, which the keyboard's typed text alone fills: an on-screen keyboard types as the keyboard does");
+            }
+            if (b.gamepad().isSome()) {
+                no.add(line: "the gamepad binding of `" + name + "` binds a `Text` action, which the keyboard's typed text alone fills: an on-screen keyboard types as the keyboard does");
+            }
+            match (b.keyboard()) {
+                case Some(value: e): {
+                    if (e.isObject() || e.names().length() != 1 || e.names()[0] != "Text") {
+                        no.add(line: "the keyboard binding of `" + name + "` binds a `Text` action, which reads the keyboard's typed text alone, with no filter or gesture: write `\"keyboard\": \"Text\"`");
+                    } else {
+                        this.textBound[cast<isize>(index)] = true;
+                        this.anyText = true;
+                    }
+                }
+                case None: { }
+            };
+        }
+    }
+
     fn void bindValue(ActionKind kind, int32 index, const ref string name, bool delta,
                       const ref SortedMap<string, BindingRecord> bindings, ref BindingError no) {
         if (!bindings.contains(key: name)) { return; }
@@ -2186,6 +2301,7 @@ fn string kindOf(const ref ActionList actions, const ref string name) {
     if (actions.vector2Names().contains(item: name)) { return "Vector2"; }
     if (actions.vector3Names().contains(item: name)) { return "Vector3"; }
     if (actions.poseNames().contains(item: name)) { return "Pose"; }
+    if (actions.textNames().contains(item: name)) { return "Text"; }
     return "";
 }
 
@@ -2312,6 +2428,10 @@ fn Optional<Source> valueSourceOf(Device device, const ref string name, ref stri
     string quoted = "\"" + name + "\"";
     match (device) {
         case Keyboard: {
+            if (name == "Text") {
+                why = "`Text` is the keyboard's typed text, which only a `Text` action reads";
+                return Optional::None;
+            }
             Result<int32, Owned<Error>> k = controlOf(device: device, name: name);
             match (give k) {
                 case Ok(value: v): { return Optional::Some(value: Source.make(device: device, kind: SampleKind::Control, control: v, flip: false)); }

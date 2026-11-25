@@ -35,6 +35,10 @@ type contract Platform for resource {
     // This frame's timestamp, in nanoseconds from any fixed start: the host's frame time, where an XR platform answers
     // its predicted display time.
     fn int64 now();
+    // Player `player`'s text entry turned on or off, as the world asked after a frame: on, the window's text input, its
+    // IME and an on-screen keyboard where no physical one is (design/input.md § Decided, 2026-11-25, the fifth part's
+    // question 2).
+    fn void textEntry(int32 player, bool on);
     // The run ends with `code`, from inside the loop. Natively `run` then returns it; on the web, where `run` never
     // returns, the platform ends the program.
     fn void ended(uint8 code);

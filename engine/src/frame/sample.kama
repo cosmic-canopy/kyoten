@@ -16,11 +16,14 @@
 //   (`@kama/window`'s `padAt`, WIN-28); and `Motion` the mouse's, a distance moved. Each value is as the device
 //   reports it, right and down positive: the binder turns a Y over, since an action's up is positive (design/input.md
 //   § Decided, the second part's question 2).
+// - **Typed text is a sample of its own,** `Text`, a code point at a time (the fifth part of step 8): what a key typed,
+//   an IME's committed word or an on-screen keyboard's keys, never an editing key, which is a `Control`.
 
 export { Sample, SampleKind, Device };
 
-// What a sample says: a control's edge, a pad button's travel, a stick's axis, the mouse's motion, or a pad's connection.
-type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected }
+// What a sample says: a control's edge, a pad button's travel, a stick's axis, the mouse's motion, a pad's connection,
+// or a code point typed.
+type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected, Text }
 
 // Which kind of device it came from: the bindings record's keys.
 type enum Device { Keyboard, Mouse, Gamepad }
@@ -31,7 +34,7 @@ type value Sample {
     // A gamepad's slot, as `@kama/window` numbers them; 0 for the keyboard and the mouse.
     public int32 slot;
     // The control, numbered as above: a stick's axis by the standard gamepad's index (LeftX 0, LeftY 1), the mouse's
-    // motion 0 across and 1 down; 0 for a connection.
+    // motion 0 across and 1 down, a typed code point's Unicode scalar value; 0 for a connection.
     public int32 control;
     // An edge's or a button's travel, 0 up to 1 (1 down and 0 up for a key), an axis from -1 to 1, or a distance moved,
     // as the device reports it.
@@ -87,6 +90,17 @@ type value Sample {
         this.slot = slot;
         this.control = index;
         this.value = value;
+        this.at = at;
+    }
+
+    // `point` typed on the keyboard, an IME's word or an on-screen keyboard's keys (design/input.md § Decided,
+    // 2026-11-25, the fifth part's question 1).
+    public ctor typed(char point, int64 at) {
+        this.kind = SampleKind::Text;
+        this.device = Device::Keyboard;
+        this.slot = 0;
+        this.control = cast<int32>(point);
+        this.value = 0.0;
         this.at = at;
     }
 

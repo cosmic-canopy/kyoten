@@ -1,2 +1,2 @@
-{ "actions": { "jump": { "kind": "Digital" }, "typed": { "kind": "Text" }, "tap": { "kind": "Digital", "delta": true },
+{ "actions": { "jump": { "kind": "Digital" }, "typed": { "kind": "Text", "delta": true }, "tap": { "kind": "Digital", "delta": true },
                "aimHere": { "kind": "Vector2" } } }

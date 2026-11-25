@@ -4,4 +4,5 @@
                   "steerByPad": { "phase": "Input", "scheme": "Gamepad", "after": ["steerByKeys"] } },
   "components": { "Spin": { "requires": ["Taps", "Aim", "SlowAim", "Steering"] } },
   "actions":    { "faster": { "kind": "Digital" }, "steer": { "kind": "Analog" },
-                  "look": { "kind": "Vector2", "delta": true } } }
+                  "look": { "kind": "Vector2", "delta": true }, "chat": { "kind": "Text" },
+                  "note": { "kind": "Text" } } }

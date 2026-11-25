@@ -17,10 +17,14 @@
 //   input source the loop was given (the engine's binder, from the generated `run`), and `frame` hands each owed step
 //   its hand-off. Under `--fixed-fps`, whose timestamps are made up, a tick's samples are taken at its own timestamp,
 //   so they land in its last owed step.
+// - **What the game asks of its devices** (`Requests`): after each frame the loop reads them from the world, and hands
+//   each change to the input source at the frame's timestamp and to the platform, so a player's text entry turned on in
+//   one frame takes what they type from the next (design/input.md § Decided, 2026-11-25, the fifth part's question 3).
 
 import { core::println, std::app::App, std::app::Lifecycle, std::app::Pace, std::app::run, std::memory::Owned,
          std::memory::Shared, std::collections::DynamicArray, kyoten::frame::World, kyoten::frame::Clock,
-         kyoten::frame::Owed, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Sample, Platform,
+         kyoten::frame::Owed, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Sample,
+         kyoten::frame::Requests, Platform,
          RunOptions, RunOptionError };
 
 export { Ending, Play, play, fixedTimestamp };
@@ -61,6 +65,9 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
     S input;
     Clock clock;
     DynamicArray<Sample> samples = DynamicArray.empty();
+    // What the world asked after this frame, and what was handed on before it.
+    Requests wanted = Requests.make();
+    Requests told = Requests.make();
     RunOptions options;
     string title = "";
     int32 width = 0;
@@ -122,6 +129,7 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
         } else { now = this.platform.now(); }
         this.input.take(samples: this.samples);
         Owed owed = frame(world: this.world, clock: this.clock, source: this.input, now: now);
+        this.handOn(now: now);
         this.frames = this.frames + 1;
         if (this.options.quitAfter > 0 && this.frames >= this.options.quitAfter) { return this.end(code: 0); }
         return true;
@@ -130,6 +138,23 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
     // The frames run so far, and the steps the clock has settled.
     public const fn int64 framesRun() { return this.frames; }
     public const fn int64 stepsSettled() { return this.clock.settled(); }
+
+    // What the world asks of its devices after this frame: each player's text entry that changed, to the input source
+    // at `now` and to the platform.
+    fn void handOn(int64 now) {
+        this.world.requests(into: this.wanted);
+        int32 most = this.wanted.players() > this.told.players() ? this.wanted.players() : this.told.players();
+        int32 p = 1;
+        while (p <= most) {
+            bool on = this.wanted.typing(player: p);
+            if (on != this.told.typing(player: p)) {
+                this.input.textEntry(player: p, on: on, at: now);
+                this.platform.textEntry(player: p, on: on);
+            }
+            p = p + 1;
+        }
+        this.told.copyFrom(other: this.wanted);
+    }
 
     fn bool end(uint8 code) {
         this.ending.derefMut().endWith(code: code);

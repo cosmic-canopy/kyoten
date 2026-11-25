@@ -10,7 +10,7 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          kyoten::content::LoadRefusals, kyoten::content::readContent, std::collections::DynamicArray,
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow, glow::Spark,
          spin::cube::Spin, spin::cube::Size, spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering,
-         std::math::Vec2, kyoten::frame::Scheme, kyoten::frame::TextEntry,
+         std::math::Vec2, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text, kyoten::frame::Requests,
          spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
          spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
@@ -167,6 +167,17 @@ fn uint8 main() {
     int32 baseHz = GameWorld::baseHz;
     Rate clock = Rate.of(hz: baseHz, over: baseHz);
     Handoff input = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
+    // Player 1 types into `chat` "ab" on step 2, then "hi" on step 57 and "!" on step 58 (the fifth part of step 8): the
+    // 30 Hz `tally` sees all five, each once; Output, run twice at the end, sees "hi!" on its first run alone, since the
+    // world keeps 6 steps (the 10 Hz `aimTally`'s window).
+    Text ab = Text.empty();
+    _ = ab.add(point: 'a');
+    _ = ab.add(point: 'b');
+    Text hi = Text.empty();
+    _ = hi.add(point: 'h');
+    _ = hi.add(point: 'i');
+    Text bang = Text.empty();
+    _ = bang.add(point: '!');
     int64 i = 0;
     while (i < 60) {
         Digital down = Digital.off();
@@ -181,6 +192,7 @@ fn uint8 main() {
         // Player 1 on the keyboard and the mouse for steps 0 to 19, then on a pad: unequal, so a gate on the wrong
         // scheme shows.
         input.setScheme(player: 1, value: i >= 20 ? Scheme::Gamepad : Scheme::KeyboardMouse);
+        input.setText(player: 1, action: 0, value: i == 2 ? ab : (i == 57 ? hi : (i == 58 ? bang : Text.empty())));
         Time at = clock.at(step: i);
         step(world: world, time: at, handoff: input);
         i = i + 1;
@@ -190,6 +202,12 @@ fn uint8 main() {
     Handoff newest = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
     newest.setVector2(player: 1, action: 0, value: Vec2.of(x: 7.0, y: 8.0));
     world.output(time: clock.at(step: 59), newest: newest);
+    // What the world asks of its devices after Output: player 1 typing, since `typing` turned their entry on.
+    Requests asked = Requests.make();
+    world.requests(into: asked);
+    bool typing = asked.typing(player: 1);
+    int32 named = asked.players();
+    println(s: "spin: requests: ${named} player, player 1 typing ${typing}");
     println(s: "spin: Output again, on the same step");
     newest.clear();
     world.output(time: clock.at(step: 59), newest: newest);

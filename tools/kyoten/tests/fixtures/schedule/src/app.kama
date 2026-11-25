@@ -13,6 +13,7 @@ type resource Quiet implements InputSource {
     public fn void take(const ref DynamicArray<Sample> samples) { }
     public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
     public fn const ref Handoff newest(float32 seconds) { return this.out; }
+    public fn void textEntry(int32 player, bool on, int64 at) { }
 }
 
 fn uint8 main() {

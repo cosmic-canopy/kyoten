@@ -62,6 +62,9 @@ type resource OpenPlatform implements Platform {
         return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
+    // A stopgap until `@kama/window`'s WIN-5 turns the page's text input on and off: the page types as it did, and the
+    // binder takes what it types only while the entry is on.
+    public fn void textEntry(int32 player, bool on) { }
     public fn void ended(uint8 code) { quit(code: code); }
 }
 
@@ -84,6 +87,9 @@ type resource OpenPlatform implements Platform {
         return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
+    // A stopgap until `@kama/window`'s WIN-5 turns the window's text input on and off: GLFW types as it did, and the
+    // binder takes what it types only while the entry is on.
+    public fn void textEntry(int32 player, bool on) { }
     public fn void ended(uint8 code) { }
 }
 
@@ -171,6 +177,7 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                     case PadButtonUp(slot: s, button: b): {
                         into.add(item: Sample.make(device: Device::Gamepad, slot: s, control: cast<int32>(b), value: 0.0, at: at));
                     }
+                    case Text(c: c): { into.add(item: Sample.typed(point: c, at: at)); }
                     case PadConnected(slot: s): { into.add(item: Sample.padConnected(slot: s, at: at)); }
                     case PadDisconnected(slot: s): { into.add(item: Sample.padDisconnected(slot: s, at: at)); }
                     case _: { }

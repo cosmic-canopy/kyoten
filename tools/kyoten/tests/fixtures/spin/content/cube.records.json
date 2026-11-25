@@ -5,4 +5,5 @@
                   "note": "a variant that adds components: a family of its own, one key by its full path" } },
   "bindings": { "faster": { "keyboard": { "control": "ArrowUp", "gestures": [ { "hold": true } ] }, "gamepad": { "control": "RightShoulder", "gestures": [ { "chord": "LeftShoulder" } ] } },
                 "steer":  { "keyboard": { "positive": "KeyE", "negative": "KeyQ" }, "gamepad": "RightTrigger" },
-                "look":   { "mouse": { "x": "MotionX", "y": "MotionY", "gestures": [ { "chord": "Right" } ] }, "gamepad": { "x": "RightX", "y": "RightY" } } } }
+                "look":   { "mouse": { "x": "MotionX", "y": "MotionY", "gestures": [ { "chord": "Right" } ] }, "gamepad": { "x": "RightX", "y": "RightY" } },
+                "chat":   { "keyboard": "Text" } } }

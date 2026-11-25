@@ -10,6 +10,9 @@
 // - **A value action is a state or a delta** (`ActionList`): a run sees a state as of `upTo`, and a delta summed over its
 //   window, oldest step first, so a slower run misses no motion and counts none twice (design/input.md § Decided, the
 //   second part's question 1).
+// - **A `Text` is the code points that entered in the window,** each step's joined, oldest first, so a run sees each
+//   once whatever its rate, as a digital's edges (design/input.md § Decided, 2026-11-25, the fifth part's question 1).
+//   The binder hands a step no more than `Text::capacity` over the steps kept, so no window holds more.
 // - **It keeps as many steps as the widest window:** the slowest rate's period among the processors that read actions,
 //   which the generated world states, and at least the clock's `DefaultMaxSteps`, a frame's. A delta read over a
 //   window wider than that sums the newest steps kept. Output reads its values from the newest hand-off instead
@@ -18,8 +21,8 @@
 //   no player runs none (design/input.md § Decided, the second part's question 1).
 // - **It is world state, made only from hand-offs,** so a replay of the hand-offs makes the same views.
 
-import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Handoff, Pose, ActionList, Clock,
-         Scheme };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Handoff, Pose, Text, ActionList,
+         Clock, Scheme };
 
 export { PlayerActions };
 
@@ -34,6 +37,7 @@ type resource PlayerActions {
     int32 vector2Count;
     int32 vector3Count;
     int32 poseCount;
+    int32 textCount;
     DynamicArray<bool> helds = DynamicArray.empty();
     // Each digital action's gesture's progress as of the last step taken.
     DynamicArray<float32> progresses = DynamicArray.empty();
@@ -52,6 +56,7 @@ type resource PlayerActions {
     DynamicArray<Vec2> vector2s = DynamicArray.empty();
     DynamicArray<Vec3> vector3s = DynamicArray.empty();
     DynamicArray<Pose> poses = DynamicArray.empty();
+    DynamicArray<Text> texts = DynamicArray.empty();
     // Player p's active scheme as of the last step taken, at p - 1.
     DynamicArray<Scheme> schemes = DynamicArray.empty();
 
@@ -65,7 +70,8 @@ type resource PlayerActions {
         this.vector2Count = actions.vector2Count();
         this.vector3Count = actions.vector3Count();
         this.poseCount = actions.poseCount();
-        this.keep = cast<int64>(window > Clock::DefaultMaxSteps ? window : Clock::DefaultMaxSteps);
+        this.textCount = actions.textCount();
+        this.keep = PlayerActions::keptFor(window: window);
         int64 p = cast<int64>(players);
         int64 i = 0;
         while (i < p * cast<int64>(this.digitalCount)) {
@@ -92,6 +98,8 @@ type resource PlayerActions {
         i = 0;
         while (i < this.keep * p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
         i = 0;
+        while (i < this.keep * p * cast<int64>(this.textCount)) { this.texts.add(item: Text.empty()); i = i + 1; }
+        i = 0;
         while (i < p) { this.schemes.add(item: Scheme::KeyboardMouse); i = i + 1; }
     }
 
@@ -101,15 +109,21 @@ type resource PlayerActions {
     public const fn int32 vector2Actions() { return this.vector2Count; }
     public const fn int32 vector3Actions() { return this.vector3Count; }
     public const fn int32 poseActions() { return this.poseCount; }
+    public const fn int32 textActions() { return this.textCount; }
     // How many steps it keeps: the widest window a run may ask for.
     public const fn int64 kept() { return this.keep; }
+    // How many steps one made for `window` keeps: the window, and at least a frame's most steps.
+    public static fn int64 keptFor(int32 window) {
+        return cast<int64>(window > Clock::DefaultMaxSteps ? window : Clock::DefaultMaxSteps);
+    }
 
     // Step `step`'s hand-off, which has room for the same players and actions; anything else, or a negative step, is a
     // generator's bug, and traps.
     public fn void take(const ref Handoff handoff, int64 step) {
         assert(cond: handoff.players() == this.playerCount && handoff.digitalActions() == this.digitalCount
                    && handoff.analogActions() == this.analogCount && handoff.vector2Actions() == this.vector2Count
-                   && handoff.vector3Actions() == this.vector3Count && handoff.poseActions() == this.poseCount,
+                   && handoff.vector3Actions() == this.vector3Count && handoff.poseActions() == this.poseCount
+                   && handoff.textActions() == this.textCount,
                msg: "a hand-off has the world's players and actions");
         assert(cond: step >= 0, msg: "a step taken is numbered from 0");
         isize slot = cast<isize>(step % this.keep);
@@ -145,6 +159,11 @@ type resource PlayerActions {
             a = 0;
             while (a < this.poseCount) {
                 this.poses[this.inSlot(slot: slot, player: p, action: a, count: this.poseCount)] = handoff.pose(player: p, action: a);
+                a = a + 1;
+            }
+            a = 0;
+            while (a < this.textCount) {
+                this.texts[this.inSlot(slot: slot, player: p, action: a, count: this.textCount)] = handoff.text(player: p, action: a);
                 a = a + 1;
             }
             p = p + 1;
@@ -229,6 +248,24 @@ type resource PlayerActions {
         isize slot = this.slotOf(step: upTo);
         if (slot < 0) { return Pose.identity(); }
         return this.poses[this.inSlot(slot: slot, player: player, action: action, count: this.poseCount)];
+    }
+
+    // Player `player`'s text action `action` as that run sees it: the code points that entered in its window, oldest
+    // first. Empty for a player or an action it has no room for, and for a step not taken.
+    public const fn Text text(int32 player, int32 action, int64 after, int64 upTo) {
+        Text joined = Text.empty();
+        if (!this.holds(player: player, action: action, count: this.textCount)) { return joined; }
+        int64 s = this.oldest(after: after, upTo: upTo);
+        while (s <= upTo) {
+            isize slot = this.slotOf(step: s);
+            if (slot >= 0) {
+                foreach (char c in this.texts[this.inSlot(slot: slot, player: player, action: action, count: this.textCount)].chars()) {
+                    _ = joined.add(point: c);
+                }
+            }
+            s = s + 1;
+        }
+        return joined;
     }
 
     // Whether player `player`'s active scheme is `scheme`, as of the last step taken: false for a player it has no room

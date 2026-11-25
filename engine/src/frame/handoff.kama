@@ -4,7 +4,7 @@
 // question 2), so a rebind cannot move the world.
 //
 // - **Each kind its own values,** numbered as `ActionList` numbers them: a `Digital`, an analog's `float32`, a
-//   `Vector2`'s `Vec2`, a `Vector3`'s `Vec3` and a `Pose`.
+//   `Vector2`'s `Vec2`, a `Vector3`'s `Vec3`, a `Pose` and a `Text`, the code points that entered in the step's window.
 // - **Its edges and its deltas are the step's own:** `pressed` when a press landed in this step's window, `released`
 //   when a release did, and a delta the motion that landed in it; `kyoten::frame::PlayerActions` turns them into each
 //   processor's view, whatever its rate.
@@ -13,7 +13,7 @@
 // - **It is made by an `InputSource`:** the engine's binder (`kyoten::input`), a replay's log, or a test's script.
 // - **Sized once,** for the game's players and actions, so a step allocates nothing.
 
-import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Pose, ActionList, Scheme };
+import { std::collections::DynamicArray, std::math::Vec2, std::math::Vec3, Digital, Pose, Text, ActionList, Scheme };
 
 export { Handoff };
 
@@ -24,16 +24,18 @@ type resource Handoff {
     int32 vector2Count;
     int32 vector3Count;
     int32 poseCount;
+    int32 textCount;
     // Player p's action a of a kind with n actions at (p - 1) × n + a.
     DynamicArray<Digital> digitals = DynamicArray.empty();
     DynamicArray<float32> analogs = DynamicArray.empty();
     DynamicArray<Vec2> vector2s = DynamicArray.empty();
     DynamicArray<Vec3> vector3s = DynamicArray.empty();
     DynamicArray<Pose> poses = DynamicArray.empty();
+    DynamicArray<Text> texts = DynamicArray.empty();
     // Player p's active scheme at p - 1.
     DynamicArray<Scheme> schemes = DynamicArray.empty();
 
-    // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero or at rest.
+    // Room for `players` players, numbered from 1, each with the game's actions, every one off, zero, at rest or empty.
     public ctor make(int32 players, const ref ActionList actions) {
         assert(cond: players >= 0, msg: "a hand-off holds no negative count of players");
         this.playerCount = players;
@@ -42,6 +44,7 @@ type resource Handoff {
         this.vector2Count = actions.vector2Count();
         this.vector3Count = actions.vector3Count();
         this.poseCount = actions.poseCount();
+        this.textCount = actions.textCount();
         int64 p = cast<int64>(players);
         int64 i = 0;
         while (i < p * cast<int64>(this.digitalCount)) { this.digitals.add(item: Digital.off()); i = i + 1; }
@@ -54,6 +57,8 @@ type resource Handoff {
         i = 0;
         while (i < p * cast<int64>(this.poseCount)) { this.poses.add(item: Pose.identity()); i = i + 1; }
         i = 0;
+        while (i < p * cast<int64>(this.textCount)) { this.texts.add(item: Text.empty()); i = i + 1; }
+        i = 0;
         while (i < p) { this.schemes.add(item: Scheme::KeyboardMouse); i = i + 1; }
     }
 
@@ -63,9 +68,10 @@ type resource Handoff {
     public const fn int32 vector2Actions() { return this.vector2Count; }
     public const fn int32 vector3Actions() { return this.vector3Count; }
     public const fn int32 poseActions() { return this.poseCount; }
+    public const fn int32 textActions() { return this.textCount; }
 
-    // Player `player`'s action `action` of each kind, in the generated order: off, zero or at rest for a player or an
-    // action it has no room for.
+    // Player `player`'s action `action` of each kind, in the generated order: off, zero, at rest or empty for a player
+    // or an action it has no room for.
     public const fn Digital digital(int32 player, int32 action) {
         if (!this.holds(player: player, action: action, count: this.digitalCount)) { return Digital.off(); }
         return this.digitals[this.at(player: player, action: action, count: this.digitalCount)];
@@ -85,6 +91,10 @@ type resource Handoff {
     public const fn Pose pose(int32 player, int32 action) {
         if (!this.holds(player: player, action: action, count: this.poseCount)) { return Pose.identity(); }
         return this.poses[this.at(player: player, action: action, count: this.poseCount)];
+    }
+    public const fn Text text(int32 player, int32 action) {
+        if (!this.holds(player: player, action: action, count: this.textCount)) { return Text.empty(); }
+        return this.texts[this.at(player: player, action: action, count: this.textCount)];
     }
 
     // Sets player `player`'s action `action` of each kind. Out of range is a caller's bug, and traps.
@@ -113,8 +123,13 @@ type resource Handoff {
                msg: "a hand-off has room for this player's pose action");
         this.poses[this.at(player: player, action: action, count: this.poseCount)] = value;
     }
+    public fn void setText(int32 player, int32 action, Text value) {
+        assert(cond: this.holds(player: player, action: action, count: this.textCount),
+               msg: "a hand-off has room for this player's text action");
+        this.texts[this.at(player: player, action: action, count: this.textCount)] = value;
+    }
 
-    // Every value off, zero or at rest.
+    // Every value off, zero, at rest or empty.
     public fn void clear() {
         isize i = 0;
         while (i < this.digitals.length()) { this.digitals[i] = Digital.off(); i = i + 1; }
@@ -126,6 +141,8 @@ type resource Handoff {
         while (i < this.vector3s.length()) { this.vector3s[i] = Vec3.zero(); i = i + 1; }
         i = 0;
         while (i < this.poses.length()) { this.poses[i] = Pose.identity(); i = i + 1; }
+        i = 0;
+        while (i < this.texts.length()) { this.texts[i] = Text.empty(); i = i + 1; }
         i = 0;
         while (i < this.schemes.length()) { this.schemes[i] = Scheme::KeyboardMouse; i = i + 1; }
     }

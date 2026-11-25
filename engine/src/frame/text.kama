@@ -1,0 +1,47 @@
+// kyoten::frame::Text — an action a processor reads as the text that entered (the first slice's step 8, its fifth part,
+// KYR-54; design/input.md § Decided, 2026-11-25, question 1). An action's kind names the value a processor reads, not a
+// device: what a key typed, after the layout, Shift and dead keys; an IME's committed word; an on-screen keyboard's keys.
+// Never a composition under way, and never an editing key: erase, submit and cancel are `Digital` actions of their own.
+//
+// A processor adds what entered to the line it keeps: `input.chat.appendTo(text: ref line)`, or reads it code point by
+// code point, `foreach (char c in input.chat.chars())`, as a typing game scores each letter as it lands.
+// - **Each processor sees each code point once,** on its first run at or after the step it lands in, whatever its rate,
+//   as a `Digital`'s edges; Output, the text since its last frame.
+// - **It is collected only while the player's text entry is on** (question 2): an Output processor's `TextEntry`.
+// - **It holds up to `capacity` code points,** so a game's `Actions` stays a value. The binder spreads a burst, a paste or
+//   an IME's word, over the steps after, so no run's window holds more and none is lost.
+
+import { std::collections::InlineDynamicArray };
+
+export { Text };
+
+type value Text {
+    InlineDynamicArray<char>#(64) points = InlineDynamicArray.empty();
+
+    // The most code points one holds.
+    public comptime int32 capacity = 64;
+
+    // Nothing entered, as every `Text` is before its first input.
+    public default ctor empty() { }
+
+    // How many code points entered.
+    public const fn isize length() { return this.points.length(); }
+    // Whether none did.
+    public const fn bool isEmpty() { return this.points.length() == 0; }
+    // The code point at `index`, oldest first; out of range is a caller's bug, and traps.
+    public const fn char at(isize index) {
+        assert(cond: index >= 0 && index < this.points.length(), msg: "a `Text` has a code point at this index");
+        return this.points[index];
+    }
+    // Every code point, oldest first, to `foreach` over.
+    public const fn const ref InlineDynamicArray<char>#(64) chars() { return this.points; }
+    // Adds what entered to `text`, oldest first.
+    public const fn void appendTo(ref string text) {
+        foreach (char c in this.points) { text = text + "${c}"; }
+    }
+
+    // Adds a code point after the rest, as the engine makes one: false, and nothing added, when it is full.
+    public fn bool add(char point) {
+        return match (this.points.add(item: point)) { case Ok(value: u): true; case Err(error: e): false; };
+    }
+}

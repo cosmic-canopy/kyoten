@@ -158,6 +158,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
     imports.add(path: "std::collections::FixedArray");
     imports.add(path: "std::collections::CapacityFull");
     foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
+    imports.add(path: inRoot(game: game, name: requestsPass()));
     string handle = imports.nameOf(path: "kyoten::world::Handle");
     string chunkSize = imports.nameOf(path: "kyoten::world::ChunkSize");
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
@@ -198,6 +199,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
         t = t + "type resource " + tableType(f: f) + " {\n";
         t = t + "    " + fixed + "<" + chunkType(f: f) + "> chunks;\n\n";
         foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[chunks];\n"; }
+        t = t + "    friend " + requestsPass() + "[chunks];\n";
         t = t + "\n    public ctor make(isize count) { this.chunks = " + fixed + ".make(size: count); }\n\n";
         t = t + "    // A row from a prefab's values, with the handle the lookup issues at its place, or none when every chunk is\n";
         t = t + "    // full: the budget refuses (components § Decided, question 6).\n";
@@ -364,6 +366,8 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     string actionsPath = game + "::generated::Actions";
     ImportSet imports = ImportSet.make(module: copy game);
     foreach (Phase p in phases()) { imports.declare(name: passName(phase: p)); }
+    imports.declare(name: requestsPass());
+    imports.add(path: "kyoten::frame::Requests");
     imports.add(path: "kyoten::frame::Rate");
     imports.add(path: "kyoten::frame::Time");
     imports.add(path: "kyoten::frame::Handoff");
@@ -384,7 +388,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     t = t + "// whose family has the components it names. Output runs once a display frame. Only this file imports processors.\n";
     t = t + "// The generator's own names: no game writes them.\n\n";
     t = t + imports.block();
-    t = t + "export { pass_input, pass_update, pass_constraints, pass_output };\n";
+    t = t + "export { pass_input, pass_update, pass_constraints, pass_output, " + requestsPass() + " };\n";
     int32 counter = 0;
     foreach (Phase phase in phases()) {
         if (phase == Phase::Input) {
@@ -435,14 +439,38 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
         }
         t = t + "}\n";
     }
+    string requestsType = imports.nameOf(path: "kyoten::frame::Requests");
+    t = t + "\n// What the game asks of its devices after Output, from Output's own state: each player typing whose `TextEntry`\n";
+    t = t + "// is on (design/input.md § Decided, 2026-11-25, the fifth part's question 3). One naming no player of the world's\n";
+    t = t + "// asks nothing.\n";
+    t = t + "fn void " + requestsPass() + "(ref " + world + " w, ref " + requestsType + " into) {\n";
+    t = t + "    into.reset(players: " + world + "::players);\n";
+    foreach (const ref Family f in families.iterConst()) {
+        string column = columnOf(f: f, path: "kyoten::frame::TextEntry");
+        if (column.isEmpty()) { continue; }
+        t = t + "    foreach (ref " + chunkType(f: f) + " c in w." + tableField(f: f) + ".chunks.iterMut()) {\n";
+        t = t + "        isize i = 0;\n";
+        t = t + "        while (i < c." + handleColumn() + ".length()) {\n";
+        t = t + "            int32 p = c." + column + "[i].player;\n";
+        t = t + "            if (c." + column + "[i].on && p >= 1 && p <= " + world + "::players) { into.setTyping(player: p, on: true); }\n";
+        t = t + "            i = i + 1;\n";
+        t = t + "        }\n";
+        t = t + "    }\n";
+    }
+    t = t + "}\n";
     return t;
 }
+
+// The function that gathers the world's requests after Output, which the world's `requests` calls.
+fn string requestsPass() { return "pass_requests"; }
 
 // The names world.kama gives each world component, which passes.kama uses to reach its field.
 fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
     ImportSet imports = ImportSet.make(module: copy game);
     imports.declare(name: worldTypeName());
     foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
+    imports.add(path: inRoot(game: game, name: requestsPass()));
+    imports.add(path: "kyoten::frame::Requests");
     imports.add(path: "kyoten::frame::Time");
     imports.add(path: "kyoten::frame::World");
     imports.add(path: "kyoten::frame::Handoff");
@@ -507,11 +535,14 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     t = t + "    public comptime int32 baseHz = ${baseHz};\n";
     t = t + "    // The players, numbered from 1: the engine's default, one, bound to the keyboard, the mouse and the first pad\n";
     t = t + "    // pressed (design/input.md § Decided, question 4).\n";
-    t = t + "    public comptime int32 players = 1;\n\n";
+    t = t + "    public comptime int32 players = 1;\n";
+    t = t + "    // The widest window of steps a processor reading actions runs over: its rate's period on the base clock, which\n";
+    t = t + "    // the players' actions are kept for, and the binder spreads a burst of typed text over.\n";
+    t = t + "    public comptime int32 window = ${window};\n\n";
     t = t + "    // Each player's actions across steps, in the generated order, kept for the widest window of steps a processor\n";
     t = t + "    // reading them runs over, and the step Output last saw up to.\n";
     t = t + "    " + playersType + " player_actions = " + playersType + ".make(players: " + worldType + "::players, actions: "
-        + worldType + "::actions(), window: ${window});\n";
+        + worldType + "::actions(), window: " + worldType + "::window);\n";
     t = t + "    int64 output_step = -1;\n";
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
     t = t + "    " + lookupType + " lookup = " + lookupType + ".make();\n";
@@ -528,6 +559,7 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     }
     t = t + "\n";
     foreach (Phase p in phases()) { t = t + "    friend " + passName(phase: p) + "[" + fields + "];\n"; }
+    t = t + "    friend " + requestsPass() + "[" + fields + "];\n";
     t = t + "\n    public ctor make() { }\n\n";
     t = t + "    // The game's actions by kind, each kind's in the order of their names, as `Actions` holds them: what each step's\n";
     t = t + "    // hand-off, the world's record and the binder are sized by (the first slice's step 8).\n";
@@ -550,6 +582,8 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
         string method = match (p) { case Input: "input"; case Update: "update"; case Constraints: "constraints"; case Output: "output"; };
         t = t + "    public fn void " + method + "(const ref " + time + " time) { " + passName(phase: p) + "(w: this, time: time); }\n";
     }
+    string requestsType = imports.nameOf(path: "kyoten::frame::Requests");
+    t = t + "    public fn void requests(ref " + requestsType + " into) { " + requestsPass() + "(w: this, into: into); }\n";
     isize k = 0;
     foreach (const ref Family f in families.iterConst()) {
         string prefab = imports.nameOf(path: inFenced(game: game, name: prefabType(f: f)));

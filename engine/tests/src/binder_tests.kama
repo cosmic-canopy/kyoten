@@ -10,7 +10,7 @@ import { Tally, spelled, std::collections::DynamicArray, std::collections::Sorte
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
          std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, std::math::floor, kyoten::frame::Time, kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::InputRecord,
-         kyoten::input::Binder, kyoten::input::BindingError };
+         kyoten::input::Binder, kyoten::input::BindingError, kyoten::frame::Text, lineOf };
 
 export { binderTests };
 
@@ -47,7 +47,7 @@ fn Binder binderFor(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -62,11 +62,173 @@ fn string refusalOf(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
     };
+}
+
+// A binder for player 1 and the text actions `chat`, `note` and `log`, beside the digital `faster`, bound by `json`, its
+// world keeping `window` steps' worth; it must be accepted (the fifth part of step 8).
+fn Binder textBinder(const ref string json, int32 window) {
+    ActionList actions = ActionList.make();
+    actions.addDigital(name: "faster");
+    actions.addText(name: "chat");
+    actions.addText(name: "note");
+    actions.addText(name: "log");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    InputRecord raw = InputRecord.make();
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: window);
+    return match (give made) {
+        case Ok(value: v): give v;
+        case Err(error: e): {
+            string why = e.message();
+            panic(msg: "a test's bindings refused: " + why);
+        }
+    };
+}
+
+fn string textRefusalOf(const ref string json) {
+    ActionList actions = ActionList.make();
+    actions.addDigital(name: "faster");
+    actions.addAnalog(name: "throttle", delta: false);
+    actions.addText(name: "chat");
+    SortedMap<string, BindingRecord> b = bindingsOf(json: json);
+    InputRecord raw = InputRecord.make();
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
+    return match (made) {
+        case Ok(value: v): "";
+        case Err(error: e): e.message();
+    };
+}
+
+fn void expectTextRefused(ref Tally t, const ref string name, const ref string json, const ref string says) {
+    string why = textRefusalOf(json: json);
+    if (why.contains(substring: says)) { t.verdict(name: name, why: ""); }
+    else { t.verdict(name: name, why: "refusal `${why}` does not say `${says}`"); }
+}
+
+// Every point of `s` typed, a nanosecond apart from `at`.
+fn void typeAt(ref Binder b, const ref string s, int64 at) {
+    int64 when = at;
+    foreach (char c in s.chars()) {
+        hand(b: b, s: Sample.typed(point: c, at: when));
+        when = when + 1;
+    }
+}
+
+// Text action `action`'s text in the hand-off of step `step` up to `until`.
+fn string textStep(ref Binder b, int64 step, int64 until, int32 action) {
+    Text x = b.handoff(index: step, until: until).text(player: 1, action: action);
+    return lineOf(x: x);
+}
+
+fn void expectText(ref Tally t, const ref string name, const ref string got, const ref string want) {
+    t.verdict(name: name, why: got == want ? "" : "got `${got}`, want `${want}`");
+}
+
+// A text action (design/input.md § Decided, 2026-11-25, the fifth part's questions 1 and 2): the keyboard's typed text,
+// taken only while player 1's text entry is on, from the moment it turned on; spread over the steps so no window of the
+// steps the world keeps holds more than a `Text` does, and none lost.
+fn void textCases(ref Tally t) {
+    Binder b = textBinder(json: "{ \"chat\": { \"keyboard\": \"Text\" }, \"note\": { \"keyboard\": \"Text\" } }", window: 1);
+    typeAt(b: b, s: "t", at: 10);
+    expectText(t: t, name: "binder: what is typed while the entry is off is dropped", got: textStep(b: b, step: 0, until: 100, action: 0), want: "");
+    b.textEntry(player: 1, on: true, at: 150);
+    typeAt(b: b, s: "a", at: 149);
+    typeAt(b: b, s: "hi", at: 150);
+    expectText(t: t, name: "binder: from the moment the entry turned on, so a key typed before it is not",
+               got: textStep(b: b, step: 1, until: 200, action: 0), want: "hi");
+    typeAt(b: b, s: "x", at: 299);
+    b.textEntry(player: 1, on: false, at: 300);
+    typeAt(b: b, s: "y", at: 300);
+    expectText(t: t, name: "binder: what was typed before the entry turned off is kept, what after is dropped",
+               got: textStep(b: b, step: 2, until: 400, action: 0), want: "x");
+
+    Binder two = textBinder(json: "{ \"chat\": { \"keyboard\": \"Text\" }, \"note\": { \"keyboard\": \"Text\" } }", window: 1);
+    two.textEntry(player: 1, on: true, at: 0);
+    typeAt(b: two, s: "go", at: 5);
+    string c0 = "";
+    string n0 = "";
+    string l0 = "";
+    borrow two.handoff(index: 0, until: 100) as h {
+        c0 = lineOf(x: h.text(player: 1, action: 0));
+        n0 = lineOf(x: h.text(player: 1, action: 1));
+        l0 = lineOf(x: h.text(player: 1, action: 2));
+    }
+    expectText(t: t, name: "binder: each text action bound to the keyboard's text takes it", got: c0, want: "go");
+    expectText(t: t, name: "binder: the second text action bound takes the same text", got: n0, want: "go");
+    expectText(t: t, name: "binder: a text action bound to nothing takes none", got: l0, want: "");
+
+    Binder other = textBinder(json: "{ \"chat\": { \"keyboard\": \"Text\" } }", window: 1);
+    other.textEntry(player: 2, on: true, at: 0);
+    typeAt(b: other, s: "no", at: 5);
+    expectText(t: t, name: "binder: another player's entry does not turn player 1's on",
+               got: textStep(b: other, step: 0, until: 100, action: 0), want: "");
+
+    Binder odd = textBinder(json: "{ \"chat\": { \"keyboard\": \"Text\" } }", window: 1);
+    odd.textEntry(player: 1, on: true, at: 0);
+    Sample bad = Sample.typed(point: 'a', at: 5);
+    bad.control = 55296;
+    hand(b: odd, s: bad);
+    typeAt(b: odd, s: "b", at: 6);
+    expectText(t: t, name: "binder: a typed sample that is no Unicode scalar value types nothing",
+               got: textStep(b: odd, step: 0, until: 100, action: 0), want: "b");
+}
+
+// 100 code points typed at once, a paste or an IME's word, into a world keeping `window`'s steps: each step's text, its
+// length a letter (A for 64, digits for fewer), until all 100 are handed.
+fn string spread(int32 window, int64 steps) {
+    Binder b = textBinder(json: "{ \"chat\": { \"keyboard\": \"Text\" } }", window: window);
+    b.textEntry(player: 1, on: true, at: 0);
+    string typed = "";
+    int32 i = 0;
+    while (i < 100) {
+        int32 d = i % 10;
+        typed = typed + "${d}";
+        i = i + 1;
+    }
+    typeAt(b: b, s: typed, at: 1);
+    string lengths = "";
+    string joined = "";
+    int64 s = 0;
+    while (s < steps) {
+        Text x = b.handoff(index: s, until: 1000 + s * 1000).text(player: 1, action: 0);
+        isize n = x.length();
+        lengths = lengths + "${n} ";
+        joined = joined + lineOf(x: x);
+        s = s + 1;
+    }
+    return lengths + (joined == typed ? "whole" : "lost or reordered");
+}
+
+fn void spreadCases(ref Tally t) {
+    expectText(t: t, name: "binder: a burst fills a step, waits out the steps the world keeps (5), and comes whole, in order",
+               got: spread(window: 1, steps: 11), want: "64 0 0 0 0 36 0 0 0 0 0 whole");
+    expectText(t: t, name: "binder: a world keeping more steps waits longer, so no window holds more than a `Text`",
+               got: spread(window: 8, steps: 10), want: "64 0 0 0 0 0 0 0 36 0 whole");
+}
+
+fn void textRefusalCases(ref Tally t) {
+    expectTextRefused(t: t, name: "binder: a text action on the mouse is refused, naming the keyboard's text",
+                      json: "{ \"chat\": { \"mouse\": \"Left\" } }", says: "the mouse binding of `chat` binds a `Text` action");
+    expectTextRefused(t: t, name: "binder: a text action on a pad is refused: an on-screen keyboard types as the keyboard",
+                      json: "{ \"chat\": { \"gamepad\": \"South\" } }", says: "on-screen keyboard types as the keyboard does");
+    expectTextRefused(t: t, name: "binder: a text action on a key is refused, naming `Text`",
+                      json: "{ \"chat\": { \"keyboard\": \"KeyT\" } }", says: "write `\"keyboard\": \"Text\"`");
+    expectTextRefused(t: t, name: "binder: a text action on `Text` and a key is refused",
+                      json: "{ \"chat\": { \"keyboard\": [\"Text\", \"KeyT\"] } }", says: "reads the keyboard's typed text alone");
+    expectTextRefused(t: t, name: "binder: a text action's object entry, with gestures, is refused",
+                      json: "{ \"chat\": { \"keyboard\": { \"control\": \"Text\", \"gestures\": [ { \"hold\": 1 } ] } } }",
+                      says: "with no filter or gesture");
+    expectTextRefused(t: t, name: "binder: `Text` on a digital action is refused, naming why",
+                      json: "{ \"faster\": { \"keyboard\": \"Text\" } }", says: "names `Text`, the keyboard's typed text, which only a `Text` action reads");
+    expectTextRefused(t: t, name: "binder: `Text` in a value's part is refused, naming why",
+                      json: "{ \"throttle\": { \"keyboard\": { \"positive\": \"Text\" } } }",
+                      says: "`Text` is the keyboard's typed text, which only a `Text` action reads");
+    string fine = textRefusalOf(json: "{ \"chat\": { \"keyboard\": \"Text\" } }");
+    t.verdict(name: "binder: a text action on the keyboard's `Text` is accepted", why: fine.isEmpty() ? "" : fine);
 }
 
 fn void hand(ref Binder b, Sample s) {
@@ -258,7 +420,7 @@ fn void playerCases(ref Tally t) {
     ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, input: raw, hz: 60);
+    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, input: raw, hz: 60, window: 1);
     match (give made) {
         case Ok(value: b): {
             hand(b: b, s: key(control: 82, down: true, at: 50));
@@ -787,7 +949,7 @@ fn Binder binderWith(const ref string json, const ref string input) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord record = inputOf(json: input);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1);
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -801,7 +963,7 @@ fn string refusalWith(const ref string json, const ref string input) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord record = inputOf(json: input);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1);
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -1802,6 +1964,9 @@ fn void interruptibleCases(ref Tally t) {
 }
 
 fn void binderTests(ref Tally t) {
+    textCases(t: t);
+    spreadCases(t: t);
+    textRefusalCases(t: t);
     interruptibleCases(t: t);
     chordCases(t: t);
     maskCases(t: t);

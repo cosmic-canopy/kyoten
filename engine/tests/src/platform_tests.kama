@@ -12,7 +12,7 @@ import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory
          kyoten::platform::Ending, kyoten::platform::Play, kyoten::platform::play, kyoten::platform::fixedTimestamp,
          kyoten::platform::OpenPlatform, kyoten::platform::pumpInto, kyoten::platform::PadReadings, window::Window,
          window::Event, window::Key, window::Pointer, window::PointerKind, window::PointerButton, window::PadButton,
-         window::PadAxis, window::Gamepad };
+         window::PadAxis, window::Gamepad, kyoten::frame::Requests };
 
 export { platformTests };
 
@@ -35,6 +35,8 @@ type resource Log {
     int64 outputCount = 0;
     DynamicArray<Sample> toPump = DynamicArray.empty();   // handed in at the next pump
     string takenAt = "";                                  // each sample the source took, at its time
+    bool asking = false;                                  // whether the world asks that player 1 types
+    string entries = "";                                  // each text entry handed on: `S1+@t` the source's, `P1+` the platform's
 
     public ctor make() { }
 
@@ -80,6 +82,13 @@ type resource Log {
         this.endCode = cast<int32>(code);
     }
     public fn void output() { this.outputCount = this.outputCount + 1; }
+    public fn void askTyping(bool on) { this.asking = on; }
+    public const fn bool asksTyping() { return this.asking; }
+    public fn void entry(const ref string what) {
+        string was = copy this.entries;
+        this.entries = was + what + " ";
+    }
+    public const fn string entriesSeen() { return copy this.entries; }
 
     public const fn int64 openings() { return cast<int64>(this.openCount); }
     public const fn string opened() { return copy this.openedAs; }
@@ -102,6 +111,10 @@ type resource FakePlatform implements Platform {
     }
     public fn bool pumped(ref DynamicArray<Sample> into) { return this.log.derefMut().pump(into: into); }
     public fn int64 now() { return this.log.derefMut().time(); }
+    public fn void textEntry(int32 player, bool on) {
+        string s = on ? "+" : "-";
+        this.log.derefMut().entry(what: "P${player}${s}");
+    }
     public fn void ended(uint8 code) { this.log.derefMut().end(code: code); }
 }
 
@@ -115,6 +128,11 @@ type resource Counter implements World {
     public fn void update(const ref Time time) { }
     public fn void constraints(const ref Time time) { }
     public fn void output(const ref Time time, const ref Handoff newest) { this.log.derefMut().output(); }
+    // Player 1 typing while the log says the world asks it.
+    public fn void requests(ref Requests into) {
+        into.reset(players: 1);
+        if (this.log.deref().asksTyping()) { into.setTyping(player: 1, on: true); }
+    }
 }
 
 // Records the samples the loop hands it into the log; its hand-offs are empty.
@@ -127,6 +145,10 @@ type resource Taker implements InputSource {
     public fn void take(const ref DynamicArray<Sample> samples) { this.log.derefMut().took(samples: samples); }
     public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
     public fn const ref Handoff newest(float32 seconds) { return this.out; }
+    public fn void textEntry(int32 player, bool on, int64 at) {
+        string s = on ? "+" : "-";
+        this.log.derefMut().entry(what: "S${player}${s}@${at}");
+    }
 }
 
 fn void expectCount(ref Tally t, const ref string name, int64 got, int64 want) {
@@ -419,6 +441,32 @@ fn void inputCases(ref Tally t) {
               why: stamped == "16666667 " ? "" : "took `${stamped}`");
 }
 
+// What the world asks of its devices after each frame (design/input.md § Decided, 2026-11-25, the fifth part's question
+// 3): each change in a player's text entry handed to the source at the frame's timestamp and to the platform, and an
+// unchanged one handed to neither.
+fn void requestLoopCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 2 * STEP);
+    times.add(item: T0 + 3 * STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    p.tick();
+    string quiet = log.deref().entriesSeen();
+    t.verdict(name: "loop: a world that asks nothing hands no text entry on", why: quiet.isEmpty() ? "" : "handed `${quiet}`");
+    log.derefMut().askTyping(on: true);
+    p.tick();
+    p.tick();
+    log.derefMut().askTyping(on: false);
+    p.tick();
+    string seen = log.deref().entriesSeen();
+    t.verdict(name: "loop: a text entry turned on and off is handed on once each, at its frame's timestamp",
+              why: seen == "S1+@5016666667 P1+ S1-@5050000001 P1- " ? "" : "handed `${seen}`");
+}
+
 // A sample spelled: K, M or P for its device, a pad's slot and a colon, the control, `=` and its value; a pad's
 // connection `+` or `-`; then `@` and its time in milliseconds after `began`.
 fn string sampleText(const ref Sample s) {
@@ -433,6 +481,7 @@ fn string sampleText(const ref Sample s) {
         case Travel: { return "T${slot}:${control}=${v}@${ms}"; }
         case Axis: { return "A${slot}:${control}=${v}@${ms}"; }
         case Motion: { return "D${control}=${v}@${ms}"; }
+        case Text: { return "X${control}@${ms}"; }
         case Control: { }
     };
     return match (s.device) {
@@ -464,12 +513,13 @@ unsafe fn void pumpCases(ref Tally t) {
     w.post(event: Event::PadButtonDown(slot: 2, button: PadButton::RightShoulder), at: msAfter(began: began, ms: 13));
     w.post(event: Event::PadButtonUp(slot: 2, button: PadButton::RightShoulder), at: msAfter(began: began, ms: 14));
     w.post(event: Event::PadDisconnected(slot: 2), at: msAfter(began: began, ms: 15));
+    w.post(event: Event::Text(c: '\u{00E9}'), at: msAfter(began: began, ms: 15));
     DynamicArray<Sample> samples = DynamicArray.empty();
     PadReadings pads = PadReadings.make();
     bool open = pumpInto(w: w, began: began, into: samples, pads: pads);
     string got = textOf(samples: samples);
     t.verdict(name: "OpenPlatform: a window's input is samples at their events' times, a repeat and a touch none",
-              why: got == "K82=1@5 K82=0@7 M0=1@8 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15" ? "" : "got `${got}`");
+              why: got == "K82=1@5 K82=0@7 M0=1@8 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15 X233@15" ? "" : "got `${got}`");
     t.verdict(name: "OpenPlatform: a pump with no close request keeps the window open", why: open ? "" : "it closed");
     w.post(event: Event::CloseRequested, at: msAfter(began: began, ms: 16));
     DynamicArray<Sample> after = DynamicArray.empty();
@@ -543,6 +593,7 @@ unsafe fn void valuePumpCases(ref Tally t) {
 }
 
 fn void platformTests(ref Tally t) {
+    requestLoopCases(t: t);
     optionCases(t: t);
     timestampCases(t: t);
     windowCases(t: t);

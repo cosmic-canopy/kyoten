@@ -1,0 +1,47 @@
+// kyoten::frame::Requests — what a game asks of its devices, as of its last frame (the first slice's step 8, its fifth
+// part, KYR-54; design/input.md § Decided, 2026-11-25, question 3). It is made from Output's own state: the generated
+// world gathers it after Output runs (`World.requests`), and the loop hands each change to the input source and the
+// platform. For now it says whether each player is typing, from the engine's `TextEntry`; the game letting go of the pad
+// lock, the cursor's mode and rumble join it, each asked when it comes.
+
+import { std::collections::DynamicArray };
+
+export { Requests };
+
+type resource Requests {
+    DynamicArray<bool> typingField = DynamicArray.empty();
+
+    // Naming no player.
+    public ctor make() { }
+
+    // How many players it names, numbered from 1.
+    public const fn int32 players() { return cast<int32>(this.typingField.length()); }
+
+    // Whether player `player` is typing: false for a player it does not name.
+    public const fn bool typing(int32 player) {
+        if (player < 1 || cast<isize>(player) > this.typingField.length()) { return false; }
+        return this.typingField[cast<isize>(player - 1)];
+    }
+
+    // Room for `players` players, every request off.
+    public fn void reset(int32 players) {
+        assert(cond: players >= 0, msg: "requests name no negative count of players");
+        while (this.typingField.length() > cast<isize>(players)) { Optional<bool> gone = this.typingField.pop(); }
+        isize i = 0;
+        while (i < this.typingField.length()) { this.typingField[i] = false; i = i + 1; }
+        while (this.typingField.length() < cast<isize>(players)) { this.typingField.add(item: false); }
+    }
+
+    // Player `player` is typing, or not; a player it does not name is a caller's bug, and traps.
+    public fn void setTyping(int32 player, bool on) {
+        assert(cond: player >= 1 && cast<isize>(player) <= this.typingField.length(), msg: "requests name this player");
+        this.typingField[cast<isize>(player - 1)] = on;
+    }
+
+    // The same requests as `other`.
+    public fn void copyFrom(const ref Requests other) {
+        this.reset(players: other.players());
+        int32 p = 1;
+        while (p <= other.players()) { this.setTyping(player: p, on: other.typing(player: p)); p = p + 1; }
+    }
+}

@@ -274,9 +274,7 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
             ActionKind kind = m.actions().getRef(key: a).kind();
             bool delta = m.actions().getRef(key: a).delta();
             bool moves = kind == ActionKind::Analog || kind == ActionKind::Vector2 || kind == ActionKind::Vector3;
-            if (kind == ActionKind::Text) {
-                no.add(where: file, what: "action `${a}`: a `Text` action comes with its own part of KYR-54 (step 8); `Digital`, `Analog`, `Vector2`, `Vector3` and `Pose` are built");
-            } else if (delta && !moves) {
+            if (delta && !moves) {
                 string word = kindWord(kind: kind);
                 no.add(where: file, what: "action `${a}` is a `${word}` and says `delta`: a delta is a distance moved, which only an `Analog`, `Vector2` or `Vector3` holds");
             } else {
