@@ -10,8 +10,10 @@
 //   off the deterministic path, and the hand-off is what a replay records (replay-and-determinism § Decided).
 // - **`frame` runs Input, Update and Constraints once per step the clock owes, then Output once.** Each owed step is
 //   handed the input that arrived by its end on the clock (`Clock.stepEnd`), and the frame's last owed step
-//   everything that arrived up to the pump, so a frame's input is split across its steps by time and a frame that owes
-//   none keeps its input for the next step (design/input.md § Decided, question 1). Output's `Time` carries the
+//   everything that arrived up to the pump, `now`, which every sample's time is at or before since the loop reads it
+//   after the pump, so a frame's input is split across its steps by time and a frame that owes none keeps its input
+//   for the next step (design/input.md § Decided, question 1). That `now` is a real time, so a gesture's deadline
+//   lands in the step whose end passes it (the fourth part, 2026-11-24). Output's `Time` carries the
 //   frame's real dt and the last settled step (-1 before the first step settles), and Output is handed the source's
 //   newest hand-off, as presentation reads take the newest sample each frame (frame-phases § Decided; the second part
 //   of step 8).
@@ -23,8 +25,6 @@
 import { std::collections::DynamicArray, Time, Clock, Owed, Handoff, Sample };
 
 export { World, InputSource, step, frame };
-
-comptime int64 EVERYTHING = 9223372036854775807;
 
 // What the driver runs: one call per phase, each handed its `Time`, Input its step's hand-off and Output the newest.
 // Output reads the simulation and never writes it; the generated world holds that by handing Output's processors their
@@ -63,7 +63,7 @@ fn Owed frame<W: World, S: InputSource>(ref W world, ref Clock clock, ref S sour
     float32 dt = clock.dt();
     int64 i = 0;
     while (i < owed.steps) {
-        int64 until = i == owed.steps - 1 ? EVERYTHING : clock.stepEnd(i: i);
+        int64 until = i == owed.steps - 1 ? now : clock.stepEnd(i: i);
         Time time = Time.of(dt: dt, step: owed.first + i);
         step(world: world, time: time, handoff: source.handoff(index: owed.first + i, until: until));
         i = i + 1;

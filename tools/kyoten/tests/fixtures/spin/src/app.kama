@@ -167,6 +167,8 @@ fn uint8 main() {
         Digital down = Digital.off();
         down.held = i >= 1;
         down.pressed = i == 1;
+        // A gesture's progress, a state as of each step: 0.015625 a step, so Output on step 59 sees 59 of them.
+        down.progress = cast<float32>(i) / 64.0;
         input.setDigital(player: 1, action: 0, value: down);
         // `steer`, an analog state, 0.25 from step 10; `look`, a delta, (1, 0.5) each step (the second part of step 8).
         input.setAnalog(player: 1, action: 0, value: i >= 10 ? 0.25 : 0.0);

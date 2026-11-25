@@ -182,8 +182,8 @@ fn void handoffs(ref Tally t) {
     t.verdict(name: "driver: a frame that owes no step asks for no hand-off", why: none == "" ? "" : "asked `${none}`");
     frame(world: w, clock: c, source: s, now: T0 + 50000000);
     string asked = s.windows();
-    t.verdict(name: "driver: each owed step is handed the input by its end, the last everything up to the pump",
-              why: asked == "0@16666667 1@33333334 2@all " ? "" : "asked `${asked}`");
+    t.verdict(name: "driver: each owed step is handed the input by its end, the last everything up to the pump, its timestamp",
+              why: asked == "0@16666667 1@33333334 2@50000000 " ? "" : "asked `${asked}`");
     string pressed = w.pressedSteps();
     t.verdict(name: "driver: each step's Input takes its own step's hand-off", why: pressed == "1 " ? "" : "pressed on `${pressed}`");
 
@@ -195,7 +195,7 @@ fn void handoffs(ref Tally t) {
     frame(world: h, clock: half, source: hs, now: T0 + 100000000);
     string slow = hs.windows();
     t.verdict(name: "driver: at half speed each step's input is twice the real time",
-              why: slow == "0@33333334 1@66666668 2@all " ? "" : "asked `${slow}`");
+              why: slow == "0@33333334 1@66666668 2@100000000 " ? "" : "asked `${slow}`");
 }
 
 // Output is handed the source's newest hand-off, asked for at the frame's real seconds (frame-phases § Decided: a

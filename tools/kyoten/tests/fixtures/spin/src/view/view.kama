@@ -21,8 +21,9 @@ fn void seen(const ref Actions input, const ref Taps taps, Handle me) {
     uint32 slot = me.slot();
     bool pressed = input.faster.pressed;
     bool held = input.faster.held;
+    float32 progress = input.faster.progress;
     int32 slow = taps.slow;
-    println(s: "seen: slot ${slot} pressed ${pressed} held ${held} slow ${slow}");
+    println(s: "seen: slot ${slot} pressed ${pressed} held ${held} progress ${progress} slow ${slow}");
 }
 
 // What `aimTrack` and `aimTally` made of each cube's look and steer, and what Output itself sees of `look`: every step's

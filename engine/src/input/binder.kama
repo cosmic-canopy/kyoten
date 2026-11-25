@@ -5,8 +5,14 @@
 // - **Bindings are content,** keyed by action, then device (question 2): a control's name, a list of them, or an object
 //   of an action kind's parts, by `@kama/window`'s names (`"ArrowUp"`, `"RightShoulder"`, `"LeftX"`), each read by the
 //   package's own reader, so a misspelling is refused at load with every name listed. The mouse's motion is kyoten's
-//   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis. An object's gestures are refused by name
-//   until KYR-54's later part reads them.
+//   own: `"Motion"` for a `Vector2`, `"MotionX"` and `"MotionY"` for one axis.
+// - **A `Digital` entry's gestures** (the fourth part, design/input.md § Decided, 2026-11-24) recognize a pattern over
+//   time in the order written, each reading the on and off of the one before it, the first the entry's controls:
+//   `hold`, `tap`, `longTap`, `multiTap`, `repeat` (a press again while held), `toggle` and `delay`. They run in real
+//   time, on the samples' clock: a deadline (a hold's time passing) lands in the step whose end passes it, and each
+//   step's hand-off carries each digital's `progress`, how far the gesture under way has come. A gesture naming no time
+//   takes the `input` record's. `chord`, `sequence` and `interruptible` come with the fourth part's later commits, and
+//   a value action's entry takes none yet.
 // - **An entry's filters** (the third part, design/input.md § Decided, 2026-11-23) reshape the value its parts make, in
 //   the order written, before a delta's seconds, on a step's hand-off and on Output's newest alike: `deadZone`, `scale`,
 //   `invert`, `curve`, `clamp`, `remap`, `normalize`, `digital` and `smooth`, whose state each path keeps apart. On the
@@ -63,7 +69,8 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
-         std::math::pow,
+         std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
+         kyoten::records::GestureTimes,
          window::Key, window::PadButton, window::PadAxis, window::PointerButton, window::Gamepad };
 
 export { Binder, BindingError };
@@ -71,6 +78,64 @@ export { Binder, BindingError };
 comptime int32 NO_PAD = -1;
 // How far a stick goes before it says the pad is in use: half its travel, so a drifting or knocked stick does not.
 comptime float32 STICK_IN_USE = 0.5;
+// A gesture with no deadline: int64's most, past every step's end.
+comptime int64 NOT_DUE = 9223372036854775807;
+comptime float64 NS_PER_SECOND = 1000000000.0;
+
+// What a gesture hands the next: its input on, off, or pressed again while on (a `repeat`'s).
+type enum Change { On, Off, Again }
+
+// One device's entry of a digital action: its controls, `controls[from]` up to `controls[to]`, on while any is; its
+// gestures, `gestures[gestureFrom]` up to `gestureTo`; and what the last of them makes, which is what the action sees.
+type value DigitalEntry {
+    public int32 action;
+    public isize from = 0;
+    public isize to = 0;
+    public isize gestureFrom = 0;
+    public isize gestureTo = 0;
+    public bool raw = false;
+    public bool on = false;
+
+    public ctor make(int32 action) { this.action = action; }
+}
+
+// One gesture as the binder runs it: its kind, its entry, its times in nanoseconds and its count, as the record's
+// `GestureRecord` says (`a`, `b`, `count`, `on`); and what it has seen: its input, what it makes, when its input last
+// went on, its next deadline, the presses it has counted (a `multiTap`'s) or made (a `repeat`'s), and the time of the
+// last change it holds back (a `delay`'s).
+type value Gesture {
+    public GestureKind kind;
+    public isize entry;
+    public int64 a = 0;
+    public int64 b = 0;
+    public int32 count = 0;
+    public bool enabled = true;
+    public bool input = false;
+    public bool out = false;
+    public int64 since = 0;
+    public int64 due = NOT_DUE;
+    public int32 taps = 0;
+    public int64 queuedTo = 0;
+
+    public ctor make(GestureKind kind, isize entry) {
+        this.kind = kind;
+        this.entry = entry;
+    }
+}
+
+// A change a `delay` holds back until `at`; `done` once handed on.
+type value Pending {
+    public isize gesture;
+    public int64 at;
+    public Change change;
+    public bool done = false;
+
+    public ctor make(isize gesture, int64 at, Change change) {
+        this.gesture = gesture;
+        this.at = at;
+        this.change = change;
+    }
+}
 
 // Why bindings were refused at load: one line each, every refusal at once.
 type resource BindingError implements Error {
@@ -170,6 +235,14 @@ type resource Binder implements InputSource {
     // Each digital action's combined state as of the last sample handed off, and a tap's release owed to the next step.
     DynamicArray<bool> combined = DynamicArray.empty();
     DynamicArray<bool> owedRelease = DynamicArray.empty();
+    // Every digital action's entries, action by action (action a's are `digitalEntries[entryFirsts[a]]` up to
+    // `entryFirsts[a + 1]`), each entry's gestures, and the changes `delay`s hold back.
+    DynamicArray<DigitalEntry> digitalEntries = DynamicArray.empty();
+    DynamicArray<isize> entryFirsts = DynamicArray.empty();
+    DynamicArray<Gesture> gestures = DynamicArray.empty();
+    DynamicArray<Pending> pending = DynamicArray.empty();
+    // The `input` record's gestures' default times, in seconds.
+    GestureTimes times = GestureTimes.make();
     // Every value action's entries, and the controls they read.
     DynamicArray<Entry> entries = DynamicArray.empty();
     DynamicArray<Source> sources = DynamicArray.empty();
@@ -240,6 +313,13 @@ type resource Binder implements InputSource {
             }
             case None: { }
         };
+        this.times = input.gestureTimes();
+        refuseTime(part: "hold", seconds: this.times.hold, no: no);
+        refuseTime(part: "tap", seconds: this.times.tap, no: no);
+        refuseTime(part: "longTap", seconds: this.times.longTap, no: no);
+        refuseTime(part: "gap", seconds: this.times.gap, no: no);
+        refuseTime(part: "repeatDelay", seconds: this.times.repeatDelay, no: no);
+        refuseTime(part: "repeatEvery", seconds: this.times.repeatEvery, no: no);
         foreach (string action in bindings) {
             string kind = kindOf(actions: actions, name: action);
             if (kind.isEmpty()) {
@@ -250,6 +330,7 @@ type resource Binder implements InputSource {
         }
         foreach (const ref string action in actions.digitalNames().iterConst()) {
             this.firsts.add(item: this.controls.length());
+            this.entryFirsts.add(item: this.digitalEntries.length());
             this.combined.add(item: false);
             this.owedRelease.add(item: false);
             this.onEdge.add(item: false);
@@ -262,6 +343,7 @@ type resource Binder implements InputSource {
             }
         }
         this.firsts.add(item: this.controls.length());
+        this.entryFirsts.add(item: this.digitalEntries.length());
         int32 a = 0;
         while (a < actions.analogCount()) {
             bool delta = actions.analogDelta(action: a);
@@ -328,6 +410,7 @@ type resource Binder implements InputSource {
             this.waiting.clear();
             this.head = 0;
         }
+        this.advance(to: until);
         a = 0;
         while (a < this.digitalCount) {
             isize i = cast<isize>(a);
@@ -347,6 +430,7 @@ type resource Binder implements InputSource {
             } else {
                 d.held = now;
             }
+            d.progress = d.held ? 1.0 : this.progressOf(action: a, at: until);
             if (this.playerCount >= 1) { this.out.setDigital(player: 1, action: a, value: d); }
             a = a + 1;
         }
@@ -554,14 +638,16 @@ type resource Binder implements InputSource {
     // A source's value through its default dead zone, on its own axis.
     const fn float32 zonedSource(Source s) { return this.made(v: s.value, zone: s.zone, half: s.half); }
 
-    // One sample: a pad's lock, then each control it moves, then each digital action whose combined state it changes.
+    // One sample: every gesture's deadline before it, then a pad's lock, then each control it moves, then each digital
+    // action whose combined state it changes.
     fn void apply(Sample s) {
+        this.advance(to: s.at);
         match (s.kind) {
             case Connected: { return; }
             case Disconnected: {
                 if (s.slot == this.lockSlot) {
                     this.lockSlot = NO_PAD;
-                    this.release(device: Device::Gamepad);
+                    this.release(device: Device::Gamepad, t: s.at);
                     this.schemeNow = Scheme::KeyboardMouse;
                 }
                 return;
@@ -603,7 +689,7 @@ type resource Binder implements InputSource {
             i = i + 1;
         }
         this.setValues(s: s);
-        this.settle();
+        this.settle(t: s.at);
     }
 
     // Each value made a button the sample moves: on at its press point, off at its release point or below, each digital
@@ -623,7 +709,7 @@ type resource Binder implements InputSource {
             }
             i = i + 1;
         }
-        if (moved) { this.settle(); }
+        if (moved) { this.settle(t: s.at); }
     }
 
     // A pad value through its default dead zone, on its own axis, then the half of it a stick's direction reads.
@@ -663,7 +749,7 @@ type resource Binder implements InputSource {
     }
 
     // Every control of `device` off and at rest: a pad gone with its lock.
-    fn void release(Device device) {
+    fn void release(Device device, int64 t) {
         isize i = 0;
         while (i < this.controls.length()) {
             if (this.controls[i].device == device) { this.controls[i].on = false; }
@@ -674,26 +760,345 @@ type resource Binder implements InputSource {
             if (this.sources[i].device == device) { this.sources[i].value = 0.0; }
             i = i + 1;
         }
-        this.settle();
+        this.settle(t: t);
     }
 
-    // Each digital action's combined state from its controls, an edge noted where it changed.
-    fn void settle() {
-        int32 a = 0;
-        while (a < this.digitalCount) {
-            isize ai = cast<isize>(a);
+    // Each digital entry's controls at `t`: where whether any is on changed, its first gesture takes the change, or the
+    // action, where it has none.
+    fn void settle(int64 t) {
+        isize e = 0;
+        while (e < this.digitalEntries.length()) {
+            DigitalEntry de = this.digitalEntries[e];
             bool any = false;
-            isize c = this.firsts[ai];
-            while (c < this.firsts[ai + 1]) {
+            isize c = de.from;
+            while (c < de.to) {
                 if (this.controls[c].on) { any = true; }
                 c = c + 1;
             }
-            if (any != this.combined[ai]) {
-                if (any) { this.onEdge[ai] = true; } else { this.offEdge[ai] = true; }
-                this.combined[ai] = any;
+            if (any != de.raw) {
+                this.digitalEntries[e].raw = any;
+                this.feed(e: e, g: de.gestureFrom, change: any ? Change::On : Change::Off, t: t);
             }
-            a = a + 1;
+            e = e + 1;
         }
+    }
+
+    // What an entry's last gesture makes reaches its action: the action is on while any of its entries is, an edge
+    // noted where that changed, and a press again noted while it is on.
+    fn void reach(isize e, Change change) {
+        match (change) {
+            case On: { this.digitalEntries[e].on = true; }
+            case Off: { this.digitalEntries[e].on = false; }
+            case Again: { }
+        };
+        isize ai = cast<isize>(this.digitalEntries[e].action);
+        bool any = false;
+        isize k = this.entryFirsts[ai];
+        while (k < this.entryFirsts[ai + 1]) {
+            if (this.digitalEntries[k].on) { any = true; }
+            k = k + 1;
+        }
+        if (any != this.combined[ai]) {
+            if (any) { this.onEdge[ai] = true; } else { this.offEdge[ai] = true; }
+            this.combined[ai] = any;
+        } else if (any && change == Change::Again) {
+            this.onEdge[ai] = true;
+        }
+    }
+
+    // Gesture `g` of entry `e` takes `change` at `t`, and hands what it makes to the next gesture, or past the last to
+    // the action.
+    fn void feed(isize e, isize g, Change change, int64 t) {
+        if (g >= this.digitalEntries[e].gestureTo) {
+            this.reach(e: e, change: change);
+            return;
+        }
+        Gesture x = this.gestures[g];
+        match (x.kind) {
+            case Hold: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        this.gestures[g].since = t;
+                        this.gestures[g].due = later(t: t, by: x.a);
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        this.gestures[g].out = false;
+                        this.gestures[g].due = NOT_DUE;
+                        if (x.out) { this.feed(e: e, g: g + 1, change: Change::Off, t: t); }
+                    }
+                    case Again: { if (x.out) { this.feed(e: e, g: g + 1, change: Change::Again, t: t); } }
+                };
+            }
+            case Tap: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        this.gestures[g].since = t;
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        if (t - x.since <= x.a) { this.pulse(e: e, g: g, t: t); }
+                    }
+                    case Again: { }
+                };
+            }
+            case LongTap: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        this.gestures[g].since = t;
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        if (t - x.since >= x.a) { this.pulse(e: e, g: g, t: t); }
+                    }
+                    case Again: { }
+                };
+            }
+            case MultiTap: {
+                bool press = change == Change::On || (change == Change::Again && !x.out);
+                if (press) {
+                    int32 counted = x.taps + 1;
+                    this.gestures[g].input = true;
+                    this.gestures[g].since = t;
+                    if (counted >= x.count) {
+                        this.gestures[g].taps = 0;
+                        this.gestures[g].out = true;
+                        this.gestures[g].due = NOT_DUE;
+                        this.feed(e: e, g: g + 1, change: Change::On, t: t);
+                    } else {
+                        this.gestures[g].taps = counted;
+                        this.gestures[g].due = later(t: t, by: x.a + 1);
+                    }
+                } else if (change == Change::Again) {
+                    this.feed(e: e, g: g + 1, change: Change::Again, t: t);
+                } else {
+                    this.gestures[g].input = false;
+                    if (x.out) {
+                        this.gestures[g].out = false;
+                        this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                    } else if (x.taps > 0) {
+                        this.gestures[g].due = later(t: t, by: x.b + 1);
+                    }
+                }
+            }
+            case Repeat: {
+                match (change) {
+                    case On: {
+                        this.gestures[g].input = true;
+                        this.gestures[g].out = true;
+                        this.gestures[g].taps = 1;
+                        this.gestures[g].due = x.count == 0 || x.count > 1 ? later(t: t, by: x.a) : NOT_DUE;
+                        this.feed(e: e, g: g + 1, change: Change::On, t: t);
+                    }
+                    case Off: {
+                        this.gestures[g].input = false;
+                        this.gestures[g].out = false;
+                        this.gestures[g].due = NOT_DUE;
+                        this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+                    }
+                    case Again: { this.feed(e: e, g: g + 1, change: Change::Again, t: t); }
+                };
+            }
+            case Toggle: {
+                if (!x.enabled) {
+                    this.feed(e: e, g: g + 1, change: change, t: t);
+                } else if (change != Change::Off) {
+                    bool flipped = !x.out;
+                    this.gestures[g].out = flipped;
+                    this.feed(e: e, g: g + 1, change: flipped ? Change::On : Change::Off, t: t);
+                }
+            }
+            case Delay: {
+                int64 by = change == Change::Off ? x.b : x.a;
+                int64 at = later(t: t, by: by);
+                if (at < x.queuedTo) { at = x.queuedTo; }
+                this.gestures[g].queuedTo = at;
+                this.pending.add(item: Pending.make(gesture: g, at: at, change: change));
+                if (x.due == NOT_DUE) { this.gestures[g].due = at; }
+            }
+            case _: { }
+        };
+    }
+
+    // A press for one step from gesture `g`: on, then off at the same moment, which the action shows pressed and held
+    // that step and released the next.
+    fn void pulse(isize e, isize g, int64 t) {
+        this.feed(e: e, g: g + 1, change: Change::On, t: t);
+        this.feed(e: e, g: g + 1, change: Change::Off, t: t);
+    }
+
+    // Every gesture's deadline up to `to`, inclusive, the earliest first, each at its own time.
+    fn void advance(int64 to) {
+        bool more = true;
+        while (more) {
+            isize next = -1;
+            int64 when = NOT_DUE;
+            isize g = 0;
+            while (g < this.gestures.length()) {
+                if (this.gestures[g].due < when) {
+                    when = this.gestures[g].due;
+                    next = g;
+                }
+                g = g + 1;
+            }
+            if (next < 0 || when > to) { more = false; }
+            else { this.fire(g: next, t: when, to: to); }
+        }
+    }
+
+    // Gesture `g`'s deadline at `t`, inside a call that reaches `to`:
+    // - a `hold` held its time turns on (one let go has no deadline);
+    // - a `multiTap` whose press was held too long, or whose next press did not come within its gap, starts again;
+    // - a `repeat` presses again, and waits for its next from then; one that fell behind (a long frame) presses once,
+    //   then waits a whole interval from `to`, so it never catches up, as the-mallow-man's menus and Unity's UI do;
+    // - a `delay` hands on the change it held back longest.
+    fn void fire(isize g, int64 t, int64 to) {
+        Gesture x = this.gestures[g];
+        this.gestures[g].due = NOT_DUE;
+        isize e = x.entry;
+        match (x.kind) {
+            case Hold: {
+                this.gestures[g].out = true;
+                this.feed(e: e, g: g + 1, change: Change::On, t: t);
+            }
+            case MultiTap: { this.gestures[g].taps = 0; }
+            case Repeat: {
+                int32 made = x.taps + 1;
+                this.gestures[g].taps = made;
+                if (x.count == 0 || made < x.count) {
+                    int64 next = later(t: t, by: x.b);
+                    if (next <= to) { next = later(t: to, by: x.b); }
+                    this.gestures[g].due = next;
+                }
+                this.feed(e: e, g: g + 1, change: Change::Again, t: t);
+            }
+            case Delay: {
+                isize i = 0;
+                bool handed = false;
+                Change change = Change::Off;
+                int64 nextDue = NOT_DUE;
+                while (i < this.pending.length()) {
+                    Pending p = this.pending[i];
+                    if (p.gesture == g && !p.done) {
+                        if (!handed) {
+                            this.pending[i].done = true;
+                            change = p.change;
+                            handed = true;
+                        } else if (nextDue == NOT_DUE) {
+                            nextDue = p.at;
+                        }
+                    }
+                    i = i + 1;
+                }
+                this.gestures[g].due = nextDue;
+                bool all = true;
+                foreach (Pending p in this.pending) { if (!p.done) { all = false; } }
+                if (all) { this.pending.clear(); }
+                if (handed) {
+                    if (change == Change::On) { this.gestures[g].out = true; }
+                    if (change == Change::Off) { this.gestures[g].out = false; }
+                    this.feed(e: e, g: g + 1, change: change, t: t);
+                }
+            }
+            case _: { }
+        };
+    }
+
+    // How far digital action `action`'s gesture under way has come at `at`: the most of its entries'.
+    const fn float32 progressOf(int32 action, int64 at) {
+        isize ai = cast<isize>(action);
+        float32 most = 0.0;
+        isize k = this.entryFirsts[ai];
+        while (k < this.entryFirsts[ai + 1]) {
+            float32 p = this.entryProgress(e: k, at: at);
+            if (p > most) { most = p; }
+            k = k + 1;
+        }
+        return most;
+    }
+
+    // An entry's progress, while it is off (one on makes its action held, whose progress is 1): that of the gesture
+    // nearest its end that is under way.
+    const fn float32 entryProgress(isize e, int64 at) {
+        DigitalEntry de = this.digitalEntries[e];
+        isize g = de.gestureTo - 1;
+        while (g >= de.gestureFrom) {
+            float32 p = this.gestureProgress(g: g, at: at);
+            if (p > 0.0) { return p; }
+            g = g - 1;
+        }
+        return 0.0;
+    }
+
+    // One gesture's progress: a `hold`'s or a `longTap`'s share of its time held, a `multiTap`'s presses counted of its
+    // count, and 1 while any gesture makes on.
+    const fn float32 gestureProgress(isize g, int64 at) {
+        Gesture x = this.gestures[g];
+        if (x.out) { return 1.0; }
+        return match (x.kind) {
+            case Hold: x.input ? shareOf(from: x.since, to: at, of: x.a) : 0.0;
+            case LongTap: x.input ? shareOf(from: x.since, to: at, of: x.a) : 0.0;
+            case MultiTap: x.taps > 0 ? cast<float32>(x.taps) / cast<float32>(x.count) : 0.0;
+            case _: 0.0;
+        };
+    }
+
+    // An entry's gestures into the binder's, each held to its range, its times its own or the `input` record's: false,
+    // with every refusal added, when any is refused.
+    fn bool takeGestures(const ref ControlEntry entry, isize at, const ref string whose, ref BindingError no) {
+        bool fine = true;
+        foreach (const ref GestureRecord read in entry.gestures().iterConst()) {
+            GestureRecord r = read;
+            Gesture g = Gesture.make(kind: r.kind, entry: at);
+            string word = gestureWord(kind: r.kind);
+            string why = "";
+            match (r.kind) {
+                case Hold: { g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.hold, word: word, part: "hold", why: why); }
+                case Tap: { g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.tap, word: word, part: "tap", why: why); }
+                case LongTap: {
+                    g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.longTap, word: word, part: "longTap", why: why);
+                }
+                case MultiTap: {
+                    g.count = r.count;
+                    if (r.count < 2) { why = "lists a `multiTap` of ${r.count} taps: a multi-tap counts 2 or more"; }
+                    if (why.isEmpty()) {
+                        g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.tap, word: "multiTap`'s `tap", part: "tap", why: why);
+                    }
+                    if (why.isEmpty()) {
+                        g.b = nanosFor(own: r.hasB, value: r.b, fallback: this.times.gap, word: "multiTap`'s `gap", part: "gap", why: why);
+                    }
+                }
+                case Repeat: {
+                    g.count = r.count;
+                    if (r.count < 0) { why = "lists a `repeat` whose `limit` is ${r.count}: its most presses are 0, for no limit, or more"; }
+                    if (why.isEmpty()) {
+                        g.a = nanosFor(own: r.hasA, value: r.a, fallback: this.times.repeatDelay, word: "repeat`'s `delay", part: "repeatDelay", why: why);
+                    }
+                    if (why.isEmpty()) {
+                        g.b = nanosFor(own: r.hasB, value: r.b, fallback: this.times.repeatEvery, word: "repeat`'s `every", part: "repeatEvery", why: why);
+                    }
+                }
+                case Toggle: { g.enabled = r.on; }
+                case Delay: {
+                    g.a = nanosOf(seconds: r.a, zero: true);
+                    g.b = nanosOf(seconds: r.b, zero: true);
+                    if (g.a < 0 || g.b < 0) {
+                        why = "lists a `delay` of ${r.a} and ${r.b} seconds: a delay's `start` and `end` are 0 or more";
+                    }
+                }
+                case _: { why = "lists a `" + word + "`, which the fourth part's next commit reads"; }
+            };
+            if (!why.isEmpty()) {
+                no.add(line: whose + " " + why);
+                fine = false;
+                continue;
+            }
+            this.gestures.add(item: g);
+        }
+        return fine;
     }
 
     // An entry naming no dead zone of its own takes the defaults: the stick's, radial, as its first filter where it
@@ -766,6 +1171,7 @@ type resource Binder implements InputSource {
             case Some(value: e): {
                 DynamicArray<string> names = DynamicArray.empty();
                 Optional<FilterRecord> threshold = Optional::None;
+                isize first = this.controls.length();
                 if (e.isObject()) {
                     bool fine = true;
                     foreach (string part in e.parts()) {
@@ -773,10 +1179,6 @@ type resource Binder implements InputSource {
                             no.add(line: whose + " names `" + part + "`, which is no part of a `Digital`'s entry: its controls go under `control`, a name or a list");
                             fine = false;
                         }
-                    }
-                    if (e.steps().length() > 0) {
-                        no.add(line: whose + " names gestures, which KYR-54's later part reads");
-                        fine = false;
                     }
                     foreach (const ref FilterRecord f in e.filters().iterConst()) {
                         if (f.kind != FilterKind::Threshold) {
@@ -823,6 +1225,13 @@ type resource Binder implements InputSource {
                         }
                     };
                 }
+                DigitalEntry made = DigitalEntry.make(action: cast<int32>(this.entryFirsts.length() - 1));
+                made.from = first;
+                made.to = this.controls.length();
+                made.gestureFrom = this.gestures.length();
+                bool kept = this.takeGestures(entry: e, at: this.digitalEntries.length(), whose: whose, no: no);
+                made.gestureTo = this.gestures.length();
+                if (kept) { this.digitalEntries.add(item: made); }
             }
         };
     }
@@ -897,8 +1306,10 @@ type resource Binder implements InputSource {
         match (entry) {
             case None: { }
             case Some(value: e): {
-                if (e.steps().length() > 0) {
-                    no.add(line: whose + " names gestures, which KYR-54's later part reads");
+                if (e.gestures().length() > 0) {
+                    string word = gestureWord(kind: e.gestures()[0].kind);
+                    no.add(line: whose + " lists a `" + word + "`, which makes a press: only a `Digital` has one, and the `chord` that gates a `"
+                           + kindWord + "` comes with the fourth part's next commit");
                     return;
                 }
                 DynamicArray<string> words = DynamicArray.empty();
@@ -968,6 +1379,73 @@ type resource Binder implements InputSource {
             }
         };
     }
+}
+
+// `t` moved `by` nanoseconds later, held at `NOT_DUE` rather than past it.
+fn int64 later(int64 t, int64 by) {
+    if (by > 0 && t > NOT_DUE - by) { return NOT_DUE; }
+    return t + by;
+}
+
+// The share of `of` nanoseconds gone from `from` to `to`, from 0 to 1.
+fn float32 shareOf(int64 from, int64 to, int64 of) {
+    if (to <= from) { return 0.0; }
+    if (of <= 0 || to - from >= of) { return 1.0; }
+    float64 gone = cast<float64>(to - from);
+    float64 whole = cast<float64>(of);
+    return cast<float32>(gone / whole);
+}
+
+// The most seconds a gesture's time may be: about 285 years, which the clock's nanoseconds still count.
+comptime float64 MOST_SECONDS = 9000000000.0;
+
+// `seconds` in nanoseconds, to the nearest, or -1 where it is out of range: 0 or less (below 0 where `zero` lets it
+// be 0), or more than `MOST_SECONDS`.
+fn int64 nanosOf(float64 seconds, bool zero) {
+    bool fine = seconds > 0.0 || (zero && seconds == 0.0);
+    if (!fine || seconds > MOST_SECONDS) { return -1; }
+    float64 scaled = seconds * NS_PER_SECOND + 0.5;
+    float64 whole = floor(x: scaled);
+    return cast<int64>(whole);
+}
+
+// A gesture's time in nanoseconds: its own where `own`, else the `input` record's `gestures.<part>`; -1, with `why`
+// set, where it has none or it is out of range.
+fn int64 nanosFor(bool own, float64 value, Optional<float64> fallback, const ref string word, const ref string part,
+                  ref string why) {
+    float64 seconds = value;
+    if (!own) {
+        match (fallback) {
+            case Some(value: v): { seconds = v; }
+            case None: {
+                why = "lists a `" + word + "` naming no time: its own, or the `input` record's `gestures." + part + "`";
+                return -1;
+            }
+        };
+    }
+    int64 n = nanosOf(seconds: seconds, zero: false);
+    if (n < 0) { why = "lists a `" + word + "` of ${seconds} seconds: a gesture's time is more than 0 seconds"; }
+    return n;
+}
+
+// The `input` record's gesture time `part` refused where it is out of range.
+fn void refuseTime(const ref string part, Optional<float64> seconds, ref BindingError no) {
+    match (seconds) {
+        case Some(value: v): {
+            if (nanosOf(seconds: v, zero: false) < 0) {
+                no.add(line: "the `input` record's `gestures." + part + "`, ${v} seconds, is no time a gesture waits: it is more than 0 seconds");
+            }
+        }
+        case None: { }
+    };
+}
+
+fn string gestureWord(GestureKind kind) {
+    return match (kind) {
+        case Hold: "hold"; case Tap: "tap"; case LongTap: "longTap"; case MultiTap: "multiTap"; case Repeat: "repeat";
+        case Toggle: "toggle"; case Delay: "delay"; case Chord: "chord"; case Sequence: "sequence";
+        case Interruptible: "interruptible";
+    };
 }
 
 fn float32 absOf(float32 x) { return x < 0.0 ? -x : x; }

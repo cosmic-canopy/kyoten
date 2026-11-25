@@ -133,12 +133,12 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
           ok: r.says(what: "spin: base 60 Hz"), why: said);
     // What each run sees of `faster`, pressed on step 1 and held from then on (the first slice's step 8): the 30 Hz
     // `tally` sees the press once, on step 2; Output, run twice at step 59, sees it on its first run alone; the cube
-    // naming no player sees nothing.
+    // naming no player sees nothing. Its progress, a state, is step 59's: 59/64 (the fourth part of step 8).
     DynamicArray<string> seen = linesAfter(text: said, prefix: "seen: ");
     string all = "";
     foreach (const ref string l in seen.iterConst()) { all = all.isEmpty() ? copy l : all + " | " + l; }
-    string want = "slot 0 pressed false held false slow 0 | slot 1 pressed true held true slow 1 | "
-        + "slot 0 pressed false held false slow 0 | slot 1 pressed false held true slow 1";
+    string want = "slot 0 pressed false held false progress 0 slow 0 | slot 1 pressed true held true progress 0.921875 slow 1 | "
+        + "slot 0 pressed false held false progress 0 slow 0 | slot 1 pressed false held true progress 0.921875 slow 1";
     t.verdict(name: "spin: ${leg}: each processor sees a press once, whatever its rate, and Output every step since its last frame",
               why: all == want ? "" : "seen `${all}`");
     // What each run makes of `look`, a delta of (1, 0.5) each step, and `steer`, an analog state of 0.25 from step 10
@@ -293,7 +293,10 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
     // back.
     string bindingsFile = s.fixture(at: "spin/content/cube.records.json");
     string keptBindings = read(path: bindingsFile);
-    write(path: bindingsFile, text: keptBindings.replace(old: "\"keyboard\": \"ArrowUp\"", with: "\"keyboard\": \"Arrowup\""));
+    string misspeltText = keptBindings.replace(old: "\"control\": \"ArrowUp\"", with: "\"control\": \"Arrowup\"");
+    check(t: t, name: "spin: native: the fixture's `faster` is on ArrowUp, for the misspelling to change", ok: misspeltText != keptBindings,
+          why: "no `\"control\": \"ArrowUp\"` in " + bindingsFile);
+    write(path: bindingsFile, text: misspeltText);
     Ran misspelt = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: none(), options: runOptions()));
     write(path: bindingsFile, text: keptBindings);
     ranAs(t: t, name: "spin: native: a misspelled key in the game's bindings ends `run` with 1, refused at load", r: misspelt,

@@ -8,7 +8,7 @@ import { Tally, kyoten::content::RecordSource, kyoten::content::FolderSource, ky
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::content::readScene, kyoten::content::layOver,
          kyoten::content::readWhole, kyoten::content::mergeTree, kyoten::content::readTree,
          kyoten::world::Transform, kyoten::records::BindingRecord, kyoten::records::ControlEntry,
-         kyoten::records::FilterRecord,
+         kyoten::records::FilterRecord, kyoten::records::GestureTimes,
          core::env::programPath, std::memory::Owned, std::io::IoError, std::io::IoErrorKind,
          std::collections::DynamicArray, std::collections::SortedMap, std::fs::writeText, std::fs::createDirAll,
          std::fs::removeDirAll, std::path::parent, std::serialization::text::json::JsonValue,
@@ -496,13 +496,20 @@ fn string pressWords(FilterRecord f) {
     return "${a} and ${b}${named}";
 }
 
+// The gestures' times as words: each named, `none` where no layer names it.
+fn string timeWord(Optional<float64> v) { return match (v) { case Some(value: s): "${s}"; case None: "none"; }; }
+fn string timesText(GestureTimes g) {
+    return "hold " + timeWord(v: g.hold) + ", tap " + timeWord(v: g.tap) + ", longTap " + timeWord(v: g.longTap) + ", gap "
+        + timeWord(v: g.gap) + ", repeat " + timeWord(v: g.repeatDelay) + " then " + timeWord(v: g.repeatEvery);
+}
+
 // The input record, laid over across layers part by part (design/input.md § Decided, 2026-11-23): the engine's content
 // holds the defaults (engine/content/input.records.json), and a game's record changes the parts it names.
 fn void inputLayers(ref Tally t) {
     MemorySource low = MemorySource.make(label: "kyoten/content");
-    low.put(path: "input.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.25 }, \"stickThreshold\": { \"press\": 0.5, \"release\": 0.375 } } }");
+    low.put(path: "input.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.125, \"upper\": 0.925 }, \"triggerDeadZone\": { \"lower\": 0.25 }, \"stickThreshold\": { \"press\": 0.5, \"release\": 0.375 }, \"gestures\": { \"hold\": 0.4, \"tap\": 0.2, \"repeatEvery\": 0.1 } } }");
     MemorySource high = MemorySource.make(label: "content");
-    high.put(path: "feel.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.2, \"shape\": \"Axial\" }, \"stickThreshold\": { \"press\": 0.6 } } }");
+    high.put(path: "feel.records.json", text: "{ \"input\": { \"stickDeadZone\": { \"lower\": 0.2, \"shape\": \"Axial\" }, \"stickThreshold\": { \"press\": 0.6 }, \"gestures\": { \"hold\": 1.0, \"gap\": 0.5 } } }");
     LoadRefusals no = LoadRefusals.make();
     Content c = readContent(stack: stackOf(low: give low, high: Optional::Some(value: give high)), no: no);
     string stick = zoneText(zone: c.input().stickDeadZone());
@@ -515,6 +522,9 @@ fn void inputLayers(ref Tally t) {
     string pressed = match (press) { case Some(value: p): pressWords(f: p); case None: "none"; };
     t.verdict(name: "readContent: a stick's press point laid over part by part: a game's press, the engine's release kept",
               why: pressed == "0.6 and 0.375" ? "" : "pressed `${pressed}`");
+    string times = timesText(g: c.input().gestureTimes());
+    t.verdict(name: "readContent: the gestures' times laid over one by one: a game's hold and gap, the engine's tap and repeat kept",
+              why: times == "hold 1, tap 0.2, longTap none, gap 0.5, repeat none then 0.1" ? "" : "times `${times}`");
 
     MemorySource bare = MemorySource.make(label: "content");
     bare.put(path: "cube.records.json", text: "{ \"prefabs\": { } }");
@@ -523,6 +533,9 @@ fn void inputLayers(ref Tally t) {
     string nothing = zoneText(zone: b.input().stickDeadZone());
     t.verdict(name: "readContent: with no layer naming a dead zone there is none, and a stick reads raw",
               why: nothing == "none" ? "" : "stick `${nothing}`");
+    string noTimes = timesText(g: b.input().gestureTimes());
+    t.verdict(name: "readContent: with no layer naming the gestures' times there are none",
+              why: noTimes == "hold none, tap none, longTap none, gap none, repeat none then none" ? "" : "times `${noTimes}`");
 }
 
 // The engine's own content folder: packed into every program on the engine at `/kyoten/content` on the web; natively the
@@ -563,6 +576,9 @@ unsafe fn void engineInput(ref Tally t) {
             string stickPress = match (press) { case Some(value: p): pressWords(f: p); case None: "none"; };
             t.verdict(name: "the engine's content: a stick's direction as a button presses at 0.5 and lets go at 0.375",
                       why: stickPress == "0.5 and 0.375" ? "" : "pressed `${stickPress}`");
+            string times = timesText(g: c.input().gestureTimes());
+            t.verdict(name: "the engine's content: the gestures' times are Unity's: a hold 0.4, a tap 0.2, a long tap 0.5, a gap 0.75, a repeat 0.5 then 0.1",
+                      why: times == "hold 0.4, tap 0.2, longTap 0.5, gap 0.75, repeat 0.5 then 0.1" ? "" : "times `${times}`");
         }
         case Err(error: e): {
             string m = e.message();

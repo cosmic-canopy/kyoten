@@ -1,8 +1,8 @@
 // kyoten::frame::PlayerActions — every player's actions as the world keeps them across steps, from which each
 // processor's view is made (the first slice's step 8, KYR-54; frame-phases § Decided, question 1).
 //
-// - **It takes each step's hand-off** in the Input phase: each digital action's state, and the step its last press and
-//   its last release landed in; and every value action's value, kept for the last steps a run may reach back to.
+// - **It takes each step's hand-off** in the Input phase: each digital action's state and its gesture's progress, and
+//   the step its last press and its last release landed in; and every value action's value, kept for the last steps a run may reach back to.
 // - **A run sees its own window of steps,** `after` excluded and `upTo` included: a processor at the base rate its step
 //   alone, one at a slower rate every step since its last run, and Output every step since its last frame. So each
 //   processor sees a press and a release once, on its first run at or after the step it lands in, whatever its rate, as
@@ -35,6 +35,8 @@ type resource PlayerActions {
     int32 vector3Count;
     int32 poseCount;
     DynamicArray<bool> helds = DynamicArray.empty();
+    // Each digital action's gesture's progress as of the last step taken.
+    DynamicArray<float32> progresses = DynamicArray.empty();
     // The step each digital action's last press and last release landed in, NEVER before its first.
     DynamicArray<int64> pressedAt = DynamicArray.empty();
     DynamicArray<int64> releasedAt = DynamicArray.empty();
@@ -68,6 +70,7 @@ type resource PlayerActions {
         int64 i = 0;
         while (i < p * cast<int64>(this.digitalCount)) {
             this.helds.add(item: false);
+            this.progresses.add(item: 0.0);
             this.pressedAt.add(item: NEVER);
             this.releasedAt.add(item: NEVER);
             i = i + 1;
@@ -119,6 +122,7 @@ type resource PlayerActions {
                 Digital d = handoff.digital(player: p, action: a);
                 isize i = flat(player: p, action: a, count: this.digitalCount);
                 this.helds[i] = d.held;
+                this.progresses[i] = d.progress;
                 if (d.pressed) { this.pressedAt[i] = step; }
                 if (d.released) { this.releasedAt[i] = step; }
                 a = a + 1;
@@ -155,6 +159,7 @@ type resource PlayerActions {
         if (!this.holds(player: player, action: action, count: this.digitalCount)) { return d; }
         isize i = flat(player: player, action: action, count: this.digitalCount);
         d.held = this.helds[i];
+        d.progress = this.progresses[i];
         int64 p = this.pressedAt[i];
         int64 r = this.releasedAt[i];
         d.pressed = p > after && p <= upTo;

@@ -6,6 +6,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned, std::memory::replace };
 
 export { AppRecord, WindowRecord, BindingRecord, ControlEntry, FilterRecord, FilterKind, DeadZoneShape, InputRecord, ZoneRecord,
+         GestureRecord, GestureKind, GestureTimes,
          PressRecord };
 
 // The game's window: its size in logical pixels, which the engine's content sets (1280 x 720) and a game's app record
@@ -78,13 +79,17 @@ type resource BindingRecord {
 //   an object of one key naming the filter: `{ "deadZone": 0.2 }`, `{ "scale": { "x": 3.2, "y": 2.2 } }`. A filter or
 //   a parameter misspelt is refused here, naming every one, so the `kyoten` tool refuses it at build; a value out of its
 //   range is the binder's to refuse, at load, naming the action.
-// - **`gestures`** is noted and its value passed over here: it is KYR-54's later part, and the binder refuses it.
+// - **`gestures`** (the fourth part, design/input.md § Decided, 2026-11-24) is a list, applied in the order written after
+//   the filters, each an object of one key naming the gesture: `{ "hold": 0.5 }`, `{ "multiTap": { "count": 3 } }`. A
+//   gesture or a parameter misspelt is refused here, naming every one, so the `kyoten` tool refuses it at build; a time
+//   out of its range is the binder's to refuse, at load, naming the action.
 type resource ControlEntry implements Deserializable<This> {
     DynamicArray<string> namesField = DynamicArray.empty();
     bool listedField = false;
     bool objectField = false;
     SortedMap<string, DynamicArray<string>> partsField = SortedMap.empty();
-    DynamicArray<string> stepsField = DynamicArray.empty();
+    DynamicArray<GestureRecord> gesturesField = DynamicArray.empty();
+    bool gesturesRead = false;
     DynamicArray<FilterRecord> filtersField = DynamicArray.empty();
     DynamicArray<float32> pointsField = DynamicArray.empty();
     bool filtersRead = false;
@@ -119,8 +124,30 @@ type resource ControlEntry implements Deserializable<This> {
                     FieldKey key = r.field();
                     string part = match (key) { case Name(name: n): copy n; case _: ""; };
                     if (part == "gestures") {
-                        this.stepsField.add(item: copy part);
-                        r.skipValue();
+                        if (this.gesturesRead) {
+                            r.duplicateKey();
+                            if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "gestures")); }
+                        }
+                        ValueKind gk = r.peekKind();
+                        bool listOf = match (gk) { case Array: true; case _: false; };
+                        if (!listOf) {
+                            r.failWith(kind: DeErrorKind::TypeMismatch);
+                            return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "gestures"));
+                        }
+                        this.gesturesRead = true;
+                        r.beginArray();
+                        isize at = 0;
+                        while (r.moreElems()) {
+                            Result<GestureRecord, Owned<Error>> one = readGesture(r: r);
+                            match (give one) {
+                                case Ok(value: g): { this.gesturesField.add(item: g); }
+                                case Err(error: e): {
+                                    return Result::Err(error: DeError::inField(error: DeError::inElement(error: give e, index: at), name: "gestures"));
+                                }
+                            };
+                            at = at + 1;
+                        }
+                        if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "gestures")); }
                         continue;
                     }
                     if (part == "filters") {
@@ -186,8 +213,8 @@ type resource ControlEntry implements Deserializable<This> {
     public const fn bool isObject() { return this.objectField; }
     // An object's parts by their words, each its controls' names in the order written.
     public const fn const ref SortedMap<string, DynamicArray<string>> parts() { return this.partsField; }
-    // The steps an object names that KYR-54's later parts read: `gestures`.
-    public const fn const ref DynamicArray<string> steps() { return this.stepsField; }
+    // Its gestures, in the order written.
+    public const fn const ref DynamicArray<GestureRecord> gestures() { return this.gesturesField; }
     // Its filters, in the order written.
     public const fn const ref DynamicArray<FilterRecord> filters() { return this.filtersField; }
     // Every curve's points, in pairs (in, out): a curve's are `curvePoints()[pointsFrom]` up to `[pointsTo]`.
@@ -333,6 +360,85 @@ type value ThresholdParams {
     public default ctor make() { }
 }
 
+// What a gesture recognizes (design/input.md § Decided, 2026-11-24, the fourth part).
+type enum GestureKind { Hold, Tap, LongTap, MultiTap, Repeat, Toggle, Delay, Chord, Sequence, Interruptible }
+
+// One gesture as a device's entry lists it. Its numbers, by kind, each time in seconds:
+// - `Hold`, `Tap` and `LongTap`: `a` its time, where `hasA` (else the `input` record's);
+// - `MultiTap`: `count` its taps (2), `a` the time each tap is let go within, where `hasA`, and `b` the gap the next
+//   press comes within, where `hasB`;
+// - `Repeat`: `a` the delay before its second press, where `hasA`, `b` the time between the next ones, where `hasB`,
+//   and `count` the most presses it makes, 0 for no limit;
+// - `Toggle`: `on`, false where written `false`, when it passes its input on as it is;
+// - `Delay`: `a` how much later its input's on comes, and `b` how much later its off;
+// - `Chord`, `Sequence` and `Interruptible`: read by the fourth part's later commits.
+type value GestureRecord {
+    public GestureKind kind;
+    public float64 a = 0.0;
+    public float64 b = 0.0;
+    public bool hasA = false;
+    public bool hasB = false;
+    public int32 count = 0;
+    public bool on = true;
+
+    public ctor make(GestureKind kind) { this.kind = kind; }
+}
+
+// `{ "hold": { … } }`'s, `tap`'s and `longTap`'s parameters: its time, the `input` record's where unnamed.
+@generate(Deserializable)
+type value TimeParams {
+    @field(name: "seconds", default) public Optional<float64> seconds = Optional::None;
+    public default ctor make() { }
+}
+
+// `{ "multiTap": { … } }`'s parameters.
+@generate(Deserializable)
+type value MultiTapParams {
+    @field(name: "count", default) public int32 count = 2;
+    @field(name: "tap", default) public Optional<float64> tap = Optional::None;
+    @field(name: "gap", default) public Optional<float64> gap = Optional::None;
+    public default ctor make() { }
+}
+
+// `{ "repeat": { … } }`'s parameters.
+@generate(Deserializable)
+type value RepeatParams {
+    @field(name: "delay", default) public Optional<float64> delay = Optional::None;
+    @field(name: "every", default) public Optional<float64> every = Optional::None;
+    @field(name: "limit", default) public int32 limit = 0;
+    public default ctor make() { }
+}
+
+// `{ "delay": { … } }`'s parameters.
+@generate(Deserializable)
+type value DelayParams {
+    @field(name: "start", default) public float64 start = 0.0;
+    @field(name: "end", default) public float64 end = 0.0;
+    public default ctor make() { }
+}
+
+// The gestures' default times in the `input` record, in seconds, each laid over the layer below's on its own. A time no
+// layer names is none, and a gesture that names none of its own is refused at load.
+@generate(Deserializable)
+type value GestureTimes {
+    @field(name: "hold", default) public Optional<float64> hold = Optional::None;
+    @field(name: "tap", default) public Optional<float64> tap = Optional::None;
+    @field(name: "longTap", default) public Optional<float64> longTap = Optional::None;
+    @field(name: "gap", default) public Optional<float64> gap = Optional::None;
+    @field(name: "repeatDelay", default) public Optional<float64> repeatDelay = Optional::None;
+    @field(name: "repeatEvery", default) public Optional<float64> repeatEvery = Optional::None;
+    public default ctor make() { }
+
+    public fn void layOver(GestureTimes above) {
+        match (above.hold) { case Some(value: v): { this.hold = Optional::Some(value: v); } case None: { } };
+        match (above.tap) { case Some(value: v): { this.tap = Optional::Some(value: v); } case None: { } };
+        match (above.longTap) { case Some(value: v): { this.longTap = Optional::Some(value: v); } case None: { } };
+        match (above.gap) { case Some(value: v): { this.gap = Optional::Some(value: v); } case None: { } };
+        match (above.repeatDelay) { case Some(value: v): { this.repeatDelay = Optional::Some(value: v); } case None: { } };
+        match (above.repeatEvery) { case Some(value: v): { this.repeatEvery = Optional::Some(value: v); } case None: { } };
+    }
+}
+
 // A dead zone's defaults in the `input` record, each part laid over the layer below's on its own, so a game's
 // `{ "lower": 0.2 }` keeps the engine's upper end. A part no layer names takes a `deadZone` filter's own default.
 @generate(Deserializable)
@@ -392,12 +498,15 @@ type value PressRecord {
 // them (engine/content/input.records.json: sticks from 0.125 to 0.925, triggers from 30/255), and each layer above lays
 // its own over them part by part, as the app record's window is. A dead zone no layer names is none: the stick raw.
 // And (question 2) where a stick's direction bound to a `Digital` presses and lets go, `stickThreshold` (0.5 and 0.375,
-// Unity's), unless the entry's own `threshold` says.
+// Unity's), unless the entry's own `threshold` says. And (the fourth part, 2026-11-24) the gestures' default times,
+// `gestures`, which a gesture naming no time of its own takes (Unity's: a hold 0.4, a tap 0.2, a long tap 0.5, a
+// multi-tap's gap 0.75, a repeat 0.5 then every 0.1).
 @generate(Deserializable)
 type resource InputRecord {
     @field(name: "stickDeadZone", default) Optional<ZoneRecord> stickZoneField = Optional::None;
     @field(name: "triggerDeadZone", default) Optional<ZoneRecord> triggerZoneField = Optional::None;
     @field(name: "stickThreshold", default) Optional<PressRecord> stickPressField = Optional::None;
+    @field(name: "gestures", default) Optional<GestureTimes> gestureTimesField = Optional::None;
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
@@ -407,6 +516,12 @@ type resource InputRecord {
         this.stickZoneField = laidZone(below: this.stickZoneField, above: above.stickZoneField);
         this.triggerZoneField = laidZone(below: this.triggerZoneField, above: above.triggerZoneField);
         this.stickPressField = laidPress(below: this.stickPressField, above: above.stickPressField);
+        this.gestureTimesField = laidTimes(below: this.gestureTimesField, above: above.gestureTimesField);
+    }
+
+    // The gestures' default times, each None where no layer names it.
+    public const fn GestureTimes gestureTimes() {
+        return match (this.gestureTimesField) { case Some(value: g): g; case None: GestureTimes.make(); };
     }
 
     // Every stick's dead zone, None where no layer names one.
@@ -448,6 +563,22 @@ fn Optional<PressRecord> laidPress(Optional<PressRecord> below, Optional<PressRe
 
 fn Optional<PressRecord> pressOn(PressRecord below, PressRecord above) {
     PressRecord z = below;
+    z.layOver(above: above);
+    return Optional::Some(value: z);
+}
+
+fn Optional<GestureTimes> laidTimes(Optional<GestureTimes> below, Optional<GestureTimes> above) {
+    return match (above) {
+        case None: below;
+        case Some(value: a): match (below) {
+            case None: Optional::Some(value: a);
+            case Some(value: b): timesOn(below: b, above: a);
+        };
+    };
+}
+
+fn Optional<GestureTimes> timesOn(GestureTimes below, GestureTimes above) {
+    GestureTimes z = below;
     z.layOver(above: above);
     return Optional::Some(value: z);
 }
@@ -644,4 +775,151 @@ fn Result<FilterRecord, Owned<Error>> readFilter(Deserializer r, ref DynamicArra
     r.endObject();
     if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
     return Result::Ok(value: f);
+}
+
+// The gestures' names as a refusal lists them.
+fn string gestureNames() {
+    return "`hold`, `tap`, `longTap`, `multiTap`, `repeat`, `toggle`, `delay`, `chord`, `sequence` or `interruptible`";
+}
+
+fn Optional<GestureKind> gestureKindOf(const ref string name) {
+    if (name == "hold") { return Optional::Some(value: GestureKind::Hold); }
+    if (name == "tap") { return Optional::Some(value: GestureKind::Tap); }
+    if (name == "longTap") { return Optional::Some(value: GestureKind::LongTap); }
+    if (name == "multiTap") { return Optional::Some(value: GestureKind::MultiTap); }
+    if (name == "repeat") { return Optional::Some(value: GestureKind::Repeat); }
+    if (name == "toggle") { return Optional::Some(value: GestureKind::Toggle); }
+    if (name == "delay") { return Optional::Some(value: GestureKind::Delay); }
+    if (name == "chord") { return Optional::Some(value: GestureKind::Chord); }
+    if (name == "sequence") { return Optional::Some(value: GestureKind::Sequence); }
+    if (name == "interruptible") { return Optional::Some(value: GestureKind::Interruptible); }
+    return Optional::None;
+}
+
+// One gesture, the object of one key the reader stands at:
+// - `hold`, `tap` and `longTap`: its time in seconds, `true` for the `input` record's, or `{ "seconds": … }`;
+// - `multiTap`: its count, `true` for two, or `{ "count": …, "tap": …, "gap": … }`;
+// - `repeat`: `true` for the `input` record's times, or `{ "delay": …, "every": …, "limit": … }`;
+// - `toggle`: `true` or `false`;
+// - `delay`: one time for its on and its off alike, or `{ "start": …, "end": … }`;
+// - `chord`, `sequence` and `interruptible`: their value passed over, for the fourth part's later commits to read.
+fn Result<GestureRecord, Owned<Error>> readGesture(Deserializer r) {
+    ValueKind k = r.peekKind();
+    if (!isKind(k: k, want: ValueKind::Object)) {
+        r.failWith(kind: DeErrorKind::TypeMismatch);
+        return Result::Err(error: DeError.make(kind: DeErrorKind::TypeMismatch));
+    }
+    r.beginObject(count: 0);
+    if (!r.moreFields()) {
+        if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+        return Result::Err(error: DeError.unknownCase(key: FieldKey::Name(name: "{}"), type: "gesture", cases: gestureNames()));
+    }
+    FieldKey key = r.field();
+    string name = match (key) { case Name(name: n): copy n; case _: ""; };
+    Optional<GestureKind> known = gestureKindOf(name: name);
+    GestureKind kind = match (known) {
+        case Some(value: gk): gk;
+        case None: {
+            return Result::Err(error: DeError.unknownCase(key: key, type: "gesture", cases: gestureNames()));
+        }
+    };
+    GestureRecord g = GestureRecord.make(kind: kind);
+    ValueKind vk = r.peekKind();
+    bool number = isKind(k: vk, want: ValueKind::Number);
+    bool truth = isKind(k: vk, want: ValueKind::Bool);
+    bool object = isKind(k: vk, want: ValueKind::Object);
+    bool timed = match (kind) { case Hold: true; case Tap: true; case LongTap: true; case _: false; };
+    if (timed) {
+        Result<GestureRecord, Owned<Error>> read = readTime(r: r, g: g, number: number, truth: truth, object: object, name: name);
+        match (give read) {
+            case Ok(value: t): { g = t; }
+            case Err(error: e): { return Result::Err(error: give e); }
+        };
+    }
+    match (kind) {
+        case Hold: { }
+        case Tap: { }
+        case LongTap: { }
+        case MultiTap: {
+            g.count = 2;
+            if (number) { g.count = r.readI32(); }
+            else if (truth) {
+                bool yes = r.readBool();
+                if (!yes) { r.failWith(kind: DeErrorKind::TypeMismatch); }
+            } else if (object) {
+                Result<MultiTapParams, Owned<Error>> got = MultiTapParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: m): {
+                        g.count = m.count;
+                        match (m.tap) { case Some(value: v): { g.a = v; g.hasA = true; } case None: { } };
+                        match (m.gap) { case Some(value: v): { g.b = v; g.hasB = true; } case None: { } };
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Repeat: {
+            if (truth) {
+                bool yes = r.readBool();
+                if (!yes) { r.failWith(kind: DeErrorKind::TypeMismatch); }
+            } else if (object) {
+                Result<RepeatParams, Owned<Error>> got = RepeatParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: p): {
+                        match (p.delay) { case Some(value: v): { g.a = v; g.hasA = true; } case None: { } };
+                        match (p.every) { case Some(value: v): { g.b = v; g.hasB = true; } case None: { } };
+                        g.count = p.limit;
+                    }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Toggle: {
+            if (truth) { g.on = r.readBool(); } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case Delay: {
+            if (number) {
+                float64 both = r.readF64();
+                g.a = both;
+                g.b = both;
+            } else if (object) {
+                Result<DelayParams, Owned<Error>> got = DelayParams.deserialize(r: r);
+                match (give got) {
+                    case Ok(value: p): { g.a = p.start; g.b = p.end; }
+                    case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+                };
+            } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+        }
+        case _: { r.skipValue(); }
+    };
+    if (r.failed()) { return Result::Err(error: failedIn(r: r, name: name)); }
+    if (r.moreFields()) {
+        FieldKey second = r.field();
+        return Result::Err(error: DeError.unknownCase(key: second, type: "gesture's second key",
+                                                      cases: "one key to a gesture, each gesture its own object: `[ { \"" + name + "\": … }, { … } ]`"));
+    }
+    r.endObject();
+    if (r.failed()) { return Result::Err(error: DeError.make(kind: r.errorKind())); }
+    return Result::Ok(value: g);
+}
+
+// A `hold`'s, a `tap`'s or a `longTap`'s time: a number, `true` for the `input` record's, or `{ "seconds": … }`; the
+// parameters' own refusal handed back, inside the gesture's name.
+fn Result<GestureRecord, Owned<Error>> readTime(Deserializer r, GestureRecord g, bool number, bool truth, bool object,
+                                                const ref string name) {
+    GestureRecord made = g;
+    if (number) {
+        made.a = r.readF64();
+        made.hasA = true;
+    } else if (truth) {
+        bool yes = r.readBool();
+        if (!yes) { r.failWith(kind: DeErrorKind::TypeMismatch); }
+    } else if (object) {
+        Result<TimeParams, Owned<Error>> got = TimeParams.deserialize(r: r);
+        match (give got) {
+            case Ok(value: p): { match (p.seconds) { case Some(value: v): { made.a = v; made.hasA = true; } case None: { } }; }
+            case Err(error: e): { return Result::Err(error: DeError::inField(error: give e, name: copy name)); }
+        };
+    } else { r.failWith(kind: DeErrorKind::TypeMismatch); }
+    return Result::Ok(value: made);
 }

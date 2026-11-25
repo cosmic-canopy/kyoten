@@ -8,7 +8,7 @@
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
-         std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, kyoten::frame::Time, kyoten::frame::Scheme,
+         std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, std::math::floor, kyoten::frame::Time, kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::InputRecord,
          kyoten::input::Binder, kyoten::input::BindingError };
 
@@ -135,9 +135,8 @@ fn void bindingCases(ref Tally t) {
                   json: "{ \"faster\": { \"keyboard\": [\"ArrowUp\", \"KeyQQ\"] } }", says: "names `KeyQQ`");
     expectRefused(t: t, name: "binder: a key's name on the mouse is refused",
                   json: "{ \"faster\": { \"mouse\": \"ArrowUp\" } }", says: "which is no mouse control");
-    expectRefused(t: t, name: "binder: an entry naming gestures is refused until their part reads them",
-                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [] } } }",
-                  says: "the keyboard binding of `faster` names gestures, which KYR-54's later part reads");
+    string listless = refusalOf(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [] } } }");
+    t.verdict(name: "binder: an entry with an empty list of gestures binds its control as it is", why: listless);
     string both = refusalOf(json: "{ \"dash\": { \"keyboard\": \"Space\" }, \"faster\": { \"keyboard\": \"Arrowup\" } }");
     bool all = both.contains(substring: "`dash`") && both.contains(substring: "`Arrowup`");
     t.verdict(name: "binder: every refusal is said at once", why: all ? "" : "only `${both}`");
@@ -421,9 +420,9 @@ fn void valueRefusalCases(ref Tally t) {
                   json: "{ \"look\": { \"mouse\": { \"x\": \"MotionX\", \"y\": \"Left\" } } }", says: "mixes the mouse's motion");
     expectRefused(t: t, name: "binder: the mouse's motion as a key's part is refused",
                   json: "{ \"look\": { \"mouse\": { \"up\": \"MotionY\" } } }", says: "as a key's part");
-    expectRefused(t: t, name: "binder: gestures are refused until KYR-54's later part",
+    expectRefused(t: t, name: "binder: a value action's entry takes no gesture that makes a press",
                   json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftX\", \"gestures\": [ { \"multiTap\": 2 } ] } } }",
-                  says: "names gestures");
+                  says: "the gamepad binding of `move` lists a `multiTap`, which makes a press: only a `Digital` has one");
     expectRefused(t: t, name: "binder: a misspelled pad control lists the buttons and the axes",
                   json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }", says: "no button (");
     expectRefused(t: t, name: "binder: and the axes' names", json: "{ \"move\": { \"gamepad\": { \"x\": \"LeftStickX\" } } }",
@@ -999,9 +998,8 @@ fn void thresholdCases(ref Tally t) {
     expectRefused(t: t, name: "binder: a digital's object naming no control is refused",
                   json: "{ \"faster\": { \"gamepad\": { \"filters\": [ { \"threshold\": 0.5 } ] } } }",
                   says: "names no control");
-    expectRefused(t: t, name: "binder: a digital's gestures are refused until their part",
-                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"hold\": 0.5 } ] } } }",
-                  says: "names gestures");
+    string taken = refusalOf(json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"hold\": 0.5 } ] } } }");
+    t.verdict(name: "binder: a digital's object entry takes gestures beside its controls", why: taken);
     expectRefused(t: t, name: "binder: a misspelt stick direction lists the directions",
                   json: "{ \"faster\": { \"gamepad\": \"LeftStickUpp\" } }", says: "no stick's direction (`LeftStickUp`, `LeftStickDown`");
     string wrong = refusalWith(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }", input: "{ \"stickThreshold\": { \"press\": 0.4, \"release\": 0.6 } }");
@@ -1009,7 +1007,401 @@ fn void thresholdCases(ref Tally t) {
               why: wrong.contains(substring: "the `input` record's `stickThreshold` has a `threshold` letting go at 0.6") ? "" : "refused `${wrong}`");
 }
 
+// Gestures (the fourth part, design/input.md § Decided, 2026-11-24). Times are nanoseconds on the samples' clock, so a
+// case's samples and step ends are written in seconds (S) and milliseconds (MS) after a base well past 0.
+comptime int64 S = 1000000000;
+comptime int64 MS = 1000000;
+
+// The engine's gesture times, as engine/content/input.records.json writes them: Unity's set.
+fn string gestureTimes() {
+    return "{ \"gestures\": { \"hold\": 0.4, \"tap\": 0.2, \"longTap\": 0.5, \"gap\": 0.75, \"repeatDelay\": 0.5, \"repeatEvery\": 0.1 } }";
+}
+
+// A binder whose `faster` is Space (HID 44) on the keyboard through `gestures`, a JSON list, with the engine's times.
+fn Binder spaceWith(const ref string gestures) {
+    string json = "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": " + gestures + " } } }";
+    string times = gestureTimes();
+    return binderWith(json: json, input: times);
+}
+
+fn void space(ref Binder b, bool down, int64 at) { hand(b: b, s: key(control: 44, down: down, at: at)); }
+
+// `faster` in the hand-off of step `step` up to `until`: spelled, then its progress in hundredths ("H-- 100").
+fn string gestured(ref Binder b, int64 step, int64 until) {
+    Digital d = b.handoff(index: step, until: until).digital(player: 1, action: 0);
+    float32 scaled = d.progress * 100.0 + 0.5;
+    float32 whole = floor(x: scaled);
+    int32 hundredths = cast<int32>(whole);
+    string s = spelled(d: d);
+    return s + " ${hundredths}";
+}
+
+fn void expectGesture(ref Tally t, ref Binder b, int64 step, int64 until, const ref string name, const ref string want) {
+    string got = gestured(b: b, step: step, until: until);
+    t.verdict(name: name, why: got == want ? "" : "got ${got}, want ${want}");
+}
+
+fn void holdCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"hold\": 0.5 } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 100 * MS, name: "gesture: a hold not yet held its time is off, its progress the share held",
+                  want: "--- 20");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 400 * MS, name: "gesture: a hold's share grows as it is held", want: "--- 80");
+    expectGesture(t: t, b: b, step: 2, until: t0 + 500 * MS, name: "gesture: a hold presses at its time, held", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 600 * MS, name: "gesture: a hold stays held while its control is", want: "H-- 100");
+    space(b: b, down: false, at: t0 + 650 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t0 + 700 * MS, name: "gesture: a hold lets go with its control", want: "--R 0");
+
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    space(b: b, down: false, at: t1 + 300 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t1 + 200 * MS, name: "gesture: a hold under way", want: "--- 40");
+    expectGesture(t: t, b: b, step: 6, until: t1 + 400 * MS, name: "gesture: let go before its time, a hold presses nothing, its progress gone",
+                  want: "--- 0");
+    expectGesture(t: t, b: b, step: 7, until: t1 + 800 * MS, name: "gesture: nor at its old deadline", want: "--- 0");
+
+    int64 t2 = 30 * S;
+    space(b: b, down: true, at: t2);
+    expectGesture(t: t, b: b, step: 8, until: t2 + 450 * MS, name: "gesture: a step ending before a hold's deadline", want: "--- 90");
+    space(b: b, down: false, at: t2 + 500 * MS);
+    expectGesture(t: t, b: b, step: 9, until: t2 + 550 * MS,
+                  name: "gesture: a deadline lands in the step whose end passes it, before a release at the very time", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 10, until: t2 + 600 * MS, name: "gesture: and the release on the next step", want: "--R 0");
+
+    Binder d = spaceWith(gestures: "[ { \"hold\": true } ]");
+    space(b: d, down: true, at: t0);
+    expectGesture(t: t, b: d, step: 0, until: t0 + 200 * MS, name: "gesture: a hold naming no time takes the input record's, 0.4", want: "--- 50");
+    expectGesture(t: t, b: d, step: 1, until: t0 + 400 * MS, name: "gesture: and presses at it", want: "HP- 100");
+    Binder n = spaceWith(gestures: "[ { \"hold\": 0.9999999996 } ]");
+    space(b: n, down: true, at: t0);
+    expectGesture(t: t, b: n, step: 0, until: t0 + S - 1, name: "gesture: a time is rounded to the nearest nanosecond: 999,999,999.6 is 1,000,000,000, not a nanosecond less",
+                  want: "--- 100");
+    expectGesture(t: t, b: n, step: 1, until: t0 + S, name: "gesture: and presses at it", want: "HP- 100");
+    Binder o = spaceWith(gestures: "[ { \"hold\": { \"seconds\": 0.25 } } ]");
+    space(b: o, down: true, at: t0);
+    expectGesture(t: t, b: o, step: 0, until: t0 + 250 * MS, name: "gesture: a hold's time written as its parameter", want: "HP- 100");
+}
+
+fn void tapCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"tap\": 0.2 } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 50 * MS, name: "gesture: a tap held is not yet pressed, and has no progress", want: "--- 0");
+    space(b: b, down: false, at: t0 + 100 * MS);
+    expectGesture(t: t, b: b, step: 1, until: t0 + 150 * MS, name: "gesture: let go within its time, a tap presses for one step", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 2, until: t0 + 200 * MS, name: "gesture: a tap releases on the next step", want: "--R 0");
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    space(b: b, down: false, at: t1 + 300 * MS);
+    expectGesture(t: t, b: b, step: 3, until: t1 + 400 * MS, name: "gesture: let go after its time, a tap presses nothing", want: "--- 0");
+    int64 t2 = 30 * S;
+    space(b: b, down: true, at: t2);
+    space(b: b, down: false, at: t2 + 200 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t2 + 250 * MS, name: "gesture: let go at exactly its time, a tap is within it", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 5, until: t2 + 300 * MS, name: "gesture: that tap releases on the next step", want: "--R 0");
+}
+
+fn void longTapCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"longTap\": 0.5 } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 250 * MS, name: "gesture: a long tap under way shows its share", want: "--- 50");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 600 * MS, name: "gesture: held past its time, a long tap is full, not yet pressed",
+                  want: "--- 100");
+    space(b: b, down: false, at: t0 + 700 * MS);
+    expectGesture(t: t, b: b, step: 2, until: t0 + 750 * MS, name: "gesture: a long tap presses at its release, for one step", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 800 * MS, name: "gesture: a long tap releases on the next step", want: "--R 0");
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    space(b: b, down: false, at: t1 + 300 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t1 + 400 * MS, name: "gesture: let go before its time, a long tap presses nothing", want: "--- 0");
+    int64 t2 = 30 * S;
+    space(b: b, down: true, at: t2);
+    space(b: b, down: false, at: t2 + 500 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t2 + 550 * MS, name: "gesture: let go at exactly its time, a long tap presses", want: "HP- 100");
+}
+
+fn void multiTapCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"multiTap\": 2 } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    space(b: b, down: false, at: t0 + 100 * MS);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 150 * MS, name: "gesture: a double tap's first tap is half its progress", want: "--- 50");
+    space(b: b, down: true, at: t0 + 400 * MS);
+    expectGesture(t: t, b: b, step: 1, until: t0 + 450 * MS, name: "gesture: a double tap presses at its second press", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 2, until: t0 + 600 * MS, name: "gesture: and is held while that press is", want: "H-- 100");
+    space(b: b, down: false, at: t0 + 700 * MS);
+    expectGesture(t: t, b: b, step: 3, until: t0 + 750 * MS, name: "gesture: a double tap lets go with it", want: "--R 0");
+
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    space(b: b, down: false, at: t1 + 100 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t1 + 900 * MS, name: "gesture: no second press within its gap: the double tap starts again",
+                  want: "--- 0");
+    space(b: b, down: true, at: t1 + 1000 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t1 + 1050 * MS, name: "gesture: a press after its gap is a first tap", want: "--- 50");
+    space(b: b, down: false, at: t1 + 1100 * MS);
+    space(b: b, down: true, at: t1 + 1300 * MS);
+    expectGesture(t: t, b: b, step: 6, until: t1 + 1350 * MS, name: "gesture: whose second within the gap presses", want: "HP- 100");
+    space(b: b, down: false, at: t1 + 1400 * MS);
+    expectGesture(t: t, b: b, step: 7, until: t1 + 1450 * MS, name: "gesture: and lets go", want: "--R 0");
+
+    int64 t2 = 30 * S;
+    space(b: b, down: true, at: t2);
+    space(b: b, down: false, at: t2 + 300 * MS);
+    space(b: b, down: true, at: t2 + 500 * MS);
+    expectGesture(t: t, b: b, step: 8, until: t2 + 550 * MS, name: "gesture: a press held past its tap time is no tap: the next is a first",
+                  want: "--- 50");
+    space(b: b, down: false, at: t2 + 600 * MS);
+    expectGesture(t: t, b: b, step: 9, until: t2 + 2000 * MS, name: "gesture: then the gap runs out", want: "--- 0");
+
+    int64 t3 = 40 * S;
+    space(b: b, down: true, at: t3);
+    space(b: b, down: false, at: t3 + 200 * MS);
+    space(b: b, down: true, at: t3 + 950 * MS);
+    expectGesture(t: t, b: b, step: 10, until: t3 + 1000 * MS, name: "gesture: a tap at exactly its time and a press at exactly its gap count",
+                  want: "HP- 100");
+    space(b: b, down: false, at: t3 + 1050 * MS);
+    expectGesture(t: t, b: b, step: 11, until: t3 + 1100 * MS, name: "gesture: that double tap lets go", want: "--R 0");
+
+    Binder three = spaceWith(gestures: "[ { \"multiTap\": { \"count\": 3, \"tap\": 0.1, \"gap\": 0.3 } } ]");
+    space(b: three, down: true, at: t0);
+    space(b: three, down: false, at: t0 + 50 * MS);
+    space(b: three, down: true, at: t0 + 200 * MS);
+    space(b: three, down: false, at: t0 + 250 * MS);
+    expectGesture(t: t, b: three, step: 0, until: t0 + 300 * MS, name: "gesture: a triple tap's second tap is two thirds", want: "--- 67");
+    space(b: three, down: true, at: t0 + 400 * MS);
+    expectGesture(t: t, b: three, step: 1, until: t0 + 450 * MS, name: "gesture: a triple tap presses at its third press", want: "HP- 100");
+    space(b: three, down: false, at: t0 + 500 * MS);
+    expectGesture(t: t, b: three, step: 2, until: t0 + 550 * MS, name: "gesture: that triple tap lets go", want: "--R 0");
+    space(b: three, down: true, at: t1);
+    space(b: three, down: false, at: t1 + 150 * MS);
+    space(b: three, down: true, at: t1 + 300 * MS);
+    expectGesture(t: t, b: three, step: 3, until: t1 + 350 * MS, name: "gesture: its own tap time, 0.1, holds: a longer press is no tap",
+                  want: "--- 33");
+    space(b: three, down: false, at: t1 + 350 * MS);
+    space(b: three, down: true, at: t1 + 850 * MS);
+    expectGesture(t: t, b: three, step: 4, until: t1 + 900 * MS, name: "gesture: and its own gap, 0.3: a press 0.5 after is a first again",
+                  want: "--- 33");
+
+    Binder unity = spaceWith(gestures: "[ { \"multiTap\": 2 }, { \"tap\": 0.2 } ]");
+    space(b: unity, down: true, at: t0);
+    space(b: unity, down: false, at: t0 + 100 * MS);
+    space(b: unity, down: true, at: t0 + 300 * MS);
+    expectGesture(t: t, b: unity, step: 0, until: t0 + 350 * MS, name: "gesture: a double tap then a tap waits for the last release", want: "--- 100");
+    space(b: unity, down: false, at: t0 + 400 * MS);
+    expectGesture(t: t, b: unity, step: 1, until: t0 + 450 * MS, name: "gesture: and presses at it, as Unity's multi-tap does", want: "HP- 100");
+}
+
+fn void repeatCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"repeat\": { \"delay\": 0.4, \"every\": 0.12 } } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 50 * MS, name: "gesture: a repeat presses at once", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 350 * MS, name: "gesture: a repeat is held before its delay", want: "H-- 100");
+    expectGesture(t: t, b: b, step: 2, until: t0 + 450 * MS, name: "gesture: a repeat presses again after its own delay, 0.4, never released",
+                  want: "HP- 100");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 510 * MS, name: "gesture: a repeat is held between, its own interval 0.12", want: "H-- 100");
+    expectGesture(t: t, b: b, step: 4, until: t0 + 530 * MS, name: "gesture: and presses again every interval", want: "HP- 100");
+    space(b: b, down: false, at: t0 + 560 * MS);
+    expectGesture(t: t, b: b, step: 5, until: t0 + 600 * MS, name: "gesture: a repeat lets go with its control", want: "--R 0");
+    expectGesture(t: t, b: b, step: 6, until: t0 + 900 * MS, name: "gesture: its next press gone", want: "--- 0");
+
+    int64 t1 = 20 * S;
+    space(b: b, down: true, at: t1);
+    expectGesture(t: t, b: b, step: 7, until: t1 + 50 * MS, name: "gesture: a repeat again", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 8, until: t1 + 950 * MS, name: "gesture: a long step, ending off the repeat's grid, presses once", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 9, until: t1 + 1010 * MS, name: "gesture: and does not catch up: no press at the grid's 1.0", want: "H-- 100");
+    expectGesture(t: t, b: b, step: 10, until: t1 + 1070 * MS, name: "gesture: the next press an interval after that step's end", want: "HP- 100");
+    space(b: b, down: false, at: t1 + 1150 * MS);
+
+    Binder once = spaceWith(gestures: "[ { \"repeat\": { \"limit\": 1 } } ]");
+    space(b: once, down: true, at: t0);
+    expectGesture(t: t, b: once, step: 0, until: t0 + 50 * MS, name: "gesture: a repeat limited to one press presses", want: "HP- 100");
+    expectGesture(t: t, b: once, step: 1, until: t0 + 700 * MS, name: "gesture: and never again", want: "H-- 100");
+
+    Binder l = spaceWith(gestures: "[ { \"repeat\": { \"delay\": 0.2, \"every\": 0.2, \"limit\": 2 } } ]");
+    space(b: l, down: true, at: t0);
+    expectGesture(t: t, b: l, step: 0, until: t0 + 50 * MS, name: "gesture: a repeat with a limit presses", want: "HP- 100");
+    expectGesture(t: t, b: l, step: 1, until: t0 + 250 * MS, name: "gesture: and again", want: "HP- 100");
+    expectGesture(t: t, b: l, step: 2, until: t0 + 450 * MS, name: "gesture: then no more past its limit, held", want: "H-- 100");
+
+    Binder d = spaceWith(gestures: "[ { \"repeat\": true } ]");
+    space(b: d, down: true, at: t0);
+    expectGesture(t: t, b: d, step: 0, until: t0 + 50 * MS, name: "gesture: a repeat on the input record's times", want: "HP- 100");
+    expectGesture(t: t, b: d, step: 1, until: t0 + 450 * MS, name: "gesture: waits its 0.5", want: "H-- 100");
+    expectGesture(t: t, b: d, step: 2, until: t0 + 500 * MS, name: "gesture: presses again at it", want: "HP- 100");
+    expectGesture(t: t, b: d, step: 3, until: t0 + 590 * MS, name: "gesture: waits its 0.1", want: "H-- 100");
+    expectGesture(t: t, b: d, step: 4, until: t0 + 600 * MS, name: "gesture: and presses again at that", want: "HP- 100");
+}
+
+fn void toggleCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"toggle\": true } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    space(b: b, down: false, at: t0 + 100 * MS);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 150 * MS, name: "gesture: a toggle's first press turns it on", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 300 * MS, name: "gesture: a toggle stays on after its control lets go", want: "H-- 100");
+    space(b: b, down: true, at: t0 + 500 * MS);
+    space(b: b, down: false, at: t0 + 600 * MS);
+    expectGesture(t: t, b: b, step: 2, until: t0 + 650 * MS, name: "gesture: a toggle's next press turns it off", want: "--R 0");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 700 * MS, name: "gesture: a toggle stays off", want: "--- 0");
+    Binder off = spaceWith(gestures: "[ { \"toggle\": false } ]");
+    space(b: off, down: true, at: t0);
+    expectGesture(t: t, b: off, step: 0, until: t0 + 50 * MS, name: "gesture: a toggle written false passes its input as it is", want: "HP- 100");
+    space(b: off, down: false, at: t0 + 100 * MS);
+    expectGesture(t: t, b: off, step: 1, until: t0 + 150 * MS, name: "gesture: its release too", want: "--R 0");
+}
+
+fn void delayCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"delay\": 0.3 } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 200 * MS, name: "gesture: a delay holds its input's press back", want: "--- 0");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 350 * MS, name: "gesture: and hands it on its time later", want: "HP- 100");
+    space(b: b, down: false, at: t0 + 500 * MS);
+    expectGesture(t: t, b: b, step: 2, until: t0 + 600 * MS, name: "gesture: a delay holds its release back too", want: "H-- 100");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 850 * MS, name: "gesture: and hands it on its time later", want: "--R 0");
+    Binder s = spaceWith(gestures: "[ { \"delay\": { \"start\": 0.1, \"end\": 0 } } ]");
+    space(b: s, down: true, at: t0);
+    space(b: s, down: false, at: t0 + 50 * MS);
+    expectGesture(t: t, b: s, step: 0, until: t0 + 80 * MS, name: "gesture: a start delay holds a short tap back", want: "--- 0");
+    expectGesture(t: t, b: s, step: 1, until: t0 + 150 * MS, name: "gesture: an off moved by less than its on comes at once after it",
+                  want: "HP- 100");
+    expectGesture(t: t, b: s, step: 2, until: t0 + 200 * MS, name: "gesture: that press releases on the next step", want: "--R 0");
+
+    Binder apart = spaceWith(gestures: "[ { \"delay\": { \"start\": 0.1, \"end\": 0.3 } } ]");
+    space(b: apart, down: true, at: t0);
+    space(b: apart, down: false, at: t0 + 200 * MS);
+    expectGesture(t: t, b: apart, step: 0, until: t0 + 150 * MS, name: "gesture: a delay's start moves its press", want: "HP- 100");
+    expectGesture(t: t, b: apart, step: 1, until: t0 + 450 * MS, name: "gesture: and its end, apart, moves its release later", want: "H-- 100");
+    expectGesture(t: t, b: apart, step: 2, until: t0 + 550 * MS, name: "gesture: to its own time", want: "--R 0");
+
+    Binder then = spaceWith(gestures: "[ { \"delay\": { \"start\": 0.2, \"end\": 0 } }, { \"multiTap\": { \"count\": 2, \"tap\": 0.2, \"gap\": 0.3 } } ]");
+    space(b: then, down: true, at: t0);
+    space(b: then, down: false, at: t0 + 50 * MS);
+    space(b: then, down: true, at: t0 + 200 * MS);
+    space(b: then, down: false, at: t0 + 250 * MS);
+    expectGesture(t: t, b: then, step: 0, until: t0 + 450 * MS,
+                  name: "gesture: after a delay, a release comes no earlier than its press, so a double tap's gap counts from it", want: "HP- 100");
+}
+
+fn void chainCases(ref Tally t) {
+    Binder b = spaceWith(gestures: "[ { \"hold\": 0.3 }, { \"repeat\": { \"delay\": 0.2, \"every\": 0.1 } } ]");
+    int64 t0 = 10 * S;
+    space(b: b, down: true, at: t0);
+    expectGesture(t: t, b: b, step: 0, until: t0 + 150 * MS, name: "gesture: in a chain, the first under way shows its progress", want: "--- 50");
+    expectGesture(t: t, b: b, step: 1, until: t0 + 350 * MS, name: "gesture: a hold then a repeat presses at the hold's time", want: "HP- 100");
+    expectGesture(t: t, b: b, step: 2, until: t0 + 450 * MS, name: "gesture: the repeat counts from then", want: "H-- 100");
+    expectGesture(t: t, b: b, step: 3, until: t0 + 550 * MS, name: "gesture: and presses again its delay after", want: "HP- 100");
+    space(b: b, down: false, at: t0 + 560 * MS);
+    expectGesture(t: t, b: b, step: 4, until: t0 + 600 * MS, name: "gesture: the chain lets go with its control", want: "--R 0");
+
+    string both = "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": 0.5 } ] }, \"gamepad\": \"South\" } }";
+    string times = gestureTimes();
+    Binder two = binderWith(json: both, input: times);
+    hand(b: two, s: pad(slot: 0, control: 0, value: 1.0, at: t0));
+    expectGesture(t: t, b: two, step: 0, until: t0 + 50 * MS, name: "gesture: one device's gestures leave another's entry pressing at once",
+                  want: "HP- 100");
+
+    Binder most = binderWith(json: both, input: times);
+    space(b: most, down: true, at: t0);
+    expectGesture(t: t, b: most, step: 0, until: t0 + 100 * MS, name: "gesture: an action's progress is the most of its entries'", want: "--- 20");
+
+    Binder through = spaceWith(gestures: "[ { \"repeat\": { \"delay\": 0.2, \"every\": 0.1 } }, { \"hold\": 0.1 } ]");
+    space(b: through, down: true, at: t0);
+    expectGesture(t: t, b: through, step: 0, until: t0 + 150 * MS, name: "gesture: a repeat then a hold presses at the hold's time", want: "HP- 100");
+    expectGesture(t: t, b: through, step: 1, until: t0 + 250 * MS, name: "gesture: and a hold passes the repeat's press again on", want: "HP- 100");
+
+    Binder locked = binderWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"South\", \"gestures\": [ { \"hold\": 0.5 } ] } } }", input: times);
+    hand(b: locked, s: pad(slot: 2, control: 0, value: 1.0, at: t0));
+    expectGesture(t: t, b: locked, step: 0, until: t0 + 100 * MS, name: "gesture: a pad's press under a hold is not yet the action's", want: "--- 20");
+    bool lockedIn = match (locked.lockedPad()) { case Some(value: slot): slot == 2; case None: false; };
+    t.verdict(name: "gesture: but takes player 1's lock at once", why: lockedIn ? "" : "no pad locked");
+    bool onPad = match (locked.scheme()) { case Gamepad: true; case KeyboardMouse: false; };
+    t.verdict(name: "gesture: and sets the scheme at once", why: onPad ? "" : "KeyboardMouse");
+
+    Binder early = spaceWith(gestures: "[ { \"tap\": 0.2 } ]");
+    space(b: early, down: true, at: t0);
+    space(b: early, down: false, at: t0 + 100 * MS);
+    early.newest(seconds: 0.016);
+    expectGesture(t: t, b: early, step: 0, until: t0 + 150 * MS,
+                  name: "gesture: a tap Output's newest applied early, in a frame owing no step, still lands in the next step", want: "HP- 100");
+}
+
+fn void gestureRefusalCases(ref Tally t) {
+    expectReadRefused(t: t, name: "gesture: a misspelt gesture is refused by the reader",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hodl\": 0.5 } ] } } }",
+                      says: "`hodl` is not a `gesture`");
+    expectReadRefused(t: t, name: "gesture: and the refusal lists every gesture",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hodl\": 0.5 } ] } } }",
+                      says: "`hold`, `tap`, `longTap`, `multiTap`, `repeat`, `toggle`, `delay`, `chord`, `sequence` or `interruptible`");
+    expectReadRefused(t: t, name: "gesture: a misspelt parameter is refused, naming where",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"multiTap\": { \"cuont\": 3 } } ] } } }",
+                      says: "gestures[0].multiTap.cuont");
+    expectReadRefused(t: t, name: "gesture: a hold's misspelt parameter is refused, naming where",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": { \"secs\": 1 } } ] } } }",
+                      says: "gestures[0].hold.secs");
+    expectReadRefused(t: t, name: "gesture: a gesture's value of the wrong kind is refused, naming where",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"toggle\": 1 } ] } } }",
+                      says: "type mismatch at `faster.keyboard.gestures[0].toggle`");
+    expectReadRefused(t: t, name: "gesture: two gestures in one object are refused: each is its own",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": 0.5, \"tap\": 0.2 } ] } } }",
+                      says: "`tap` is not a `gesture's second key`");
+    expectReadRefused(t: t, name: "gesture: gestures not written as a list are refused",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": { \"hold\": 0.5 } } } }",
+                      says: "type mismatch at `faster.keyboard.gestures`");
+    expectReadRefused(t: t, name: "gesture: gestures written twice in one entry are refused",
+                      json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ ], \"gestures\": [ { \"hold\": 0.5 } ] } } }",
+                      says: "duplicate key");
+
+    string times = gestureTimes();
+    string zero = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": 0 } ] } } }", input: times);
+    t.verdict(name: "gesture: a hold of no time is refused at load, naming the action",
+              why: zero.contains(substring: "the keyboard binding of `faster` lists a `hold` of 0") && zero.contains(substring: "a gesture's time is more than 0 seconds")
+                  ? "" : "refused `${zero}`");
+    string far = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"tap\": 1e10 } ] } } }", input: times);
+    t.verdict(name: "gesture: a time past the clock's count is refused", why: far.contains(substring: "lists a `tap` of") ? "" : "refused `${far}`");
+    expectRefused(t: t, name: "gesture: a gesture naming no time, with none in the input record, is refused",
+                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": true } ] } } }",
+                  says: "lists a `hold` naming no time: its own, or the `input` record's `gestures.hold`");
+    string one = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"multiTap\": 1 } ] } } }", input: times);
+    t.verdict(name: "gesture: a multi-tap of one tap is refused",
+              why: one.contains(substring: "lists a `multiTap` of 1 taps: a multi-tap counts 2 or more") ? "" : "refused `${one}`");
+    string limit = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"repeat\": { \"limit\": -1 } } ] } } }", input: times);
+    t.verdict(name: "gesture: a repeat's negative limit is refused",
+              why: limit.contains(substring: "lists a `repeat` whose `limit` is -1") ? "" : "refused `${limit}`");
+    string every = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"repeat\": { \"every\": 0 } } ] } } }", input: times);
+    t.verdict(name: "gesture: a repeat every no time is refused",
+              why: every.contains(substring: "lists a `repeat`'s `every` of 0") ? "" : "refused `${every}`");
+    string back = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"delay\": -0.1 } ] } } }", input: times);
+    t.verdict(name: "gesture: a delay into the past is refused",
+              why: back.contains(substring: "lists a `delay` of") && back.contains(substring: "are 0 or more") ? "" : "refused `${back}`");
+    string record = refusalWith(json: "{ }", input: "{ \"gestures\": { \"tap\": 0 } }");
+    t.verdict(name: "gesture: the input record's time out of range is refused, naming the record",
+              why: record.contains(substring: "the `input` record's `gestures.tap`") ? "" : "refused `${record}`");
+    string chord = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"chord\": \"ShiftLeft\" } ] } } }", input: times);
+    t.verdict(name: "gesture: a chord waits for the fourth part's next commit",
+              why: chord.contains(substring: "lists a `chord`, which the fourth part's next commit reads") ? "" : "refused `${chord}`");
+    string value = refusalWith(json: "{ \"throttle\": { \"gamepad\": { \"positive\": \"RightTrigger\", \"gestures\": [ { \"hold\": 0.5 } ] } } }", input: times);
+    t.verdict(name: "gesture: a value action's entry takes no press-making gesture",
+              why: value.contains(substring: "the gamepad binding of `throttle` lists a `hold`, which makes a press: only a `Digital` has one") ? "" : "refused `${value}`");
+    string two = refusalWith(json: "{ \"faster\": { \"keyboard\": { \"control\": \"Space\", \"gestures\": [ { \"hold\": 0 }, { \"multiTap\": 1 } ] } } }", input: times);
+    t.verdict(name: "gesture: every gesture refused is said at once",
+              why: two.contains(substring: "`hold` of 0") && two.contains(substring: "`multiTap` of 1") ? "" : "refused `${two}`");
+}
+
 fn void binderTests(ref Tally t) {
+    holdCases(t: t);
+    tapCases(t: t);
+    longTapCases(t: t);
+    multiTapCases(t: t);
+    repeatCases(t: t);
+    toggleCases(t: t);
+    delayCases(t: t);
+    chainCases(t: t);
+    gestureRefusalCases(t: t);
     thresholdCases(t: t);
     defaultZoneCases(t: t);
     filterShapeCases(t: t);

@@ -90,8 +90,8 @@ fn ActionList everyKind() {
 
 fn void digitalCases(ref Tally t) {
     Digital off = Digital.default();
-    bool ok = !off.held && !off.pressed && !off.released;
-    t.verdict(name: "Digital: off by default, neither held nor pressed nor released", why: ok ? "" : "not all false");
+    bool ok = !off.held && !off.pressed && !off.released && off.progress == 0.0;
+    t.verdict(name: "Digital: off by default, neither held nor pressed nor released, no progress", why: ok ? "" : "not all off");
 
     Digital on = Digital.default();
     on.held = true;
@@ -99,9 +99,11 @@ fn void digitalCases(ref Tally t) {
     bool seen = heldThrough(d: on) && on.pressed && !on.released;
     t.verdict(name: "Digital: its fields read through a const ref", why: seen ? "" : "held or pressed not read");
 
-    // An `Actions` row holds one per action, so its size feeds the chunk size (components question 6, choice 4).
+    // An `Actions` row holds one per action, so its size feeds the chunk size (components question 6, choice 4): three
+    // flags and, since the fourth part of step 8 (design/input.md § Decided, 2026-11-24, question 1), a float32's
+    // progress, aligned to 4.
     usize size = sizeof(Digital);
-    t.verdict(name: "Digital: 3 bytes on every target", why: size == 3 ? "" : "${size} bytes");
+    t.verdict(name: "Digital: 8 bytes on every target", why: size == 8 ? "" : "${size} bytes");
 }
 
 fn void actionListCases(ref Tally t) {
@@ -254,6 +256,21 @@ fn void playerActionCases(ref Tally t) {
                   want: "---");
     expectSpelled(t: t, name: "PlayerActions: an action past its room, off", d: w.digital(player: 1, action: 2, after: 8, upTo: 12),
                   want: "---");
+
+    // A gesture's progress is a state, as of the last step taken (design/input.md § Decided, 2026-11-24, question 1).
+    PlayerActions held = PlayerActions.make(players: 1, actions: twoDigital(), window: 4);
+    Handoff part = Handoff.make(players: 1, actions: twoDigital());
+    Digital under = Digital.off();
+    under.progress = 0.25;
+    part.setDigital(player: 1, action: 1, value: under);
+    held.take(handoff: part, step: 0);
+    under.progress = 0.75;
+    part.setDigital(player: 1, action: 1, value: under);
+    held.take(handoff: part, step: 1);
+    float32 seen = held.digital(player: 1, action: 1, after: -1, upTo: 1).progress;
+    t.verdict(name: "PlayerActions: a digital's progress is its last step's", why: seen == 0.75 ? "" : "${seen}");
+    float32 other = held.digital(player: 1, action: 0, after: -1, upTo: 1).progress;
+    t.verdict(name: "PlayerActions: another action's progress is its own", why: other == 0.0 ? "" : "${other}");
 
     // A run at a slower rate on step 0 has a window that starts before it (every 2 steps: after -2), and sees no press
     // or release that never was: found by the spin fixture's 30 Hz `tally`.

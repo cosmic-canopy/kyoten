@@ -12,6 +12,9 @@
 // - **A press and its release inside one step** show the press, held, on that step and the release on the next, so a
 //   reader of `held` never misses a tap.
 // - **A release and a press inside one step** show both edges, held.
+// - **Its progress** is how far the gesture under way has come (design/input.md § Decided, 2026-11-24, the fourth
+//   part's question 1): a hold's or a long tap's time, a multi-tap's presses; 1 while it is held and 0 while nothing
+//   is under way, so a game draws a hold's ring from the binding, a player's longer hold moving it too.
 
 export { Digital };
 
@@ -22,6 +25,8 @@ type value Digital {
     public bool pressed = false;
     // A release landed since this processor's last run.
     public bool released = false;
+    // How far the gesture under way has come, 0 to 1, as of this run's last step: 1 while held.
+    public float32 progress = 0.0;
 
     // Off, as every action is before its first input.
     public default ctor off() { }
