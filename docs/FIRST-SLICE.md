@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-23, the forty-eighth session)
+## Where it stands (2026-11-24, the forty-ninth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,9 +107,10 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 603 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 250; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's third part (the
-     forty-eighth session); 478 and 247 at its start. It takes 15 min beside another gate on 0.9.1027 (10 min 25 s
+   - tools/test.sh: engine 814 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 253; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's fourth part (the
+     forty-ninth session); 603 and 250 at its start. It takes 15 min beside another gate on 0.9.1027, 17 to 19 min
+     beside two mutation batches (10 min 25 s
      alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
      compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
      `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
@@ -156,7 +157,17 @@ forty-fourth). Where the work is:**
      **At the bump `25d97c29` was kama's origin's HEAD** (2026-11-22, the forty-sixth session's start), so the Mac can
      rebuild at it, and the range was empty. Read again at the session's end: a guard script's fix on kama's origin
      (`82313c84`) and a roadmap commit in its tree here (`56ac55b9`, KR-440's brief and KR-444 filed), no compiler
-     change. What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
+     change. **Read again at the forty-ninth session's end** (2026-11-24), two compiler commits, both on kama's
+     origin, neither one kyoten needs:
+     - 0.9.1028 (`ebd4e972`, KR-444): a syntax error in a dependency's file is said once;
+     - 0.9.1029 (`773a2213`, KR-440): a reached package with C and kama gets its own header, `<name>.kama.h`, given to
+       its C alone, so a package's C may call its own `expose fn`s by a generated declaration. `@kama/window`'s C reads
+       kama's clock through `kama_time.h` and calls none of its own, so a bump has nothing to port there; check its
+       gate and `@kama/graphics`' cube size record on it.
+
+     Above them, a roadmap commit (`bf89767e`, KR-443 and KR-361 claimed by kama's Windows session), no compiler change.
+
+     What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
      lands, and checks first what a release in the range says it changes.
    - **The pin is on 0.9.1027** (`25d97c29`) since 2026-11-22, the forty-sixth session's start (`.kama-version`), at
@@ -704,9 +715,22 @@ forty-fourth). Where the work is:**
    (asked (A), "default on"); a stick's directions are controls, and a value made a button presses at one point and
    lets go at a lower one (asked (A), "names + hysteresis"). 131 of 133 mutations caught, two shown equivalent.
 
-   **Next: step 8's fourth part, gestures,** its shape to lay out from the code. Then `Text`, the cursor's position as a
-   control (FFD's aim against the camera the player sees, which a simulation processor cannot read: its question), and
-   the game letting go of the lock. The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first
+   **Step 8's fourth part, gestures, is decided and built** (the forty-ninth session; kyoten `5ecdabf` decided, then
+   `25c8a5b`, `664a965` and `39e9236`; [design/input.md](design/input.md) § Decided, its three questions and its Built entry,
+   which lists what was settled for the owner to object to):
+   - `hold`, `tap`, `longTap`, `multiTap`, `repeat`, `toggle` and `delay` run in real time on the samples' clock,
+     their times the `input` record's where an entry names none;
+   - a `Digital` carries `progress` (asked (A));
+   - a chord's modifiers and a sequence's steps name a control or an action (asked (A));
+   - a chord masks its control's plain binding (asked (A));
+   - `interruptible`, Steam's;
+   - the frame's last owed step ends at the pump's `now`, so a deadline lands in a real step.
+
+   142 of 144 mutations were caught, two shown equivalent.
+
+   **Next: `Text`,** its shape to lay out from the code. Then the cursor's position as a control (FFD's aim against the
+   camera the player sees, which a simulation processor cannot read: its question), and the game letting go of the
+   lock. The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first
    part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the
    cube's goldens can move into a `select` value its player's build leaves out, since KY-63's fix is on the pin, which
    takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
@@ -802,6 +826,22 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The forty-ninth session** (2026-11-24). Nothing new on any origin at the start; kama's range since the pin held its two
+non-compiler commits, already read, so no bump.
+- **Every suite was green on 0.9.1027 at the start,** at the forty-eighth session's counts.
+- **Three questions at the start, decided at once** (A, A, A), step 8's fourth part laid out from the code and from the
+  peers' and the owner's games' gestures ([research/input.md](research/input.md) § Gestures, each claim the questions rest on
+  re-checked by hand: Unity's and leafwing's source, Steam's page, FFD's and the-mallow-man's trees), recorded as their
+  own commit (kyoten `5ecdabf`).
+- **Built:** the fourth part in three commits (`25c8a5b`, `664a965`, `39e9236`), item 3; 142 of 144 mutations caught, two
+  shown equivalent, nine after their cases were sharpened, two lines of dead code removed that the batch showed.
+- **Corrections to what was said:**
+  - question 1 said `progress` costs 4 bytes, but a `Digital` is 8 bytes where it was 3;
+  - commit 1's first rounding case, 0.3 seconds, proved nothing, since 0.3 × 1e9 is exact in doubles.
+- **A mistake to keep:** a `sed` aimed at one test's expectation matched two others with the same indentation. The
+  mutation run's baseline failed on them, and they were restored by line before anything counted. Edit a test by its
+  name line, or with the Edit tool, never by a pattern on a bare `want:` line.
 
 **The forty-eighth session** (2026-11-23). Nothing new on any origin at the start; kama's range since the pin held its
 two non-compiler commits, already read, so no bump.

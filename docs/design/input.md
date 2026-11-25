@@ -7,8 +7,9 @@ its time, the mouse's motion, each player's active scheme, and Output's newest s
 with two real pads (2026-11-23). The third part, filters, is decided and built (2026-11-23, below): every filter the
 peers offer that a device kyoten reads can drive, a default dead zone on every stick and trigger, its values in the
 engine's `input` record, and a stick's directions as controls, with a press point and a lower release point. The fourth
-part's three questions, gestures, are decided (2026-11-24, below): a `Digital`'s `progress`, a chord's modifiers and a
-sequence's steps naming a control or an action, and a chord masking its control's plain binding. What the peers and the
+part's three questions, gestures, are decided and the part built (2026-11-24, below): a `Digital`'s `progress`, a chord's
+modifiers and a sequence's steps naming a control or an action, a chord masking its control's plain binding, and every
+gesture the peers offer that a device kyoten reads can drive. What the peers and the
 owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -512,11 +513,97 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   2. chords and sequences, masking, and a chord on a value action;
   3. `interruptible`.
 
+
+- **2026-11-24, built: step 8's fourth part, gestures** (the forty-ninth session), in three commits on kyoten's pin,
+  `0.9.1027+g25d97c29`, each gated by `tools/test.sh`.
+  1. **Gestures on one control and `progress`** (kyoten `25c8a5b`):
+     - a `Digital` entry's `hold`, `tap`, `longTap`, `multiTap`, `repeat`, `toggle` and `delay`, run in real time on the
+       samples' clock;
+     - the `input` record's `gestures` times, laid over part by part;
+     - `Digital.progress`, through the hand-off, `PlayerActions` and the generated views.
+  2. **Chords and sequences, masking, and a chord on a value action** (kyoten `664a965`).
+  3. **`interruptible`** (kyoten `39e9236`).
+  - **Found on the way, and changed test first in commit 1:** the driver handed the frame's last owed step `until` =
+    int64's most ("everything"), which would have fired every gesture's deadline at once. It hands `now`, the pump's
+    time, which every sample is at or before, since the loop reads it after the pump. So the decided "everything up to
+    the pump" holds.
+  - **A correction to what question 1 said it costs:** `Digital` is 8 bytes, where it was 3, since its three flags and
+    a `float32` align to 4. The question said 4 bytes more.
+  - **Settled by the decided rules, for the owner to object to:**
+    - **A gesture reads the on and off of the one before it.** A `repeat`'s press again (no release between) counts
+      as a press for a gesture that counts presses (a `toggle`, a `multiTap`), and passes through the others while
+      they are on.
+    - **`multiTap`:**
+      - each tap is let go within its `tap` time;
+      - the next press comes within its `gap`, both inclusive;
+      - its last press may be held, and it lets go with it;
+      - its progress is the presses counted of its count.
+    - **`repeat` presses at most once in a long step, and never catches up.** After a step that passed several of its
+      times, the next press is an interval after that step's end, as the-mallow-man's menus and Unity's UI do ("at
+      most one press a frame"). A `limit` counts its first press.
+    - **`delay`:**
+      - one number moves the on and the off alike;
+      - an off moved by less than its on comes at once after it, so a short tap stays a press for one step;
+      - changes are kept in the order they came.
+    - **`tap`, `longTap` and `hold` are inclusive at their time:** a release at exactly a tap's time is a tap, and a
+      hold presses at exactly its time.
+    - **Times are read in seconds and kept as nanoseconds, rounded to the nearest,** which shows only past nine
+      decimals: 0.9999999996 seconds is 1,000,000,000.
+    - **Every time is above 0 and at most 9,000,000,000 seconds,** about 285 years, which the clock counts; a `delay`'s
+      may be 0.
+    - **A chord turns on only when its control presses while every modifier is already held.**
+      - A modifier pressed in the same instant counts.
+      - An action a chord holds is settled before the actions that hold it, so one press of a key both read presses
+        both.
+    - **A sequence:**
+      - a step out of order is passed over;
+      - its first step pressed again starts it again;
+      - one press moves it once, so `["Space"]` on Space is a double press;
+      - the press that ends it starts no new one;
+      - its progress is the steps come of its steps and its control.
+    - **Masking is on a press's edge:** a key, a mouse button and a pad's button by its events. A pad control read by
+      its travel, or a stick's direction, is not masked. A press masked stays masked until it lets go, though the
+      chord lets go first.
+    - **A value's chord gates a state as of each step's end,** and the mouse's motion as it moves, so the motion while
+      the modifier was held counts after it lets go. It asks no "modifier first" of a value.
+    - **`interruptible`:**
+      - a hold's rival is open while its control is held;
+      - a multi-tap's is open while it counts taps, so a press held past its tap time comes at once, held;
+      - a rival is every `hold` and `multiTap` of another action's entry reading a control its own reads;
+      - with none, it presses at once.
+    - **Gestures do not change how the pad lock or the scheme reads a press.** A pad's press under a hold takes the lock
+      and sets the scheme at once.
+  - **Counts:**
+    - the engine's tests went from 603 cases at the session's start to 814, natively and on wasm, debug and release;
+    - the tool's went from 250 to 253;
+    - fps and vr on the engine as before.
+  - **Mutations:** 142 of 144 caught, the other two shown equivalent (kyoten's `.scratch/s49/mutate_c1.py` to
+    `mutate_c3.py`).
+    - **Commit 1, 75 of 77.**
+      - Two more mutations hit code the batch showed dead, and that code went: a deadline finding its hold let go (a
+        hold let go has no deadline), and an entry that is on reading 1 (its action is held, which reads 1 already).
+      - Five were caught once their cases were sharpened: a hold's deadline kept past its release, the repeat's long
+        step moved off its grid, a delay's start and end set apart, a delay before a double tap, and a time below a
+        nanosecond. The first rounding case, 0.3 seconds, proved nothing: 0.3 × 1e9 is exactly 300,000,000 in doubles.
+      - Two are equivalent:
+        - deadlines at one instant firing in either order land in one step, where a press again inside a press's step
+          is the same press;
+        - gestures written as an object are refused by the reader's own `beginArray` in the same words at the same
+          place, as the filters' were.
+    - **Commit 2, 51 of 51.**
+      - One was caught once a case held a chord on an action whose own chord lets go, which takes a second look.
+      - Two were rewritten so kama compiles them: a dangling `else`, and a string moved on one path alone.
+      - Three cases were added while the batch was planned: a step raised by a deadline, the order of a chord on an
+        action reading the same key, and a sequence written `"masks": false`.
+    - **Commit 3, 16 of 16.**
+      - Two were caught once their cases were sharpened: its own entry's hold before it, and a decision looked at again
+        in the same pass.
+      - One was rewritten to compile, then caught once a case held a hold under way on another key.
+
   **Next, KYR-54's later parts, each asked when it comes:**
   - `Text`;
   - the cursor's position as a control;
   - the game letting go of the lock;
-  - a player's settings reaching the filters and gestures (Lyra's settings-driven modifiers, Unity's binding
-    overrides);
+  - a player's settings reaching the filters and gestures;
   - a game's own filters and gestures;
   - how a higher layer merges an object entry.
