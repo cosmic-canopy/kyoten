@@ -11,6 +11,7 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow, glow::Spark,
          spin::cube::Spin, spin::cube::Size, spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering,
          std::math::Vec2, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text, kyoten::frame::Requests,
+         kyoten::frame::DrawnView, spin::generated::Views,
          spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
          spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
@@ -131,11 +132,12 @@ fn uint8 main() {
     Actions a = Actions.forPlayer(player: 1);
     int32 player = a.player;
     bool held = a.faster.held;
-    CubePrefab c = CubePrefab.of(actions: a, aim: Aim.default(), slowAim: SlowAim.default(), spin: Spin.default(),
-                                 steering: Steering.default(), taps: Taps.default(), textEntry: TextEntry.default(),
-                                 transform: Transform.default());
+    CubePrefab c = CubePrefab.of(actions: a, aim: Aim.default(), drawnView: DrawnView.default(), slowAim: SlowAim.default(),
+                                 spin: Spin.default(), steering: Steering.default(), taps: Taps.default(),
+                                 textEntry: TextEntry.default(), transform: Transform.default());
     float32 rate = c.spin.rate;
-    BigCubePrefab b = BigCubePrefab.of(actions: a, aim: Aim.default(), glow: Glow.default(), size: Size.default(),
+    BigCubePrefab b = BigCubePrefab.of(actions: a, aim: Aim.default(), drawnView: DrawnView.default(), glow: Glow.default(),
+                                       size: Size.default(),
                                        slowAim: SlowAim.default(), spark: Spark.default(), spin: Spin.default(),
                                        steering: Steering.default(),
                                        taps: Taps.default(), textEntry: TextEntry.default(), transform: Transform.default());
@@ -144,6 +146,11 @@ fn uint8 main() {
     bool differ = CubePrefabId.fastCube() != CubePrefabId.default();
     bool same = BigCubePrefabId.bigCube() == BigCubePrefabId.default();
     println(s: "spin: player ${player}, faster held ${held}, cube spin ${rate}, big cube size ${by} glow ${strength}, ids ${differ} ${same}");
+    // The game's views, numbered in the order of their names (the sixth part of step 8).
+    int32 hud = Views::hud;
+    int32 worldView = Views::world;
+    int32 views = GameWorld::viewCount;
+    println(s: "spin: views: hud ${hud}, world ${worldView}, ${views} in all");
 
     // The first cube names no player (0), so no input reaches it; the second names player 1, whose `faster` is
     // pressed on step 1, an odd step, and held from then on (the first slice's step 8). The 30 Hz `tally` runs on the
@@ -156,11 +163,18 @@ fn uint8 main() {
     // Player 1's text entry, Output's own state, which `typing` turns on while `faster` is held (the fifth part of step 8).
     TextEntry typist = TextEntry.default();
     typist.player = 1;
-    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, aim: Aim.default(),
+    // Player 1's view of the world, Output's own state, which `framed` draws (the sixth part of step 8); the calm cube's
+    // names the game's `hud` and no player, which the world gathers no request for.
+    DrawnView seen = DrawnView.default();
+    seen.player = 1;
+    seen.view = worldView;
+    DrawnView unseen = DrawnView.default();
+    unseen.view = hud;
+    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, aim: Aim.default(), drawnView: unseen,
                                                                    slowAim: SlowAim.default(), spin: two,
                                                                    steering: Steering.default(), taps: Taps.default(),
                                                                    textEntry: TextEntry.default(), transform: Transform.default()));
-    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, aim: Aim.default(),
+    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, aim: Aim.default(), drawnView: seen,
                                                                      slowAim: SlowAim.default(), spin: two,
                                                                      steering: Steering.default(), taps: Taps.default(),
                                                                      textEntry: typist, transform: Transform.default()));
@@ -208,6 +222,19 @@ fn uint8 main() {
     bool typing = asked.typing(player: 1);
     int32 named = asked.players();
     println(s: "spin: requests: ${named} player, player 1 typing ${typing}");
+    isize drawn = asked.viewCount();
+    Optional<DrawnView> theirs = asked.viewOf(player: 1, view: worldView);
+    string world1 = "none";
+    match (theirs) {
+        case Some(value: d): {
+            int32 wide = cast<int32>(d.size.x);
+            int32 high = cast<int32>(d.size.y);
+            float32 behind = d.position.z;
+            world1 = "${wide} x ${high}, its camera at z ${behind}";
+        }
+        case None: { }
+    };
+    println(s: "spin: requests: ${drawn} view, player 1's world ${world1}");
     println(s: "spin: Output again, on the same step");
     newest.clear();
     world.output(time: clock.at(step: 59), newest: newest);

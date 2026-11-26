@@ -1,0 +1,69 @@
+// kyoten::frame::DrawnView — one view as it was drawn for a player this frame: where it sits in the window, its own size and
+// units, and its camera (the first slice's step 8, its sixth part, KYR-54; design/input.md § Decided, 2026-11-26,
+// question 1). It is Output's own state, `"output": true` in the frame tier's records: whatever draws a view writes its
+// `DrawnView` after each frame, kyoten's render module one for each camera (step 9), the UI one for each screen layer, a
+// game's own renderer or a test until then. No other phase reads it, since it changes with the frame rate.
+//
+// The world gathers every one after Output into `Requests`, and the loop hands each that changed to the input source,
+// which turns the cursor through the view a binding names (`"Cursor"` with its `"view"`): a `Pose` action takes the ray
+// into the world, a `Vector2` action the place in the view's own size and units. So each view has its own translation,
+// as each peer's camera has its own rectangle (Bevy's `Viewport`, Unity's `pixelRect`).
+//
+// - `view` is one of the game's views, which its records declare (`"views"`), by the number the generated `Views` gives
+//   it; -1 names none, and the view is gathered by no one.
+// - `at` and `span` place it in the window, as fractions of the window from its bottom-left corner: the whole window by
+//   default, half of it for a split screen, a corner for a minimap, a letterboxed box.
+// - `size` is the view's own width and height in its own units: a 2D layer's virtual pixels (1440 × 810), the place a
+//   `Vector2` reads running from (0, 0) at its bottom-left corner to `size` at its top-right, y up.
+// - `zone`, `position` and `rotation` are its camera's pose, the world from the view, as a `Transform` places an
+//   entity: y up, right-handed, the camera looking along its −Z.
+// - `viewFromClip` is the inverse of its projection: clip space to the camera's own space. Depth is reversed, as
+//   `@kama/graphics` draws it, the near plane at clip depth 1 and the far at 0, which may be at infinity. A 2D layer is
+//   a camera at rest with an orthographic `viewFromClip` onto its own units. Kept apart from the pose, as Bevy's
+//   `viewport_to_world` keeps them, so a far zone loses no precision.
+
+import { std::math::Vec2, std::math::Vec3, std::math::Vec4, std::math::Quat, std::math::Mat4, ZoneCoord };
+
+export { DrawnView };
+
+@generate(Serializable, Deserializable)
+type value DrawnView {
+    // The player it is drawn for, numbered from 1; 0 names none, and the view is gathered by no one.
+    @field public int32 player = 0;
+    // Which of the game's views it is (`Views::world`); -1 names none.
+    @field public int32 view = -1;
+    // Its bottom-left corner and its width and height, as fractions of the window.
+    @field public Vec2 at = Vec2.zero();
+    @field public Vec2 span = Vec2.one();
+    // Its own width and height, in its own units.
+    @field public Vec2 size = Vec2.one();
+    // Its camera's pose.
+    @field public ZoneCoord zone = ZoneCoord.origin();
+    @field public Vec3 position = Vec3.zero();
+    @field public Quat rotation = Quat.identity();
+    // The inverse of its projection, written by whatever draws it each frame, never from a record.
+    @skip public Mat4 viewFromClip = Mat4.identity();
+
+    // Naming no player and no view, over the whole window, its camera at rest at the origin with no projection.
+    public default ctor make() { }
+
+    // Whether `other` is the same view, drawn the same way, every field equal.
+    public const fn bool sameAs(const ref DrawnView other) {
+        if (this.player != other.player || this.view != other.view) { return false; }
+        if (!this.at.equals(other: other.at) || !this.span.equals(other: other.span) || !this.size.equals(other: other.size)) {
+            return false;
+        }
+        if (!this.zone.equals(other: other.zone) || !this.position.equals(other: other.position)) { return false; }
+        Quat r = this.rotation;
+        Quat o = other.rotation;
+        if (r.x != o.x || r.y != o.y || r.z != o.z || r.w != o.w) { return false; }
+        isize c = 0;
+        while (c < 4) {
+            Vec4 mine = this.viewFromClip.cols[c];
+            Vec4 theirs = other.viewFromClip.cols[c];
+            if (!mine.equals(other: theirs)) { return false; }
+            c = c + 1;
+        }
+        return true;
+    }
+}

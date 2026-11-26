@@ -95,7 +95,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          std::math::Vec3, std::math::sqrt, std::serialization::text::json::deserializeJsonBuffer,
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
-         kyoten::frame::Scheme, kyoten::frame::Text, kyoten::frame::PlayerActions,
+         kyoten::frame::Scheme, kyoten::frame::Text, kyoten::frame::PlayerActions, kyoten::frame::DrawnView,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
          std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
@@ -561,6 +561,10 @@ type resource Binder implements InputSource {
 
     // Player `player`'s text entry turned on or off at `at`: player 1's, the one this binder drives, takes what is typed
     // from `at` on while it is on.
+    // A view drawn otherwise: the cursor's bindings turn through it (design/input.md § Decided, 2026-11-26, the sixth
+    // part's question 1), which the cursor's own part builds.
+    public fn void drawn(const ref DrawnView view, int64 at) { }
+
     public fn void textEntry(int32 player, bool on, int64 at) {
         if (player != 1 || on == this.typingNow) { return; }
         this.typingWas = this.typingNow;

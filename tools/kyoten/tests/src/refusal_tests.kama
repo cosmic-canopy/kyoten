@@ -54,6 +54,12 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "`jump`", b: "names::a", c: "names::b"));
     says(t: t, name: "names: an action named `player`, Actions' own field, is refused", r: n,
          words: allOf(a: "`player`", b: "Actions", c: ""));
+    says(t: t, name: "names: a view that is no identifier is refused, naming the fix", r: n,
+         words: allOf(a: "view `big-map`", b: "`bigMap`", c: ""));
+    says(t: t, name: "names: a view two modules declare is refused, naming both", r: n,
+         words: allOf(a: "view `minimap` is declared by names::a", b: "names::b", c: "`Views` numbers each once"));
+    says(t: t, name: "names: a view named like a member `Views` has itself is refused", r: n,
+         words: allOf(a: "view `equals`", b: "`Views`", c: ""));
     says(t: t, name: "names: a `Text` that says `delta` is refused: a delta is a distance moved", r: n,
          words: allOf(a: "action `typed` is a `Text` and says `delta`", b: "`Analog`, `Vector2` or `Vector3`", c: ""));
     says(t: t, name: "names: a `Digital` that says `delta` is refused: a delta is a distance moved", r: n,

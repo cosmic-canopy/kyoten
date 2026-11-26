@@ -66,7 +66,7 @@ fn string actionsKama(const ref Records r) {
     if (anyOf(r: r, k: ActionKind::Vector2)) { names = names + "std::math::Vec2, "; }
     if (anyOf(r: r, k: ActionKind::Vector3)) { names = names + "std::math::Vec3, "; }
     if (any) { t = t + "import { " + names + "kyoten::frame::PlayerActions, kyoten::frame::Handoff };\n\n"; }
-    t = t + "export { Actions };\n\n";
+    t = t + "export { Actions, Views };\n\n";
     t = t + "@generate(Serializable, Deserializable)\ntype value Actions {\n";
     t = t + "    // The player whose input fills this entity's actions, numbered from 1.\n";
     t = t + "    @field public int32 player;\n";
@@ -80,7 +80,7 @@ fn string actionsKama(const ref Records r) {
     t = t + "\n    public ctor forPlayer(int32 player) { this.player = player; }\n";
     if (!any) {
         t = t + "}\n";
-        return t;
+        return t + viewsType(r: r);
     }
     t = t + "\n    // Each action as a run whose window is the steps after `after` up to `upTo` sees it, from the world's record\n";
     t = t + "    // of its player's: the generator's own, which the passes call.\n";
@@ -134,6 +134,23 @@ fn string actionsKama(const ref Records r) {
         };
     }
     t = t + "    }\n}\n";
+    return t + viewsType(r: r);
+}
+
+// The game's views, each the number a `DrawnView`'s `view` holds, in the order of their names, as a binding names one
+// by its name (design/input.md § Decided, 2026-11-26, the sixth part's question 1).
+fn string viewsType(const ref Records r) {
+    string t = "\n// The game's views, each by the number whatever draws it writes in its `DrawnView`'s `view`, in the order of\n";
+    t = t + "// their names; a binding names one by its name (`\"view\": \"world\"`).\n";
+    t = t + "type value Views {\n";
+    int32 i = 0;
+    foreach (string v in r.views()) {
+        string module = copy r.views().getRef(key: v);
+        t = t + "    // Declared by " + module + ".\n";
+        t = t + "    public comptime int32 " + v + " = ${i};\n";
+        i = i + 1;
+    }
+    t = t + "}\n";
     return t;
 }
 

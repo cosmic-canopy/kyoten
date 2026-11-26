@@ -12,7 +12,7 @@ import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory
          kyoten::platform::Ending, kyoten::platform::Play, kyoten::platform::play, kyoten::platform::fixedTimestamp,
          kyoten::platform::OpenPlatform, kyoten::platform::pumpInto, kyoten::platform::PadReadings, window::Window,
          window::Event, window::Key, window::Pointer, window::PointerKind, window::PointerButton, window::PadButton,
-         window::PadAxis, window::Gamepad, kyoten::frame::Requests };
+         window::PadAxis, window::Gamepad, kyoten::frame::Requests, kyoten::frame::DrawnView, std::math::Vec3 };
 
 export { platformTests };
 
@@ -37,6 +37,9 @@ type resource Log {
     string takenAt = "";                                  // each sample the source took, at its time
     bool asking = false;                                  // whether the world asks that player 1 types
     string entries = "";                                  // each text entry handed on: `S1+@t` the source's, `P1+` the platform's
+    bool drawing = false;                                 // whether the world draws player 1's view 0, at `drawnX`
+    float32 drawnX = 0.0;
+    bool drawingSecond = false;                           // and their view 1
 
     public ctor make() { }
 
@@ -84,6 +87,14 @@ type resource Log {
     public fn void output() { this.outputCount = this.outputCount + 1; }
     public fn void askTyping(bool on) { this.asking = on; }
     public const fn bool asksTyping() { return this.asking; }
+    public fn void drawView(float32 x, bool second) {
+        this.drawing = true;
+        this.drawnX = x;
+        this.drawingSecond = second;
+    }
+    public const fn bool draws() { return this.drawing; }
+    public const fn float32 drawnAt() { return this.drawnX; }
+    public const fn bool drawsSecond() { return this.drawingSecond; }
     public fn void entry(const ref string what) {
         string was = copy this.entries;
         this.entries = was + what + " ";
@@ -132,6 +143,19 @@ type resource Counter implements World {
     public fn void requests(ref Requests into) {
         into.reset(players: 1);
         if (this.log.deref().asksTyping()) { into.setTyping(player: 1, on: true); }
+        if (this.log.deref().draws()) {
+            DrawnView v = DrawnView.default();
+            v.player = 1;
+            v.view = 0;
+            v.position = Vec3.of(x: this.log.deref().drawnAt(), y: 0.0, z: 0.0);
+            into.setView(view: v);
+        }
+        if (this.log.deref().drawsSecond()) {
+            DrawnView v = DrawnView.default();
+            v.player = 1;
+            v.view = 1;
+            into.setView(view: v);
+        }
     }
 }
 
@@ -148,6 +172,12 @@ type resource Taker implements InputSource {
     public fn void textEntry(int32 player, bool on, int64 at) {
         string s = on ? "+" : "-";
         this.log.derefMut().entry(what: "S${player}${s}@${at}");
+    }
+    public fn void drawn(const ref DrawnView view, int64 at) {
+        int32 p = view.player;
+        int32 which = view.view;
+        int32 x = cast<int32>(view.position.x);
+        this.log.derefMut().entry(what: "V${p}.${which}x${x}@${at}");
     }
 }
 
@@ -467,6 +497,33 @@ fn void requestLoopCases(ref Tally t) {
               why: seen == "S1+@5016666667 P1+ S1-@5050000001 P1- " ? "" : "handed `${seen}`");
 }
 
+// The views the world drew after each frame (design/input.md § Decided, 2026-11-26, the sixth part's question 1): each
+// one new or drawn otherwise is handed to the source at its frame's timestamp, and one drawn as before is not.
+fn void viewLoopCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 2 * STEP);
+    times.add(item: T0 + 3 * STEP);
+    times.add(item: T0 + 4 * STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    p.tick();
+    string quiet = log.deref().entriesSeen();
+    t.verdict(name: "loop: a world that draws no view hands none on", why: quiet.isEmpty() ? "" : "handed `${quiet}`");
+    log.derefMut().drawView(x: 1.0, second: false);
+    p.tick();
+    p.tick();
+    log.derefMut().drawView(x: 2.0, second: true);
+    p.tick();
+    p.tick();
+    string seen = log.deref().entriesSeen();
+    t.verdict(name: "loop: a view is handed on when first drawn and when drawn otherwise, at its frame's timestamp, never as before",
+              why: seen == "V1.0x1@5016666667 V1.0x2@5050000001 V1.1x0@5050000001 " ? "" : "handed `${seen}`");
+}
+
 // A sample spelled: K, M or P for its device, a pad's slot and a colon, the control, `=` and its value; a pad's
 // connection `+` or `-`; then `@` and its time in milliseconds after `began`.
 fn string sampleText(const ref Sample s) {
@@ -596,6 +653,7 @@ unsafe fn void valuePumpCases(ref Tally t) {
 
 fn void platformTests(ref Tally t) {
     requestLoopCases(t: t);
+    viewLoopCases(t: t);
     optionCases(t: t);
     timestampCases(t: t);
     windowCases(t: t);

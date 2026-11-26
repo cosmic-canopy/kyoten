@@ -1,2 +1,3 @@
 { "processors": { "show": { "phase": "Output" }, "seen": { "phase": "Output" }, "aimed": { "phase": "Output" }, "schemed": { "phase": "Output" },
-                  "typing": { "phase": "Output" } } }
+                  "typing": { "phase": "Output" }, "framed": { "phase": "Output" } },
+  "views": { "world": { "note": "the cube's 3D world" }, "hud": { "note": "a screen layer of 1440 x 810" } } }

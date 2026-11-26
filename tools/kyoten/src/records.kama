@@ -24,6 +24,8 @@ fn string kindWord(ActionKind kind) {
 
 // Members the generated `Actions` has itself, which no action may take.
 fn string actionMembers() { return " player forPlayer viewFrom viewNewest serialize deserialize mergeFrom "; }
+// Members the generated `Views` has itself, which no view may take.
+fn string viewMembers() { return " make default equals hash format serialize deserialize mergeFrom "; }
 // Members a prefab's generated id and `Prefabs` have themselves, which no prefab may take.
 fn string prefabMembers() { return " make of index equals hash compareTo format copy serialize deserialize mergeFrom "; }
 
@@ -73,6 +75,8 @@ type resource Records {
     SortedMap<string, string> actionFiles = SortedMap.empty();
     SortedMap<string, ActionKind> kindsByAction = SortedMap.empty();
     SortedMap<string, bool> deltasByAction = SortedMap.empty();
+    SortedMap<string, string> viewModules = SortedMap.empty();
+    SortedMap<string, string> viewFiles = SortedMap.empty();
     SortedMap<string, PrefabDecl> prefabDecls = SortedMap.empty();
     SortedMap<string, string> bindingFiles = SortedMap.empty();
     string appFile = "";
@@ -80,7 +84,7 @@ type resource Records {
     string sceneFirst = "";
     string sceneFirstFile = "";
 
-    friend readRecords[codeFiles, depCodeFiles, kindsByAction, addAction, addContent, crossCheck];
+    friend readRecords[codeFiles, depCodeFiles, kindsByAction, addAction, addView, addContent, crossCheck];
 
     public ctor make() { }
 
@@ -89,6 +93,9 @@ type resource Records {
     // An action's kind, and whether it is a delta, by its name, which `actions()` lists.
     public const fn ActionKind kindOf(const ref string action) { return this.kindsByAction.getRef(key: action); }
     public const fn bool isDelta(const ref string action) { return this.deltasByAction.getRef(key: action); }
+    // Each of the game's views' declaring module, by name, in the order `Views` numbers them (design/input.md
+    // § Decided, 2026-11-26, the sixth part's question 1).
+    public const fn const ref SortedMap<string, string> views() { return this.viewModules; }
     public const fn const ref SortedMap<string, PrefabDecl> prefabs() { return this.prefabDecls; }
     public const fn DynamicArray<string> prefabNames() {
         DynamicArray<string> names = DynamicArray.empty();
@@ -119,6 +126,19 @@ type resource Records {
         this.actionFiles.put(key: copy name, value: copy file);
         this.kindsByAction.put(key: copy name, value: kind);
         this.deltasByAction.put(key: copy name, value: delta);
+    }
+
+    unsafe fn void addView(const ref string name, const ref string module, const ref string file, ref Refusals no) {
+        if (this.viewModules.contains(key: name)) {
+            string otherModule = copy this.viewModules.getRef(key: name);
+            string otherFile = copy this.viewFiles.getRef(key: name);
+            no.add(where: file, what: "view `${name}` is declared by ${otherModule} (${otherFile}) and by ${module} (${file}): one name means one view across the game, since `Views` numbers each once");
+            return;
+        }
+        string problem = nameProblem(name: name, taken: viewMembers(), owner: "`Views`");
+        if (!problem.isEmpty()) { no.add(where: file, what: "view " + problem); }
+        this.viewModules.put(key: copy name, value: copy module);
+        this.viewFiles.put(key: copy name, value: copy file);
     }
 
     unsafe fn void addContent(const ref ContentFile c, const ref string file, ref Refusals no) {
@@ -281,6 +301,7 @@ unsafe fn Records readRecords(const ref Manifest game, ref Refusals no) {
                 r.addAction(name: a, module: module, file: file, kind: kind, delta: delta, no: no);
             }
         }
+        foreach (string v in m.views()) { r.addView(name: v, module: module, file: file, no: no); }
         if (!game.isLibrary() && module == game.name() && refusedInRoot(record: m, file: file, no: no)) { continue; }
         r.codeFiles.add(item: CodeFile.of(module: copy module, file: copy file, record: give m));
     }

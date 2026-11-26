@@ -1,15 +1,17 @@
 // kyoten::frame::Requests — what a game asks of its devices, as of its last frame (the first slice's step 8, its fifth
 // part, KYR-54; design/input.md § Decided, 2026-11-25, question 3). It is made from Output's own state: the generated
 // world gathers it after Output runs (`World.requests`), and the loop hands each change to the input source and the
-// platform. For now it says whether each player is typing, from the engine's `TextEntry`; the game letting go of the pad
-// lock, the cursor's mode and rumble join it, each asked when it comes.
+// platform. It says whether each player is typing, from the engine's `TextEntry`, and holds each view as drawn, from
+// the engine's `DrawnView`s, one for each player and view (design/input.md § Decided, 2026-11-26, the sixth part's question
+// 1); the cursor's mode, the game letting go of the pad lock and rumble join it.
 
-import { std::collections::DynamicArray };
+import { std::collections::DynamicArray, DrawnView };
 
 export { Requests };
 
 type resource Requests {
     DynamicArray<bool> typingField = DynamicArray.empty();
+    DynamicArray<DrawnView> viewsField = DynamicArray.empty();
 
     // Naming no player.
     public ctor make() { }
@@ -23,13 +25,14 @@ type resource Requests {
         return this.typingField[cast<isize>(player - 1)];
     }
 
-    // Room for `players` players, every request off.
+    // Room for `players` players, every request off and no view drawn.
     public fn void reset(int32 players) {
         assert(cond: players >= 0, msg: "requests name no negative count of players");
         while (this.typingField.length() > cast<isize>(players)) { Optional<bool> gone = this.typingField.pop(); }
         isize i = 0;
         while (i < this.typingField.length()) { this.typingField[i] = false; i = i + 1; }
         while (this.typingField.length() < cast<isize>(players)) { this.typingField.add(item: false); }
+        this.viewsField.clear();
     }
 
     // Player `player` is typing, or not; a player it does not name is a caller's bug, and traps.
@@ -38,10 +41,42 @@ type resource Requests {
         this.typingField[cast<isize>(player - 1)] = on;
     }
 
+    // How many views were drawn, one for each player and view.
+    public const fn isize viewCount() { return this.viewsField.length(); }
+
+    // The view at `index`, from 0, in the order each was first drawn; a caller's bug past `viewCount()`, and traps.
+    public const fn DrawnView viewAt(isize index) { return this.viewsField[index]; }
+
+    // DrawnView `view` as drawn for player `player`, or none when none was.
+    public const fn Optional<DrawnView> viewOf(int32 player, int32 view) {
+        foreach (const ref DrawnView v in this.viewsField.iterConst()) {
+            if (v.player == player && v.view == view) { return Optional::Some(value: v); }
+        }
+        return Optional::None;
+    }
+
+    // A view as drawn, which replaces the one drawn before it for the same player and view; one for a player it does
+    // not name, or naming no view, is a caller's bug, and traps.
+    public fn void setView(DrawnView view) {
+        assert(cond: view.player >= 1 && cast<isize>(view.player) <= this.typingField.length(), msg: "requests name this player");
+        assert(cond: view.view >= 0, msg: "a view drawn names one of the game's views");
+        isize i = 0;
+        while (i < this.viewsField.length()) {
+            if (this.viewsField[i].player == view.player && this.viewsField[i].view == view.view) {
+                this.viewsField[i] = view;
+                return;
+            }
+            i = i + 1;
+        }
+        this.viewsField.add(item: view);
+    }
+
     // The same requests as `other`.
     public fn void copyFrom(const ref Requests other) {
         this.reset(players: other.players());
         int32 p = 1;
         while (p <= other.players()) { this.setTyping(player: p, on: other.typing(player: p)); p = p + 1; }
+        isize i = 0;
+        while (i < other.viewCount()) { this.viewsField.add(item: other.viewAt(index: i)); i = i + 1; }
     }
 }

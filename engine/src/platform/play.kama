@@ -20,11 +20,13 @@
 // - **What the game asks of its devices** (`Requests`): after each frame the loop reads them from the world, and hands
 //   each change to the input source at the frame's timestamp and to the platform, so a player's text entry turned on in
 //   one frame takes what they type from the next (design/input.md § Decided, 2026-11-25, the fifth part's question 3).
+//   Each view the world drew otherwise, or for the first time, goes to the input source at the frame's timestamp too,
+//   so the cursor's samples from then on are turned through the view on screen (the sixth part's question 1).
 
 import { core::println, std::app::App, std::app::Lifecycle, std::app::Pace, std::app::run, std::memory::Owned,
          std::memory::Shared, std::collections::DynamicArray, kyoten::frame::World, kyoten::frame::Clock,
          kyoten::frame::Owed, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Sample,
-         kyoten::frame::Requests, Platform,
+         kyoten::frame::Requests, kyoten::frame::DrawnView, Platform,
          RunOptions, RunOptionError };
 
 export { Ending, Play, play, fixedTimestamp };
@@ -140,7 +142,7 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
     public const fn int64 stepsSettled() { return this.clock.settled(); }
 
     // What the world asks of its devices after this frame: each player's text entry that changed, to the input source
-    // at `now` and to the platform.
+    // at `now` and to the platform, and each view drawn otherwise, or for the first time, to the input source.
     fn void handOn(int64 now) {
         this.world.requests(into: this.wanted);
         int32 most = this.wanted.players() > this.told.players() ? this.wanted.players() : this.told.players();
@@ -152,6 +154,14 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
                 this.platform.textEntry(player: p, on: on);
             }
             p = p + 1;
+        }
+        isize i = 0;
+        while (i < this.wanted.viewCount()) {
+            DrawnView v = this.wanted.viewAt(index: i);
+            Optional<DrawnView> before = this.told.viewOf(player: v.player, view: v.view);
+            bool same = match (before) { case Some(value: b): b.sameAs(other: v); case None: false; };
+            if (!same) { this.input.drawn(view: v, at: now); }
+            i = i + 1;
         }
         this.told.copyFrom(other: this.wanted);
     }

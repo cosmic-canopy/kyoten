@@ -86,7 +86,8 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     writeIfChanged(path: game.root() + "/" + passes, text: passesKama(game: gameName, families: families, s: schedule,
                                                                        hasActions: hasActions));
     writeIfChanged(path: game.root() + "/" + world, text: worldKama(game: gameName, families: families, s: schedule,
-                                                                     actionLines: actionLines));
+                                                                     actionLines: actionLines,
+                                                                     views: records.views().length()));
     written.add(item: give tables);
     written.add(item: give passes);
     written.add(item: give world);

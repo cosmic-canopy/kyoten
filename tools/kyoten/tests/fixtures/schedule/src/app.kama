@@ -2,7 +2,8 @@
 // fed time, in 60 frames, each owing about five base steps. Output's `report` prints once a frame.
 
 import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
-         kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample, std::collections::DynamicArray,
+         kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::DrawnView,
+         std::collections::DynamicArray,
          schedule::sim::Fast, schedule::sim::Slow, schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Bulk,
          schedule::generated::TickerPrefab, schedule::generated::CratePrefab, GameWorld };
 
@@ -14,6 +15,7 @@ type resource Quiet implements InputSource {
     public fn const ref Handoff handoff(int64 index, int64 until) { return this.out; }
     public fn const ref Handoff newest(float32 seconds) { return this.out; }
     public fn void textEntry(int32 player, bool on, int64 at) { }
+    public fn void drawn(const ref DrawnView view, int64 at) { }
 }
 
 fn uint8 main() {

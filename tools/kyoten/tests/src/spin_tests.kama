@@ -176,6 +176,15 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
               why: typed == wantTyped ? "" : "typed `${typed}`");
     check(t: t, name: "spin: ${leg}: the world's requests after Output: player 1 typing, from the `TextEntry` Output turned on",
           ok: r.says(what: "spin: requests: 1 player, player 1 typing true"), why: said);
+    // The game's views (design/input.md § Decided, 2026-11-26, the sixth part's question 1): numbered by name, and the
+    // `DrawnView` Output drew for player 1 gathered after Output; the cube naming no player draws none.
+    check(t: t, name: "spin: ${leg}: the game's views, numbered in the order of their names, and counted",
+          ok: r.says(what: "spin: views: hud 0, world 1, 2 in all"), why: said);
+    check(t: t, name: "spin: ${leg}: Output draws the view that names a player, and not the one that names none",
+          ok: said.contains(substring: "framed: slot 1 player 1 view 1") && !said.contains(substring: "framed: slot 0"),
+          why: said);
+    check(t: t, name: "spin: ${leg}: the world's requests after Output: the one view Output drew, player 1's world, as drawn",
+          ok: r.says(what: "spin: requests: 1 view, player 1's world 1440 x 810, its camera at z 5"), why: said);
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's

@@ -8,7 +8,7 @@ import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
          kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text,
-         kyoten::frame::Requests, kyoten::frame::ZoneCoord };
+         kyoten::frame::Requests, kyoten::frame::ZoneCoord, kyoten::frame::DrawnView, std::math::Mat4 };
 
 export { inputTests, spelled, digitalOf, lineOf };
 
@@ -249,6 +249,113 @@ fn void requestCases(ref Tally t) {
     t.verdict(name: "Requests: reset turns every request off, sized anew",
               why: r.players() == 1 && !r.typing(player: 1) && !r.typing(player: 2) ? "" : "it did not");
     t.verdict(name: "Requests: a copy keeps what it copied", why: c.players() == 2 && c.typing(player: 2) ? "" : "it did not");
+}
+
+// One view as drawn for a player, Output's own state (design/input.md § Decided, 2026-11-26, the sixth part's question
+// 1): by default it names no player and no view, over the whole window, its camera at rest with no projection; and two
+// are the same only when every field is.
+fn void viewCases(ref Tally t) {
+    DrawnView v = DrawnView.default();
+    bool rest = v.player == 0 && v.view == -1 && v.at.equals(other: Vec2.zero()) && v.span.equals(other: Vec2.one())
+        && v.size.equals(other: Vec2.one()) && v.zone.equals(other: ZoneCoord.origin()) && v.position.equals(other: Vec3.zero())
+        && v.rotation.w == 1.0 && v.rotation.x == 0.0 && v.viewFromClip.get(c: 2, r: 2) == 1.0
+        && v.viewFromClip.get(c: 3, r: 2) == 0.0;
+    t.verdict(name: "DrawnView: names no player and no view by default, over the whole window, its camera at rest",
+              why: rest ? "" : "another default");
+    DrawnView same = drawnView(player: 1, view: 0);
+    DrawnView copied = same;
+    t.verdict(name: "DrawnView: the same view drawn the same way is the same", why: same.sameAs(other: copied) ? "" : "it is not");
+    DrawnView p = drawnView(player: 1, view: 0);
+    p.player = 2;
+    sameNot(t: t, field: "its player", a: same, b: p);
+    DrawnView w = drawnView(player: 1, view: 0);
+    w.view = 1;
+    sameNot(t: t, field: "which view", a: same, b: w);
+    DrawnView at = drawnView(player: 1, view: 0);
+    at.at = Vec2.of(x: 0.5, y: 0.25);
+    sameNot(t: t, field: "its corner", a: same, b: at);
+    DrawnView span = drawnView(player: 1, view: 0);
+    span.span = Vec2.of(x: 1.0, y: 0.5);
+    sameNot(t: t, field: "its span", a: same, b: span);
+    DrawnView size = drawnView(player: 1, view: 0);
+    size.size = Vec2.of(x: 1440.0, y: 811.0);
+    sameNot(t: t, field: "its size", a: same, b: size);
+    DrawnView zone = drawnView(player: 1, view: 0);
+    zone.zone = ZoneCoord.of(x: 3, y: 0, z: -1);
+    sameNot(t: t, field: "its camera's zone", a: same, b: zone);
+    DrawnView moved = drawnView(player: 1, view: 0);
+    moved.position = Vec3.of(x: 0.0, y: 1.0, z: 6.0);
+    sameNot(t: t, field: "its camera's position", a: same, b: moved);
+    DrawnView turnedX = drawnView(player: 1, view: 0);
+    turnedX.rotation = Quat.of(x: 0.125, y: 0.0, z: 0.0, w: 1.0);
+    sameNot(t: t, field: "its camera's rotation, its x alone", a: same, b: turnedX);
+    DrawnView turnedY = drawnView(player: 1, view: 0);
+    turnedY.rotation = Quat.of(x: 0.0, y: 0.125, z: 0.0, w: 1.0);
+    sameNot(t: t, field: "its camera's rotation, its y alone", a: same, b: turnedY);
+    DrawnView turnedZ = drawnView(player: 1, view: 0);
+    turnedZ.rotation = Quat.of(x: 0.0, y: 0.0, z: 0.125, w: 1.0);
+    sameNot(t: t, field: "its camera's rotation, its z alone", a: same, b: turnedZ);
+    DrawnView turnedW = drawnView(player: 1, view: 0);
+    turnedW.rotation = Quat.of(x: 0.0, y: 0.0, z: 0.0, w: 0.5);
+    sameNot(t: t, field: "its camera's rotation, its w alone", a: same, b: turnedW);
+    DrawnView lens = drawnView(player: 1, view: 0);
+    lens.viewFromClip = Mat4.scale(s: Vec3.of(x: 2.0, y: 1.0, z: 1.0));
+    sameNot(t: t, field: "its projection", a: same, b: lens);
+    DrawnView deep = drawnView(player: 1, view: 0);
+    deep.viewFromClip = Mat4.translation(t: Vec3.of(x: 0.0, y: 0.0, z: -1.0));
+    sameNot(t: t, field: "its projection's last column", a: same, b: deep);
+}
+
+// A view drawn for `player`: a HUD-sized view over the window's left half, its camera turned and placed in a zone.
+fn DrawnView drawnView(int32 player, int32 view) {
+    DrawnView v = DrawnView.default();
+    v.player = player;
+    v.view = view;
+    v.at = Vec2.of(x: 0.0, y: 0.0);
+    v.span = Vec2.of(x: 0.5, y: 1.0);
+    v.size = Vec2.of(x: 1440.0, y: 810.0);
+    v.zone = ZoneCoord.of(x: 2, y: 0, z: -1);
+    v.position = Vec3.of(x: 0.0, y: 1.0, z: 5.0);
+    v.rotation = Quat.of(x: 0.0, y: 0.0, z: 0.0, w: 1.0);
+    return v;
+}
+
+fn void sameNot(ref Tally t, const ref string field, const ref DrawnView a, const ref DrawnView b) {
+    t.verdict(name: "DrawnView: one drawn with another ${field} is another", why: a.sameAs(other: b) ? "the same" : "");
+}
+
+// The views the world drew after Output (the sixth part's question 1): one for each player and view, a later one
+// replacing the earlier, reset with the players and copied whole.
+fn void requestViewCases(ref Tally t) {
+    Requests r = Requests.make();
+    r.reset(players: 2);
+    t.verdict(name: "Requests: hold no view at first", why: r.viewCount() == 0 ? "" : "they hold one");
+    r.setView(view: drawnView(player: 1, view: 0));
+    r.setView(view: drawnView(player: 1, view: 1));
+    r.setView(view: drawnView(player: 2, view: 0));
+    t.verdict(name: "Requests: a view for each player and view", why: r.viewCount() == 3 ? "" : "another count");
+    DrawnView moved = drawnView(player: 1, view: 1);
+    moved.position = Vec3.of(x: 9.0, y: 1.0, z: 5.0);
+    r.setView(view: moved);
+    Optional<DrawnView> got = r.viewOf(player: 1, view: 1);
+    bool replaced = match (got) { case Some(value: v): v.position.x == 9.0; case None: false; };
+    t.verdict(name: "Requests: a view drawn again for the same player and view replaces it",
+              why: replaced && r.viewCount() == 3 ? "" : "it did not");
+    Optional<DrawnView> other = r.viewOf(player: 2, view: 0);
+    bool kept = match (other) { case Some(value: v): v.player == 2 && v.position.x == 0.0; case None: false; };
+    t.verdict(name: "Requests: and the other player's same view is its own", why: kept ? "" : "it is not");
+    DrawnView third = r.viewAt(index: 2);
+    t.verdict(name: "Requests: its views in the order they were first drawn", why: third.player == 2 ? "" : "another order");
+    Optional<DrawnView> none = r.viewOf(player: 2, view: 1);
+    bool absent = match (none) { case Some(value: v): false; case None: true; };
+    t.verdict(name: "Requests: a view not drawn is none", why: absent ? "" : "one was found");
+    Requests c = Requests.make();
+    c.copyFrom(other: r);
+    Optional<DrawnView> copied = c.viewOf(player: 1, view: 1);
+    bool whole = match (copied) { case Some(value: v): v.sameAs(other: moved); case None: false; };
+    t.verdict(name: "Requests: a copy keeps every view drawn", why: whole && c.viewCount() == 3 ? "" : "it did not");
+    r.reset(players: 1);
+    t.verdict(name: "Requests: reset forgets every view", why: r.viewCount() == 0 ? "" : "it kept one");
 }
 
 // A player's text entry, Output's own state (design/input.md § Decided, 2026-11-25, the fifth part's question 3): by
@@ -543,6 +650,8 @@ fn void inputTests(ref Tally t) {
     textCases(t: t);
     textActionCases(t: t);
     requestCases(t: t);
+    viewCases(t: t);
+    requestViewCases(t: t);
     sampleCases(t: t);
     handoffCases(t: t);
     valueHandoffCases(t: t);

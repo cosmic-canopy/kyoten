@@ -9,7 +9,7 @@
 
 import { std::collections::SortedMap, std::collections::DynamicArray, Phase, Store, Blend, Combine, ActionKind, Tier, kyoten::frame::Scheme };
 
-export { ModuleRecord, ProcessorGroupRecord, ProcessorRecord, ComponentRecord, ActionRecord };
+export { ModuleRecord, ProcessorGroupRecord, ProcessorRecord, ComponentRecord, ActionRecord, ViewRecord };
 
 @generate(Serializable, Deserializable)
 type resource ProcessorGroupRecord {
@@ -103,6 +103,17 @@ type resource ComponentRecord {
     public const fn const ref string note() { return this.noteField; }
 }
 
+// One of the game's views, which whatever draws it names in its `DrawnView` and a binding names by its key
+// (design/input.md § Decided, 2026-11-26, the sixth part's question 1): the 3D world, a 2D screen layer, a minimap.
+@generate(Serializable, Deserializable)
+type resource ViewRecord {
+    @field(name: "note", default) string noteField = "";
+
+    public default ctor make() { }
+
+    public const fn const ref string note() { return this.noteField; }
+}
+
 @generate(Serializable, Deserializable)
 type resource ActionRecord {
     @field(name: "kind") ActionKind kindField = ActionKind::Digital;
@@ -118,8 +129,8 @@ type resource ActionRecord {
     public const fn const ref string note() { return this.noteField; }
 }
 
-// A module's records file: the module's own record at the top, and its groups, processors, components and actions
-// keyed by name. An engine module states its tier there too, and a library's platform module says it is one.
+// A module's records file: the module's own record at the top, and its groups, processors, components, actions and
+// views keyed by name. An engine module states its tier there too, and a library's platform module says it is one.
 @generate(Serializable, Deserializable)
 type resource ModuleRecord {
     @field(name: "rate") Optional<int32> rateField = Optional::None;
@@ -129,6 +140,7 @@ type resource ModuleRecord {
     @field(name: "processors", default) SortedMap<string, ProcessorRecord> processorsField = SortedMap.empty();
     @field(name: "components", default) SortedMap<string, ComponentRecord> componentsField = SortedMap.empty();
     @field(name: "actions", default) SortedMap<string, ActionRecord> actionsField = SortedMap.empty();
+    @field(name: "views", default) SortedMap<string, ViewRecord> viewsField = SortedMap.empty();
     @field(name: "note", default) string noteField = "";
 
     public default ctor make() { }
@@ -144,5 +156,6 @@ type resource ModuleRecord {
     public const fn const ref SortedMap<string, ProcessorRecord> processors() { return this.processorsField; }
     public const fn const ref SortedMap<string, ComponentRecord> components() { return this.componentsField; }
     public const fn const ref SortedMap<string, ActionRecord> actions() { return this.actionsField; }
+    public const fn const ref SortedMap<string, ViewRecord> views() { return this.viewsField; }
     public const fn const ref string note() { return this.noteField; }
 }

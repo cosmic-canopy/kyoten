@@ -3,10 +3,11 @@
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
+         kyoten::frame::DrawnView, std::math::Vec2, std::math::Vec3,
          spin::cube::Spin,
          spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering, spin::generated::Actions };
 
-export { show, seen, aimed, schemed, typing };
+export { show, seen, aimed, schemed, typing, framed };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -64,4 +65,19 @@ fn void typing(ref TextEntry e, const ref Actions input, Handle me) {
     e.on = input.faster.held;
     bool now = e.on;
     println(s: "typed: slot ${slot} player ${player} was ${was} on ${now}");
+}
+
+// Output's own state (design/input.md § Decided, 2026-11-26, the sixth part's question 1): the engine's `DrawnView`, as
+// render will write one for each camera. A cube whose view names a player and one of the game's views draws it 1440 x
+// 810 over the whole window, its camera 5 m behind the cube and turned as it is; one naming no player, or no view yet,
+// draws nothing.
+fn void framed(ref DrawnView v, const ref Transform t, Handle me) {
+    if (v.player < 1 || v.view < 0) { return; }
+    v.size = Vec2.of(x: 1440.0, y: 810.0);
+    v.position = Vec3.of(x: 0.0, y: 0.0, z: 5.0);
+    v.rotation = t.rotation;
+    uint32 slot = me.slot();
+    int32 player = v.player;
+    int32 which = v.view;
+    println(s: "framed: slot ${slot} player ${player} view ${which}");
 }

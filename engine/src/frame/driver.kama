@@ -25,7 +25,7 @@
 // - **The render fraction** is computed by the clock and returned by `frame`. Output's blend reaches it when rendering
 //   question 4's hand-off is built (step 9); until then `output` takes only `Time`, as decided.
 
-import { std::collections::DynamicArray, Time, Clock, Owed, Handoff, Sample, Requests };
+import { std::collections::DynamicArray, Time, Clock, Owed, Handoff, Sample, Requests, DrawnView };
 
 export { World, InputSource, step, frame };
 
@@ -57,6 +57,10 @@ type contract InputSource for resource {
     // frame: while it is on, that player's `Text` actions take what they type from then on (design/input.md § Decided,
     // 2026-11-25, the fifth part's question 2).
     fn void textEntry(int32 player, bool on, int64 at);
+    // A view drawn otherwise from `at` on, on the frame timestamp's base, as the world drew it after a frame: the
+    // cursor's samples that arrive from then on are turned through it (design/input.md § Decided, 2026-11-26, the sixth
+    // part's question 1).
+    fn void drawn(const ref DrawnView view, int64 at);
 }
 
 // One simulation step: Input, Update and Constraints, with the `Time` and the hand-off the caller hands in.

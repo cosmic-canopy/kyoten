@@ -18,7 +18,7 @@ questions, `Text`, are decided and the part built (2026-11-25, below):
 - a held erase repeats at the player's own rate, `{ "repeat": { "system": true } }`.
 
 The sixth part's four questions, the cursor, its views and devices letting go, are decided (2026-11-26, below):
-- the engine turns the cursor through the view a binding names, each view writing its own `View`: a `Pose` the ray in
+- the engine turns the cursor through the view a binding names, each view writing its own `DrawnView`: a `Pose` the ray in
   the world, a `Vector2` the place in the view's own units;
 - the game asks for the cursor's mode through Output's own `Cursor`, and the engine asks again while it still asks
   `Locked`;
@@ -904,7 +904,9 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
        nothing for now.
 
   **The sixth part, laid out, settled by the decided rules, for the owner to object to:**
-  - **`View`:** which view, the player it is drawn for, its rect as a fraction of the window from the bottom left, its
+  - **`View`, named `DrawnView` while building** (commit 2): kama takes any type spelled `View` for its own `type view`
+    once std's is loaded, refusing it by `ref` everywhere (KY-69, filed), and a game's files would see kama's `View<T>`
+    beside it. Which view, the player it is drawn for, its rect as a fraction of the window from the bottom left, its
     own size, its camera's zone, position and rotation, and `viewFromClip`, the inverse of its projection
     (`std::math::Mat4`). Reversed depth, as `@kama/graphics` draws (near 1, far 0, far possibly infinite), so the ray
     starts at clip depth 1 and its direction is taken toward a depth a hair above 0, as Bevy's is. A 2D screen layer is
@@ -924,7 +926,7 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
 
   **Its order, each its own commit:**
   1. `ZoneCoord` up to the frame tier, and a `Pose` with its zone;
-  2. the views: the engine's `View`, a game's declared views, `Requests`' views;
+  2. the views: the engine's `DrawnView`, a game's declared views, `Requests`' views;
   3. the cursor: its place and the lock's samples from the pump, `"Cursor"` through a view on a `Vector2` and a
      `Pose`, the centre while locked;
   4. the cursor's mode: the engine's `Cursor`, the platform's `setCursor`, asking again;

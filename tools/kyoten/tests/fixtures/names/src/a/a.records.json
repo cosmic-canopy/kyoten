@@ -1,2 +1,3 @@
 { "actions": { "fast-bullet": { "kind": "Digital" }, "match": { "kind": "Digital" }, "jump": { "kind": "Digital" },
-               "player": { "kind": "Digital" } } }
+               "player": { "kind": "Digital" } },
+  "views": { "big-map": {}, "minimap": {}, "equals": {} } }

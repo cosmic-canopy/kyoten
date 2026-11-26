@@ -761,7 +761,7 @@ forty-fourth). Where the work is:**
    questions asked in full at the fifty-first session's start, three asked back and asked again, each then
    "A (Recommended)"; [design/input.md](design/input.md) § Decided, which lays out its six commits):
    - the engine turns the cursor through the view a binding names, `"Cursor"` with its `"view"`, each view writing
-     its own `View`, Output's own state: on a `Pose` the ray into the world, on a `Vector2` the place in the view's own
+     its own `DrawnView`, Output's own state: on a `Pose` the ray into the world, on a `Vector2` the place in the view's own
      units ("each "view" or "layer" … would have it's own translation");
    - the game asks for the cursor's mode through Output's own `Cursor`, releasing it whenever it likes, and the engine
      asks again while it still asks `Locked`;
