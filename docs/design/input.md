@@ -17,6 +17,14 @@ questions, `Text`, are decided and the part built (2026-11-25, below):
 - the keyboard's other bindings are masked meanwhile, except the entries marked `"typing": true`;
 - a held erase repeats at the player's own rate, `{ "repeat": { "system": true } }`.
 
+The sixth part's four questions, the cursor, its views and devices letting go, are decided (2026-11-26, below):
+- the engine turns the cursor through the view a binding names, each view writing its own `View`: a `Pose` the ray in
+  the world, a `Vector2` the place in the view's own units;
+- the game asks for the cursor's mode through Output's own `Cursor`, and the engine asks again while it still asks
+  `Locked`;
+- the game lets go of the pad lock through Output's own `PadLock`;
+- a device letting go presses whatever action a binding names `"Lost"` or `"Unlocked"` on.
+
 What the peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -800,3 +808,130 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   - a player's settings reaching the filters and gestures;
   - a game's own filters and gestures;
   - how a higher layer merges an object entry.
+
+- **2026-11-26, the owner, the sixth part's four questions** (the cursor, its views, and devices letting go), laid out
+  from the code (the platform's pump, the binder's lock, `Requests`) and from what the peers and the owner's games do
+  ([../research/input.md](../research/input.md) § The cursor, views and devices letting go), and asked in full at the
+  fifty-first session's start. The owner asked back on three, which were answered and asked again; each was then
+  answered "A (Recommended)".
+  1. **(A), asked twice: the engine turns the cursor through the view the binding names.**
+     - *The problem:* FFD aims where the mouse points, a strategy game clicks a unit, an action RPG clicks the ground to
+       walk there. The pump dropped the cursor's place and kept its motion alone. And the simulation cannot see the
+       camera the player saw: Output draws each entity interpolated between steps and relative to the camera's zone,
+       and a shake or a smoothed follow is Output's alone, so an Input processor turning the cursor through the
+       simulation's camera would miss by whatever Output added.
+     - **First answer:** "I assume option 1 is the production answer and similar to the peers from research? The one
+       thing I would say is that each "view" or "layer" or whatever we call it would have it's own translation. The 3D
+       world vs 2D UI layers ( each could be different sizes, resolutions, etc ). Ultimately the update components can
+       do extra work on the coordinates if needed as well."
+     - **Answered:** it is the production answer, and it computes what every peer computes, the ray from the camera as
+       drawn (Bevy's `viewport_to_world`, Unity's `ScreenPointToRay`), each per camera with its own rectangle (Bevy's
+       `Viewport`, Unity's `pixelRect`, Godot's per-Viewport coordinates). The peers call it from per-frame code, which
+       kyoten's simulation has none of, so the engine calls it and the hand-off records the result, as leafwing's
+       twin-stick example does by hand.
+     - **Asked again with each view's own translation:** "A (Recommended)".
+       - Each view writes its own `View`, Output's own state, after each frame: which view, its rect in the window, its
+         own size and units, and its camera, its pose and its projection kept apart as Bevy's are. kyoten's render
+         module writes one for each camera from step 9, the UI one for each screen layer, and a game's own renderer or a
+         test until then.
+       - A binding names the view: `"aim": { "mouse": { "control": "Cursor", "view": "world" } }`. `"Cursor"` is
+         kyoten's own name, as `Motion` and `Text` are.
+       - On a `Pose` action, the ray through the view, in the world, as OpenXR's aim pose is ("A pose that allows
+         applications to point in the world", −Z along the ray, +Y up), starting where it leaves the near plane. An XR
+         controller's aim pose can later drive the same action, so a mouse pick and a laser pointer are one action.
+       - On a `Vector2` action, the place in the view's own size and units, origin bottom-left, y up.
+       - Each cursor sample is turned through the view on screen when it arrived, and the hand-off records the result,
+         so a replay and a network peer read what the player aimed at, never a camera. Update processors may work on
+         the coordinates further.
+       - A `Pose` gains its zone, as every position has one (components § Decided, question 9), so `ZoneCoord` moves
+         up to the frame tier.
+     - *Set aside:*
+       - (B) the window's place alone, the game's Input processor turning it through the simulation's camera, as
+         Godot's tutorial does inside `_physics_process`: it misses by Output's interpolation and shake, and every game
+         writes the camera's maths;
+       - (C) the game's own Output processor turning it, its result handed back as the next steps' input (leafwing's
+         shape): every aiming game writes the maths, and Output's state would carry input.
+  2. **(A), asked twice: the game requests and releases the cursor's lock through Output's own
+     `Cursor { player, mode }`, and the engine asks again while the game still asks `Locked`.**
+     - *The problem:* an FPS looks with the mouse locked, and its pause menu shows the cursor. Nothing called
+       `@kama/window`'s `setCursor`, and a window drops a lock by itself: on the web Escape and a tab switch, natively a
+       focus loss. On the web a lock is granted only at a click.
+     - **First answer:** "The main thing I want is that the game logic can release or request when needed as well. So
+       this shoudl be something a game can also control."
+     - **Answered:** the game requests and releases whenever it likes. An Update processor changes the game's own state
+       (a menu open, a pause), and an Output processor writes the mode from it, as text entry turns on. The engine acts
+       only while the game still asks `Locked` and the window dropped the lock by itself: the web locks again at the
+       player's next click, natively when the window has the focus again. A game that wants a dropped lock to stay
+       dropped hears it (question 4) and writes `Normal`. Under (B), a game that keeps writing `Locked` would never ask
+       again, since only changes are handed on, and the FPS would lose its look after the first Escape.
+     - **Asked again:** "A (Recommended)". The modes are `@kama/window`'s: `Normal`, `Hidden` and `Locked`. While the
+       cursor is locked, `"Cursor"` reads the window's centre, so its ray is the camera's own, an FPS's aim. The
+       mallow-man's round locks at a click so.
+     - *Set aside:* (B) a lock the window drops stays dropped until the game turns `Locked` off and on.
+  3. **(A): the game lets go of the pad lock through Output's own `PadLock { player, letGo }`.** "A (Recommended)".
+     - *The problem:* a "press A to continue" screen, two pads on the desk, the player picking up the other one. Only a
+       disconnect let go; question 4 (2026-11-21) decided that the game may, and left its API to now.
+     - The step `letGo` turns on, the lock lets go, what the pad held is released, and the next pad pressed takes
+       player 1, as after a disconnect. Staying on does nothing more, so `lock.letGo = onTitleScreen` lets go each time
+       the screen opens, and left on by mistake it changes nothing.
+     - *Set aside:*
+       - (B) a seat held open, every pad's press taking player 1 while it is on (Xbox's engagement screen): left on in
+         play, any pad takes over, the accident the lock prevents ("I don't want another pad taking input control
+         accidentally");
+       - (C) a call handed to Output processors (Unity's `InputUser.UnpairDevices`), the first service a processor
+         would be handed, set aside for text entry too.
+  4. **(A), asked twice: kyoten's own control names `"Lost"` and `"Unlocked"`, each a press for one step of whatever
+     action the game binds them to.**
+     - *The problem:* an FPS on the web pauses on Escape, but while the cursor is locked the browser takes Escape to
+       give the lock back, and the page never sees it (`@kama/window`, measured), so `pause` never fires; a pad's
+       batteries die mid-fight. Nothing reached the game. Xbox's XR-115 requires "Press A to continue" after a
+       controller is removed, which the lock already gives, and lists pausing "when an active player's controller is
+       removed" as its best practice.
+     - **First answer:** "Is that a hard coded stop gap? what do others do?"
+     - **Answered:** not a stopgap. The peers hand an event to the game's own code, which pauses: Unity's
+       `PlayerInput.onDeviceLost`, Godot's `joy_connection_changed`, Bevy's `GamepadConnectionEvent`, Xbox's
+       `XUserDeviceAssociationChangedCallback`, the web's `pointerlockchange`. kyoten's simulation hears the outside
+       only through each step's hand-off, recorded so a replay and a network peer agree, so the event lands there, as a
+       press of an action the game binds. The names are kyoten's own, as `Motion` and `Text` are, and later events join
+       as more names (the window losing the focus, a pad joining for a second player).
+     - **Asked again:** "A (Recommended)".
+       - `"Lost"`, on a gamepad entry: the player's locked pad disconnected.
+       - `"Unlocked"`, on a mouse entry: the cursor's lock was taken away by anything but the game.
+       - `"pause": { "keyboard": "Escape", "gamepad": ["Start", "Lost"], "mouse": "Unlocked" }`: Update sees `pause`
+         pressed, never a device, as the second part's answer keeps the abstraction at Input.
+     - *Set aside:* (B) the event itself in the hand-off, which Input processors read and turn into the game's own state:
+       closest to the peers' callbacks, but every game writes code for it, and processors read device facts; (C)
+       nothing for now.
+
+  **The sixth part, laid out, settled by the decided rules, for the owner to object to:**
+  - **`View`:** which view, the player it is drawn for, its rect as a fraction of the window from the bottom left, its
+    own size, its camera's zone, position and rotation, and `viewFromClip`, the inverse of its projection
+    (`std::math::Mat4`). Reversed depth, as `@kama/graphics` draws (near 1, far 0, far possibly infinite), so the ray
+    starts at clip depth 1 and its direction is taken toward a depth a hair above 0, as Bevy's is. A 2D screen layer is
+    a camera at rest with an orthographic `viewFromClip` onto its own units. Before any `View`, a cursor `Pose` reads
+    `Pose.identity()` and a `Vector2` reads 0.
+  - **A view's name** is the game's, declared in its records as an action is, so a binding naming no view is refused at
+    load, naming it; a `type value` holds no `string`, so `View` carries the view by number. Its exact record is
+    settled while building and reported.
+  - **`"Cursor"`** takes no other control, filter or gesture on its action and no `delta`, refused at load naming why,
+    as `"Text"` is. Outside its view's rect it is still computed, so an aim past the box still aims.
+  - **The pump** turns a mouse move's place into −1 to 1 of the window, by the window's logical size at the event, and
+    hands `PointerLock` on as a sample, so the binder knows the lock whoever took it.
+  - **`Requests`** gains each view, and each player's cursor mode and let-go; `Play` hands each change on at its frame's
+    timestamp, to the input source (the views, the mode, the let-go) and the platform (the mode), as text entry.
+  - **`"Lost"` and `"Unlocked"`** never move the active scheme, and take no filter or gesture; `"Unlocked"` presses only
+    for a lock the game did not release.
+
+  **Its order, each its own commit:**
+  1. `ZoneCoord` up to the frame tier, and a `Pose` with its zone;
+  2. the views: the engine's `View`, a game's declared views, `Requests`' views;
+  3. the cursor: its place and the lock's samples from the pump, `"Cursor"` through a view on a `Vector2` and a
+     `Pose`, the centre while locked;
+  4. the cursor's mode: the engine's `Cursor`, the platform's `setCursor`, asking again;
+  5. the lock's let-go: the engine's `PadLock`;
+  6. the notices: `"Lost"` and `"Unlocked"`.
+
+  **Found while laying it out, for a later part:** kyoten moves a player's active scheme to `KeyboardMouse` on any mouse
+  motion (`engine/src/input/binder.kama` 842-843), and a Steam Deck's gyro arrives as mouse motion, so a pad player
+  aiming by gyro would change scheme every frame. The-mallow-man's device latch never changes on mouse motion for that
+  reason (`play/src/binds.kama` 536-545).

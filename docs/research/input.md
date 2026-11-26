@@ -344,3 +344,87 @@ named, the owner's games in their trees (the-mallow-man `70fe7ef`, FFD `77a2604`
   - **An Output processor may write nothing** (`tools/kyoten/src/schedule.kama` 254).
   - **`@kama/window` has no text input to turn on or off,** no IME and no on-screen keyboard; IME composition is its
     unbuilt WIN-5.
+
+## The cursor, views and devices letting go (gathered 2026-11-25 and 26, the fifty-first session)
+
+For [design/input.md](../design/input.md)'s sixth part: the cursor's position as a control, the cursor's mode, the game
+letting go of the pad lock, and how a game hears that a device let go of it. Three passes: the peers in their source or
+official pages (Unreal's from the UE 5.0 pages archived on web.archive.org, Epic's current pages rendering only with
+JavaScript), the owner's games in their trees, and kyoten's own code. [checked] marks a claim re-read at its source
+before the questions were asked.
+
+- **Every peer turns the cursor into the world in per-frame code, with the camera as drawn:**
+  - **Unity:** `Camera.ScreenPointToRay`, "Resulting ray is in world space, starting on the near plane of the camera
+    and going through position's (x,y) pixel coordinates on the screen"; each camera has its `pixelRect`, "Where on the
+    screen is the camera rendered in pixel coordinates"
+    ([ScreenPointToRay](https://docs.unity3d.com/ScriptReference/Camera.ScreenPointToRay.html),
+    [pixelRect](https://docs.unity3d.com/ScriptReference/Camera-pixelRect.html)) [checked]. The Input System's
+    `<Pointer>/position` is a `Vector2` control an action can bind; its stock UI "Point" action binds it Pass Through,
+    and the UI module warns when a pointer action is not (`InputSystemUIInputModule.cs` 1071-1081) [pass].
+  - **Godot 4:** `Camera3D.project_ray_origin` and `project_ray_normal`, which its ray-casting tutorial calls inside
+    `_physics_process` with `get_viewport().get_mouse_position()`
+    ([ray-casting.rst](https://github.com/godotengine/godot-docs/blob/master/tutorials/physics/ray-casting.rst) 164-170)
+    [checked]; `get_mouse_position` "Returns the mouse's position in this [Viewport] using the coordinate system of this
+    [Viewport]" (`doc/classes/Viewport.xml` 85) [pass]. An InputMap action cannot carry a position: only key, mouse
+    button, joypad and action events match an action (`core/input/input_event.cpp`) [pass].
+  - **Bevy:** `Camera::viewport_to_world`, "a ray originating from the camera, that passes through everything beyond
+    `viewport_position`", starting on the near plane: clip depth 1 for the near point and `f32::EPSILON` for the far,
+    "because an ndc with Z = 0 returns NaNs" (reversed depth), the inverse projection and the camera's transform applied
+    one after the other rather than composed, "to avoid the precision loss"
+    ([`bevy_camera/src/camera.rs`](https://github.com/bevyengine/bevy/blob/main/crates/bevy_camera/src/camera.rs)
+    614-672) [checked]. Each camera may have a `Viewport`, "The physical position to render this viewport to within the
+    [`RenderTarget`] of this [`Camera`]" [checked]. `Window::cursor_position()` is in logical pixels from the top left,
+    `None` outside the window (`bevy_window/src/window.rs` 614-663) [pass].
+  - **leafwing-input-manager** has no cursor-position input (its mouse inputs are buttons, motion and the wheel); its
+    twin-stick example turns `cursor_position()` through `viewport_to_world` in `Update`, meets a plane, and writes the
+    result into the action state the game reads (`examples/twin_stick_controller.rs` 114-143) [checked].
+  - **Unreal:** no key for the cursor's position (UE 5.0's `EKeys` mouse members are motion, wheel and buttons);
+    `APlayerController::GetMousePosition` and `DeprojectMousePositionToWorld`, "Convert current mouse 2D position to
+    World Space 3D position and direction" (UE 5.0's pages, archived) [pass].
+  - **Steam Input**'s "absolute mouse" is deltas: mouse-like analog actions "provide delta updates which indicate the
+    number of 'pixels' moved since the last frame"
+    ([ISteamInput](https://partner.steamgames.com/doc/api/ISteamInput)) [pass].
+  - **OpenXR's aim pose:** "A pose that allows applications to point in the world using the input source, according to
+    the platform's conventions for aiming with that kind of source", a ray "with +Y up, +X to the right, and -Z forward"
+    (OpenXR 1.1, the semantic paths' `/input/aim/pose`) [checked].
+- **A locked cursor:** Unity's `Locked` "Locks the cursor to the center of the Game view"; Godot's `CAPTURED` holds the
+  position "at the center of the window manager's window"; on the web a locked pointer's `clientX`/`clientY` "must hold
+  constant values" while `movementX`/`movementY` go on ([Pointer Lock](https://w3c.github.io/pointerlock/)) [pass].
+  `@kama/window` measured that Escape while locked gives the lock back and the page sees no Escape key, that a lock asked
+  again at once is refused and 1.5 s later granted, and that its `Locked` is a wish asked at the next pointer down
+  (its `SPEC.md` § web, `AGENTS.window.md` 323-325) [checked].
+- **Letting go of a device:**
+  - **Unity's `InputUser`:** `UnpairDevices`, and `listenForUnpairedDeviceActivity`, a counter, whose callback "is fired
+    *before* input is actually incorporated into the device", so the press that pairs a pad also drives the game
+    (`InputSystem/Runtime/Plugins/Users/InputUser.cs` 294) [checked]; `PlayerInput.onDeviceLost` and
+    `onDeviceRegained` (`PlayerInput.cs` 683, 732) [checked]; a lost device is paired again when it returns [pass].
+  - **Xbox (XR-115):** "If the player's controller that's driving gameplay is removed during gameplay, titles must allow
+    reestablishment of a new active controller (for example, "Press A to continue" …)"; and, a best practice, not a
+    requirement, "pause gameplay when an active player's controller is removed"
+    ([console-cert-tested-requirements](https://docs.xbox.com/publishing/certification/console-cert-tested-requirements.md)
+    1690) [checked]. Locking to the controller a game was launched with is acceptable (XR-112's examples) [pass].
+  - **Events the peers hand a game's code:** Godot's `Input.joy_connection_changed` [pass]; Bevy's
+    `GamepadConnectionEvent` (`bevy_input/src/gamepad.rs` 160) [checked]; Xbox's `XUserDeviceAssociationChangedCallback`
+    [pass]; Steam's `SteamInputDeviceDisconnected_t`, with an `InputHandle_t` that follows a controller across a
+    reconnect [pass]; the web's `pointerlockchange`.
+  - **leafwing:** an input map's `set_gamepad` and `clear_gamepad`, "If this is not called, input from any connected
+    gamepad will be used" (`src/input_map.rs` 485-489) [pass].
+- **The owner's games** (FFD and the-mallow-man in their trees):
+  - **FFD** turns the cursor (framebuffer pixels) into its letterboxed virtual 1440 × 810 pixels
+    (`view/src/viewport.kama` 60-111), then a world point through its lerped camera (`game/src/game.kama` 5257-5369),
+    which it steps per tick inside the owed-tick loop, "so a camera that moved per frame would [not] make the RECORDING
+    depend on how fast the machine drew" (`view/src/camera.kama` 56-66). Its simulation gets a unit direction from the
+    body, never a point (`sim/src/input.kama` 1110-1198). A pad aims at body + stick × 64. Its menus take the same virtual
+    pixels (`game.kama` 4856-4875). It never locks or hides the cursor.
+  - **The-mallow-man** aims by yaw and pitch from locked mouse motion. In a round a click locks and Escape unlocks
+    (`game/src/roundplay.kama` 621-653); a menu unlocks (`game/src/menu.kama` 1001-1002). Its menus take framebuffer
+    pixels. Its device latch never flips on mouse motion, since a Steam Deck's gyro arrives as mouse motion
+    (`play/src/binds.kama` 536-545).
+  - **Neither** locks a pad to a player or lets one go: each takes the platform's first mapped pad.
+- **kyoten before the sixth part:**
+  - the pump keeps a mouse move's motion and drops its place and `PointerLock` (`engine/src/platform/open.kama`
+    171-184);
+  - nothing calls `@kama/window`'s `setCursor` (`Normal`, `Hidden`, `Locked`);
+  - the pad lock lets go only when its pad disconnects (`engine/src/input/binder.kama` 819-826);
+  - `Requests` carries typing alone;
+  - a `Pose` has no zone, and the frame tier sits above the world tier, which holds `ZoneCoord`.

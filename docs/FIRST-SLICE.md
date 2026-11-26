@@ -757,10 +757,19 @@ forty-fourth). Where the work is:**
 
    88 of 92 mutations were caught, two shown equivalent, two dead checks removed.
 
-   **Next: the cursor's position as a control** (FFD's aim against the
-   camera the player sees, which a simulation processor cannot read: its question), and the game letting go of the
-   lock. The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump as the first
-   part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the
+   **Step 8's sixth part, the cursor, its views and devices letting go, is decided** (the owner, 2026-11-26, its four
+   questions asked in full at the fifty-first session's start, three asked back and asked again, each then
+   "A (Recommended)"; [design/input.md](design/input.md) § Decided, which lays out its six commits):
+   - the engine turns the cursor through the view a binding names, `"Cursor"` with its `"view"`, each view writing
+     its own `View`, Output's own state: on a `Pose` the ray into the world, on a `Vector2` the place in the view's own
+     units ("each "view" or "layer" … would have it's own translation");
+   - the game asks for the cursor's mode through Output's own `Cursor`, releasing it whenever it likes, and the engine
+     asks again while it still asks `Locked`;
+   - the game lets go of the pad lock through Output's own `PadLock`;
+   - a device letting go presses the action a binding names `"Lost"` or `"Unlocked"` on.
+
+   **Next: building it,** from `ZoneCoord` moving up to the frame tier. The pad-lock probe (`.scratch/s46/locktry/`)
+   calls the platform's pump as the first part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the
    cube's goldens can move into a `select` value its player's build leaves out, since KY-63's fix is on the pin, which
    takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
 
