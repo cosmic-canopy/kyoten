@@ -18,7 +18,7 @@ import { core::println, core::eprintln, std::collections::DynamicArray, std::io:
          StaticEntry, Family, Kept, Schedule, readRecords,
          buildIndex, resolveFamilies, buildSchedule, actionsKama, prefabsStub, prefabsKama, tablesKama, passesKama,
          worldKama, tablesFile, passesFile, worldFile, generatedFiles, checkHeaders, checkFence, checkFlags, writeIfChanged, removeFile, checkZones, loaderKama, loaderFile,
-         actionListLines };
+         actionListLines, viewNameLines };
 
 export { generate, clean };
 
@@ -87,7 +87,8 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
                                                                        hasActions: hasActions));
     writeIfChanged(path: game.root() + "/" + world, text: worldKama(game: gameName, families: families, s: schedule,
                                                                      actionLines: actionLines,
-                                                                     views: records.views().length()));
+                                                                     views: records.views().length(),
+                                                                     viewLines: viewNameLines(r: records)));
     written.add(item: give tables);
     written.add(item: give passes);
     written.add(item: give world);

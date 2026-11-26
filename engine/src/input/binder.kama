@@ -96,6 +96,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
          kyoten::frame::Scheme, kyoten::frame::Text, kyoten::frame::PlayerActions, kyoten::frame::DrawnView,
+         kyoten::frame::Pose, std::math::Vec4, std::math::Quat,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
          std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
@@ -295,6 +296,32 @@ type value Entry {
     }
 }
 
+// One `"Cursor"` binding (the sixth part of step 8): the action it fills, a `Vector2`'s place in the view's own units
+// or a `Pose`'s ray into the world, by its index among its kind's, and the view the cursor turns through, by the number
+// the game's `Views` gives it.
+type value CursorBinding {
+    public ActionKind kind;
+    public int32 action;
+    public int32 view;
+
+    public ctor make(ActionKind kind, int32 action, int32 view) {
+        this.kind = kind;
+        this.action = action;
+        this.view = view;
+    }
+}
+
+// A view as drawn from `at` on, on the frame timestamp's base.
+type value Drawn {
+    public int64 at;
+    public DrawnView view;
+
+    public ctor make(int64 at, DrawnView view) {
+        this.at = at;
+        this.view = view;
+    }
+}
+
 type resource Binder implements InputSource {
     int32 playerCount;
     int32 digitalCount;
@@ -364,17 +391,29 @@ type resource Binder implements InputSource {
     bool typingNow = false;
     bool typingWas = false;
     int64 switchedAt = 0;
+    // The cursor (the sixth part of step 8): the game's views' names, in the order `Views` numbers them; each `"Cursor"`
+    // binding; each view as drawn and from when, one a later drawing replaced before the last step handed forgotten; and
+    // the cursor's place in the window as of the samples handed off, -1 to 1 across and up, and whether the window holds
+    // it locked, which puts it at the window's centre.
+    DynamicArray<string> viewNames = DynamicArray.empty();
+    DynamicArray<CursorBinding> cursorBindings = DynamicArray.empty();
+    DynamicArray<Drawn> drawnViews = DynamicArray.empty();
+    Vec2 cursorPlace = Vec2.zero();
+    bool cursorLocked = false;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
     // `bindings`, every content layer's merged, with `input`'s defaults; `hz` the base rate, whose step's seconds a
     // control held counts for in a delta; `window` the widest window of steps a run reaches back over, as the world's
-    // `PlayerActions` is made with, whose steps a `Text`'s code points are spread over. A binding naming no action, a control that names none of its device's, an
+    // `PlayerActions` is made with, whose steps a `Text`'s code points are spread over; `views` the game's views' names,
+    // in the order its `Views` numbers them, which a `"Cursor"` binding names one of. A binding naming no action, a control that names none of its device's, an
     // entry its action's kind cannot read, a filter or a default out of its range, or what KYR-54 does not read yet is
     // refused, every one at once.
     public ctor Result<Binder, BindingError> make(int32 players, const ref ActionList actions,
                                                   const ref SortedMap<string, BindingRecord> bindings,
-                                                  const ref InputRecord input, int32 hz, int32 window) {
+                                                  const ref InputRecord input, int32 hz, int32 window,
+                                                  const ref DynamicArray<string> views) {
         this.playerCount = players;
+        foreach (const ref string n in views.iterConst()) { this.viewNames.add(item: copy n); }
         this.digitalCount = actions.digitalCount();
         this.textCount = actions.textCount();
         int64 kept = PlayerActions::keptFor(window: window);
@@ -421,8 +460,6 @@ type resource Binder implements InputSource {
             string kind = kindOf(actions: actions, name: action);
             if (kind.isEmpty()) {
                 no.add(line: "the bindings of `" + action + "` name no action: an action is declared in a module's records file");
-            } else if (kind == "Pose") {
-                no.add(line: "the bindings of `" + action + "` bind a `Pose` action, which no device binds until XR brings one (KYR-34)");
             }
         }
         foreach (const ref string action in actions.digitalNames().iterConst()) {
@@ -463,6 +500,11 @@ type resource Binder implements InputSource {
             this.vector3Deltas.add(item: delta);
             this.bindValue(kind: ActionKind::Vector3, index: a, name: actions.vector3Names()[cast<isize>(a)], delta: delta,
                            bindings: bindings, no: no);
+            a = a + 1;
+        }
+        a = 0;
+        while (a < actions.poseCount()) {
+            this.bindPose(index: a, name: actions.poseNames()[cast<isize>(a)], bindings: bindings, no: no);
             a = a + 1;
         }
         a = 0;
@@ -542,6 +584,7 @@ type resource Binder implements InputSource {
         if (this.playerCount >= 1) {
             this.seconds = this.stepSeconds;
             this.handValues(forOutput: false);
+            this.handCursor(forOutput: false, at: until);
             this.out.setScheme(player: 1, value: this.schemeNow);
         }
         this.handText();
@@ -556,14 +599,78 @@ type resource Binder implements InputSource {
             this.sources[k].moved = 0.0;
             k = k + 1;
         }
+        this.forgetDrawn(upTo: until);
         return this.out;
     }
 
     // Player `player`'s text entry turned on or off at `at`: player 1's, the one this binder drives, takes what is typed
     // from `at` on while it is on.
-    // A view drawn otherwise: the cursor's bindings turn through it (design/input.md § Decided, 2026-11-26, the sixth
-    // part's question 1), which the cursor's own part builds.
-    public fn void drawn(const ref DrawnView view, int64 at) { }
+    // A view drawn otherwise, from `at` on: each step ending then or later turns the cursor through it (design/input.md
+    // § Decided, 2026-11-26, the sixth part's question 1).
+    public fn void drawn(const ref DrawnView view, int64 at) { this.drawnViews.add(item: Drawn.make(at: at, view: view)); }
+
+    // Each `"Cursor"` binding's value into player 1's hand-off, a step's or Output's: the cursor's place as of now, the
+    // centre while the window holds it locked, through its view as drawn by `at`; at rest while that view is not drawn,
+    // or is drawn with no area.
+    fn void handCursor(bool forOutput, int64 at) {
+        Vec2 place = this.cursorLocked ? Vec2.zero() : this.cursorPlace;
+        isize c = 0;
+        while (c < this.cursorBindings.length()) {
+            CursorBinding binding = this.cursorBindings[c];
+            Optional<DrawnView> drawing = this.drawnAt(player: 1, which: binding.view, at: at);
+            match (drawing) {
+                case Some(value: d): {
+                    if (d.span.x > 0.0 && d.span.y > 0.0) {
+                        if (binding.kind == ActionKind::Pose) {
+                            Pose ray = rayThrough(drawing: d, place: place);
+                            if (forOutput) { this.view.setPose(player: 1, action: binding.action, value: ray); }
+                            else { this.out.setPose(player: 1, action: binding.action, value: ray); }
+                        } else {
+                            Vec2 there = placeIn(drawing: d, place: place);
+                            if (forOutput) { this.view.setVector2(player: 1, action: binding.action, value: there); }
+                            else { this.out.setVector2(player: 1, action: binding.action, value: there); }
+                        }
+                    }
+                }
+                case None: { }
+            };
+            c = c + 1;
+        }
+    }
+
+    // View `which` as drawn for player `player` by `at`: the latest drawing from then or before; none while none is.
+    const fn Optional<DrawnView> drawnAt(int32 player, int32 which, int64 at) {
+        Optional<DrawnView> found = Optional::None;
+        int64 latest = 0;
+        bool any = false;
+        foreach (const ref Drawn d in this.drawnViews.iterConst()) {
+            if (d.view.player != player || d.view.view != which || d.at > at) { continue; }
+            if (!any || d.at >= latest) {
+                found = Optional::Some(value: d.view);
+                latest = d.at;
+                any = true;
+            }
+        }
+        return found;
+    }
+
+    // Every drawing a later one of the same view replaced by `upTo`, forgotten: no step to come ends before it.
+    fn void forgetDrawn(int64 upTo) {
+        DynamicArray<Drawn> kept = DynamicArray.empty();
+        foreach (const ref Drawn d in this.drawnViews.iterConst()) {
+            bool replaced = false;
+            foreach (const ref Drawn newer in this.drawnViews.iterConst()) {
+                if (newer.view.player == d.view.player && newer.view.view == d.view.view && newer.at > d.at && newer.at <= upTo) {
+                    replaced = true;
+                }
+            }
+            if (!replaced) { kept.add(item: d); }
+        }
+        this.drawnViews = give kept;
+    }
+
+    // How many drawings it keeps, for a test to read that a replaced one is forgotten.
+    public const fn isize drawingsKept() { return this.drawnViews.length(); }
 
     public fn void textEntry(int32 player, bool on, int64 at) {
         if (player != 1 || on == this.typingNow) { return; }
@@ -639,6 +746,7 @@ type resource Binder implements InputSource {
         if (this.playerCount >= 1) {
             this.seconds = seconds;
             this.handValues(forOutput: true);
+            this.handCursor(forOutput: true, at: LATEST);
             this.view.setScheme(player: 1, value: this.schemeNow);
         }
         isize k = 0;
@@ -850,6 +958,17 @@ type resource Binder implements InputSource {
             }
             case Repeat: {
                 this.systemRepeat(s: s);
+                return;
+            }
+            case Cursor: {
+                this.schemeNow = Scheme::KeyboardMouse;
+                if (this.cursorLocked) { return; }
+                if (s.control == 0) { this.cursorPlace = Vec2.of(x: s.value, y: this.cursorPlace.y); }
+                else { this.cursorPlace = Vec2.of(x: this.cursorPlace.x, y: s.value); }
+                return;
+            }
+            case Lock: {
+                this.cursorLocked = s.value >= 0.5;
                 return;
             }
             case Text: {
@@ -1875,6 +1994,14 @@ type resource Binder implements InputSource {
         match (entry) {
             case None: { }
             case Some(value: e): {
+                if (namesCursor(entry: entry)) {
+                    no.add(line: whose + " names the mouse's `Cursor`, which binds a `Vector2`, its place in a view, or a `Pose`, a ray through one, never a `Digital`");
+                    return;
+                }
+                if (e.view().isSome()) {
+                    no.add(line: whose + " names a `view`, which only the mouse's `Cursor` is turned through");
+                    return;
+                }
                 DynamicArray<string> names = DynamicArray.empty();
                 Optional<FilterRecord> threshold = Optional::None;
                 isize first = this.controls.length();
@@ -2036,10 +2163,72 @@ type resource Binder implements InputSource {
                       const ref SortedMap<string, BindingRecord> bindings, ref BindingError no) {
         if (!bindings.contains(key: name)) { return; }
         borrow bindings.getRef(key: name) as b {
-            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Keyboard, entry: b.keyboard(), no: no);
-            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Mouse, entry: b.mouse(), no: no);
-            this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Gamepad, entry: b.gamepad(), no: no);
+            if (kind == ActionKind::Vector2 && namesCursor(entry: b.mouse())) {
+                this.bindCursor(kind: kind, index: index, action: name, delta: delta, b: b, no: no);
+            } else {
+                this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Keyboard, entry: b.keyboard(), no: no);
+                this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Mouse, entry: b.mouse(), no: no);
+                this.bindValueEntry(kind: kind, index: index, action: name, delta: delta, device: Device::Gamepad, entry: b.gamepad(), no: no);
+            }
         }
+    }
+
+    // A `Pose` action's bindings: the mouse's `Cursor` through a view, the one device that binds one until XR brings its
+    // own (KYR-34).
+    fn void bindPose(int32 index, const ref string name, const ref SortedMap<string, BindingRecord> bindings,
+                     ref BindingError no) {
+        if (!bindings.contains(key: name)) { return; }
+        borrow bindings.getRef(key: name) as b {
+            this.bindCursor(kind: ActionKind::Pose, index: index, action: name, delta: false, b: b, no: no);
+        }
+    }
+
+    // An action the mouse's `Cursor` binds through one of the game's views, which takes nothing else: no other device,
+    // control, filter or gesture, and no `delta`, since the cursor's place is in its view's own units (the sixth part's
+    // question 1).
+    fn void bindCursor(ActionKind kind, int32 index, const ref string action, bool delta, const ref BindingRecord b,
+                       ref BindingError no) {
+        string whose = "the bindings of `" + action + "`";
+        if (b.keyboard().isSome() || b.gamepad().isSome()) {
+            if (kind == ActionKind::Pose) {
+                no.add(line: whose + " bind a `Pose` on the keyboard or a pad: the mouse's `Cursor`, through a view, is the one control that binds one until XR brings a device (KYR-34)");
+            } else {
+                no.add(line: whose + " bind the mouse's `Cursor` beside another device: the cursor's place is in its view's own units, which no other control has, so its action takes the cursor alone");
+            }
+            return;
+        }
+        if (delta) {
+            no.add(line: whose + " bind the mouse's `Cursor`, a place, and the action says `delta`, a distance moved: the mouse's `Motion` is that");
+            return;
+        }
+        match (b.mouse()) {
+            case None: { }
+            case Some(value: e): {
+                string mouseWhose = "the mouse binding of `" + action + "`";
+                string why = cursorRefusal(entry: e, kind: kind);
+                if (!why.isEmpty()) {
+                    no.add(line: mouseWhose + " " + why);
+                    return;
+                }
+                string named = match (e.view()) { case Some(value: v): copy v; case None: ""; };
+                isize seek = 0;
+                isize foundAt = -1;
+                while (seek < this.viewNames.length()) {
+                    if (this.viewNames[seek] == named) { foundAt = seek; }
+                    seek = seek + 1;
+                }
+                if (foundAt < 0) {
+                    string listed = "";
+                    foreach (const ref string n in this.viewNames.iterConst()) {
+                        listed = listed.isEmpty() ? "`" + n + "`" : listed + ", `" + n + "`";
+                    }
+                    if (listed.isEmpty()) { listed = "none"; }
+                    no.add(line: mouseWhose + " turns the cursor through view `" + named + "`, which the game does not declare: its views are " + listed + ", each declared in a module's records file under `views`");
+                    return;
+                }
+                this.cursorBindings.add(item: CursorBinding.make(kind: kind, action: index, view: cast<int32>(foundAt)));
+            }
+        };
     }
 
     // One device's entry of a value action: its shape from its parts, and a source for each control a part names.
@@ -2051,6 +2240,14 @@ type resource Binder implements InputSource {
         match (entry) {
             case None: { }
             case Some(value: e): {
+                if (namesCursor(entry: entry)) {
+                    no.add(line: whose + " names the mouse's `Cursor`, which binds a `Vector2`, its place in a view, or a `Pose`, a ray through one, never a `" + kindWord + "`");
+                    return;
+                }
+                if (e.view().isSome()) {
+                    no.add(line: whose + " names a `view`, which only the mouse's `Cursor` is turned through");
+                    return;
+                }
                 foreach (const ref GestureRecord gr in e.gestures().iterConst()) {
                     if (gr.kind != GestureKind::Chord) {
                         string word = gestureWord(kind: gr.kind);
@@ -2237,6 +2434,105 @@ fn float32 remapped(float32 x, FilterRecord f) { return f.c + (x - f.a) / (f.b -
 // `v` on its first `dims` axes, the others 0.
 fn Vec3 masked(Vec3 v, int32 dims) {
     return Vec3.of(x: v.x, y: dims >= 2 ? v.y : 0.0, z: dims >= 3 ? v.z : 0.0);
+}
+
+// A clip depth a hair above the far plane's 0, which reversed depth puts at infinity where a projection's far is: an
+// NDC with z 0 there has no point (Bevy's `viewport_to_world` takes `f32::EPSILON` so).
+comptime float32 FAR_DEPTH = 0.00000011920929;
+// The latest time there is: Output turns the cursor through each view as last drawn.
+comptime int64 LATEST = 9223372036854775807;
+
+// Whether an entry names the mouse's `Cursor`: as its name, or as an object's `control`.
+fn bool namesCursor(const ref Optional<ControlEntry> entry) {
+    match (entry) {
+        case Some(value: e): {
+            if (e.names().contains(item: "Cursor")) { return true; }
+            foreach (string part in e.parts()) {
+                if (e.parts().getRef(key: part).contains(item: "Cursor")) { return true; }
+            }
+            return false;
+        }
+        case None: { return false; }
+    };
+}
+
+// Why a `"Cursor"` entry is refused, or "": it is an object of `control` and `view` alone, its control the `Cursor`.
+fn string cursorRefusal(const ref ControlEntry entry, ActionKind kind) {
+    string shape = "`{ \"control\": \"Cursor\", \"view\": … }`";
+    if (!entry.isObject()) {
+        if (entry.names().length() == 1 && entry.names()[0] == "Cursor") {
+            return "names the `Cursor` and no view to turn it through: write " + shape + ", naming one of the game's views";
+        }
+        if (kind == ActionKind::Pose) {
+            return "binds a `Pose`, which the mouse's `Cursor` alone binds, through a view: write " + shape;
+        }
+        return "names the `Cursor` beside other controls: the cursor's place takes none, so write " + shape;
+    }
+    foreach (string part in entry.parts()) {
+        if (part != "control") {
+            return "names `" + part + "` beside the `Cursor`, whose entry is " + shape + " alone";
+        }
+    }
+    bool cursorAlone = entry.parts().contains(key: "control") && entry.parts().getRef(key: "control").length() == 1
+        && entry.parts().getRef(key: "control").contains(item: "Cursor");
+    if (!cursorAlone) {
+        if (kind == ActionKind::Pose) {
+            return "binds a `Pose`, which the mouse's `Cursor` alone binds, through a view: write " + shape;
+        }
+        return "names the `Cursor` beside other controls: the cursor's place takes none, so write " + shape;
+    }
+    if (entry.filters().length() > 0) { return "lists filters, which the cursor's place takes none of: it is a place in its view, never a value to reshape"; }
+    if (entry.gestures().length() > 0) { return "lists gestures, which the cursor's place takes none of: it is a place in its view, never a press"; }
+    if (entry.typing()) { return "says `typing`, which a keyboard entry alone may"; }
+    if (entry.view().isNone()) { return "names the `Cursor` and no view to turn it through: write " + shape + ", naming one of the game's views"; }
+    return "";
+}
+
+// The fraction of `drawing`'s rect the window's place `place` (-1 to 1 across and up) is at, (0, 0) at its bottom-left
+// corner and (1, 1) at its top-right; past its edges beyond 0 and 1.
+fn Vec2 withinRect(const ref DrawnView drawing, Vec2 place) {
+    float32 across = (place.x + 1.0) * 0.5;
+    float32 up = (place.y + 1.0) * 0.5;
+    return Vec2.of(x: (across - drawing.at.x) / drawing.span.x, y: (up - drawing.at.y) / drawing.span.y);
+}
+
+// The cursor's place in a view's own size and units, (0, 0) at its rect's bottom-left corner, y up (the sixth part's
+// question 1).
+fn Vec2 placeIn(const ref DrawnView drawing, Vec2 place) {
+    Vec2 local = withinRect(drawing: drawing, place: place);
+    return Vec2.of(x: local.x * drawing.size.x, y: local.y * drawing.size.y);
+}
+
+// The ray from a view's camera through the cursor's place, as OpenXR's aim pose is: −Z along the ray, its roll the
+// camera's, starting where it leaves the near plane (clip depth 1), in the camera's zone. Its direction is taken toward
+// a clip depth a hair above 0, the projection's inverse and the camera's pose applied one after the other, as Bevy's
+// `viewport_to_world` does.
+fn Pose rayThrough(const ref DrawnView drawing, Vec2 place) {
+    Vec2 local = withinRect(drawing: drawing, place: place);
+    float32 cx = local.x * 2.0 - 1.0;
+    float32 cy = local.y * 2.0 - 1.0;
+    Vec4 nearClip = Vec4.of(x: cx, y: cy, z: 1.0, w: 1.0);
+    Vec4 farClip = Vec4.of(x: cx, y: cy, z: FAR_DEPTH, w: 1.0);
+    Vec4 nearH = drawing.viewFromClip.transform(v: nearClip);
+    Vec4 farH = drawing.viewFromClip.transform(v: farClip);
+    Vec3 near = Vec3.of(x: nearH.x / nearH.w, y: nearH.y / nearH.w, z: nearH.z / nearH.w);
+    Vec3 far = Vec3.of(x: farH.x / farH.w, y: farH.y / farH.w, z: farH.z / farH.w);
+    Vec3 along = unit(v: Vec3.of(x: far.x - near.x, y: far.y - near.y, z: far.z - near.z));
+    Vec3 offset = drawing.rotation.rotate(v: near);
+    Pose ray = Pose.identity();
+    ray.zone = drawing.zone;
+    ray.position = Vec3.of(x: drawing.position.x + offset.x, y: drawing.position.y + offset.y, z: drawing.position.z + offset.z);
+    Quat turned = drawing.rotation * arcFromForward(to: along);
+    ray.orientation = turned.normalized();
+    return ray;
+}
+
+// The shortest turn of −Z onto the unit `to`; half a turn about Y when `to` is +Z.
+fn Quat arcFromForward(Vec3 to) {
+    float32 cosine = 0.0 - to.z;
+    if (cosine < -0.999999) { return Quat.of(x: 0.0, y: 1.0, z: 0.0, w: 0.0); }
+    Quat q = Quat.of(x: to.y, y: 0.0 - to.x, z: 0.0, w: 1.0 + cosine);
+    return q.normalized();
 }
 
 fn Vec3 unit(Vec3 v) {

@@ -20,7 +20,8 @@
 
 import { core::println, core::env::args, std::app::quit, std::time::Instant, std::time::monotonicNow,
          std::collections::DynamicArray, window::Window, window::WindowOptions, window::WindowError, window::Event, window::TimedEvent,
-         window::PointerKind, window::Gamepad, kyoten::frame::Sample, kyoten::frame::Device, Platform };
+         window::PointerKind, window::Pointer, window::Gamepad, window::Size, kyoten::frame::Sample, kyoten::frame::Device,
+         Platform };
 
 export { OpenPlatform, PadReadings, pumpInto };
 
@@ -47,6 +48,8 @@ type resource OpenPlatform implements Platform {
     Optional<Window> window = Optional::None;
     Instant began = monotonicNow();
     PadReadings pads = PadReadings.make();
+    // The window's logical size as of the last event a pump took, which a pointer's place is a fraction of.
+    Size size = Size.of(width: 0, height: 0);
 
     public ctor make() { }
 
@@ -59,7 +62,7 @@ type resource OpenPlatform implements Platform {
                       focused: focused);
     }
     public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
-        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     // A stopgap until `@kama/window`'s WIN-5 turns the page's text input on and off: the page types as it did, and the
@@ -74,6 +77,8 @@ type resource OpenPlatform implements Platform {
     Optional<Window> window = Optional::None;
     Instant began = monotonicNow();
     PadReadings pads = PadReadings.make();
+    // The window's logical size as of the last event a pump took, which a pointer's place is a fraction of.
+    Size size = Size.of(width: 0, height: 0);
 
     public ctor make() { }
 
@@ -84,7 +89,7 @@ type resource OpenPlatform implements Platform {
                       focused: focused);
     }
     public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
-        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads);
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     // A stopgap until `@kama/window`'s WIN-5 turns the window's text input on and off: GLFW types as it did, and the
@@ -125,12 +130,13 @@ unsafe fn bool openOn(ref Optional<Window> slot, const ref string title, int32 w
 }
 
 // The window's events since the last tick, when there is one: false once one asks it to close.
-unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads) {
+unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads,
+                      ref Size size) {
     bool open = true;
     match (slot) {
         case Some(value: w): {
             w.pump();
-            open = pumpInto(w: w, began: began, into: into, pads: pads);
+            open = pumpInto(w: w, began: began, into: into, pads: pads, size: size);
         }
         case None: { }
     };
@@ -139,8 +145,12 @@ unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray
 
 // Every event the window's queue holds, its input added to `into` as samples, each at its event's time in nanoseconds
 // since `began`, the frame timestamp's base; then each pad's reading, what moved since `pads` kept, at the reading's
-// time, placed by time among the events': false when one asks the window to close.
-unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads) {
+// time, placed by time among the events': false when one asks the window to close. A mouse event's place is a
+// fraction of the window's logical size as of that event, `size` as the last pump left it and as each `Resize`
+// leaves it, the window's own when it holds none (design/input.md § Decided, 2026-11-26, the sixth part's question 1);
+// the window holding the cursor locked, or letting it go, is a sample too.
+unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads, ref Size size) {
+    if (size.width <= 0 || size.height <= 0) { size = w.size(); }
     isize from = into.length();
     bool open = true;
     bool more = true;
@@ -160,15 +170,18 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                     }
                     case PointerDown(pointer: p, button: b, mods: m): {
                         if (p.kind == PointerKind::Mouse) {
+                            placeCursor(p: p, size: size, at: at, into: into);
                             into.add(item: Sample.make(device: Device::Mouse, slot: 0, control: cast<int32>(b), value: 1.0, at: at));
                         }
                     }
                     case PointerUp(pointer: p, button: b, mods: m): {
                         if (p.kind == PointerKind::Mouse) {
+                            placeCursor(p: p, size: size, at: at, into: into);
                             into.add(item: Sample.make(device: Device::Mouse, slot: 0, control: cast<int32>(b), value: 0.0, at: at));
                         }
                     }
                     case PointerMove(pointer: p, dx: x, dy: y): {
+                        if (p.kind == PointerKind::Mouse) { placeCursor(p: p, size: size, at: at, into: into); }
                         if (p.kind == PointerKind::Mouse && x != 0.0) { into.add(item: Sample.mouseMotion(index: 0, value: cast<float32>(x), at: at)); }
                         if (p.kind == PointerKind::Mouse && y != 0.0) { into.add(item: Sample.mouseMotion(index: 1, value: cast<float32>(y), at: at)); }
                     }
@@ -180,6 +193,11 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                     }
                     case Text(c: c): { into.add(item: Sample.typed(point: c, at: at)); }
                     case PadConnected(slot: s): { into.add(item: Sample.padConnected(slot: s, at: at)); }
+                    case PointerEnter(pointer: p): {
+                        if (p.kind == PointerKind::Mouse) { placeCursor(p: p, size: size, at: at, into: into); }
+                    }
+                    case Resize(width: wide, height: high): { size = Size.of(width: wide, height: high); }
+                    case PointerLock(locked: held): { into.add(item: Sample.cursorLock(locked: held, at: at)); }
                     case PadDisconnected(slot: s): { into.add(item: Sample.padDisconnected(slot: s, at: at)); }
                     case _: { }
                 };
@@ -193,6 +211,17 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
         slot = slot + 1;
     }
     return open;
+}
+
+// The mouse's place, `p`'s in logical pixels from the window's top-left corner, as the cursor's two samples: -1 to 1
+// across the window and up it (design/input.md § Decided, 2026-11-26, the sixth part's question 1). A window with no
+// area places nothing.
+fn void placeCursor(const ref Pointer p, const ref Size size, int64 at, ref DynamicArray<Sample> into) {
+    if (size.width <= 0 || size.height <= 0) { return; }
+    float64 across = p.x * 2.0 / cast<float64>(size.width) - 1.0;
+    float64 up = 1.0 - p.y * 2.0 / cast<float64>(size.height);
+    into.add(item: Sample.cursorAt(index: 0, value: cast<float32>(across), at: at));
+    into.add(item: Sample.cursorAt(index: 1, value: cast<float32>(up), at: at));
 }
 
 // The pad in `slot`'s reading against the one before: a `Travel` sample for each button whose travel moved and an

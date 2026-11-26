@@ -376,6 +376,17 @@ fn void sampleCases(ref Tally t) {
     bool padOk = on.kind == SampleKind::Connected && off.kind == SampleKind::Disconnected && on.device == Device::Gamepad
         && off.device == Device::Gamepad && on.slot == 3 && off.slot == 3 && on.at == 50 && off.at == 60;
     t.verdict(name: "Sample: a pad's connection and disconnection, by slot, at their times", why: padOk ? "" : "a field differs");
+    Sample across = Sample.cursorAt(index: 0, value: -0.25, at: 70);
+    Sample upward = Sample.cursorAt(index: 1, value: 0.75, at: 71);
+    bool placeOk = across.kind == SampleKind::Cursor && upward.kind == SampleKind::Cursor && across.device == Device::Mouse
+        && across.control == 0 && upward.control == 1 && across.value == -0.25 && upward.value == 0.75 && across.at == 70
+        && upward.at == 71;
+    t.verdict(name: "Sample: the cursor's place, an axis and its value, at its time", why: placeOk ? "" : "a field differs");
+    Sample held = Sample.cursorLock(locked: true, at: 80);
+    Sample freed = Sample.cursorLock(locked: false, at: 81);
+    bool lockOk = held.kind == SampleKind::Lock && freed.kind == SampleKind::Lock && held.device == Device::Mouse
+        && held.value == 1.0 && freed.value == 0.0 && held.at == 80 && freed.at == 81;
+    t.verdict(name: "Sample: the window's lock on the cursor, held or let go, at its time", why: lockOk ? "" : "a field differs");
 }
 
 fn void handoffCases(ref Tally t) {

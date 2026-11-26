@@ -101,6 +101,8 @@ type resource ControlEntry implements Deserializable<This> {
     bool filtersRead = false;
     bool typingField = false;
     bool typingRead = false;
+    Optional<string> viewField = Optional::None;
+    bool viewRead = false;
 
     public ctor Result<ControlEntry, Owned<Error>> deserialize(Deserializer r) {
         ValueKind k = r.peekKind();
@@ -195,6 +197,17 @@ type resource ControlEntry implements Deserializable<This> {
                         if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "typing")); }
                         continue;
                     }
+                    if (part == "view") {
+                        if (this.viewRead) {
+                            r.duplicateKey();
+                            if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "view")); }
+                        }
+                        this.viewRead = true;
+                        string seen = r.readString();
+                        if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: "view")); }
+                        this.viewField = Optional::Some(value: give seen);
+                        continue;
+                    }
                     if (this.partsField.contains(key: part)) {
                         r.duplicateKey();
                         if (r.failed()) { return Result::Err(error: DeError::inField(error: DeError.make(kind: r.errorKind()), name: give part)); }
@@ -231,6 +244,9 @@ type resource ControlEntry implements Deserializable<This> {
     public const fn bool isObject() { return this.objectField; }
     // An object's parts by their words, each its controls' names in the order written.
     public const fn const ref SortedMap<string, DynamicArray<string>> parts() { return this.partsField; }
+    // The view the cursor is turned through, by its name: a `"Cursor"` entry's (design/input.md § Decided, 2026-11-26,
+    // the sixth part's question 1); none when the entry names none.
+    public const fn const ref Optional<string> view() { return this.viewField; }
     // Its gestures, in the order written.
     public const fn const ref DynamicArray<GestureRecord> gestures() { return this.gesturesField; }
     // The names its chords and sequences list: a gesture's are `gestureNames()[namesFrom]` up to `[namesTo]`, each marked

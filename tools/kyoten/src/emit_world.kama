@@ -489,6 +489,7 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     imports.add(path: "kyoten::frame::Handoff");
     imports.add(path: "kyoten::frame::PlayerActions");
     imports.add(path: "kyoten::frame::ActionList");
+    imports.add(path: "std::collections::DynamicArray");
     imports.add(path: "kyoten::world::Handle");
     imports.add(path: "kyoten::world::Lookup");
     foreach (const ref Family f in families.iterConst()) {
@@ -517,7 +518,7 @@ fn int32 actionsWindow(const ref string game, const ref Schedule s) {
 }
 
 fn string worldKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s,
-                    const ref string actionLines, isize views) {
+                    const ref string actionLines, isize views, const ref string viewLines) {
     string worldType = worldTypeName();
     ImportSet imports = worldImports(game: game, families: families, s: s);
     string handle = imports.nameOf(path: "kyoten::world::Handle");
@@ -582,6 +583,14 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
     t = t + "        " + listType + " a = " + listType + ".make();\n";
     t = t + actionLines;
     t = t + "        return a;\n";
+    t = t + "    }\n\n";
+    string arrayType = imports.nameOf(path: "std::collections::DynamicArray");
+    t = t + "    // The game's views' names, in the order its `Views` numbers them, which the binder knows a `\"Cursor\"`\n";
+    t = t + "    // binding's view by (design/input.md § Decided, 2026-11-26, the sixth part's question 1).\n";
+    t = t + "    public static fn " + arrayType + "<string> viewNames() {\n";
+    t = t + "        " + arrayType + "<string> v = " + arrayType + ".empty();\n";
+    t = t + viewLines;
+    t = t + "        return v;\n";
     t = t + "    }\n\n";
     foreach (Phase p in phases()) {
         if (p == Phase::Input) {

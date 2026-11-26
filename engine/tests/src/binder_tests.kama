@@ -10,7 +10,9 @@ import { Tally, spelled, std::collections::DynamicArray, std::collections::Sorte
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
          std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, std::math::floor, kyoten::frame::Time, kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::InputRecord,
-         kyoten::input::Binder, kyoten::input::BindingError, kyoten::frame::Text, lineOf };
+         kyoten::input::Binder, kyoten::input::BindingError, kyoten::frame::Text, lineOf, kyoten::frame::DrawnView,
+         kyoten::frame::ZoneCoord, kyoten::frame::Pose, kyoten::frame::Handoff, std::math::Vec4, std::math::Quat,
+         std::math::Mat4 };
 
 export { binderTests };
 
@@ -47,7 +49,7 @@ fn Binder binderFor(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1, views: testViews());
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -62,7 +64,7 @@ fn string refusalOf(const ref string json) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1, views: testViews());
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -79,7 +81,7 @@ fn Binder textBinder(const ref string json, int32 window) {
     actions.addText(name: "log");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: window);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: window, views: testViews());
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -96,7 +98,7 @@ fn string textRefusalOf(const ref string json) {
     actions.addText(name: "chat");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: raw, hz: 60, window: 1, views: testViews());
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -554,7 +556,7 @@ fn void playerCases(ref Tally t) {
     ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
     InputRecord raw = InputRecord.make();
-    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, input: raw, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 2, actions: actions, bindings: map, input: raw, hz: 60, window: 1, views: testViews());
     match (give made) {
         case Ok(value: b): {
             hand(b: b, s: key(control: 82, down: true, at: 50));
@@ -725,8 +727,8 @@ fn void valueRefusalCases(ref Tally t) {
                   says: "and no stick's axis (");
     expectRefused(t: t, name: "binder: a misspelled mouse control names the motion's names too",
                   json: "{ \"look\": { \"mouse\": { \"x\": \"MotionZ\" } } }", says: "nor the mouse's motion, `MotionX` or `MotionY`");
-    expectRefused(t: t, name: "binder: a pose is bound by nothing until XR", json: "{ \"hand\": { \"keyboard\": \"KeyW\" } }",
-                  says: "bind a `Pose` action, which no device binds until XR brings one");
+    expectRefused(t: t, name: "binder: a pose is bound by the mouse's cursor alone until XR", json: "{ \"hand\": { \"keyboard\": \"KeyW\" } }",
+                  says: "bind a `Pose` on the keyboard or a pad: the mouse's `Cursor`, through a view, is the one control that binds one until XR brings a device (KYR-34)");
     expectRefused(t: t, name: "binder: a digital's object entry names its controls under `control`, no other part",
                   json: "{ \"faster\": { \"keyboard\": { \"up\": \"KeyW\" } } }",
                   says: "names `up`, which is no part of a `Digital`'s entry: its controls go under `control`, a name or a list");
@@ -1083,7 +1085,7 @@ fn Binder binderWith(const ref string json, const ref string input) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord record = inputOf(json: input);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1, views: testViews());
     return match (give made) {
         case Ok(value: v): give v;
         case Err(error: e): {
@@ -1097,7 +1099,7 @@ fn string refusalWith(const ref string json, const ref string input) {
     ActionList actions = actionsOf(a: "faster", b: "jump");
     SortedMap<string, BindingRecord> b = bindingsOf(json: json);
     InputRecord record = inputOf(json: input);
-    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1);
+    Result<Binder, BindingError> made = Binder.make(players: 1, actions: actions, bindings: b, input: record, hz: 60, window: 1, views: testViews());
     return match (made) {
         case Ok(value: v): "";
         case Err(error: e): e.message();
@@ -2097,6 +2099,200 @@ fn void interruptibleCases(ref Tally t) {
                name: "interruptible: a press it decides is an action's at that time, a sequence's step already when the next press comes", want: "HP- HP-");
 }
 
+// The game's views as the tests' binders know them, numbered in the order of their names: `hud` 0 and `world` 1.
+fn DynamicArray<string> testViews() {
+    DynamicArray<string> v = DynamicArray.empty();
+    v.add(item: "hud");
+    v.add(item: "world");
+    return v;
+}
+
+fn Sample cursor(int32 index, float32 value, int64 at) { return Sample.cursorAt(index: index, value: value, at: at); }
+
+// Player 1's `hud`, a screen layer of 1440 x 810 over the part of the window from `fromX` across `spanX` of it.
+fn DrawnView hudView(float32 fromX, float32 spanX, float32 wide, float32 high) {
+    DrawnView v = DrawnView.default();
+    v.player = 1;
+    v.view = 0;
+    v.at = Vec2.of(x: fromX, y: 0.0);
+    v.span = Vec2.of(x: spanX, y: 1.0);
+    v.size = Vec2.of(x: wide, y: high);
+    return v;
+}
+
+// Player 1's `world`: a perspective a quarter turn wide and high, its near plane 0.1 m away, reversed and infinite, as
+// `@kama/graphics` draws (clip depth 1 at the near plane, 0 at infinity); its camera at (0, 1, 5) in zone (2, 0, -1),
+// turned by `turn`. Its `viewFromClip` takes clip (x, y, z, w) to the camera's (x, y, -w, 10 z).
+fn DrawnView worldView(Quat turn) {
+    DrawnView v = DrawnView.default();
+    v.player = 1;
+    v.view = 1;
+    v.zone = ZoneCoord.of(x: 2, y: 0, z: -1);
+    v.position = Vec3.of(x: 0.0, y: 1.0, z: 5.0);
+    v.rotation = turn;
+    v.viewFromClip = Mat4.fromCols(c0: Vec4.of(x: 1.0, y: 0.0, z: 0.0, w: 0.0), c1: Vec4.of(x: 0.0, y: 1.0, z: 0.0, w: 0.0),
+                                   c2: Vec4.of(x: 0.0, y: 0.0, z: 0.0, w: 10.0), c3: Vec4.of(x: 0.0, y: 0.0, z: -1.0, w: 0.0));
+    return v;
+}
+
+fn string cursorJson() {
+    return "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\" } }, "
+        + "\"hand\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"world\" } } }";
+}
+
+fn Vec2 placeAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).vector2(player: 1, action: 0); }
+fn Pose rayAt(ref Binder b, int64 step, int64 until) { return b.handoff(index: step, until: until).pose(player: 1, action: 0); }
+
+fn bool closeTo(float32 got, float32 want) { return absOf(x: got - want) <= 0.00001; }
+
+// A ray from `origin` along `along` (a unit vector), in zone `zone`, -Z its orientation's forward.
+fn void expectRay(ref Tally t, const ref string name, Pose got, ZoneCoord zone, Vec3 origin, Vec3 along) {
+    Vec3 forward = got.orientation.rotate(v: Vec3.of(x: 0.0, y: 0.0, z: -1.0));
+    bool ok = got.zone.equals(other: zone) && closeTo(got: got.position.x, want: origin.x)
+        && closeTo(got: got.position.y, want: origin.y) && closeTo(got: got.position.z, want: origin.z)
+        && closeTo(got: forward.x, want: along.x) && closeTo(got: forward.y, want: along.y) && closeTo(got: forward.z, want: along.z);
+    float32 px = got.position.x;
+    float32 py = got.position.y;
+    float32 pz = got.position.z;
+    float32 fx = forward.x;
+    float32 fy = forward.y;
+    float32 fz = forward.z;
+    t.verdict(name: name, why: ok ? "" : "from (${px}, ${py}, ${pz}) along (${fx}, ${fy}, ${fz})");
+}
+
+// The cursor (design/input.md § Decided, 2026-11-26, the sixth part's question 1): `"Cursor"` through a view, a
+// `Vector2`'s place in the view's own units and a `Pose`'s ray into the world, each step through the view as drawn by
+// its end, Output through the view as last drawn.
+fn void cursorCases(ref Tally t) {
+    Binder b = binderFor(json: cursorJson());
+    Vec2 before = placeAt(b: b, step: 0, until: 4);
+    t.verdict(name: "binder: before its view is drawn, the cursor's place is 0", why: before.x == 0.0 && before.y == 0.0 ? "" : "it is not");
+    Binder r = binderFor(json: cursorJson());
+    Pose rest = rayAt(b: r, step: 0, until: 4);
+    t.verdict(name: "binder: and its ray at rest, at the origin zone's centre", why: rest.zone.equals(other: ZoneCoord.origin())
+              && rest.position.z == 0.0 && rest.orientation.w == 1.0 ? "" : "it is not");
+
+    b.drawn(view: hudView(fromX: 0.0, spanX: 1.0, wide: 1440.0, high: 810.0), at: 5);
+    b.drawn(view: worldView(turn: Quat.identity()), at: 5);
+    hand(b: b, s: cursor(index: 0, value: 0.5, at: 7));
+    hand(b: b, s: cursor(index: 1, value: -0.5, at: 7));
+    expectVec2(t: t, name: "binder: the cursor's place in its view's own units, from the view's bottom-left corner, y up",
+               got: placeAt(b: b, step: 1, until: 20), x: 1080.0, y: 202.5);
+    b.drawn(view: hudView(fromX: 0.5, spanX: 0.5, wide: 1440.0, high: 810.0), at: 30);
+    expectVec2(t: t, name: "binder: a step ending before a view is drawn anew turns through the view as it was",
+               got: placeAt(b: b, step: 2, until: 25), x: 1080.0, y: 202.5);
+    expectVec2(t: t, name: "binder: and one ending after, through the view as drawn: its rect the window's right half",
+               got: placeAt(b: b, step: 3, until: 35), x: 720.0, y: 202.5);
+    b.drawn(view: hudView(fromX: 0.5, spanX: 0.5, wide: 720.0, high: 405.0), at: 40);
+    expectVec2(t: t, name: "binder: a view drawn at the very end of a step is the one that step turns through",
+               got: placeAt(b: b, step: 4, until: 40), x: 360.0, y: 101.25);
+    t.verdict(name: "binder: a drawing a later one replaced by a step's end is forgotten", why: b.drawingsKept() == 2 ? "" : "it is kept");
+    hand(b: b, s: cursor(index: 0, value: -0.75, at: 45));
+    expectVec2(t: t, name: "binder: a place left of the view's rect is past its edge, still computed",
+               got: placeAt(b: b, step: 5, until: 50), x: -540.0, y: 101.25);
+    b.drawn(view: hudView(fromX: 0.0, spanX: 1.0, wide: 1440.0, high: 810.0), at: 60);
+    Vec2 shown = b.newest(seconds: 0.0).vector2(player: 1, action: 0);
+    expectVec2(t: t, name: "binder: Output reads the cursor through its view as last drawn", got: shown, x: 180.0, y: 202.5);
+
+    Binder ahead = binderFor(json: cursorJson());
+    hand(b: ahead, s: cursor(index: 0, value: 0.5, at: 7));
+    hand(b: ahead, s: cursor(index: 1, value: -0.5, at: 7));
+    ahead.drawn(view: hudView(fromX: 0.0, spanX: 1.0, wide: 1440.0, high: 810.0), at: 20);
+    ahead.drawn(view: hudView(fromX: 0.0, spanX: 1.0, wide: 720.0, high: 405.0), at: 30);
+    expectVec2(t: t, name: "binder: views drawn ahead of the steps: a step turns through the one drawn by its end",
+               got: placeAt(b: ahead, step: 0, until: 25), x: 1080.0, y: 202.5);
+    expectVec2(t: t, name: "binder: and the next step before the later drawing, through the same",
+               got: placeAt(b: ahead, step: 1, until: 28), x: 1080.0, y: 202.5);
+    expectVec2(t: t, name: "binder: and the step after it, through the later", got: placeAt(b: ahead, step: 2, until: 35), x: 540.0, y: 101.25);
+
+    Binder w = binderFor(json: cursorJson());
+    w.drawn(view: worldView(turn: Quat.identity()), at: 5);
+    hand(b: w, s: cursor(index: 0, value: 0.5, at: 7));
+    hand(b: w, s: cursor(index: 1, value: -0.5, at: 7));
+    expectRay(t: t, name: "binder: a pose through a view is the ray from its camera through the cursor, from its near plane",
+              got: rayAt(b: w, step: 0, until: 10), zone: ZoneCoord.of(x: 2, y: 0, z: -1), origin: Vec3.of(x: 0.05, y: 0.95, z: 4.9),
+              along: Vec3.of(x: 0.40824829, y: -0.40824829, z: -0.81649658));
+    Binder turned = binderFor(json: cursorJson());
+    turned.drawn(view: worldView(turn: Quat.fromAxisAngle(axis: Vec3.unitY(), rad: 1.57079633)), at: 5);
+    hand(b: turned, s: cursor(index: 0, value: 0.0, at: 7));
+    hand(b: turned, s: cursor(index: 1, value: 0.0, at: 7));
+    expectRay(t: t, name: "binder: and turned as its camera is: a quarter turn left, the centre's ray along -X",
+              got: rayAt(b: turned, step: 0, until: 10), zone: ZoneCoord.of(x: 2, y: 0, z: -1), origin: Vec3.of(x: -0.1, y: 1.0, z: 5.0),
+              along: Vec3.of(x: -1.0, y: 0.0, z: 0.0));
+    Pose level = rayAt(b: turned, step: 1, until: 20);
+    Vec3 up = level.orientation.rotate(v: Vec3.unitY());
+    t.verdict(name: "binder: its roll the camera's: the centre's ray keeps the camera's up", why: closeTo(got: up.y, want: 1.0) ? "" : "rolled");
+
+    Binder l = binderFor(json: cursorJson());
+    l.drawn(view: hudView(fromX: 0.0, spanX: 1.0, wide: 1440.0, high: 810.0), at: 5);
+    hand(b: l, s: cursor(index: 0, value: 0.5, at: 7));
+    hand(b: l, s: cursor(index: 1, value: -0.5, at: 7));
+    hand(b: l, s: Sample.cursorLock(locked: true, at: 10));
+    hand(b: l, s: cursor(index: 0, value: 0.9, at: 12));
+    expectVec2(t: t, name: "binder: while the window holds the cursor locked, it is at the window's centre, whatever moves",
+               got: placeAt(b: l, step: 0, until: 15), x: 720.0, y: 405.0);
+    hand(b: l, s: Sample.cursorLock(locked: false, at: 20));
+    expectVec2(t: t, name: "binder: let go, it is back where it was locked", got: placeAt(b: l, step: 1, until: 25), x: 1080.0, y: 202.5);
+    hand(b: l, s: cursor(index: 0, value: 0.0, at: 30));
+    expectVec2(t: t, name: "binder: and moves again", got: placeAt(b: l, step: 2, until: 35), x: 720.0, y: 202.5);
+
+    Binder o = binderFor(json: cursorJson());
+    DrawnView theirs = hudView(fromX: 0.0, spanX: 1.0, wide: 1440.0, high: 810.0);
+    theirs.player = 2;
+    o.drawn(view: theirs, at: 5);
+    hand(b: o, s: cursor(index: 0, value: 0.5, at: 7));
+    expectVec2(t: t, name: "binder: another player's view of the same name turns nothing for player 1",
+               got: placeAt(b: o, step: 0, until: 10), x: 0.0, y: 0.0);
+    DrawnView flat = hudView(fromX: 0.0, spanX: 0.0, wide: 1440.0, high: 810.0);
+    o.drawn(view: flat, at: 15);
+    expectVec2(t: t, name: "binder: a view drawn with no area turns nothing", got: placeAt(b: o, step: 1, until: 20), x: 0.0, y: 0.0);
+
+    Binder sb = binderFor(json: "{ \"faster\": { \"gamepad\": \"South\" }, \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\" } } }");
+    hand(b: sb, s: pad(slot: 0, control: 0, value: 1.0, at: 5));
+    Scheme padded = sb.handoff(index: 0, until: 6).scheme(player: 1);
+    hand(b: sb, s: cursor(index: 0, value: 0.5, at: 7));
+    Scheme moused = sb.handoff(index: 1, until: 10).scheme(player: 1);
+    t.verdict(name: "binder: the cursor moving makes the keyboard and mouse player 1's active scheme",
+              why: padded == Scheme::Gamepad && moused == Scheme::KeyboardMouse ? "" : "it did not");
+}
+
+fn void cursorRefusalCases(ref Tally t) {
+    expectRefused(t: t, name: "binder: the cursor turns through a view, so one naming none is refused",
+                  json: "{ \"move\": { \"mouse\": \"Cursor\" } }", says: "names the `Cursor` and no view to turn it through");
+    expectRefused(t: t, name: "binder: written as an object too",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\" } } }", says: "names the `Cursor` and no view to turn it through");
+    expectRefused(t: t, name: "binder: a view the game does not declare is refused, naming the game's",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"map\" } } }",
+                  says: "turns the cursor through view `map`, which the game does not declare: its views are `hud`, `world`");
+    expectRefused(t: t, name: "binder: the cursor's action takes no other device",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\" }, \"keyboard\": { \"up\": \"KeyW\", \"down\": \"KeyS\", \"left\": \"KeyA\", \"right\": \"KeyD\" } } }",
+                  says: "bind the mouse's `Cursor` beside another device");
+    expectRefused(t: t, name: "binder: the cursor's place on a delta is refused",
+                  json: "{ \"look\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\" } } }", says: "the action says `delta`");
+    expectRefused(t: t, name: "binder: the cursor takes no filter",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\", \"filters\": [ { \"scale\": 2 } ] } } }",
+                  says: "lists filters, which the cursor's place takes none of");
+    expectRefused(t: t, name: "binder: and no gesture",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\", \"gestures\": [ { \"chord\": \"Right\" } ] } } }",
+                  says: "lists gestures, which the cursor's place takes none of");
+    expectRefused(t: t, name: "binder: and no other part",
+                  json: "{ \"move\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\", \"x\": \"MotionX\" } } }",
+                  says: "names `x` beside the `Cursor`");
+    expectRefused(t: t, name: "binder: a pose the mouse binds by another control is refused",
+                  json: "{ \"hand\": { \"mouse\": \"Left\" } }", says: "binds a `Pose`, which the mouse's `Cursor` alone binds");
+    expectRefused(t: t, name: "binder: the cursor binds no analog",
+                  json: "{ \"throttle\": { \"mouse\": { \"control\": \"Cursor\", \"view\": \"hud\" } } }",
+                  says: "names the mouse's `Cursor`, which binds a `Vector2`, its place in a view, or a `Pose`, a ray through one, never a `Analog`");
+    expectRefused(t: t, name: "binder: and no digital",
+                  json: "{ \"faster\": { \"mouse\": \"Cursor\" } }", says: "never a `Digital`");
+    expectRefused(t: t, name: "binder: a view on an entry that is not the cursor is refused",
+                  json: "{ \"faster\": { \"keyboard\": { \"control\": \"KeyW\", \"view\": \"hud\" } } }",
+                  says: "names a `view`, which only the mouse's `Cursor` is turned through");
+    expectRefused(t: t, name: "binder: on a value's entry too",
+                  json: "{ \"fly\": { \"gamepad\": { \"x\": \"LeftX\", \"y\": \"LeftY\", \"z\": \"RightY\", \"view\": \"world\" } } }",
+                  says: "names a `view`, which only the mouse's `Cursor` is turned through");
+}
+
 fn void binderTests(ref Tally t) {
     systemRepeatCases(t: t);
     typingCases(t: t);
@@ -2133,4 +2329,6 @@ fn void binderTests(ref Tally t) {
     edgeCases(t: t);
     padCases(t: t);
     playerCases(t: t);
+    cursorCases(t: t);
+    cursorRefusalCases(t: t);
 }

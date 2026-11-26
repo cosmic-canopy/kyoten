@@ -17,7 +17,7 @@
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::ActionKind, Records, Family,
          Component, typeCase, headerLine };
 
-export { actionsKama, prefabsStub, prefabsKama, actionListLines };
+export { actionsKama, prefabsStub, prefabsKama, actionListLines, viewNameLines };
 
 // The type of an action's field, its value before any input, and the `PlayerActions` reader that views it, by kind.
 fn string fieldType(ActionKind k) {
@@ -151,6 +151,13 @@ fn string viewsType(const ref Records r) {
         i = i + 1;
     }
     t = t + "}\n";
+    return t;
+}
+
+// The body of the generated world's `viewNames()`: each view's name, in the order `Views` numbers them.
+fn string viewNameLines(const ref Records r) {
+    string t = "";
+    foreach (string v in r.views()) { t = t + "        v.add(item: \"" + v + "\");\n"; }
     return t;
 }
 

@@ -8,4 +8,6 @@
   "bindings": { "faster": { "keyboard": { "control": "ArrowUp", "gestures": [ { "hold": true } ] }, "gamepad": { "control": "RightShoulder", "gestures": [ { "chord": "LeftShoulder" } ] } },
                 "steer":  { "keyboard": { "positive": "KeyE", "negative": "KeyQ" }, "gamepad": "RightTrigger" },
                 "look":   { "mouse": { "x": "MotionX", "y": "MotionY", "gestures": [ { "chord": "Right" } ] }, "gamepad": { "x": "RightX", "y": "RightY" } },
-                "chat":   { "keyboard": "Text" } } }
+                "chat":   { "keyboard": "Text" },
+                "point":  { "mouse": { "control": "Cursor", "view": "hud" } },
+                "aimRay": { "mouse": { "control": "Cursor", "view": "world" } } } }

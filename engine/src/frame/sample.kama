@@ -25,7 +25,7 @@ export { Sample, SampleKind, Device };
 
 // What a sample says: a control's edge, a pad button's travel, a stick's axis, the mouse's motion, a pad's connection,
 // a code point typed, or a key's system repeat.
-type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected, Text, Repeat }
+type enum SampleKind { Control, Travel, Axis, Motion, Connected, Disconnected, Text, Repeat, Cursor, Lock }
 
 // Which kind of device it came from: the bindings record's keys.
 type enum Device { Keyboard, Mouse, Gamepad }
@@ -125,6 +125,29 @@ type value Sample {
         this.slot = 0;
         this.control = index;
         this.value = value;
+        this.at = at;
+    }
+
+    // The cursor's place in the window, where a mouse event happened (design/input.md § Decided, 2026-11-26, the sixth
+    // part's question 1): `index` 0 across, -1 at the window's left edge and 1 at its right; 1 up, -1 at its bottom
+    // and 1 at its top.
+    public ctor cursorAt(int32 index, float32 value, int64 at) {
+        this.kind = SampleKind::Cursor;
+        this.device = Device::Mouse;
+        this.slot = 0;
+        this.control = index;
+        this.value = value;
+        this.at = at;
+    }
+
+    // The window holding the cursor locked, or letting it go, whoever asked (the sixth part's question 2): its place
+    // means nothing while it is locked.
+    public ctor cursorLock(bool locked, int64 at) {
+        this.kind = SampleKind::Lock;
+        this.device = Device::Mouse;
+        this.slot = 0;
+        this.control = 0;
+        this.value = locked ? 1.0 : 0.0;
         this.at = at;
     }
 }
