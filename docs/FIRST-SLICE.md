@@ -171,7 +171,13 @@ forty-fourth). Where the work is:**
      through the Xcode project kama writes, `kama run` on iOS, and the simulator leg; KR-445 filed (trusted input on an
      iOS run). Around it, roadmap commits alone: KR-426 ruled (a `Shared<T>` compares by its pointee, identity a named
      `isSame`), the Mac's claims renewed, and KR-443 measured and ruled with KR-446 and KR-447 filed (`9a584382`, in
-     kama's tree here, not yet on its origin).
+     kama's tree here, not yet on its origin). **Read again at the fiftieth session's end** (2026-11-25), two compiler
+     commits in kama's tree here, neither on its origin yet, neither one kyoten needs:
+     - 0.9.1031 (`4be6fb56`, KR-443, KR-446, KR-447): a dependency the program reaches no kama of adds nothing to the
+       build, its `link` libraries, flags, `preloadFiles` and `emSettings` included, where before only its `csources`
+       were left out. Every game reaches the engine and the engine `@kama/window`, so a bump has nothing to port; check
+       that the tool's fixture games, fps and the frame guard still build on it;
+     - 0.9.1032 (`00e3f371`, KR-361): `kama query --search NAME --deps` searches the modules a package imports too.
 
      What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
