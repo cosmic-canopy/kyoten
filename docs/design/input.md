@@ -25,6 +25,9 @@ The sixth part's four questions, the cursor, its views and devices letting go, a
 - the game lets go of the pad lock through Output's own `PadLock`;
 - a device letting go presses whatever action a binding names `"Lost"` or `"Unlocked"` on.
 
+Its first three commits are built (2026-11-26, below): a `Pose` with its zone; the views, each its own `DrawnView`, a
+game's declared `Views` and `Requests`' views; and the cursor through a view on a `Vector2` and a `Pose`.
+
 What the peers and the owner's games do is [../research/input.md](../research/input.md).
 
 ## What is already decided
@@ -937,3 +940,71 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   motion (`engine/src/input/binder.kama` 842-843), and a Steam Deck's gyro arrives as mouse motion, so a pad player
   aiming by gyro would change scheme every frame. The-mallow-man's device latch never changes on mouse motion for that
   reason (`play/src/binds.kama` 536-545).
+
+- **2026-11-26, built: step 8's sixth part, its first three commits** (the fifty-first session), and one of what their
+  mutations found, on kyoten's pin, `0.9.1027+g25d97c29`, each gated by `tools/test.sh`.
+  1. **`ZoneCoord` up to the frame tier, and a `Pose` with its zone** (kyoten `7dadfb5`): `kyoten::frame::ZoneCoord`, the
+     world module importing it; `Pose { zone, position, orientation }`, at the origin zone's centre at rest.
+  2. **The views** (kyoten `12be3e6`):
+     - `kyoten::frame::DrawnView`, Output's own state: `player`, `view`, `at` and `span` (its rect, as fractions of the
+       window from its bottom-left corner), `size`, its camera's `zone`, `position` and `rotation`, and `viewFromClip`;
+       `sameAs` compares every field;
+     - a module's records declare the game's views (`"views"`), refused when two modules declare one, when one is no
+       lowerCamel identifier, or when it is named like a member `Views` has itself; the generated `Views` numbers them
+       in the order of their names (`Views::world`), and `GameWorld::viewCount` counts them;
+     - `pass_requests` gathers each `DrawnView` naming a player of the world's and a view; `Requests` holds one for each
+       player and view, a later one replacing the earlier; `Play` hands each view new or drawn otherwise to the input
+       source at its frame's timestamp (`InputSource.drawn(view:, at:)`).
+  3. **The cursor** (kyoten `98fe1d7`):
+     - `SampleKind::Cursor`, the place of a mouse event, −1 to 1 across the window and up it; `SampleKind::Lock`, the
+       window holding the cursor locked or letting it go, whoever asked;
+     - the pump places a move, a press, a release and an entry by the window's logical size as of that event: the size
+       the last pump left (`pumpInto(…, size:)`), each queued `Resize` moving it, the window's own read when it holds
+       none; a window with no area places nothing;
+     - an entry's `"view"`; the binder's `"Cursor"` with its `"view"` on a `Vector2` and on a `Pose`, the first device
+       that binds one; `Binder.make(…, views:)`, which the generated `run` hands `GameWorld::viewNames()`.
+
+  What commit 2's mutations found (kyoten `3e7ea6d`): no placed cube's view named a player and no view yet (`bigCube`'s
+  did, and spin's scene places none), so `pass_requests`' guard on it was held by nothing; the `quick` placement's view
+  now names one.
+  - **Settled while building, for the owner to object to:**
+    - **The component is `DrawnView`, not `View`.** kama takes any type spelled `View` for its own `type view` once std's
+      is loaded, refusing it by `ref` (KY-69, filed), and a game's files would see kama's `View<T>` beside it.
+    - **A game's views are declared in its code records and numbered by name,** since a `type value` holds no `string`:
+      game code writes `v.view = Views::world`, and a prefab names its view by number (`"DrawnView": { "player": 1,
+      "view": 1 }`). A view naming no view yet (-1), or no player of the world's, is gathered by no one.
+    - **Each step turns the cursor through the view as drawn by the step's end,** and Output through the view as last
+      drawn, so a camera that turns under a still or locked cursor turns its ray, as an FPS's centre aim needs. A drawing
+      a later one replaced by a step's end is forgotten, and one drawn ahead of the steps waits for them.
+    - **While the window holds the cursor locked, its place is the window's centre;** let go, it is back where it was
+      locked (the web holds the place still, GLFW restores it) until it moves.
+    - **A cursor sample makes the keyboard and mouse player 1's active scheme,** as the mouse's motion does.
+    - **A view drawn with no area, or not drawn, leaves the action at rest,** and another player's view of the same name
+      turns nothing for player 1.
+    - **A `Vector2`'s place runs from its view's bottom-left corner, y up,** in the view's own units, and past the
+      view's rect it is still computed.
+    - **The ray turns −Z onto its direction by the shortest arc, then by the camera's rotation,** so its roll is the
+      camera's.
+  - **Counts:** the engine's tests 961 cases (894 at the session's start), the tool's 287 (272), natively and on wasm,
+    debug and release; fps and vr as before.
+  - **Mutations:** kyoten's `.scratch/s51/mutate_c2.py`, `mutate_c3.py`.
+    - **Commit 1, 1 of 1.**
+    - **Commit 2, 38 of 38:**
+      - one caught only once spin's scene placed a view naming no view yet (the fix above);
+      - one, a game with no actions given no `Views`, caught by the tool's whole suite, which the batch had cut to spin
+        and the refusals;
+      - two by an out-of-bounds trap, after their own cases had failed by name;
+      - while the batch was planned, each rotation part alone, and spin reshaped so each guard of `pass_requests` traps
+        a run when it goes (a view naming no player, one past the world's players).
+    - **Commit 3, 57 of 57:**
+      - three by a test's binder refusing its bindings, naming why (a view read as a part, the views' names not kept,
+        a `Vector2`'s cursor bound as values);
+      - while the batch was planned: a `"Cursor"` object with no view, a pump holding no size, a window with no area,
+        and views drawn ahead of the steps; the pump reading the window's size when it holds none replaced `openOn`
+        recording it, which nothing could hold.
+
+  **Next, the sixth part's other three commits:**
+  - the cursor's mode: the engine's `Cursor`, `Requests`' modes, `Platform.cursor(player:, mode:)`, the open platforms
+    calling `setCursor` and asking again while the game asks `Locked`;
+  - the lock's let-go: the engine's `PadLock`;
+  - the notices: `"Lost"` and `"Unlocked"`.

@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-25, the fiftieth session)
+## Where it stands (2026-11-26, the fifty-first session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,10 +107,11 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 894 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 272; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's fifth part (the
-     fiftieth session); 814 and 253 at its start. It takes 15 min beside another gate on 0.9.1027, 17 to 19 min
-     beside two mutation batches, 25 to 30 min beside three (10 min 25 s
+   - tools/test.sh: engine 961 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 287; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's sixth part's first
+     three commits (the fifty-first session); 894 and 272 at its start, the five packages' as below, unchanged. It
+     takes 15 min beside another gate on 0.9.1027, 17 to 19 min beside two mutation batches, 22 min beside two batches
+     and a gate in the fifty-first session, 25 to 30 min beside three (10 min 25 s
      alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
      compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
      `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
@@ -178,6 +179,11 @@ forty-fourth). Where the work is:**
        were left out. Every game reaches the engine and the engine `@kama/window`, so a bump has nothing to port; check
        that the tool's fixture games, fps and the frame guard still build on it;
      - 0.9.1032 (`00e3f371`, KR-361): `kama query --search NAME --deps` searches the modules a package imports too.
+
+     **Read again at the fifty-first session's start and end** (2026-11-26): unchanged, `00e3f371`, nothing
+     uncommitted. Two kama bugs found building the sixth part are filed, each worked around: KY-69 (a type spelled
+     `View` taken for std's `type view`) and KY-70 (a type's `comptime` member passed as an argument checked as a
+     local of the same name).
 
      What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
@@ -768,9 +774,32 @@ forty-fourth). Where the work is:**
    - the game lets go of the pad lock through Output's own `PadLock`;
    - a device letting go presses the action a binding names `"Lost"` or `"Unlocked"` on.
 
-   **Next: building it,** from `ZoneCoord` moving up to the frame tier. The pad-lock probe (`.scratch/s46/locktry/`)
-   calls the platform's pump as the first part had it; it needs the readings' `PadReadings` before it is built again. **Beside it, in `@kama/graphics`:** the
-   cube's goldens can move into a `select` value its player's build leaves out, since KY-63's fix is on the pin, which
+   **Its first three commits are built** (the fifty-first session; kyoten `7dadfb5`, `12be3e6` and `98fe1d7`, and what
+   commit 2's mutations found in `3e7ea6d`; [design/input.md](design/input.md) § Decided, its Built entry, which lists
+   what was settled for the owner to object to): a `Pose` with its zone, `ZoneCoord` up to the frame tier; the views,
+   each its own `DrawnView` (not `View`: KY-69), a game's declared `Views`, `Requests`' views handed to the input
+   source; the cursor, the pump placing each mouse event by the window's size as of it and the lock a sample, and the
+   binder's `"Cursor"` through a view on a `Vector2` and a `Pose`. 1, 38 and 57 mutations caught.
+
+   **Next: the sixth part's other three commits,** laid out in input.md § Decided, 2026-11-26:
+   - **the cursor's mode:** the engine's `Cursor { player, mode }`, kyoten's own `CursorMode` (`Normal`, `Hidden`,
+     `Locked`) in the frame tier, `Requests`' modes, and `Platform.cursor(player:, mode:)`, which `Play.handOn` calls as
+     the mode changes. Read in `@kama/window` (`csrc/winseam.c` `set_cursor`, line 545): natively `setCursor(Locked)`
+     locks at once, focused or not, and posts `PointerLock(true)`; a focus loss sets `Normal`; on the web `Locked` is a
+     wish asked at the next pointer down, and Escape or a tab switch posts `PointerLock(false)`. So the open platforms
+     ask again while the game asks `Locked`, the window is not locked and it has the focus: on the web at once after
+     the browser's release, natively when `Focus(true)` returns. The pump already sees `PointerLock`; it gains `Focus`.
+     A headless window posts the lock event too, so the tests can hold it;
+   - **the lock's let-go:** the engine's `PadLock { player, letGo }`, `Requests`' let-go, `InputSource.padLock(…)`,
+     the binder reusing the disconnect's release (`binder.kama`'s `case Disconnected:`);
+   - **the notices:** `"Lost"` and `"Unlocked"` on a digital entry; `"Unlocked"` presses only for a lock the game
+     did not release, which the binder knows from the mode it was handed and the `Lock` samples.
+
+   **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
+   `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
+   every frame (input.md § Decided, 2026-11-26). The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump
+   as the first part had it; it needs the readings' `PadReadings` and the window's `Size` before it is built again.
+   **Beside it, in `@kama/graphics`:** the cube's goldens can move into a `select` value its player's build leaves out, since KY-63's fix is on the pin, which
    takes emscripten's file packager, about 6.8 KB of brotli JS, out of its ratchet (GFX-20).
 
    **Step 8, laid out from the code at the forty-fourth session's readying, with a probe on the pin**
@@ -864,6 +893,28 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The fifty-first session** (2026-11-26). Nothing new on any origin at the start, and kama unchanged since the
+fiftieth session's end, so no bump.
+- **Every suite was green on 0.9.1027 at the start,** at the fiftieth session's counts.
+- **Four questions at the start** (step 8's sixth part: the cursor through a view, the cursor's mode, the pad lock's
+  let-go, the device notices), laid out from the code and from the peers' and the owner's games
+  ([research/input.md](research/input.md) § The cursor, views and devices letting go, the claims re-checked at
+  source). The owner asked
+  back on three ("each view or layer would have its own translation"; "the game logic can release or request";
+  "is that a hard coded stop gap? what do others do?"), which were answered and asked again; all four (A), recorded
+  as their own commit (kyoten `be47c61`).
+- **Built:** the sixth part's first three commits (`7dadfb5`, `12be3e6`, `98fe1d7`) and one of what their mutations
+  found (`3e7ea6d`), item 3; 1, 38 and 57 mutations caught. KY-69 and KY-70 filed.
+- **Mistakes to keep:**
+  - the first mutation worktree had no `kama pkg install engine/kama.json`, so commit 2's tool baseline was red (117
+    of 173); its engine mutations stood, the install went in before its tool mutations, and the baseline's line was
+    read rather than trusted, as the forty-seventh session's lesson says;
+  - a spin case read `r.says`, the whole output, beside cases reading `said`, the output before the generated run,
+    whose own cube drew the view the case said was not drawn; a case reads what its function's cases read;
+  - a pump case assumed a posted `Resize` left a headless window's own size alone; it moves it, so the case could not
+    tell tracking the queue from reading the window once, until a place before the resize was put at the window's
+    middle.
 
 **The fiftieth session** (2026-11-25). Nothing new on any origin at the start; kama's range since the pin held one
 compiler commit, 0.9.1030 (iOS apps), which kyoten does not need, so no bump.
