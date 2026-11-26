@@ -1,3 +1,4 @@
 { "place": { "cube":  { "prefab": "cube" },
              "fast":  { "prefab": "fastCube", "values": { "Spin": { "rate": 5 } }, "note": "its own rate over its prefab's" },
-             "quick": { "prefab": "fastCube", "note": "no values: its prefab's own, 4" } } }
+             "quick": { "prefab": "fastCube", "values": { "DrawnView": { "player": 1, "view": -1 } },
+                        "note": "its prefab's own rate, 4; its view names player 1 and no view yet, which the world gathers no request for" } } }
