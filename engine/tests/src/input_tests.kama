@@ -8,7 +8,7 @@ import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
          kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text,
-         kyoten::frame::Requests };
+         kyoten::frame::Requests, kyoten::frame::ZoneCoord };
 
 export { inputTests, spelled, digitalOf, lineOf };
 
@@ -54,12 +54,13 @@ fn void expectVec3(ref Tally t, const ref string name, Vec3 got, float32 x, floa
 }
 
 fn bool atRest(Pose p) {
-    return p.position.x == 0.0 && p.position.y == 0.0 && p.position.z == 0.0 && p.orientation.x == 0.0
+    return p.zone.equals(other: ZoneCoord.origin()) && p.position.x == 0.0 && p.position.y == 0.0 && p.position.z == 0.0 && p.orientation.x == 0.0
         && p.orientation.y == 0.0 && p.orientation.z == 0.0 && p.orientation.w == 1.0;
 }
 
 fn Pose poseAt(float32 x, float32 y, float32 z) {
     Pose p = Pose.identity();
+    p.zone = ZoneCoord.of(x: cast<int32>(x), y: -2, z: 3);
     p.position = Vec3.of(x: x, y: y, z: z);
     p.orientation = Quat.of(x: 0.0, y: 1.0, z: 0.0, w: 0.0);
     return p;
@@ -128,11 +129,15 @@ fn void actionListCases(ref Tally t) {
 }
 
 fn void poseCases(ref Tally t) {
-    t.verdict(name: "Pose: at rest by default, at the origin and turned as the world is",
+    t.verdict(name: "Pose: at rest by default, at the origin zone's centre and turned as the world is",
               why: atRest(p: Pose.default()) ? "" : "not at rest");
     Pose p = poseAt(x: 1.0, y: 2.0, z: 3.0);
-    bool set = p.position.y == 2.0 && p.orientation.y == 1.0 && p.orientation.w == 0.0;
-    t.verdict(name: "Pose: a position and an orientation of its own", why: set ? "" : "a field differs");
+    bool set = p.position.y == 2.0 && p.orientation.y == 1.0 && p.orientation.w == 0.0
+        && p.zone.equals(other: ZoneCoord.of(x: 1, y: -2, z: 3));
+    t.verdict(name: "Pose: a zone, a position and an orientation of its own", why: set ? "" : "a field differs");
+    Pose away = Pose.identity();
+    away.zone = ZoneCoord.of(x: 5, y: 0, z: 0);
+    t.verdict(name: "Pose: in another zone, it is not at rest", why: atRest(p: away) ? "at rest" : "");
 }
 
 // What a `Text` holds, as a line.
@@ -321,7 +326,9 @@ fn void valueHandoffCases(ref Tally t) {
     expectVec3(t: t, name: "Handoff: another player's same vector3 is its own", got: h.vector3(player: 2, action: 0), x: 0.0,
                y: 0.0, z: 0.0);
     Pose hand = h.pose(player: 2, action: 0);
-    t.verdict(name: "Handoff: a pose set is read back", why: hand.position.z == 6.0 && hand.orientation.y == 1.0 ? "" : "another");
+    t.verdict(name: "Handoff: a pose set is read back, its zone too",
+              why: hand.position.z == 6.0 && hand.orientation.y == 1.0 && hand.zone.equals(other: ZoneCoord.of(x: 4, y: -2, z: 3))
+                  ? "" : "another");
     expectFloat(t: t, name: "Handoff: an analog past its room is 0", got: h.analog(player: 2, action: 2), want: 0.0);
     expectVec2(t: t, name: "Handoff: a vector2 for player 0 is zero", got: h.vector2(player: 0, action: 0), x: 0.0, y: 0.0);
     expectVec3(t: t, name: "Handoff: a vector3 for a player past its room is zero", got: h.vector3(player: 3, action: 0),
@@ -465,7 +472,9 @@ fn void valuePlayerCases(ref Tally t) {
     expectVec3(t: t, name: "PlayerActions: a vector3 delta summed", got: w.vector3(player: 1, action: 0, after: -1, upTo: 2),
                x: 3.0, y: 3.0, z: 3.0);
     Pose hand = w.pose(player: 1, action: 0, upTo: 2);
-    t.verdict(name: "PlayerActions: a pose as of its step", why: hand.position.x == 7.0 && hand.position.z == 9.0 ? "" : "another");
+    t.verdict(name: "PlayerActions: a pose as of its step, its zone too",
+              why: hand.position.x == 7.0 && hand.position.z == 9.0 && hand.zone.equals(other: ZoneCoord.of(x: 7, y: -2, z: 3))
+                  ? "" : "another");
     Pose first = w.pose(player: 1, action: 0, upTo: 0);
     t.verdict(name: "PlayerActions: and as of an earlier step kept", why: first.position.y == 2.0 ? "" : "another");
     expectFloat(t: t, name: "PlayerActions: another player's delta is its own",

@@ -7,7 +7,7 @@
 // - On kama's std::math, `Vec3` and `Quat`, so there is one way across kama (question 8, part b, item 4). A record
 //   holds only what differs: `"Transform": { "position": { "x": -20 } }`, laid over `identity()` with `mergeFrom`.
 
-import { std::math::Vec3, std::math::Quat, ZoneCoord };
+import { std::math::Vec3, std::math::Quat, kyoten::frame::ZoneCoord };
 
 export { Transform };
 

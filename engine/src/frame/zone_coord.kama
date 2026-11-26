@@ -1,5 +1,9 @@
-// kyoten::world::ZoneCoord — which zone a position is in: a whole-number coordinate per axis (components § Decided,
+// kyoten::frame::ZoneCoord — which zone a position is in: a whole-number coordinate per axis (components § Decided,
 // question 9, item 7: an `int32` per axis, ±137 million km at 64 m zones). Zone (0,0,0) is centred on the origin.
+//
+// The frame tier's, though the world's `Transform` holds one too: a `Pose` in a step's hand-off names its zone, as
+// every position does, and the frame tier names no tier below it (design/input.md § Decided, 2026-11-26, the sixth
+// part's question 1).
 //
 // Its own type, not a general integer vector: a zone coordinate means one thing, as Minecraft's `ChunkPos` does.
 // std::math has float32 vectors only (KY-40); if kama adds integer ones, this type may hold one inside, and its API and
