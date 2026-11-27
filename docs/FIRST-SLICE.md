@@ -190,7 +190,12 @@ forty-fourth). Where the work is:**
      uncommitted. Two kama bugs found building the sixth part are filed, each worked around: KY-69 (a type spelled
      `View` taken for std's `type view`) and KY-70 (a type's `comptime` member passed as an argument checked as a
      local of the same name). **Read again at the fifty-second session's start** (2026-11-26): one roadmap commit,
-     `4a4793c0`, filing KY-69 and KY-70 upstream as KR-449 and KR-450, no compiler change.
+     `4a4793c0`, filing KY-69 and KY-70 upstream as KR-449 and KR-450, no compiler change. **Read again at its end:**
+     one compiler commit on kama's origin, 0.9.1033 (`a557c235`), which judges a name by the declaration it resolves
+     to and closes KR-449 and KR-450. Both repros fail on the pin and pass on its binary, so a bump fixes KY-69 and
+     KY-70: `DrawnView` could then take the name `View` the sixth part's decision gave it, and spin's binding of
+     `Views::world` to a local could go (the owner's call). Beside it, kama's VS Code extension (`e96bccd3`) and a
+     roadmap commit (`03c39cb2`).
 
      What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
