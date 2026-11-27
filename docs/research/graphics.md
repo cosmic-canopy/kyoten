@@ -564,6 +564,32 @@ HDRP's camera-relative rendering, on by default, does so per camera (Epic's and 
 `precision=double` build and splits each instance's origin into a float and its remainder for the GPU
 (`render_forward_clustered.cpp:855-857`, *checked* as read for the previous matrix). Bevy has nothing built in.
 
+**Measured here** (2026-11-27, the fifty-fourth session; natively on the AMD Radeon 880M on Vulkan, wgpu-native
+v29.0.1.1, `@kama/gpu` at kama-gpu `4de4373`, kama 0.9.1033; two runs with kama quiet, agreeing within about 10 %).
+The upload (`.scratch/s53/gfx21/upload/`): 10,000 records of 128 bytes in one storage buffer, the median frame with the
+queue drained.
+
+| changed a frame | one `writeBuffer` a record | one a run of neighbours | the whole buffer |
+|---|---|---|---|
+| none | 0.06 ms | 0.06 ms | 0.24 to 0.26 ms |
+| 1 | 0.05 to 0.06 ms | 0.05 to 0.07 ms | 0.24 ms |
+| 100 (1 %) | 0.26 ms | 0.26 ms | 0.22 to 0.23 ms |
+| 1,500 (15 %, 1,278 runs) | 4.0 to 4.3 ms | 2.9 to 3.3 ms | 0.19 to 0.21 ms |
+| 10,000 (one run) | 27.4 to 27.6 ms | 0.23 to 0.24 ms | 0.21 to 0.22 ms |
+
+A write costs about 1.8 µs to issue, so on this machine the whole buffer costs less than one call a record from about
+1 % changed, and about the same as Bevy's 15 % rule would choose. The first numbers, taken the session before, were
+inflated by `@kama/gpu`'s lost-device check keeping memory at every submit: one changed record took 0.9 ms. That was
+fixed as its GPU-19.
+
+The scene graph's path (`.scratch/s54/gfx21/scene/`): 10,000 meshes on one box and one unlit material, a 256 × 256
+target, 20,000 draw calls a frame (a depth prepass and the main pass). `render()` takes 12.4 ms of CPU with nothing
+moved, 13.2 ms with one or 1 % moved, 16.0 ms with 15 % and 29.4 ms with all. The frame with the queue drained takes
+12.9, 13.9, 14.1, 18.7 and 42.8 ms. So at 10⁴ a render's work for each mesh costs more than any upload. Every render,
+for every mesh, it copies its material's two WGSL strings and its refusals, finds the pipeline by comparing whole strings,
+and issues two draws. The split between that lookup and the draws is not measured. A moved mesh adds about 1.7 µs: its
+world matrix, its 112-byte record and its own `writeBuffer`.
+
 **What a view hands back.** None of the four hands a program the projection a view was drawn with: Godot's picking is
 `Camera3D::project_ray_origin` in its scene layer, Bevy's `Camera.computed` holds the matrices in the main world, and
 Unity's is `Camera.ScreenPointToRay`. *(unchecked)* kyoten's `DrawnView` comes back from the platform instead, since only

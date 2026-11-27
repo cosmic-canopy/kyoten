@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-27, the fifty-third session)
+## Where it stands (2026-11-27, the fifty-fourth session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -122,9 +122,10 @@ forty-fourth). Where the work is:**
    - `@kama/window`'s: 334, 221 under node, 341 in Edge and Firefox, 352 through the driver, and a program reaching none
      of the package linked natively and on wasm, since WIN-28 (the forty-seventh session); 313, 204, 318 and 329 at its
      start;
-   - `@kama/gpu`'s: 344 natively, debug, release and once without DXC; 315 in Edge, 319 in Firefox and Chrome for
-     Testing; both examples on every leg; since `Device.adapterInfo()` (the forty-first session); 340, 313 and 316 at
-     its start;
+   - `@kama/gpu`'s: 346 natively, debug, release and once without DXC, 10,000 frames of a write each held flat among
+     them, and its 40 facts; 315 in Edge, 319 in Firefox and Chrome for Testing; both examples on every leg. That is
+     since GPU-19 (the fifty-fourth session), at 344 natively before it, and since `Device.adapterInfo()` (the
+     forty-first session) on the web;
    - `@kama/image`'s: 1,401 natively and on wasm, the sweep's 197;
    - `@kama/imagediff`'s: 94 natively and on wasm under node, each debug and release, since its first build (the
      forty-second session); it fails until its `tools/fetch-flip.sh` has run once on the machine;
@@ -153,8 +154,10 @@ forty-fourth). Where the work is:**
      frame, in the gate and alone, built by 0.9.1033 or 0.9.1027; on WARP it waited until the gate was stopped. Every
      leg before the cube passed at its counts. `@kama/gpu`'s own `clear` and `triangle` examples presented 60 frames
      natively on the same machine an hour later, so what the cube's first frame does differently is GPU-18's to
-     measure (kama-gpu `1999938`). The cube natively on 0.9.1033, and the web legs after it, wait for a monitor on the
-     AMD GPU itself, or for GPU-18.
+     measure (kama-gpu `1999938`). **In the fifty-fourth session its whole gate passed on 0.9.1033,** on GPU-19's
+     result, with the four native cube legs among it (21.5 min, run alone). That was with a RustDesk session connected
+     and the AMD GPU still driving no monitor, so the virtual display is not what fails the cube. The morning's failure
+     came with no session connected, and that state is what is left to test (the session's record).
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -844,11 +847,16 @@ forty-fourth). Where the work is:**
       refused at load.
 
    **Beside them, GFX-21's design pass:** the peers' render surfaces are read from source (research/graphics.md § 11,
-   the claims the questions rest on checked by curl). Next it measures, with kama quiet and natively at 10⁴ instances,
-   the scene graph's path against a sketch of the flat surface: the CPU time a frame, and the records, bytes and
-   `writeBuffer` calls, with none, one, 1 %, 15 % and every instance changed. Then its questions are asked in full: the
-   instance handle, the record (with question 2's cell), the upload, cameras and views as data, and comparing values on
-   write. The platform's drawing joins them once GFX-21 is built.
+   the claims the questions rest on checked by curl), and its numbers are measured, below. Next its questions are
+   laid out from the code and asked in full:
+   - the instance handle;
+   - the record, with question 2's cell;
+   - the upload;
+   - the draws batched, which the scene graph's 12.4 ms at 10⁴ puts beside the upload;
+   - cameras and views as data;
+   - comparing values on write.
+
+   The platform's drawing joins them once GFX-21 is built.
 
    **Its first native run found a blocker in `@kama/gpu`** (the fifty-third session, `.scratch/s53/gfx21/`, the AMD
    Radeon 880M on Vulkan):
@@ -865,15 +873,52 @@ forty-fourth). Where the work is:**
      write every frame on the same DLL and stay flat. Comparing them with the package pointed at its lost-device check,
      and a probe the same day confirmed it (kama-gpu `006a976`): with the seam's `takes_work` left out, the frames
      stayed flat. That check finishes an empty encoder and drops it unsubmitted before every submit, and doing so
-     while a write is pending keeps the memory. **GPU-19 is the next session's first work,** before GFX-21 is measured
-     again.
+     while a write is pending keeps the memory.
+   - **GPU-19 is built** (the fifty-fourth session, kama-gpu `4de4373`; its AGENTS.gpu.md item 18). The cause is
+     wgpu-native's, read in its source and checked by curl:
+     - **The bug:** v29.0.1.1's `WGPUCommandBufferImpl::drop` frees a command buffer in wgpu-core only once a submit
+       has marked it, so every one released unsubmitted is kept until the process ends. This is wgpu-native #638, open
+       since 2026-10-22.
+     - **What it cost:** with a write pending, each kept buffer held a used command pool, 2.6 MB a frame on Vulkan and
+       1.2 MB on Direct3D 12. Direct3D 12 was measured for the first time, through `WGPUInstanceExtras.backends`.
+     - **Why the games stay flat:** FFD and TMM submit every buffer they finish, so the bug never reaches them, and they
+       survive no loss.
+     - **The fix:** at the owner's word, (A), the check now creates an encoder and releases it unfinished. wgpu-native
+       frees an encoder whatever its state, and a lost device still answers inside the call, through the lost
+       callback. 20,000 frames stayed flat on both backends.
+     - **The new test:** a case of 10,000 frames held to the registry and to the process's memory, red first at 1,000
+       command buffers kept and 2,489 MB grown; 6 of 8 mutations caught.
+     - **What stays wgpu-native's:** a program's own command buffer dropped unsubmitted (#638), and a loss the submit
+       finds first (#641). A comment for #638 with a verified C repro is drafted for the owner to post:
+       `.scratch/s54/gpu19/wgpu-native-638-comment.md`.
 
-   The upload's first numbers, one run with the machine quiet, are to be measured again once the memory is
-   understood. 10,000 records of 128 bytes, the median frame with the queue drained:
-   - one `writeBuffer` a changed record, as the core does today: 0.9 ms with one changed, 1.1 ms with 1 %, 4.4 ms
-     with 15 %, and 25 ms with every record;
-   - the whole buffer in one call: 1.0 to 2.9 ms;
-   - a frame's first write costs about 250 µs, and each after it about 1.8 µs.
+   **Measured again on the fixed package** (the fifty-fourth session, two runs with kama quiet, agreeing within about
+   10 %; research/graphics.md § 11). Last session's numbers carried the leak's cost: one changed record took 0.9 ms
+   then and 60 µs now. At 10,000 records of 128 bytes, the median frame with the queue drained:
+   - **one `writeBuffer` a changed record**, as the core does today: 60 µs with none or one changed, 0.26 ms with 1 %,
+     4.0 to 4.3 ms with 15 % and 27.5 ms with every record. Each write costs about 1.8 µs to issue;
+   - **one call a run of neighbouring records:** the same up to 15 %, where 1,500 scattered records make 1,278 runs,
+     then 2.9 to 3.3 ms;
+   - **the whole buffer in one call:** 0.19 to 0.26 ms whatever changed.
+
+   **The scene graph's path at 10,000 meshes** (`.scratch/s54/gfx21/scene/`; one box and one unlit material, a
+   256 x 256 target): 20,000 draw calls a frame, a depth prepass and the main pass, one draw a mesh. The CPU time of
+   `render()`, and of the frame with the queue drained, by the share of meshes moved:
+
+   | moved | world matrices made | `render()` | the frame |
+   |---|---|---|---|
+   | none | 0 | 12.4 ms | 12.9 ms |
+   | 1 | 1 | 13.2 ms | 13.9 ms |
+   | 1 % | 100 | 13.2 ms | 14.1 ms |
+   | 15 % | 1,500 | 16.0 ms | 18.7 ms |
+   | all | 10,000 | 29.4 ms | 42.8 ms |
+
+   So at 10⁴ a render's work for each mesh costs more than the uploads: 12.4 ms before anything moves, beyond a 60 Hz
+   frame. Every render, for every mesh, it copies two whole WGSL strings and a list of refusals, finds the mesh's
+   pipeline by comparing whole strings, and issues two draws (`renderer.kama:1832-1906`, `pipelineFor` at 1542). How
+   that time splits between the lookup and the draws is not measured. A moved mesh adds about 1.7 µs: its matrix, its
+   record and its own `writeBuffer`. That puts the draw path, each instance's pipeline kept rather than looked up and
+   batching (GFX-2's automatic instancing), beside the record's upload among GFX-21's questions.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
@@ -973,6 +1018,37 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The fifty-fourth session** (2026-11-27). Nothing was incoming on any origin. kama's range since the pin held
+0.9.1034, 0.9.1035 and a grammar docs commit, all on its origin now and none a kyoten gap, so there was no bump.
+- **At the start, kyoten's suite and four packages' were green on 0.9.1033,** at the fifty-third session's counts.
+  `@kama/graphics`' gate waited for a monitor, then ran on GPU-19's result and its native cube passed (below).
+- **GPU-19's question, asked at the start once wgpu-native's source had shown the cause:** (A), an encoder created
+  and released unfinished. Upstream is (A): a comment for #638, for the owner to post. The owner asked back first:
+  - why the games stay flat: they submit every buffer they finish, and survive no loss;
+  - whether (A) is a stopgap: (A) itself is not, the check is, and the production answer is wgpu-native fixing #638
+    and merging #641.
+
+  The owner then said "It sounds like we can take your recommendations".
+- **Built:** GPU-19 (kama-gpu `4de4373`), item 3. 6 of 8 mutations caught, the other two not reachable or equivalent.
+- **Measured for GFX-21 with kama quiet** (item 3): the upload again on the fixed package, and the scene graph's path
+  at 10,000 meshes. Its next step is the questions.
+- **The owner asked why `@kama/gpu`'s triangle draws where `@kama/graphics`' cube lost its device.** Both ask for the
+  same GPU the same way, but the cube does far more before its first frame.
+  - **Not RustDesk's virtual display, as first said:** the cube build that failed at 09:53 drew at 14:43 with a
+    RustDesk session connected, and so did the gate's four native cube legs later. RustDesk's log shows no session at
+    09:53.
+  - **The triangle's run at 10:16 drew** with none connected either.
+  - **What is left to test is the cube with nobody connected.** A watcher (`.scratch/s54/cubeloss/watch.sh`) runs
+    both programs in that state, so GPU-18's record waits on it.
+- **Mistakes to keep:**
+  - "the screen is on RustDesk's display, so the cube fails" was told the owner from one correlation. Rerunning the
+    failing build first showed it drew;
+  - a watcher's state check reported "alone" while connected, because a quoted WMI filter broke. It was caught by
+    running the check once before starting it;
+  - "the draws cost more than the uploads" was written before reading the gather, which copies two WGSL strings a mesh
+    every render: the 12.4 ms is the per-mesh work, split unmeasured;
+  - the heredoc trap again: a shell line continuation in `tools/test.sh` became `\n`, caught by printing the function.
 
 **The fifty-third session** (2026-11-27). The Mac had pushed one `@kama/audio` docs commit, fast-forwarded. kama had
 not moved since the pin, so no bump.

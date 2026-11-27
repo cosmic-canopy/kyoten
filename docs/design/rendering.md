@@ -2423,7 +2423,7 @@ the chat that day.
        glue.
   2. **The platform drives `@kama/graphics`' flat core, through an engine surface designed first,** as the library's
      GFX-21: instances by id, each with a world matrix written straight from the extracted transform (the core keeping
-     the previous one for motion vectors, area 1's question 4), a geometry and a material; the changed records uploaded
+     the previous one for motion vectors, area 3's question 4), a geometry and a material; the changed records uploaded
      together; lights and cameras as data. Godot's `RenderingServer` (instances by RID), Unreal's GPU scene (instance
      records in one buffer, the changed ones uploaded together), Unity's `BatchRendererGroup` under its GPU Resident
      Drawer and Bevy's instance buffers have this shape. It is the library's own decision of 2026-11-11 (area 1's
