@@ -1003,8 +1003,55 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
         and views drawn ahead of the steps; the pump reading the window's size when it holds none replaced `openOn`
         recording it, which nothing could hold.
 
-  **Next, the sixth part's other three commits:**
-  - the cursor's mode: the engine's `Cursor`, `Requests`' modes, `Platform.cursor(player:, mode:)`, the open platforms
-    calling `setCursor` and asking again while the game asks `Locked`;
-  - the lock's let-go: the engine's `PadLock`;
-  - the notices: `"Lost"` and `"Unlocked"`.
+- **2026-11-26, built: step 8's sixth part, its last three commits** (the fifty-second session), on kyoten's pin,
+  `0.9.1027+g25d97c29`, each gated by `tools/test.sh`.
+  4. **The cursor's mode** (kyoten `ef6f85a`):
+     - `kyoten::frame::Cursor { player, mode }`, Output's own state, and kyoten's own `CursorMode` (`Normal`, `Hidden`,
+       `Locked`), read by its case names;
+     - `Requests` holds each player's mode, and `pass_requests` asks each `Cursor` naming a player of the world's;
+     - `Platform.cursor(player:, mode:)`, which `Play` calls as a player's mode changes. The open platforms set player
+       1's on the window and keep it, and ask again for a lock the window dropped by itself while the game still asks
+       `Locked`, by the rule each is made with (`CursorAsk`): the web's at once, on `PointerLock(false)`; a native
+       desktop's on `Focus(true)`, which the pump now reads.
+  5. **The lock's let-go** (kyoten `79a8df8`): `kyoten::frame::PadLock { player, letGo }`, Output's own state;
+     `Requests`' let-go; `InputSource.padLock(player:, letGo:, at:)`, which `Play` calls at the frame's timestamp as it
+     changes; and the binder letting go each time player 1's turns on, as a disconnect does, through one function both
+     call.
+  6. **The notices** (kyoten `75a23f8`):
+     - `InputSource.cursor(player:, mode:, at:)`, which `Play` calls beside the platform's, and the binder keeping player
+       1's mode by time;
+     - `"Lost"` on a gamepad entry and `"Unlocked"` on a mouse entry, each pressing the actions bound to it for one step
+       at its moment, moving no scheme;
+     - refused at load, naming why and the way out: on another device, on a value action, in an entry with a filter, a
+       threshold or a gesture, held by a chord or a sequence.
+  - **Settled while building, for the owner to object to:**
+    - **When several `Cursor`s name one player, the strongest ask wins,** `Locked` over `Hidden` over `Normal`, which
+      asks nothing, as `TextEntry` off does, so a component left at its default cannot block a lock. Any `PadLock`
+      asking lets go.
+    - **The engine asks again on the web at once,** when the browser lets go, so the click that gives the page back its
+      focus also locks it, since a browser grants a lock only at a click. **Natively it asks again when the focus comes
+      back,** since only a focus loss drops a lock there. Only player 1's mode reaches the window, whose keyboard and
+      mouse are theirs.
+    - **The game's let-go puts player 1 back on the keyboard and the mouse,** as a disconnect does, through the same
+      release, after any gesture whose time passed before it.
+    - **`"Unlocked"` is judged by the mode as of the lock's let-go.** The game's own release is stamped after its mode
+      change on every leg: `@kama/window` stamps a call's events at the call, and the browser's `pointerlockchange`
+      follows `exitPointerLock`. A lock let go that was not held presses nothing.
+    - **`"Lost"` presses anew** an action its pad's own button held when it disconnected, after the release.
+    - **An entry naming a notice takes no filter, threshold or gesture,** even for its other controls, and a notice is
+      never a chord's modifier or a sequence's step: the refusal says to bind it on an action of its own.
+    - **A `Cursor` record names its mode by case name,** and a prefab naming none takes the default's through the
+      loader, as every component does; a direct read of a record with no `mode` is refused ("missing field").
+  - **Counts:** the engine's tests 1037 cases (961 at the session's start), the tool's 311 (287), natively and on wasm,
+    debug and release; fps and vr as before.
+  - **Mutations:** kyoten's `.scratch/s52/mutate_c4.py`, `mutate_c5.py`, `mutate_c6.py`, each in a worktree of its own.
+    - **Commit 4, 33 of 33,** the web platform's rule on wasm under node.
+    - **Commit 5, 19 of 19,** one, the let-go not advancing its gestures first, once a case held a pad's hold whose time
+      passed before the let-go, in a frame that owed no step.
+    - **Commit 6, 27 of 27,** two by a test's binder refusing its bindings, naming why. While the batch was planned:
+      `Lost` and `Unlocked` bound to two actions, and the locked pad disconnecting while it held its action's button.
+
+  **Step 8 is built.** KYR-54's later parts are each asked when they come: `@kama/window`'s WIN-5 turning the window's
+  text input on and off; a player's settings reaching the filters and gestures; a game's own filters and gestures; how a
+  higher layer merges an object entry; contexts, more local players and rebinding in a game's own UI; touch (WIN-11)
+  and a pad's sensors (WIN-22); rumble, through `Requests`; and the gyro's scheme, found while laying out the sixth part.

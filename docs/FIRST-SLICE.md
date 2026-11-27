@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-26, the fifty-first session)
+## Where it stands (2026-11-26, the fifty-second session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,13 +107,13 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 961 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 287; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's sixth part's first
-     three commits (the fifty-first session); 894 and 272 at its start, the five packages' as below, unchanged. It
-     takes 15 min beside another gate on 0.9.1027, 17 to 19 min beside two mutation batches, 22 min beside two batches
-     and a gate in the fifty-first session, 25 to 30 min beside three (10 min 25 s
-     alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps its
-     compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
+   - tools/test.sh: engine 1037 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 311; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's sixth part (the
+     fifty-first and fifty-second sessions); 961 and 287 at the fifty-second's start, the five packages' as below,
+     unchanged. It takes 15 min beside another gate on 0.9.1027, 17 to 19 min beside two mutation batches, 21 to 23 min
+     beside two or three batches and a gate in the fifty-first and fifty-second sessions, 25 to 30 min beside three
+     (10 min 25 s alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps
+     its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
      `kyoten run` compiling `@kama/window`'s vendored SDL3 again. **Spin's fresh-clone case keeps kama's build cache**
      (the owner, 2026-11-21): it erases `out/kyoten/` and the generated sources, what
      kyoten makes, so the tool's leg takes 306 s run alone (176 s in the suite), where erasing all of `spin/out` made it
@@ -135,7 +135,13 @@ forty-fourth). Where the work is:**
      0.9.1026 and 0.9.1027, 172,326 B on 0.9.1018, 169,655 B on 0.9.978), its ratchet (`examples/cube/web-size.json`). Its
      gate also asks Edge for WARP, which it does not offer, and holds the run to failing cleanly, and it fails any run
      that printed a FAIL line, whatever its status. It took 23 to 31 minutes in the forty-third session, three gates
-     side by side.
+     side by side. **At the fifty-second session's start**, beside kyoten's gate, its builds and mutation batches, its
+     two native debug runs of `examples/cube` failed with every case passing: on the GPU wgpu-native panicked in
+     `wgpuSurfaceGetCurrentTexture` on a lost device ("Parent device is lost"), ending the program, which `@kama/gpu`'s
+     lost-device fix (GPU-15's, before every submit and map) does not reach; on WARP the last frame's read was still
+     pending after 30 s. Rerun alone at the session's end, every leg passed at its counts, the cube on each (19 min
+     26 s), so both came under the load; the panic a lost device's acquire reaches is still `@kama/gpu`'s gap, for the
+     owner.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -183,7 +189,8 @@ forty-fourth). Where the work is:**
      **Read again at the fifty-first session's start and end** (2026-11-26): unchanged, `00e3f371`, nothing
      uncommitted. Two kama bugs found building the sixth part are filed, each worked around: KY-69 (a type spelled
      `View` taken for std's `type view`) and KY-70 (a type's `comptime` member passed as an argument checked as a
-     local of the same name).
+     local of the same name). **Read again at the fifty-second session's start** (2026-11-26): one roadmap commit,
+     `4a4793c0`, filing KY-69 and KY-70 upstream as KR-449 and KR-450, no compiler change.
 
      What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
@@ -781,19 +788,26 @@ forty-fourth). Where the work is:**
    source; the cursor, the pump placing each mouse event by the window's size as of it and the lock a sample, and the
    binder's `"Cursor"` through a view on a `Vector2` and a `Pose`. 1, 38 and 57 mutations caught.
 
-   **Next: the sixth part's other three commits,** laid out in input.md § Decided, 2026-11-26:
-   - **the cursor's mode:** the engine's `Cursor { player, mode }`, kyoten's own `CursorMode` (`Normal`, `Hidden`,
-     `Locked`) in the frame tier, `Requests`' modes, and `Platform.cursor(player:, mode:)`, which `Play.handOn` calls as
-     the mode changes. Read in `@kama/window` (`csrc/winseam.c` `set_cursor`, line 545): natively `setCursor(Locked)`
-     locks at once, focused or not, and posts `PointerLock(true)`; a focus loss sets `Normal`; on the web `Locked` is a
-     wish asked at the next pointer down, and Escape or a tab switch posts `PointerLock(false)`. So the open platforms
-     ask again while the game asks `Locked`, the window is not locked and it has the focus: on the web at once after
-     the browser's release, natively when `Focus(true)` returns. The pump already sees `PointerLock`; it gains `Focus`.
-     A headless window posts the lock event too, so the tests can hold it;
-   - **the lock's let-go:** the engine's `PadLock { player, letGo }`, `Requests`' let-go, `InputSource.padLock(…)`,
-     the binder reusing the disconnect's release (`binder.kama`'s `case Disconnected:`);
-   - **the notices:** `"Lost"` and `"Unlocked"` on a digital entry; `"Unlocked"` presses only for a lock the game
-     did not release, which the binder knows from the mode it was handed and the `Lock` samples.
+   **Its last three commits are built** (the fifty-second session; kyoten `ef6f85a`, `79a8df8` and `75a23f8`;
+   [design/input.md](design/input.md) § Decided, their Built entry, which lists what was settled for the owner to
+   object to):
+   - **the cursor's mode:** the engine's `Cursor { player, mode }` and kyoten's own `CursorMode`, `Requests`' modes (a
+     player's strongest ask winning), and `Platform.cursor(player:, mode:)`, which `Play` calls as a mode changes; the
+     open platforms set player 1's on the window and ask again for a lock it dropped by itself while the game still
+     asks `Locked`, the web at once, a native desktop when the focus comes back;
+   - **the lock's let-go:** the engine's `PadLock { player, letGo }`, `Requests`' let-go and `InputSource.padLock`, the
+     binder letting go as a disconnect does;
+   - **the notices:** `InputSource.cursor`, the binder's mode by time, and `"Lost"` and `"Unlocked"` on a digital
+     entry, each a press for one step, refused at load where it cannot press.
+
+   33, 19 and 27 mutations caught. **Step 8 is built;** KYR-54's later parts are each asked when they come (input.md
+   § Decided, the Built entry's last paragraph).
+
+   **Next: step 9, the render module** (KYR-9's kyoten half, § The order of work): Output extracts `Mesh`,
+   `Material`, `Camera`, `Light` and `Environment` into `@kama/graphics` once a frame, the engine's default records
+   supplying the camera, the light and the material (rendering questions 3 and 4), and each camera writes its own
+   `DrawnView` (input.md § Decided, 2026-11-26, question 1). It is laid out from the code before it is built, and its
+   questions asked in full.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
@@ -893,6 +907,23 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The fifty-second session** (2026-11-26). The Mac had pushed two `audio.md` commits to kyoten and seventeen to
+`@kama/audio`, each fast-forwarded; kama's range since the last read held one roadmap commit, so no bump.
+- **kyoten's suite and four of the five packages' were green on 0.9.1027 at the start,** at the fifty-first session's
+  counts. `@kama/graphics`' two native debug runs of `examples/cube` failed, every case passing (item 1).
+- **No question at the start:** the sixth part's last three commits, as input.md § Decided laid them out, held against
+  the code and `@kama/window`'s source, so the plan went straight to approval.
+- **Built:** the sixth part's last three commits (`ef6f85a`, `79a8df8`, `75a23f8`), item 3; 33, 19 and 27
+  mutations caught. Step 8 is built.
+- **Mistakes to keep:**
+  - commit 5's binder cases were written and never called from `binderTests`; the stub's red run failing none of them
+    showed it. A red run that fails no case of a new function means the function is not called;
+  - a let-go case expected the let-go to land "at its moment, not before" a step ending earlier, but the binder takes a
+    request at once, as text entry's hold-back does, since the loop hands one on after the frame's steps;
+  - a `Cursor` case read a record with no `mode` directly, which kama's derived reader refuses ("missing field"): a
+    prefab's missing fields come from the component's default through the loader;
+  - a sharpened case bound a `const ref Handoff` to a local, which kama refuses; `borrow … as` reads it in place.
 
 **The fifty-first session** (2026-11-26). Nothing new on any origin at the start, and kama unchanged since the
 fiftieth session's end, so no bump.
