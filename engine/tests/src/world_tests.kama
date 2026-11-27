@@ -2,6 +2,7 @@
 // right-handed), the 8-byte `Handle` (question 8, part a, choice 3) and the chunk-size rule (question 6, choice 4).
 
 import { Tally, kyoten::world::Transform, kyoten::frame::ZoneCoord, kyoten::frame::Handle, kyoten::world::ChunkSize,
+         kyoten::world::ColumnStamp,
          std::math::Vec3, std::math::Quat, std::serialization::text::json::JsonDeserializer, std::memory::Owned };
 
 export { worldTests };
@@ -37,13 +38,14 @@ fn void defaults(ref Tally t) {
 }
 
 // The same bytes on every target: the native and wasm legs run this same case (handle requirement 1, and N comes
-// from these sizes, so chunks hold the same count everywhere).
+// from these sizes, so chunks hold the same count everywhere). Transform grew from 52 bytes to 56 with its cut count
+// (step 9's kyoten half, question 3).
 fn void sizes(ref Tally t) {
     usize st = sizeof(Transform);
     usize sh = sizeof(Handle);
     usize sz = sizeof(ZoneCoord);
-    bool ok = st == 52 && sh == 8 && sz == 12;
-    t.verdict(name: "world: Transform is 52 bytes, Handle 8 and ZoneCoord 12, on every target",
+    bool ok = st == 56 && sh == 8 && sz == 12;
+    t.verdict(name: "world: Transform is 56 bytes, Handle 8 and ZoneCoord 12, on every target",
               why: ok ? "" : "Transform ${st}, Handle ${sh}, ZoneCoord ${sz}");
 }
 
@@ -170,8 +172,132 @@ fn void place(ref Tally t) {
     bool ok = tr.zone.equals(other: ZoneCoord.of(x: 2, y: 0, z: -3))
         && tr.position.equals(other: Vec3.of(x: 1.0, y: 2.0, z: 3.0))
         && sameBits(a: tr.rotation.y, b: before.y) && sameBits(a: tr.rotation.w, b: before.w);
-    t.verdict(name: "Transform: place(zone:, position:) writes both parts and nothing else",
+    t.verdict(name: "Transform: place(zone:, position:) writes both parts and leaves its rotation",
               why: ok ? "" : "a part is wrong");
+}
+
+// A teleport cuts the blend (rendering.md § Decided, 2026-11-27, step 9's kyoten half, question 3): `place` counts a
+// cut, and writing a part does not.
+fn void placeCuts(ref Tally t) {
+    Transform tr = Transform.identity();
+    tr.position = Vec3.of(x: 4.0, y: 0.0, z: 0.0);
+    tr.rotateY(by: 0.25);
+    tr.scale = Vec3.of(x: 2.0, y: 2.0, z: 2.0);
+    tr.zone = ZoneCoord.of(x: 1, y: 0, z: 0);
+    uint32 written = tr.cuts();
+    tr.place(zone: ZoneCoord.of(x: 3, y: 0, z: 0), position: Vec3.zero());
+    uint32 once = tr.cuts();
+    tr.place(zone: ZoneCoord.of(x: 3, y: 0, z: 0), position: Vec3.zero());
+    uint32 twice = tr.cuts();
+    bool ok = written == 0 && once == 1 && twice == 2;
+    t.verdict(name: "Transform: place counts a cut each time, and writing a part counts none",
+              why: ok ? "" : "after the writes ${written}, after one place ${once}, after two ${twice}");
+}
+
+fn void cutsUnread(ref Tally t) {
+    Transform tr = Transform.identity();
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"cutCount\": 3}", strict: true);
+    Result<Unit, Owned<Error>> m = tr.mergeFrom(r: r);
+    string why = match (m) {
+        case Ok(value: u): "accepted";
+        case Err(error: e): e.message().contains(substring: "unknown field `cutCount`") ? "" : e.message();
+    };
+    t.verdict(name: "Transform: a record cannot set its cut count", why: why);
+}
+
+fn bool sameTransform(const ref Transform a, const ref Transform b) {
+    return a.zone.equals(other: b.zone) && sameBits(a: a.position.x, b: b.position.x) && sameBits(a: a.position.y, b: b.position.y)
+        && sameBits(a: a.position.z, b: b.position.z) && sameBits(a: a.rotation.x, b: b.rotation.x)
+        && sameBits(a: a.rotation.y, b: b.rotation.y) && sameBits(a: a.rotation.z, b: b.rotation.z)
+        && sameBits(a: a.rotation.w, b: b.rotation.w) && sameBits(a: a.scale.x, b: b.scale.x)
+        && sameBits(a: a.scale.y, b: b.scale.y) && sameBits(a: a.scale.z, b: b.scale.z) && a.cuts() == b.cuts();
+}
+
+// Two samples a step apart, as the generated world keeps them: the earlier at x 10, turned a quarter about +Y, scale 1;
+// the later at x 20, turned a half, scale 3, both in zone 0.
+fn Transform earlier() {
+    Transform a = Transform.identity();
+    a.position = Vec3.of(x: 10.0, y: 0.0, z: 0.0);
+    a.rotation = Quat.fromAxisAngle(axis: Vec3.unitY(), rad: 1.5707963);
+    return a;
+}
+
+fn Transform later() {
+    Transform b = Transform.identity();
+    b.position = Vec3.of(x: 20.0, y: 0.0, z: 0.0);
+    b.rotation = Quat.fromAxisAngle(axis: Vec3.unitY(), rad: 3.1415927);
+    b.scale = Vec3.of(x: 3.0, y: 3.0, z: 3.0);
+    return b;
+}
+
+fn void blendEnds(ref Tally t) {
+    Transform a = earlier();
+    Transform b = later();
+    Transform one = a.blendedTo(to: b, at: 1.0, zoneSize: 64);
+    Transform past = a.blendedTo(to: b, at: 1.5, zoneSize: 64);
+    t.verdict(name: "Transform: blended at 1, or past it, is the later sample, bit for bit",
+              why: sameTransform(a: one, b: b) && sameTransform(a: past, b: b) ? "" : "not the later sample");
+    Transform zero = a.blendedTo(to: b, at: 0.0, zoneSize: 64);
+    Transform before = a.blendedTo(to: b, at: -0.5, zoneSize: 64);
+    bool ok = sameTransform(a: zero, b: a) && sameTransform(a: before, b: a);
+    float32 x = zero.position.x;
+    t.verdict(name: "Transform: blended at 0, or before it, is the earlier sample", why: ok ? "" : "at 0, x ${x}");
+}
+
+// Halfway: position and scale halfway, rotation by slerp, the eighth turn between a quarter and a half.
+fn void blendHalfway(ref Tally t) {
+    Transform a = earlier();
+    Transform b = later();
+    Transform h = a.blendedTo(to: b, at: 0.5, zoneSize: 64);
+    Quat want = Quat.slerp(a: a.rotation, b: b.rotation, t: 0.5);
+    Vec3 forward = h.rotation.rotate(v: Vec3.unitX());
+    bool ok = h.zone.equals(other: ZoneCoord.origin()) && nearVec(a: h.position, b: Vec3.of(x: 15.0, y: 0.0, z: 0.0), tol: 0.000001)
+        && nearVec(a: h.scale, b: Vec3.of(x: 2.0, y: 2.0, z: 2.0), tol: 0.000001)
+        && sameBits(a: h.rotation.y, b: want.y) && sameBits(a: h.rotation.w, b: want.w)
+        && nearVec(a: forward, b: Vec3.of(x: -0.70710677, y: 0.0, z: -0.70710677), tol: 0.000001);
+    float32 px = h.position.x; float32 sx = h.scale.x; float32 fx = forward.x; float32 fz = forward.z;
+    t.verdict(name: "Transform: blended halfway, position and scale are halfway and rotation is slerped, three eighths of a turn",
+              why: ok ? "" : "x ${px}, scale ${sx}, forward ${fx}, ${fz}");
+}
+
+// A quarter of the way, where slerp and a normalized lerp part (halfway they agree, by symmetry): the turn is five
+// sixteenths, 5π/8 about +Y, which takes +X to (cos 5π/8, 0, -sin 5π/8); a normalized lerp falls short of it.
+fn void blendQuarter(ref Tally t) {
+    Transform a = earlier();
+    Transform b = later();
+    Transform q = a.blendedTo(to: b, at: 0.25, zoneSize: 64);
+    Vec3 forward = q.rotation.rotate(v: Vec3.unitX());
+    bool ok = nearVec(a: forward, b: Vec3.of(x: -0.38268343, y: 0.0, z: -0.9238795), tol: 0.000002)
+        && nearVec(a: q.position, b: Vec3.of(x: 12.5, y: 0.0, z: 0.0), tol: 0.000001)
+        && nearVec(a: q.scale, b: Vec3.of(x: 1.5, y: 1.5, z: 1.5), tol: 0.000001);
+    float32 fx = forward.x; float32 fz = forward.z; float32 px = q.position.x;
+    t.verdict(name: "Transform: blended a quarter of the way, the rotation is slerped at constant speed, not a normalized lerp",
+              why: ok ? "" : "forward ${fx}, ${fz}, x ${px}");
+}
+
+// Across a zone's edge: x 31 in zone 0 and x -31 in zone 1, 64 m zones, are 2 m apart, and halfway is on the edge, x -32
+// in the later sample's zone, not the 1 m a blend of the raw offsets would give.
+fn void blendAcrossZones(ref Tally t) {
+    Transform a = Transform.identity();
+    a.position = Vec3.of(x: 31.0, y: 0.0, z: 0.0);
+    Transform b = Transform.identity();
+    b.zone = ZoneCoord.of(x: 1, y: 0, z: 0);
+    b.position = Vec3.of(x: -31.0, y: 0.0, z: 0.0);
+    Transform h = a.blendedTo(to: b, at: 0.5, zoneSize: 64);
+    bool ok = h.zone.equals(other: ZoneCoord.of(x: 1, y: 0, z: 0)) && nearVec(a: h.position, b: Vec3.of(x: -32.0, y: 0.0, z: 0.0), tol: 0.000001);
+    float32 x = h.position.x;
+    t.verdict(name: "Transform: blended across a zone's edge, two near places meet halfway, in the later sample's zone",
+              why: ok ? "" : "x ${x}");
+}
+
+// A cut between the samples, a teleport: the later sample is drawn at once, whatever the fraction.
+fn void blendCut(ref Tally t) {
+    Transform a = earlier();
+    Transform b = earlier();
+    b.place(zone: ZoneCoord.of(x: 9, y: 0, z: 0), position: Vec3.of(x: 1.0, y: 0.0, z: 0.0));
+    Transform h = a.blendedTo(to: b, at: 0.25, zoneSize: 64);
+    t.verdict(name: "Transform: across a cut, the later sample is drawn at once, bit for bit",
+              why: sameTransform(a: h, b: b) ? "" : "it blended across the teleport");
 }
 
 fn void zoneCoord(ref Tally t) {
@@ -230,9 +356,55 @@ fn void chunkSize(ref Tally t) {
               why: n == 128 && column == 512 ? "" : "rows ${n}, column ${column} bytes");
 }
 
+// A column's stamp (step 9's kyoten half): the step it was last handed out at, and for a blending column the step of
+// the sample before it.
+fn void stampNever(ref Tally t) {
+    ColumnStamp s = ColumnStamp.never();
+    int64 newest = s.newest();
+    int64 before = s.before();
+    bool ok = newest == -1 && before == -1 && !s.changedAfter(step: -1) && s.movesAt(step: 0);
+    t.verdict(name: "ColumnStamp: never handed out, both its steps are -1 and it changed after none",
+              why: ok ? "" : "newest ${newest}, before ${before}");
+}
+
+fn void stampSteps(ref Tally t) {
+    ColumnStamp s = ColumnStamp.never();
+    s.handOut(step: 5);
+    int64 n1 = s.newest();
+    int64 b1 = s.before();
+    bool again = s.movesAt(step: 5);
+    s.handOut(step: 5);
+    int64 n2 = s.newest();
+    int64 b2 = s.before();
+    s.handOut(step: 7);
+    int64 n3 = s.newest();
+    int64 b3 = s.before();
+    bool ok = n1 == 5 && b1 == -1 && !again && n2 == 5 && b2 == -1 && n3 == 7 && b3 == 5 && s.movesAt(step: 8);
+    t.verdict(name: "ColumnStamp: its first hand-off at a step moves its samples, a second at that step does not",
+              why: ok ? "" : "at 5: ${n1}, ${b1}; at 5 again: ${n2}, ${b2}; at 7: ${n3}, ${b3}");
+}
+
+fn void stampChanged(ref Tally t) {
+    ColumnStamp s = ColumnStamp.never();
+    s.handOut(step: 5);
+    bool ok = s.changedAfter(step: 4) && !s.changedAfter(step: 5) && !s.changedAfter(step: 6);
+    t.verdict(name: "ColumnStamp: handed out at step 5, it changed after step 4, not after 5 or 6",
+              why: ok ? "" : "wrong");
+}
+
 fn void worldTests(ref Tally t) {
     defaults(t: t);
     sizes(t: t);
+    stampNever(t: t);
+    stampSteps(t: t);
+    stampChanged(t: t);
+    placeCuts(t: t);
+    cutsUnread(t: t);
+    blendEnds(t: t);
+    blendHalfway(t: t);
+    blendQuarter(t: t);
+    blendAcrossZones(t: t);
+    blendCut(t: t);
     rotateYBits(t: t);
     rotateYDirection(t: t);
     rotateYLocal(t: t);

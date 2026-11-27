@@ -80,7 +80,7 @@ unsafe fn bool generate(ref Kama kama, const ref Manifest game) {
     string tables = tablesFile(game: gameName);
     string passes = passesFile(game: gameName);
     string world = worldFile(game: gameName);
-    writeIfChanged(path: game.root() + "/" + tables, text: tablesKama(game: gameName, families: families));
+    writeIfChanged(path: game.root() + "/" + tables, text: tablesKama(game: gameName, families: families, s: schedule));
     bool hasActions = records.actions().length() > 0;
     string actionLines = actionListLines(r: records);
     writeIfChanged(path: game.root() + "/" + passes, text: passesKama(game: gameName, families: families, s: schedule,

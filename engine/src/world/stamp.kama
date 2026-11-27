@@ -1,0 +1,44 @@
+// kyoten::world::ColumnStamp — when one column of one chunk was last handed to a processor to write (the first slice's
+// step 9, KYR-9; rendering.md § Decided, 2026-11-27, step 9's two questions and its kyoten half). The generated world
+// keeps one for each component's column in each chunk, and stamps it each time it hands that column to a processor
+// taking the component by `ref`.
+//
+// - It is the column's **change version**: what changed is known by the step its column was last handed out at, not by
+//   comparing values, as Unity's Entities keeps one per chunk ("updated even when another job or system that has
+//   declared write access to a component does not actually change the component value"). The extract lists a chunk's
+//   rows when its column was written after the last list.
+// - For a component that blends (`Transform`, frame-phases § Decided, 2026-11-04), it is also the two samples' times:
+//   the step the newest was written at and the step the one before it was. The first hand-off at a new step moves the
+//   samples, and the generated world copies the column into its previous one before the processor writes; a second
+//   processor writing it at the same step moves nothing, so the previous sample is the value before that step.
+//
+// A step is the base clock's index, as `Time.step`; -1 is "never".
+
+export { ColumnStamp };
+
+type value ColumnStamp {
+    int64 newestStep = -1;
+    int64 beforeStep = -1;
+
+    // Never handed out.
+    public default ctor never() { }
+
+    // Whether handing the column out at `step` moves its samples: its first hand-off at that step.
+    public const fn bool movesAt(int64 step) { return step != this.newestStep; }
+
+    // The column is handed to a processor to write at `step`.
+    public fn void handOut(int64 step) {
+        if (!this.movesAt(step: step)) { return; }
+        this.beforeStep = this.newestStep;
+        this.newestStep = step;
+    }
+
+    // The step it was last handed out at, -1 never.
+    public const fn int64 newest() { return this.newestStep; }
+
+    // The step it was handed out at before that, at an earlier step, -1 never.
+    public const fn int64 before() { return this.beforeStep; }
+
+    // Whether it was handed out at a step after `step`.
+    public const fn bool changedAfter(int64 step) { return this.newestStep > step; }
+}

@@ -16,7 +16,8 @@
 //
 // Every problem is named, with its record's or its code's file and the fix, and one run names them all.
 
-import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::ProcessorRecord, kyoten::frame::Scheme,
+import { kyoten::records::Phase, kyoten::records::Store, kyoten::records::Blend, kyoten::records::ProcessorRecord,
+         kyoten::frame::Scheme,
          kyoten::records::ProcessorGroupRecord, kyoten::records::ComponentRecord, kyoten::frame::Rate,
          std::collections::DynamicArray, std::collections::SortedMap, Records, CodeFile, Index, FunctionEntry,
          ParamEntry, Family, Component, Refusals, Manifest, inModule, lastOf, moduleOfPath };
@@ -127,10 +128,12 @@ type resource Schedule {
     DynamicArray<Processor> processorList = DynamicArray.empty();
     DynamicArray<Group> groupList = DynamicArray.empty();
     DynamicArray<string> worldList = DynamicArray.empty();
+    // The components that blend, by full path: the engine's `Transform` (frame-phases § Decided, 2026-11-04).
+    DynamicArray<string> blendList = DynamicArray.empty();
     // Each phase's order: "p:<path>" for a processor, "g:<path>" for a group.
     SortedMap<string, DynamicArray<string>> orders = SortedMap.empty();
 
-    friend buildSchedule[baseRate, processorList, groupList, worldList, orders];
+    friend buildSchedule[baseRate, processorList, groupList, worldList, blendList, orders];
 
     public ctor make() { }
 
@@ -139,6 +142,8 @@ type resource Schedule {
     public const fn const ref DynamicArray<Group> groups() { return this.groupList; }
     // The world components, by full path, sorted.
     public const fn const ref DynamicArray<string> worldComponents() { return this.worldList; }
+    // Whether the component at `path` blends, so its table keeps its previous sample.
+    public const fn bool blends(const ref string path) { return this.blendList.contains(item: path); }
 
     // The phase's order of processors and groups, each "p:<path>" or "g:<path>".
     public const fn DynamicArray<string> orderOf(Phase phase) {
@@ -447,7 +452,7 @@ fn int64 nearestFitting(int64 hz, int64 over) {
 // `ownState`, and what is not built yet is refused.
 unsafe fn void componentRecord(const ref string module, const ref string name, const ref ComponentRecord rec,
                                const ref string file, const ref Index idx, ref SortedMap<string, bool> world,
-                               ref SortedMap<string, bool> ownState, ref Refusals no) {
+                               ref SortedMap<string, bool> ownState, ref SortedMap<string, bool> blended, ref Refusals no) {
     string path = inModule(module: module, name: name);
     if (idx.kindAt(path: path) != "value") {
         no.add(where: file, what: "component record `${name}` names no `type value` in module `${module}`: a component record describes a component its module declares");
@@ -459,6 +464,13 @@ unsafe fn void componentRecord(const ref string module, const ref string name, c
         return;
     }
     if (rec.output()) { ownState.put(key: copy path, value: true); }
+    // A blend is the engine's `Transform`'s alone until Output reads blended values, which is asked when it comes: a
+    // game's component that declared one would keep its samples for nothing to read (frame-phases § Decided,
+    // 2026-11-04; rendering.md § Decided, 2026-11-27, step 9's kyoten half).
+    if (rec.blend() != Blend::Snap) {
+        if (path == "kyoten::world::Transform") { blended.put(key: copy path, value: true); }
+        else { no.add(where: file, what: "component `${name}` declares a `blend`, which only the engine's `Transform` does: a component that blends is drawn between its samples, and nothing reads a game component's yet"); }
+    }
     match (rec.store()) {
         case World: { world.put(key: copy path, value: true); }
         case Side: { no.add(where: file, what: "component `${name}` is stored `Side`, and side stores are not built yet: they come with their row"); }
@@ -628,21 +640,25 @@ unsafe fn Schedule buildSchedule(const ref Records r, const ref Index idx, const
     // state, and what is not built yet.
     SortedMap<string, bool> world = SortedMap.empty();
     SortedMap<string, bool> ownState = SortedMap.empty();
+    SortedMap<string, bool> blended = SortedMap.empty();
     foreach (const ref CodeFile f in r.code().iterConst()) {
         foreach (string c in f.record().components()) {
             componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
-                            idx: idx, world: world, ownState: ownState, no: no);
+                            idx: idx, world: world, ownState: ownState, blended: blended, no: no);
         }
     }
     foreach (const ref CodeFile f in r.dependencyCode().iterConst()) {
         foreach (string c in f.record().components()) {
             componentRecord(module: f.module(), name: c, rec: f.record().components().getRef(key: c), file: f.file(),
-                            idx: idx, world: world, ownState: ownState, no: no);
+                            idx: idx, world: world, ownState: ownState, blended: blended, no: no);
         }
     }
     DynamicArray<string> worldList = DynamicArray.empty();
     foreach (string w in world) { worldList.add(item: give w); }
     s.worldList = give worldList;
+    DynamicArray<string> blendList = DynamicArray.empty();
+    foreach (string b in blended) { blendList.add(item: give b); }
+    s.blendList = give blendList;
     foreach (const ref Family fam in families.iterConst()) {
         foreach (const ref Component c in fam.components().iterConst()) {
             if (!world.contains(key: c.path())) { continue; }

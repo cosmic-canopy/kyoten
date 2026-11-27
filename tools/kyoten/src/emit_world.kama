@@ -138,11 +138,16 @@ fn string prefabType(const ref Family f) { return typeCase(s: f.root()) + "Prefa
 fn string rowsName(const ref Family f) { return "rows_" + f.root(); }
 fn string tableField(const ref Family f) { return "table_" + f.root(); }
 
+// A column's stamp's name, and a blending column's previous sample's (step 9's kyoten half): an underscore, as the
+// handle column's, so neither meets a component's column.
+fn string stampOf(const ref string field) { return "stamp_" + field; }
+fn string previousColumn(const ref string field) { return "previous_" + field; }
+
 // The handle column's name. A component's column is its type's name in lowerCamel, which has no underscore unless its
 // type's name does, so this one never meets a component's.
 fn string handleColumn() { return "entity_handle"; }
 
-fn string tablesKama(const ref string game, const ref DynamicArray<Family> families) {
+fn string tablesKama(const ref string game, const ref DynamicArray<Family> families, const ref Schedule s) {
     ImportSet imports = ImportSet.make(module: copy game);
     foreach (const ref Family f in families.iterConst()) {
         imports.declare(name: chunkType(f: f));
@@ -154,6 +159,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
     imports.add(path: "kyoten::world::ChunkSize");
     imports.add(path: "kyoten::world::Lookup");
     imports.add(path: "kyoten::world::Place");
+    imports.add(path: "kyoten::world::ColumnStamp");
     imports.add(path: "std::collections::InlineDynamicArray");
     imports.add(path: "std::collections::FixedArray");
     imports.add(path: "std::collections::CapacityFull");
@@ -163,6 +169,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
     string chunkSize = imports.nameOf(path: "kyoten::world::ChunkSize");
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
     string place = imports.nameOf(path: "kyoten::world::Place");
+    string stamp = imports.nameOf(path: "kyoten::world::ColumnStamp");
     string inlineArray = imports.nameOf(path: "std::collections::InlineDynamicArray");
     string fixed = imports.nameOf(path: "std::collections::FixedArray");
     string full = imports.nameOf(path: "std::collections::CapacityFull");
@@ -184,15 +191,22 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
         string bytes = "";
         foreach (const ref Component c in f.components().iterConst()) {
             bytes = bytes + "sizeof(" + imports.nameOf(path: c.path()) + ") + ";
+            if (s.blends(path: c.path())) { bytes = bytes + "sizeof(" + imports.nameOf(path: c.path()) + ") + "; }
         }
         bytes = bytes + "sizeof(" + handle + ")";
-        t = t + "\n// `" + f.root() + "`'s family: a row is its components and its handle, and a chunk holds as many rows as fit\n";
+        t = t + "\n// `" + f.root() + "`'s family: a row is its components, a blending one's previous sample, and its handle, and a\n";
+        t = t + "// chunk holds as many rows as fit\n";
         t = t + "// 16 KiB, at most 128 (components § Decided, question 6, choice 4).\n";
         t = t + "comptime int32 " + rows + " = cast<int32>(" + chunkSize + "::rowsFor(rowBytes: cast<isize>(" + bytes + ")));\n\n";
         t = t + "type value " + chunkType(f: f) + " {\n";
         foreach (const ref Component c in f.components().iterConst()) {
             string ty = imports.nameOf(path: c.path());
             t = t + "    public " + inlineArray + "<" + ty + ">#(" + rows + ") " + c.field() + " = " + inlineArray + ".empty();\n";
+            if (s.blends(path: c.path())) {
+                t = t + "    // `" + c.field() + "`'s previous sample, row by row, as of its stamp's step before (it blends).\n";
+                t = t + "    public " + inlineArray + "<" + ty + ">#(" + rows + ") " + previousColumn(field: c.field()) + " = " + inlineArray + ".empty();\n";
+            }
+            t = t + "    public " + stamp + " " + stampOf(field: c.field()) + " = " + stamp + ".never();\n";
         }
         t = t + "    public " + inlineArray + "<" + handle + ">#(" + rows + ") " + handleColumn() + " = " + inlineArray + ".empty();\n\n";
         t = t + "    public default ctor empty() { }\n}\n\n";
@@ -213,6 +227,9 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
         foreach (const ref Component c in f.components().iterConst()) {
             string ty = imports.nameOf(path: c.path());
             t = t + "                Result<Unit, " + full + "<" + ty + ">> added${i} = this.chunks[k]." + c.field() + ".add(item: row." + c.field() + ");\n";
+            if (s.blends(path: c.path())) {
+                t = t + "                Result<Unit, " + full + "<" + ty + ">> before${i} = this.chunks[k]." + previousColumn(field: c.field()) + ".add(item: row." + c.field() + ");\n";
+            }
             i = i + 1;
         }
         t = t + "                Result<Unit, " + full + "<" + handle + ">> addedHandle = this.chunks[k]." + handleColumn() + ".add(item: who);\n";
@@ -270,9 +287,27 @@ fn string callOf(const ref Processor p, const ref Family f, bool perRow, const r
     return runName(path: p.path()) + "(" + args + ");";
 }
 
+// The stamps of the columns a processor writes, as its chunk is handed to it: each column it takes by `ref` is stamped
+// with the step (its change version), and a blending one, at its first hand-off of the step, first keeps its rows as
+// its previous sample (rendering.md § Decided, 2026-11-27, step 9's kyoten half).
+fn string handOuts(const ref Processor p, const ref Family f, const ref Schedule s, const ref string pad) {
+    string t = "";
+    foreach (const ref Param a in p.params().iterConst()) {
+        if (a.access() != Access::TableComponent || !a.writes()) { continue; }
+        string column = columnOf(f: f, path: a.path());
+        string stamp = "c." + stampOf(field: column);
+        if (s.blends(path: a.path())) {
+            t = t + pad + "if (" + stamp + ".movesAt(step: time.step)) { c." + previousColumn(field: column) + " = c." + column + "; }\n";
+        }
+        t = t + pad + stamp + ".handOut(step: time.step);\n";
+    }
+    return t;
+}
+
 // One processor's block in its phase's pass, indented by `pad`: its rate's gate, its iterations, and its call over
 // every table its family set gives, or once when it names no entity's component or handle.
-fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> families, const ref ImportSet worldNames,
+fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> families, const ref Schedule sched,
+                         const ref ImportSet worldNames,
                          const ref string timeType, const ref string pad, const ref string actionsPath, bool hasActions,
                          const ref string schemeType, ref int32 counter) {
     bool output = p.phase() == Phase::Output;
@@ -329,6 +364,7 @@ fn string processorBlock(const ref Processor p, const ref DynamicArray<Family> f
         DynamicArray<isize> on = familiesFor(p: p, families: families);
         foreach (isize fi in on) {
             t = t + body + "foreach (ref " + chunkType(f: families[fi]) + " c in w." + tableField(f: families[fi]) + ".chunks.iterMut()) {\n";
+            t = t + handOuts(p: p, f: families[fi], s: sched, pad: body + "    ");
             t = t + body + "    isize i = 0;\n";
             t = t + body + "    while (i < c." + handleColumn() + ".length()) {\n";
             string call = callOf(p: p, f: families[fi], perRow: true, time: time, worldNames: worldNames);
@@ -415,7 +451,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             string path = key.substring(start: 2, end: key.length());
             if (key.startsWith(prefix: "p:")) {
                 isize at = s.processorAt(path: path);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "    ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, sched: s, worldNames: worldNames, timeType: timeType, pad: "    ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
                 continue;
             }
             isize gi = s.groupAt(path: path);
@@ -428,7 +464,7 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
             t = t + "    while (" + round + " < ${times}) {\n";
             foreach (const ref string member in s.groups()[gi].order().iterConst()) {
                 isize at = s.processorAt(path: member);
-                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, worldNames: worldNames, timeType: timeType, pad: "        ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
+                if (at >= 0) { t = t + processorBlock(p: s.processors()[at], families: families, sched: s, worldNames: worldNames, timeType: timeType, pad: "        ", actionsPath: actionsPath, hasActions: hasActions, schemeType: schemeType, counter: counter); }
             }
             t = t + "        " + round + " = " + round + " + 1;\n";
             t = t + "    }\n";

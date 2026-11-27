@@ -8,4 +8,5 @@
     "Spire":  { "requires": ["components::towers::Health"] },
     "Cannon": { "requires": ["Powder"] },
     "Lock":   { "requires": ["Secret"] },
-    "Vault":  { "store": "World" } } }
+    "Vault":  { "store": "World" },
+    "Turret": { "blend": "Linear" } } }

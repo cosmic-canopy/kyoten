@@ -6,6 +6,10 @@
 // - Y up, right-handed, metres, as glTF has it (item 4).
 // - On kama's std::math, `Vec3` and `Quat`, so there is one way across kama (question 8, part b, item 4). A record
 //   holds only what differs: `"Transform": { "position": { "x": -20 } }`, laid over `identity()` with `mergeFrom`.
+// - It blends (frame-phases § Decided, 2026-11-04; its records declare `"blend": "Linear"`): the generated world keeps
+//   its two newest samples, and what draws it blends them at the frame's time, position linearly, rotation by slerp
+//   (`blendedTo`). A teleport, `place`, cuts the blend, so the new place is drawn at once (rendering.md § Decided,
+//   2026-11-27, step 9's kyoten half, question 3).
 
 import { std::math::Vec3, std::math::Quat, kyoten::frame::ZoneCoord };
 
@@ -17,6 +21,9 @@ type value Transform {
     @field public Vec3 position = Vec3.zero();
     @field public Quat rotation = Quat.identity();
     @field public Vec3 scale = Vec3.one();
+    // How many times `place` has cut the blend, wrapping: two samples whose counts differ are a teleport apart. No record
+    // sets it.
+    @skip uint32 cutCount = 0;
 
     // The origin zone, no offset, no rotation, scale 1.
     public default ctor identity() { }
@@ -45,9 +52,31 @@ type value Transform {
         return zones + offsets;
     }
 
-    // Put the transform at `position` in `zone`: a teleport writes both parts (question 9, item 5).
+    // Put the transform at `position` in `zone`: a teleport writes both parts (question 9, item 5), and cuts the blend,
+    // so what draws it shows the new place at once, with no motion between (step 9's kyoten half, question 3). Writing
+    // `position`, `rotation` or `scale` blends; the engine's own rebasing, an offset leaving its zone, does not cut.
     public fn void place(ZoneCoord zone, Vec3 position) {
         this.zone = zone;
         this.position = position;
+        this.cutCount = this.cutCount + 1;
+    }
+
+    // How many times `place` has cut its blend, wrapping.
+    public const fn uint32 cuts() { return this.cutCount; }
+
+    // This transform blended toward `to` by `at`, from 0, this one, to 1, `to`, as a moving entity is drawn between its
+    // two samples (frame-phases § Decided, 2026-11-04): position linearly, rotation by slerp, scale linearly. The result is
+    // in `to`'s zone, its offset `to`'s plus the blended difference taken by `offsetTo` (zones `zoneSize` metres
+    // across), so two samples in neighbouring zones blend as the near places they are. `at` is held to [0, 1], and at 1,
+    // or when a cut lies between them, the result is `to`, bit for bit.
+    public const fn Transform blendedTo(const ref Transform to, float32 at, int32 zoneSize) {
+        if (at >= 1.0 || to.cutCount != this.cutCount) { return to; }
+        float32 t = at < 0.0 ? 0.0 : at;
+        Vec3 back = to.offsetTo(other: this, zoneSize: zoneSize);
+        Transform made = to;
+        made.position = Vec3.lerp(a: to.position + back, b: to.position, t: t);
+        made.rotation = Quat.slerp(a: this.rotation, b: to.rotation, t: t);
+        made.scale = Vec3.lerp(a: this.scale, b: to.scale, t: t);
+        return made;
     }
 }

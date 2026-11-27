@@ -1,1 +1,2 @@
-{ "tier": "World" }
+{ "tier": "World",
+  "components": { "Transform": { "blend": "Linear", "note": "where an entity is, which way it faces and how large it is: drawn between its two newest samples at the frame's time, position linearly and rotation by slerp, a place cutting the blend" } } }

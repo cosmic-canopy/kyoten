@@ -113,6 +113,19 @@ fn void loaded(ref Tally t, const ref string leg, const ref Ran r) {
 // What the generated world did with the two cubes, against the same turns by hand: `show`, an Output processor, prints
 // each cube's rate and rotation as bits, and `main` prints what `turn` gives when the same steps are taken by hand.
 // Output runs twice at the end, on the same step, so each cube is shown twice, the same both times.
+// How many times `what` occurs in `text`, none overlapping.
+fn isize occurrences(const ref string text, const ref string what) {
+    isize n = 0;
+    isize from = 0;
+    while (true) {
+        Optional<isize> found = text.findFrom(substring: what, start: from);
+        match (found) {
+            case Some(value: at): { n = n + 1; from = at + what.length(); }
+            case None: { return n; }
+        };
+    }
+}
+
 fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
     string said = before(text: r.said(), marker: placedMarker());
     DynamicArray<string> shown = linesAfter(text: said, prefix: "shown: ");
@@ -387,6 +400,30 @@ unsafe fn void spinTests(ref Tally t, ref Setup s) {
               && !tables.contains(substring: "spin::cube::turn") && !world.contains(substring: "spin::cube::turn")
               && !tables.contains(substring: "spin::view::show") && !world.contains(substring: "spin::view::show"),
           why: tables + "\n" + world);
+    // Each column's change version, and Transform's previous sample (rendering.md § Decided, 2026-11-27, step 9's kyoten
+    // half): a stamp a column in each chunk, the previous sample beside the one component that blends and counted in a
+    // row's bytes, and a row added its own previous sample.
+    check(t: t, name: "spin: each column of a chunk keeps its stamp, its change version",
+          ok: tables.contains(substring: "    public ColumnStamp stamp_spin = ColumnStamp.never();\n")
+              && tables.contains(substring: "    public ColumnStamp stamp_transform = ColumnStamp.never();\n")
+              && tables.contains(substring: "    public ColumnStamp stamp_actions = ColumnStamp.never();\n"),
+          why: tables);
+    check(t: t, name: "spin: Transform, which blends, keeps its previous sample beside it, counted in a row's bytes, and nothing else does",
+          ok: tables.contains(substring: "    public InlineDynamicArray<Transform>#(rows_cube) previous_transform = InlineDynamicArray.empty();\n")
+              && tables.contains(substring: "sizeof(Transform) + sizeof(Transform) + sizeof(Handle)")
+              && occurrences(text: tables, what: "previous_") == occurrences(text: tables, what: "previous_transform"),
+          why: tables);
+    check(t: t, name: "spin: a row added is its own previous sample",
+          ok: tables.contains(substring: ".previous_transform.add(item: row.transform);"), why: tables);
+    // Each `ref` hand-off stamps its column: `turn` writes Transform and Spin over the two families that have them, and
+    // its Transform is copied to the previous sample at its first hand-off of a step; `show` reads them and stamps none.
+    isize copies = occurrences(text: passes, what: "if (c.stamp_transform.movesAt(step: time.step)) { c.previous_transform = c.transform; }\n");
+    isize transformOuts = occurrences(text: passes, what: "c.stamp_transform.handOut(step: time.step);\n");
+    isize spinOuts = occurrences(text: passes, what: "c.stamp_spin.handOut(step: time.step);\n");
+    check(t: t, name: "spin: a processor taking a component by `ref` stamps its column as each chunk is handed to it, a blending one copied first",
+          ok: copies == 2 && transformOuts == 2 && spinOuts == 2
+              && passes.contains(substring: "if (c.stamp_transform.movesAt(step: time.step)) { c.previous_transform = c.transform; }\n            c.stamp_transform.handOut(step: time.step);\n"),
+          why: "copies ${copies}, Transform's stamps ${transformOuts}, Spin's ${spinOuts}: " + passes);
     DynamicArray<string> release = DynamicArray.empty();
     release.add(item: "--release");
     Ran ranRelease = s.kyoten(command: "run", game: "spin", more: toTheGame(flags: give release, options: runOptions()));

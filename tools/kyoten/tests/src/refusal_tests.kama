@@ -142,6 +142,10 @@ unsafe fn void refusalTests(ref Tally t, ref Setup s) {
          words: allOf(a: "component `Flag`'s `requires` names `Banner`, a world component", b: "", c: ""));
     says(t: t, name: "components: a world component that requires others is refused", r: c,
          words: allOf(a: "component `Crown` is a world component", b: "`requires`", c: ""));
+    // A blend is the engine's Transform's alone until Output reads blended values (rendering.md § Decided, 2026-11-27,
+    // step 9's kyoten half).
+    says(t: t, name: "components: a game's component declaring a blend is refused, since only the engine's Transform blends", r: c,
+         words: allOf(a: "component `Turret` declares a `blend`", b: "only the engine's `Transform`", c: ""));
     says(t: t, name: "components: a variant dropping what its other components require is refused, naming which", r: c,
          words: allOf(a: "prefab `ruin` drops `components::towers::Health`", b: "`components::towers::Spire` requires it",
                       c: "keep"));
