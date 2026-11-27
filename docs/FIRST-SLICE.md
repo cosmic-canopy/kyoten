@@ -793,9 +793,13 @@ forty-fourth). Where the work is:**
    `Material`, `Camera`, `Light` and `Environment` into `@kama/graphics` once a frame, the engine's default records
    supplying the camera, the light and the material (rendering questions 3 and 4), and each camera writes its own
    `DrawnView` (input.md § Decided, 2026-11-26, question 1). **Laid out from the code at the fifty-second session's
-   readying:** its two questions, how what Output draws reaches the GPU and what the platform drives in
-   `@kama/graphics`, are in [design/rendering.md](design/rendering.md) § The questions for step 9, asked in full that
-   day, with what the decided rules settle. The next session starts from their answers.
+   readying, and its two questions decided at its end** (the owner, 2026-11-27, each (A),
+   [design/rendering.md](design/rendering.md) § Decided): what Output draws reaches the GPU through a frame-tier
+   `RenderFrame` that the platform draws, carrying only what changed, which the world knows by a change version per
+   chunk and column; and the platform drives `@kama/graphics`' flat core through an engine surface designed first, the
+   library's GFX-21. **Next:** step 9's parts laid out from the code, the kyoten half (the components in
+   `kyoten::world`, `Transform`'s blend, the change versions, the extract) and GFX-21's design pass in kama-graphics,
+   each question asked in full; the platform's drawing joins them.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
@@ -919,7 +923,10 @@ forty-fourth). Where the work is:**
     `DrawnView` (A);
   - `@kama/gpu`'s GPU-18 filed ("I'll take your rec"): a lost device's surface never ends the program (kama-gpu
     `4bc4f40`), and a machine with no monitor attached reaching it every time (`7479e3a`);
-  - step 9 laid out from the code, two questions asked (item 3);
+  - step 9 laid out from the code, two questions asked (item 3), then decided (the owner: "if your recs are the
+    production answer I will go with them"), each (A), checked against the peer engines first: question 1's list
+    carries only what changed, the form the peers use, which the asking had not said; `@kama/graphics`' GFX-21 filed
+    (kama-graphics `82a86aa`);
   - a mistake to keep: a native window's run needs a monitor, and a gate left to run overnight had none. Before reading
     a native window's failure as load or as the pin, ask Windows which monitors are present
     (`Get-PnpDevice -Class Monitor`), and A/B the old pin's build.
@@ -2614,9 +2621,10 @@ depth-first through the cube.
    2026-11-08). The web's single-threaded build first (web-and-native question 2).
 8. **Input** (KYR-54): actions of every kind (step 5 builds `Digital`), bindings records, player 1 on the keyboard and
    the first gamepad, and the binding steps over values and over time.
-9. **The render module** (KYR-9's kyoten half): Output extracts `Mesh`, `Material`, `Camera`, `Light` and
-   `Environment` into `@kama/graphics` once a frame (rendering question 4), and the engine's default records supply the
-   camera, the light and the material (rendering question 3).
+9. **The render module** (KYR-9's kyoten half): after Output, the generated world extracts what changed of `Mesh`,
+   `Material`, `Camera`, `Light` and `Environment` into a frame-tier `RenderFrame`, which the platform draws through
+   `@kama/graphics`' flat core (rendering question 4, and step 9's questions, 2026-11-27; the library's GFX-21), and the
+   engine's default records supply the camera, the light and the material (rendering question 3).
 10. **The hello cube in `kyoten-example-fps`** (KYR-14): its files as REFERENCE has them, and the four checks
     measured, then held in CI (KYR-13's first legs).
 

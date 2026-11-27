@@ -120,7 +120,7 @@ frame-phases, components, target-platforms, input and REFERENCE) and `@kama/grap
 `Mesh`, `Material`, `Camera`, `Light` and `Environment` into `@kama/graphics` once a frame, the engine's records supply
 the default camera, light and material, and each camera's view is handed to the input source.
 
-1. **How what Output draws reaches the GPU.**
+1. **How what Output draws reaches the GPU.** *(Decided 2026-11-27, below: (A), the list carrying what changed.)*
    - *The example:* the hello cube's prefab lists `Mesh { shape: Box }` beside a `Transform` that `turn` spins each
      step, and the engine supplies a camera and a light. Each frame something turns those components into a lit box in
      the window.
@@ -137,15 +137,16 @@ the default camera, light and material, and each camera's view is handed to the 
      object per entity handle (made when it first appears, written only when it changed, dropped when it leaves), and
      answer each camera's `DrawnView`, which the loop hands to the input source. Bevy's extract (`ExtractSchedule`
      copies the main world into a render world) and Godot's `RenderingServer` (scene nodes push to a server) have this
-     shape. A
-     headless run or a server draws nothing, a console's platform draws with its own GPU, and no game code touches the
-     GPU. `kyoten::render` holds what a game sees: the components, their records and defaults, and quality presets.
+     shape. A headless run or a server draws nothing, a console's platform draws with its own GPU, and no game code
+     touches the GPU. What a game sees, the components and their defaults, is in `kyoten::world` and the engine's
+     records (below).
    - (B) The renderer as a module resource the loop hands to the engine's own Output processors by `ref`, a new
      parameter kind (Bevy's `ResMut` inside its render world): the world's Output contract would name a GPU type, and
      the import rule would need an exception for the window.
    - (C) No render module: each game's own Output processors drive `@kama/graphics`, as spin's `show` stands in for it.
      Every game writes the same glue, and the decided defaults come from nowhere.
 2. **What the platform drives in `@kama/graphics`: its flat core, or its public scene graph.**
+   *(Decided 2026-11-27, below: (A).)*
    - *The decision so far:* the library is "a flat core that kyoten's render module drives, creating an instance per
      entity and dropping it with the entity" (§ Decided, 2026-11-07), but the flat core "stays internal until an engine
      first drives it", and its public surface "is asked when kyoten's render module first drives it, at the join". The
@@ -2286,3 +2287,49 @@ the default camera, light and material, and each camera's view is handed to the 
     ratchet's 24 of 24, the last once the gate's net was added; the goldens' 12 of 12, each caught by its own golden,
     `depth-precision`'s once its nearer slab was drawn first (drawn last, a 24-bit depth gave it the overlap by order);
     and the map's 11 new failure cases, each failing on a mutated map. Next: the join, FIRST-SLICE's step 7.
+- **2026-11-27, the owner: step 9's two questions, each (A), question 1's in its production form** ("if your recs are
+  the production answer I will go with them", having asked of each "is A the production answer?"; § The questions for
+  step 9, asked in full in the chat at the fifty-second session's readying). Each (A) was checked against the peer
+  engines before it was taken. Each is their shape, but question 1's, as asked, listed every drawn entity every frame,
+  which none of them does, so it is taken in the form they use.
+  1. **What Output draws reaches the GPU through a frame-tier render list that the platform draws.** After Output, the
+     generated world writes a `RenderFrame`, as it gathers `Requests`. The loop hands it to the platform's `present`,
+     the open platforms draw it through `@kama/graphics` on their own window, keeping one library instance per entity
+     handle, and each camera's `DrawnView` comes back to the input source. A headless run or a server draws nothing,
+     and no game code touches the GPU.
+     - **The peers keep the simulation apart from a render-side copy they push into:** Unreal's scene proxies on its
+       render thread, Godot's `RenderingServer` under its nodes, Unity's Entities Graphics and Bevy's render world. It
+       is also what lets the drawing of frame N overlap the next steps when a measurement asks (question 4's item 10),
+       since the platform reads only the list.
+     - **The list carries what changed, never the whole scene each frame.** As asked, it held every drawn entity, and
+       the platform compared each against its copy, a cost every frame for scenery that never moves. Unreal's
+       components push a new transform to their proxies when it changes, Godot's nodes set their instance's when it
+       changes, Unity's Entities Graphics uploads the chunks whose change version moved, and Bevy's render world is
+       retained since 0.15. So the list holds:
+       - what entered, changed and left since the last list, each drawn entity by handle;
+       - each entity whose `Transform` changed in the last step, blended at the frame's time, so it is in every list
+         until a step leaves it still;
+       - the whole scene when the platform asks: its first frame, and a device lost and made again (`@kama/gpu`'s
+         GPU-18).
+
+       The world knows what changed by a change version per chunk and column, which the generated world bumps whenever
+       it hands a processor that column to write, as Unity's Entities keeps one per chunk
+       ([../research/component-models.md](../research/component-models.md)): an integer per column per chunk, and no
+       comparison.
+     - **It places question 4's item 8:** the extract is the generated world's, as `Requests`' gathering is, and the
+       write into the library's buffers is the platform's, since the platform owns the window the renderer borrows.
+       Interpolation and the camera-relative position stay in the extract.
+     - Where the drawing code sits, in `kyoten::platform` or in a module of its own handed to the open platforms as the
+       binder is handed to the loop, is step 9's layout, under the tier rule. What a game sees, the components and
+       their defaults, is in `kyoten::world` and the engine's records, as § The questions for step 9 settles.
+     - Set aside: (B) the renderer handed by `ref` to the engine's Output processors, which names a GPU type in the
+       world's Output and needs an exception to the import rule; (C) no render module, every game writing the same
+       glue.
+  2. **The platform drives `@kama/graphics`' flat core, through an engine surface designed first,** as the library's
+     GFX-21: instances by id, each with a world matrix written straight from the extracted transform (the core keeping
+     the previous one for motion vectors, area 1's question 4), a geometry and a material; the changed records uploaded
+     together; lights and cameras as data. Godot's `RenderingServer` (instances by RID), Unreal's GPU scene (instance
+     records in one buffer, the changed ones uploaded together), Unity's `BatchRendererGroup` under its GPU Resident
+     Drawer and Bevy's instance buffers have this shape. It is the library's own decision of 2026-11-11 (area 1's
+     question 1), which left only the public surface until an engine first drove it. It is designed, measured and asked
+     in kama-graphics before the hello cube draws. Set aside: (B) the public scene graph now, a stopgap.
