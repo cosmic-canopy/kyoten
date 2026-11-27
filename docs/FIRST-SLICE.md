@@ -792,8 +792,10 @@ forty-fourth). Where the work is:**
    **Next: step 9, the render module** (KYR-9's kyoten half, § The order of work): Output extracts `Mesh`,
    `Material`, `Camera`, `Light` and `Environment` into `@kama/graphics` once a frame, the engine's default records
    supplying the camera, the light and the material (rendering questions 3 and 4), and each camera writes its own
-   `DrawnView` (input.md § Decided, 2026-11-26, question 1). It is laid out from the code before it is built, and its
-   questions asked in full.
+   `DrawnView` (input.md § Decided, 2026-11-26, question 1). **Laid out from the code at the fifty-second session's
+   readying:** its two questions, how what Output draws reaches the GPU and what the platform drives in
+   `@kama/graphics`, are in [design/rendering.md](design/rendering.md) § The questions for step 9, asked in full that
+   day, with what the decided rules settle. The next session starts from their answers.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
@@ -910,6 +912,17 @@ forty-fourth). Where the work is:**
   - a `Cursor` case read a record with no `mode` directly, which kama's derived reader refuses ("missing field"): a
     prefab's missing fields come from the component's default through the loader;
   - a sharpened case bound a `const ref Handoff` to a local, which kama refuses; `borrow … as` reads it in place.
+- **Readied at the owner's word** ("you can push and get ready for next session"), with the end's three answers:
+  - the pin moved to 0.9.1033 ("yes you can bump"), every suite green on it with nothing else changed but
+    `@kama/graphics`' native cube, which needs a monitor and had none, failing the same way built by 0.9.1027 (item
+    1); KY-45, KY-69 and KY-70 fixed and removed (kyoten `c198843`); the view's component keeping the name
+    `DrawnView` (A);
+  - `@kama/gpu`'s GPU-18 filed ("I'll take your rec"): a lost device's surface never ends the program (kama-gpu
+    `4bc4f40`), and a machine with no monitor attached reaching it every time (`7479e3a`);
+  - step 9 laid out from the code, two questions asked (item 3);
+  - a mistake to keep: a native window's run needs a monitor, and a gate left to run overnight had none. Before reading
+    a native window's failure as load or as the pin, ask Windows which monitors are present
+    (`Get-PnpDevice -Class Monitor`), and A/B the old pin's build.
 
 **The fifty-first session** (2026-11-26). Nothing new on any origin at the start, and kama unchanged since the
 fiftieth session's end, so no bump.

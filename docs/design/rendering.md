@@ -112,6 +112,72 @@
       the developer's machine); what a dynamic need keeps at run time (hot reload, modding, an editor, the kama builder);
       the pipeline cache on disk natively; and how the goldens hold both paths to the same pixels.
 
+## The questions for step 9, the render module
+
+Laid out from the code at the fifty-second session's readying (2026-11-26), from kyoten's decided record (this file,
+frame-phases, components, target-platforms, input and REFERENCE) and `@kama/graphics` as built (its SPEC, `src/`,
+`examples/cube`), and asked in full in the chat that day. Step 9 (FIRST-SLICE § The order of work): Output extracts
+`Mesh`, `Material`, `Camera`, `Light` and `Environment` into `@kama/graphics` once a frame, the engine's records supply
+the default camera, light and material, and each camera's view is handed to the input source.
+
+1. **How what Output draws reaches the GPU.**
+   - *The example:* the hello cube's prefab lists `Mesh { shape: Box }` beside a `Transform` that `turn` spins each
+     step, and the engine supplies a camera and a light. Each frame something turns those components into a lit box in
+     the window.
+   - *The problem:* `@kama/graphics`' `Renderer` is a GPU resource that borrows the window, and the platform owns the
+     window. The world cannot hold it: the world is the simulation, run headless by a replay or a server, saved and
+     hashed. A processor is handed only its components, world components and `Time`, and no parameter hands it a
+     module's resource. And engine modules never import one another, so a render module cannot reach the platform's
+     window.
+   - **(A) Extract into a frame-tier list that the platform draws, as input's samples run the other way.** After
+     Output, the generated world writes a `RenderFrame`, as it gathers `Requests` today: each drawn entity by handle,
+     its transform blended at the frame's time and placed relative to the camera's zone, its `Mesh` and `Material`;
+     each `Camera` with its player and view; each `Light`; the `Environment`. The loop hands it to the platform
+     (`Platform.present`). The open platforms draw it through `@kama/graphics` on their own window, keep one library
+     object per entity handle (made when it first appears, written only when it changed, dropped when it leaves), and
+     answer each camera's `DrawnView`, which the loop hands to the input source. Bevy's extract (`ExtractSchedule`
+     copies the main world into a render world) and Godot's `RenderingServer` (scene nodes push to a server) have this
+     shape. A
+     headless run or a server draws nothing, a console's platform draws with its own GPU, and no game code touches the
+     GPU. `kyoten::render` holds what a game sees: the components, their records and defaults, and quality presets.
+   - (B) The renderer as a module resource the loop hands to the engine's own Output processors by `ref`, a new
+     parameter kind (Bevy's `ResMut` inside its render world): the world's Output contract would name a GPU type, and
+     the import rule would need an exception for the window.
+   - (C) No render module: each game's own Output processors drive `@kama/graphics`, as spin's `show` stands in for it.
+     Every game writes the same glue, and the decided defaults come from nowhere.
+2. **What the platform drives in `@kama/graphics`: its flat core, or its public scene graph.**
+   - *The decision so far:* the library is "a flat core that kyoten's render module drives, creating an instance per
+     entity and dropping it with the entity" (§ Decided, 2026-11-07), but the flat core "stays internal until an engine
+     first drives it", and its public surface "is asked when kyoten's render module first drives it, at the join". The
+     scene graph is public, built on the flat core, and what `examples/cube` uses.
+   - *The problem:* the scene graph costs an engine work it does not need. Each entity would be a `Shared<Mesh>` in a
+     `Scene`. Each write marks the node, without comparing values, and each changed node's 112-byte record is written
+     by a `writeBuffer` of its own at the next render. The engine already has world matrices, so the tree, the
+     Euler and quaternion and a heap object per node are extra. Not measured at scale.
+   - **(A) Design the flat core's engine surface first, as a `@kama/graphics` row, then drive it:** the production
+     answer, as the library decided. Instances by id, each with a world matrix written straight from the extracted
+     transform, a geometry and a material; changed records uploaded in batches; lights and cameras as data. Godot's
+     `RenderingServer` (instances by RID) and Bevy's extracted instance buffers. It costs a library design pass,
+     measured and asked, before the hello cube draws.
+   - (B) Drive the public scene graph now, one node per entity, written only when it changed: a stopgap that draws the
+     hello cube soonest, replaced by (A) when a measured scene needs it. The change stays inside the platform's
+     `present`.
+
+**Settled by the decided rules, to report, not asked:**
+- `Mesh`, `Material`, `Camera` and `Light`, and the world component `Environment`, live in `kyoten::world`, the World
+  tier, as `Transform` does (REFERENCE's tier picture, "engine components (Transform, Mesh…)"): plain values naming no
+  library type, since a game's fenced generated code holds them. Their fields start from § Decided's first cut, with
+  exposure and tone mapping on the camera and a camera's `player` and `view`.
+- The blend decided on 2026-11-04 (frame-phases § Decided) is built with it: `Transform` declares its blend and
+  history, and the extract blends at the frame's render time, so Output's processors never compute an alpha.
+- Each `Camera` names its player and one of the game's declared views, and its `DrawnView` comes back from what the
+  platform drew, so a game draws its own UI views on the component path as before.
+- The defaults (a camera looking at the origin, a directional light with ambient light, the lit default material) are
+  engine records in `engine/content/`, which a game patches field by field.
+- The engine depends on `@kama/graphics` by path, as it does on `@kama/window`, and kyoten's workspace lists each
+  package a path dependency below the top level needs.
+- A lost device's acquire is `@kama/gpu`'s GPU-18, filed the same day, not step 9's.
+
 ## Decided
 
 - **2026-11-01, the owner: 2D is a layer.** A 2D scene renders onto a screen layer, over a 3D scene or alone, or into
