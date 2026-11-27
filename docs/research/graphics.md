@@ -1,4 +1,4 @@
-# Graphics: Three.js, the engines, beyond WebGPU, object models without a garbage collector, the renderer's core, and the feature map
+# Graphics: Three.js, the engines, beyond WebGPU, object models without a garbage collector, the renderer's core, the feature map, and the engine-facing render surface
 
 KYR-68, the graphics design pass, read 2026-11-11 for [rendering.md](../design/rendering.md) § Decided (2026-11-10:
 the design pass's questions) and `../kama-graphics`. Four research agents read the sources below. Their key claims were
@@ -493,3 +493,78 @@ here. None is in kama.
 **Found on the way: KY-59.** An overloaded operator whose operand is a node passed by value releases it twice
 ([KAMA_GAPS.md](../KAMA_GAPS.md)), so `RECIPROCAL_PI * diffuseColor` and `a * a` freed nodes a function still held. The
 probe hands operators a temporary (`a.again()`). Typed nodes are the decided material API, so part 3 needs it fixed.
+
+## 11. The engine-facing render surface: what GFX-21 and step 9 rest on
+
+Read 2026-11-27, the fifty-third session, for [rendering.md](../design/rendering.md) § The questions for step 9's kyoten
+half and `@kama/graphics`' GFX-21 (its ROADMAP_DETAIL.md § GFX-21). One research agent read the sources below. The
+claims the questions rest on were then fetched again here by curl and read at the line, each marked *Checked*;
+*(unchecked)* marks a claim taken from the agent's one reading. Unreal's source is not public, so its claims come from
+Epic's pages, most of which load only as search-index snippets, and are marked so.
+
+| Source | Pinned at |
+|---|---|
+| Godot | `godotengine/godot` master `7c97c29` (2026-11-26) |
+| Bevy | `bevyengine/bevy` main `5c485c4` (2026-11-26; the latest release is 0.20.1) |
+| Unity Entities Graphics | 1.5.0, through `needle-mirror/com.unity.entities.graphics`, an unofficial copy of the published package |
+| Unity BatchRendererGroup | docs.unity.com's current manual and script reference |
+| Unreal Engine 5 | Epic's documentation, 2026-11-27 |
+
+**Each gives a renderable a stable id in a table the renderer owns, and registers meshes and materials apart.**
+- Godot: `instance_create` hands back a RID, set with `instance_set_base`, `_scenario`, `_transform`, `_visible` and
+  `instance_geometry_set_material_override`, freed by `free_rid` (`servers/rendering/rendering_server.h`). Off the
+  render thread each setter is queued on its command queue and run at the frame. Lights, cameras, environments and
+  viewports are RIDs of their own (`directional_light_create`, `camera_create`, `environment_create`,
+  `viewport_create`). *(unchecked, but the setter's name is checked below)*
+- Bevy: an entity marked `SyncToRenderWorld` gets a render-world twin, spawned and despawned with it
+  (`bevy_extract/src/sync_world.rs`), and its mesh holds a stable slot in a persistent input buffer
+  (`bevy_render/src/batching/gpu_preprocessing.rs`). *(unchecked)*
+- Unity: `BatchRendererGroup.RegisterMesh` and `RegisterMaterial` hand back ids, and `AddBatch` a batch over a
+  `GraphicsBuffer` the program fills itself, instance by instance, `unity_ObjectToWorld` and the rest named in its
+  metadata. *(unchecked, from the manual)*
+- Unreal: primitives are placed in "a scene-wide primitive data buffer called GPUScene", indexed by `PrimitiveId`.
+  *(Epic's mesh-drawing-pipeline page, unchecked)*
+
+**What counts as a change, and how changed records reach the GPU.**
+- *Checked:* Godot compares values. `RendererSceneCull::instance_set_transform` returns when the new transform equals
+  the old ("Must be checked to avoid worst evil.", `renderer_scene_cull.cpp:1024-1025`), and otherwise queues the
+  instance for the frame's update.
+- Unity's Entities counts write access per whole chunk: "The change version is updated even when another job or system
+  that has declared write access to a component does not actually change the component value" (`ArchetypeChunk.DidChange`'s
+  docs, Entities 1.3). Entities Graphics copies a chunk's property to the GPU when the chunk is new, reordered, or
+  `DidChange` since its last run (`EntitiesGraphicsChunkUpdate.cs`). *(unchecked)*
+- *Checked:* Bevy uploads sparsely, and whole above a share. `SPARSE_UPLOAD_THRESHOLD` is `0.15`: "The fraction of the
+  buffer that may be changed before we fall back to full reupload … obtained experimentally by testing very large scenes
+  and roughly matches the values used by other engines that perform sparse buffer updates"
+  (`bevy_render/src/render_resource/sparse_buffer_vec.rs:97-103`); below it the changed slots are scattered into the
+  buffer by a compute shader (`SparseBufferUpdatePipelines`, in the same file).
+- Entities Graphics scatters too, through its `SparseUploader`, a compute shader over upload buffers written with
+  `LockBufferForWrite` (`SparseUploader.cs`). *(unchecked)* Unreal's GPU Scene uploads its dirty primitives together
+  (`FGPUScene::UpdateInternal`'s `PrimitivesToUpdate`, from a third-party excerpt; an Epic reply of May 2025 names
+  `FGPUScene::UploadGeneral()`). *(unchecked)*
+- Godot's Forward+ is the exception: it writes every listed instance's record each frame into a mapped buffer
+  (`render_forward_clustered.cpp`'s `_fill_instance_data`). *(unchecked)*
+
+**Who keeps the previous matrix, for motion vectors.**
+- *Checked:* Godot's renderer does. On an instance's first transform change in a frame it copies the old one into
+  `prev_transform` (`render_forward_clustered.cpp:5055-5057`), sets it equal to the transform once it stops moving
+  (`:1118-1119`), and writes both into the instance's record (`:847`). `instance_teleport(RID)` resets it
+  (`rendering_server.h:753`), so a teleport draws no motion.
+- Bevy's GPU path reads the old matrix from the entity's slot into a previous-input buffer each frame
+  (`bevy_pbr/src/render/mesh.rs`). Unity's Entities keeps `unity_MatrixPreviousM` as a component its
+  `MatrixPreviousSystem` copies after the upload. Raw `BatchRendererGroup` leaves it to the program. *(unchecked)*
+
+**What the extract copies.** *Checked:* Bevy's `#[derive(ExtractComponent)]` copies a component into the render world
+as itself: the derive writes `type Out = Self` and `Some(item.clone())` (`bevy_extract/macros/src/extract_component.rs:94,
+97`); Bevy makes types of its own where it derives something, such as a view's matrices (`ExtractedView`) or a mesh's
+GPU record (`MeshInputUniform`). *(the second clause unchecked)*
+
+**Large worlds.** Unreal draws each view in translated world space, relative to its camera's `PreViewTranslation`, and
+HDRP's camera-relative rendering, on by default, does so per camera (Epic's and Unity's pages). Godot offers a
+`precision=double` build and splits each instance's origin into a float and its remainder for the GPU
+(`render_forward_clustered.cpp:855-857`, *checked* as read for the previous matrix). Bevy has nothing built in.
+
+**What a view hands back.** None of the four hands a program the projection a view was drawn with: Godot's picking is
+`Camera3D::project_ray_origin` in its scene layer, Bevy's `Camera.computed` holds the matrices in the main world, and
+Unity's is `Camera.ScreenPointToRay`. *(unchecked)* kyoten's `DrawnView` comes back from the platform instead, since only
+the platform knows the size it drew (input.md § Decided, 2026-11-26).

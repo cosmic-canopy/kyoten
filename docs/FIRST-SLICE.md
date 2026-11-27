@@ -8,7 +8,7 @@ The rule from the spike still holds: **no engine code is written before the deci
 a step meets a question no doc answers, bring the options and a recommendation to the owner, and record the answer in
 the design doc it settles before building on it.
 
-## Where it stands (2026-11-26, the fifty-second session)
+## Where it stands (2026-11-27, the fifty-third session)
 
 **Track 2 is built through step 6** (KYR-6, KYR-7 and KYR-53):
 - records generate the world, and the loader reads content into it;
@@ -107,10 +107,10 @@ forty-fourth). Where the work is:**
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
    twice on each leg. The closing counts, on 0.9.1033, as on 0.9.1027, 0.9.1026, 0.9.1018 and 0.9.978 before:
-   - tools/test.sh: engine 1037 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
-     the tool's 311; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's sixth part (the
-     fifty-first and fifty-second sessions); 961 and 287 at the fifty-second's start, the five packages' as below,
-     unchanged. It takes 15 min beside another gate on 0.9.1027, 17 to 19 min beside two mutation batches, 21 to 23 min
+   - tools/test.sh: engine 1061 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
+     the tool's 321; kyoten check; fps native, and on wasm in both builds; vr checked, since step 9's second part (the
+     fifty-third session); 1037 and 311 at its start, the five packages' as below, unchanged. It took 22 and 26 min
+     beside one or two mutation batches in the fifty-third session. It takes 15 min beside another gate on 0.9.1027, 17 to 19 min beside two mutation batches, 21 to 23 min
      beside two or three batches and a gate in the fifty-first and fifty-second sessions, 25 to 30 min beside three
      (10 min 25 s alone on 0.9.1018, warm, 12 min 6 s on the first run after the change below), whose `kama run` keeps
      its compiled C in the project's `out/` (KR-433, which fixed KY-64), where it took 14 minutes on 0.9.978, every
@@ -147,7 +147,14 @@ forty-fourth). Where the work is:**
      (4 h 53 min in all) turned at its display changes (Kernel-PnP's event 1010). Then the cube built by 0.9.1027
      failed the same way, at its first frame, as 0.9.1033's did, so the machine is the cause, not the pin. **A native
      window's run needs a monitor:** with none, the device is lost at the first acquire and WARP's frames wait for
-     hours. The cube natively on 0.9.1033 is the next start batch's, with a monitor on.
+     hours. **At the fifty-third session's start the native cube failed again, with two monitors present:** both
+     hang off Amyuni's "USB Mobile Monitor Virtual Display" (an indirect display driver), and the AMD Radeon 880M
+     drives none (`Win32_VideoController` shows it with no current resolution). On the GPU it panicked at its first
+     frame, in the gate and alone, built by 0.9.1033 or 0.9.1027; on WARP it waited until the gate was stopped. Every
+     leg before the cube passed at its counts. `@kama/gpu`'s own `clear` and `triangle` examples presented 60 frames
+     natively on the same machine an hour later, so what the cube's first frame does differently is GPU-18's to
+     measure (kama-gpu `1999938`). The cube natively on 0.9.1033, and the web legs after it, wait for a monitor on the
+     AMD GPU itself, or for GPU-18.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -810,14 +817,38 @@ forty-fourth). Where the work is:**
    `Platform.present`; a change version per column per chunk; the clock's fraction handed to the extract; each
    component offering only what the library draws.
 
-   **Next, in this order, each test-first:**
-   1. the render components and `Handle`'s move;
-   2. `Transform`'s blend and history, and the change versions;
-   3. `RenderFrame`, `World.extract` and `Platform.present` on a fake platform;
-   4. the default prefabs.
+   **Parts 1 and 2 are built** (the fifty-third session, kyoten `ff67545` and `a27f87e`; rendering.md § Decided, the
+   built entry): the render components in the frame tier and `Handle` moved there; `Transform`'s cut and blend, a
+   `ColumnStamp` a column a chunk, and `Transform`'s previous sample kept at each `ref` hand-off.
 
-   **Beside them, GFX-21's design pass:** the peers from source, the flat core measured at 10⁴ instances against the
-   scene graph's path, and its questions asked in full. The platform's drawing joins them once GFX-21 is built.
+   **Next, in this order, each test-first:**
+   3. **The extract,** in two commits:
+      - `RenderFrame` in the frame tier: whether it holds the whole scene, each drawn entity entered or changed (its
+        handle, its zone and its blended place within it, whether a cut lies since its last list, its `Mesh` and
+        `Material`), each camera and light the same way, the `Environment` when it changed, and what left, empty until
+        `Destroy` is built;
+      - `World.extract(into:, at:)`, which the generated world implements, at the frame's render time: one base step
+        behind the newest settled step plus the clock's fraction, which the driver stops dropping;
+      - a chunk listed when its `Transform`'s newest sample is later than the last list's render time, or when its
+        `Mesh`, `Material`, `Camera` or `Light` was written after the last extract's step, and a row added since the last
+        list as entered;
+      - a world component's stamp, for `Environment`;
+      - the run's zone size, read at load from the first scene's record;
+      - `Platform.present(frame:, views:)`, which the loop calls after the frame, answering whether the next list must
+        be whole, and each camera's `DrawnView`, which join the game's own before the input source reads them. The
+        open platforms' `present` is a stopgap that draws nothing until GFX-21 is built, and says so;
+      - the second commit: Output's processors read `Transform` blended at the render time, as frame-phases' rule of
+        2026-11-04 has it. Spin's shown turns then lag the newest step by one, as interpolation does.
+   4. **The default prefabs:** the engine's `camera` and `sun`, the `app` record's list of what a world starts with,
+      the tool reading the engine's content prefabs, `Environment`'s engine record, and two cameras on one player's view
+      refused at load.
+
+   **Beside them, GFX-21's design pass:** the peers' render surfaces are read from source (research/graphics.md § 11,
+   the claims the questions rest on checked by curl). Next it measures, with kama quiet and natively at 10⁴ instances,
+   the scene graph's path against a sketch of the flat surface: the CPU time a frame, and the records, bytes and
+   `writeBuffer` calls, with none, one, 1 %, 15 % and every instance changed. Then its questions are asked in full: the
+   instance handle, the record (with question 2's cell), the upload, cameras and views as data, and comparing values on
+   write. The platform's drawing joins them once GFX-21 is built.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
@@ -917,6 +948,31 @@ forty-fourth). Where the work is:**
      the generated `run` in the tool, test-first on its fixtures, `spin` running through it natively and on wasm under
      `--headless --fixed-fps 60 --quit-after N`; `engine/content/`'s first record;
      `folderFor` and its exception removed; REFERENCE's tier picture with `run` in `kyoten::platform`.
+
+**The fifty-third session** (2026-11-27). The Mac had pushed one `@kama/audio` docs commit, fast-forwarded. kama had
+not moved since the pin, so no bump.
+- **At the start, kyoten's suite and four of the five packages' were green on 0.9.1033,** at the fifty-second session's
+  counts. `@kama/graphics`' native cube failed again, with two monitors present but both on a USB monitor's virtual
+  display (item 1). GPU-18's record gained it (kama-gpu `1999938`).
+- **Four questions at the start** (step 9's kyoten half), laid out from the code by three read-only passes and the
+  peers read from source, then asked in full. The owner answered "A (Recommended)" to each, recorded first (kyoten
+  `006881e`):
+  1. the render components are the frame tier's;
+  2. each view places what it draws relative to its own camera;
+  3. `place` cuts the blend;
+  4. the default camera and light are engine prefabs.
+
+  A placement reported as settled at the readying, the components in `kyoten::world`, did not survive the code: the
+  frame-tier contract names the list, and the frame tier names no other tier. So it was asked, not changed quietly.
+- **Built:** step 9's kyoten half, parts 1 and 2 (`ff67545`, `a27f87e`), item 3; 31 of 31 and 23 of 23 mutations caught.
+- **GFX-21's design pass began:** the peers' render surfaces read from source, written up as research/graphics.md
+  § 11. The claims the questions rest on were checked by curl: Godot comparing values on a transform's write and keeping
+  the previous one, Bevy's 15 % rule for a whole upload, and Bevy's extract copying a component as itself.
+- **Mistakes to keep:**
+  - Windows listing monitors present is not a monitor on the GPU: check the adapter's current resolution first;
+  - a records mutation the fixture's build catches proves little alone, so read that a generated-text case fails too;
+  - halfway between two rotations nlerp and slerp agree, so the blend needed a case a quarter of the way;
+  - the engine's tests built one folder too shallow failed the content case: build them at `out/<dir>/`.
 
 **The fifty-second session** (2026-11-26). The Mac had pushed two `audio.md` commits to kyoten and seventeen to
 `@kama/audio`, each fast-forwarded; kama's range since the last read held one roadmap commit, so no bump.

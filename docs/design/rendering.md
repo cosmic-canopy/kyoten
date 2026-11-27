@@ -2458,3 +2458,53 @@ the chat that day.
   a `ref` hand-off and on add, with `Transform`'s history kept at the same hand-off; the clock's fraction handed to the
   extract; the first scene's `zoneSize` held at run time; each component offering only what the library draws; what
   left a world in the list once `Destroy` is built; and each camera's `DrawnView` joining the game's own.
+
+- **2026-11-27, built: step 9's kyoten half, its first two parts** (the fifty-third session), on kyoten's pin,
+  `0.9.1033+g03c39cb2`, each gated by `tools/test.sh`.
+  1. **The render components in the frame tier, and `Handle` moved there** (kyoten `ff67545`):
+     - `kyoten::frame` gains `Mesh { shape }`, `Material { color, metallic, roughness, emissive, emissiveIntensity }`,
+       `Camera { player, view, fov, near, far, exposure, toneMapping }`, `Light { color, intensity }`, the world
+       component `Environment { ambient, ambientIntensity, background }`, and `Color { r, g, b }`;
+     - the frame tier's records: `Mesh` requires `kyoten::world::Transform` and `kyoten::frame::Material`, `Camera` and
+       `Light` require `Transform`, and `Environment` is stored `World`, so every world holds one;
+     - `kyoten::world::Handle` is `kyoten::frame::Handle`, every import moved, the tool's included;
+     - 31 of 31 mutations caught, the records' by their generated-text cases as well as the fixture's build.
+  2. **`Transform`'s blend and history, and the change versions** (kyoten `a27f87e`):
+     - `kyoten::world::ColumnStamp`: the step a chunk's column was last handed to a processor to write, its change
+       version, and for a column that blends the step of the sample before; a second hand-off at one step moves nothing;
+     - `Transform` counts its cuts, one each `place`, which no record sets, and blends toward a later sample
+       (`blendedTo(to:, at:, zoneSize:)`): position linearly in the later sample's zone, by `offsetTo`, rotation by
+       std's `Quat.slerp`, scale linearly; at 1 or past it, and across a cut, the later sample bit for bit;
+     - the world tier's records declare `Transform`'s `"blend": "Linear"`. The tool reads `blend`, and refuses it on
+       any other component;
+     - each generated chunk keeps a stamp a column, and `Transform`'s previous sample beside it, counted in a row's
+       bytes and added with each row; each processor taking a component by `ref` stamps that column as each chunk is
+       handed to it, `Transform`'s copied to its previous sample first at its first hand-off of a step;
+     - 23 of 23 mutations caught.
+  - **Settled while building, for the owner to object to:**
+    - **A colour is kyoten's own `Color`, sRGB from 0 to 1,** as three.js's `Color.setRGB` and `@kama/graphics'
+      `Color.make` take it: the frame tier names no library type, and a value type cannot hold a hex string. A record
+      writes `"color": { "r": 0.2 }`, keeping green and blue.
+    - **The defaults are the library's where it has them:**
+      - a camera's exposure is three.js's exposure of 1 in EV100, −log2(1.2), the library's own default bit for bit;
+      - its tone mapping is the library's `BlenderAgX`;
+      - a light is white at 1 lux, the library's and three.js's.
+
+      Beside them, the first cut's camera of 60 degrees from 0.1 m to 1 km, and its white material, metallic 0,
+      roughness 0.5.
+    - **A camera is player 1's by default,** naming no view, since the default makeup has one local player.
+    - **A light shines along its entity's −Z,** as Bevy's and Godot's directional lights do, so only its turn matters.
+    - **`Material` gains `emissiveIntensity`** beside the first cut's `emissive`, since the library draws it, as glTF's
+      `KHR_materials_emissive_strength` does.
+    - **`Environment`'s code default adds nothing,** no ambient light and black behind; the default makeup's ambient
+      light comes from the engine's record laid over it (question 4).
+    - **`Transform` grows from 52 bytes to 56** with its cut count, a `uint32` that wraps.
+    - **Every component's column is stamped, not only those drawn,** so any later reader of what changed (a save, the
+      network) has it, at 16 bytes a column a chunk.
+    - **A game's component may not declare a `blend` yet.** Only the engine's `Transform` blends, and nothing reads a
+      game component's samples, so a declared blend would keep them for nothing.
+  - **Next, part 3:** `RenderFrame`, `World.extract` at the frame's render time and the generated extract, the clock's
+    fraction kept, `Platform.present` on a fake platform, and Output's processors reading `Transform` blended at the
+    render time, as frame-phases' rule of 2026-11-04 has it ("Output asks for the component at its render time"). The
+    render time is one base step behind the newest settled step plus the fraction, so a 60 Hz writer blends at the
+    clock's fraction and a 30 Hz one over its two steps.
