@@ -797,9 +797,27 @@ forty-fourth). Where the work is:**
    [design/rendering.md](design/rendering.md) § Decided): what Output draws reaches the GPU through a frame-tier
    `RenderFrame` that the platform draws, carrying only what changed, which the world knows by a change version per
    chunk and column; and the platform drives `@kama/graphics`' flat core through an engine surface designed first, the
-   library's GFX-21. **Next:** step 9's parts laid out from the code, the kyoten half (the components in
-   `kyoten::world`, `Transform`'s blend, the change versions, the extract) and GFX-21's design pass in kama-graphics,
-   each question asked in full; the platform's drawing joins them.
+   library's GFX-21. **The kyoten half was laid out from the code at the fifty-third session's start, and its four
+   questions decided** (the owner, 2026-11-27, each (A), [design/rendering.md](design/rendering.md) § The questions for
+   step 9's kyoten half and § Decided):
+   1. the render components are the frame tier's, beside `DrawnView`, and the list carries them as they are;
+   2. the list keeps each drawn entity in its zone, and each view draws relative to its own camera's zone, which amends
+      2026-11-07's item 8 and gives GFX-21's record a cell;
+   3. `Transform.place` cuts the blend;
+   4. the default camera and light are engine prefabs, `camera` and `sun`, which the engine's `app` record lists.
+
+   Settled beside them, reported: `Handle` moves to the frame tier; the drawing is the open platforms', behind
+   `Platform.present`; a change version per column per chunk; the clock's fraction handed to the extract; each
+   component offering only what the library draws.
+
+   **Next, in this order, each test-first:**
+   1. the render components and `Handle`'s move;
+   2. `Transform`'s blend and history, and the change versions;
+   3. `RenderFrame`, `World.extract` and `Platform.present` on a fake platform;
+   4. the default prefabs.
+
+   **Beside them, GFX-21's design pass:** the peers from source, the flat core measured at 10⁴ instances against the
+   scene graph's path, and its questions asked in full. The platform's drawing joins them once GFX-21 is built.
 
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme

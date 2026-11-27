@@ -82,9 +82,10 @@ generated `run` builds the binder from the content and hands it to `play`.
 ```
  ┌───────────────────────────────────────────────────────────────────────────────┐
  │ 1 frame   phases · the clock · scheduler · input kinds, samples, hand-offs ·   │
- │           World and InputSource contracts                                      │
+ │           Output's components (DrawnView, Mesh, Camera…) and the render        │
+ │           list · Handle · World and InputSource contracts                      │
  ├───────────────────────────────────────────────────────────────────────────────┤
- │ 2 world   engine components (Transform, Mesh…) · table, chunk, side-store,     │
+ │ 2 world   engine components (Transform) · table, chunk, side-store,            │
  │           command and lookup types · query contracts (a raycast, a nav path)   │
  ├────────┬─────────┬─────────┬────────┬─────────┬────────┬──────────────────────┤
  │ 3 input│ render  │ audio   │ net    │ physics │ UI     │ engine modules; none  │
@@ -123,14 +124,16 @@ stay in the libraries and the platform types, and a library's platform module, w
 only place one may name them (*decided* 2026-11-20). Features (XR, store services such as achievements) are interfaces
 kyoten defines, with a backend per platform or store in **feature packages** a game opts into.
 
-**Rendering** (*decided*, rendering questions 1, 2 and 4, 2026-11-07, and step 9's questions, 2026-11-27). The bar
-is Three.js's ease of use on every platform, with production-grade visuals and shaders that compete with Unreal, Unity
-and Godot. Three tiers: `@kama/gpu`, safe WebGPU handles; `@kama/graphics`, a library of meshes, materials, lights,
-cameras and render targets that names no engine concept, starting from cosmic-forge's `render`; and kyoten's render
-module. After Output, the generated world **extracts** what is drawn, interpolated and relative to the camera's zone,
-into a frame-tier render list carrying only what changed, and the platform draws it through the library's flat core.
-GPU work reads only the extracted data, serially by default and overlapping the next steps when a measurement asks.
-Each view runs a fixed list of passes until a frame graph is needed.
+**Rendering** (*decided*, rendering questions 1, 2 and 4, 2026-11-07, and step 9's questions and its kyoten half's,
+2026-11-27). The bar is Three.js's ease of use on every platform, with production-grade visuals and shaders that
+compete with Unreal, Unity and Godot. Three tiers: `@kama/gpu`, safe WebGPU handles; `@kama/graphics`, a library of
+meshes, materials, lights, cameras and render targets that names no engine concept, starting from cosmic-forge's
+`render`; and kyoten's render module. The render components are the frame tier's, since the list that carries them is.
+After Output, the generated world **extracts** what is drawn, blended at the frame's time, each entity in its zone,
+into a frame-tier render list carrying only what changed, and the platform draws it through the library's flat core,
+each view relative to its own camera's zone. A teleport, `place`, cuts the blend. GPU work reads only the extracted
+data, serially by default and overlapping the next steps when a measurement asks. Each view runs a fixed list of
+passes until a frame graph is needed.
 
 **Shaders** (*decided*, 2026-11-07, with rendering question 2) are WGSL, with WESL's `import` and `@if` translated to
 plain WGSL by kyoten's tools. A **material** is the standard lit model with slots (colour, normal, roughness,
@@ -319,19 +322,21 @@ fn void fly(ref Transform at, const ref Shot s, Handle me, const ref Previous<Tr
 
 ## The engine's day-one components
 
-*Decided at components question 8 part b (2026-11-07).* Day one is the first slice. Each module designs its
-components' fields, and more arrive with their roadmap rows.
+*Decided at components question 8 part b (2026-11-07); the render components' tier at step 9's kyoten half, question 1
+(2026-11-27).* Day one is the first slice. Each module designs its components' fields, and more arrive with their
+roadmap rows. The render components start with what the library draws, and each other case of the first cut joins with
+its library row.
 
 | Component | Tier or module | Holds |
 |---|---|---|
-| `Transform` | world tier | `zone` (a `ZoneCoord`, an `int32` per axis), `position` (the `float32` offset from the zone's centre) and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` (about its own Y axis), `offsetTo(other:, zoneSize:)`, `place(zone:, position:)` |
-| `Mesh` | render | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
-| `Material` | render | a lit material (base colour, metallic, roughness), or a glTF one |
-| `Camera` | render | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
-| `Light` | render | `Directional`, `Point` or `Spot`, with colour, intensity and range |
+| `Transform` | world tier | `zone` (a `ZoneCoord`, an `int32` per axis), `position` (the `float32` offset from the zone's centre) and `scale` (`std::math::Vec3`, scale 1), `rotation` (`std::math::Quat`); `rotateY(by:)` (about its own Y axis), `offsetTo(other:, zoneSize:)`, `place(zone:, position:)`, a teleport, which cuts the blend (2026-11-27) |
+| `Mesh` | frame tier | a built-in `shape` (`Box`, `Sphere`, `Plane`…) or a glTF mesh; requires a Transform and a Material |
+| `Material` | frame tier | a lit material (base colour, metallic, roughness), or a glTF one |
+| `Camera` | frame tier | a perspective or orthographic projection, near and far, and a `target`, the screen by default: a view is an entity with a Camera |
+| `Light` | frame tier | `Directional`, `Point` or `Spot`, with colour, intensity and range |
 | `Actions` | input | generated per game; the engine fixes `player` |
 | `Time` (world component) | frame | the step's length and number |
-| `Environment` (world component) | render | ambient light and the clear colour, later sky and fog |
+| `Environment` (world component) | frame tier | ambient light and the clear colour, later sky and fog |
 
 - **Not yet:** streaming sources, physics, audio, UI and network components arrive with their rows. Parent and child
   (the transform hierarchy) is KYR-62; until then a glTF level is flattened at load.
@@ -560,7 +565,7 @@ words.
 | **Archetype** | a set of component types, fixed when the game is built. The generator writes one table type per archetype | decided (question 5, choice 3) |
 | **Prefab** | a named archetype with its defaults. Prefabs of one archetype share generated code, so a record alone can add one | decided (question 5, choice 3) |
 | **Entity** | one thing in the world, an instance of a prefab | decided |
-| **Handle** | an entity's runtime id: 8 bytes, a 32-bit slot in the world's lookup table and a 32-bit generation, the same on every platform. The slot says where the entity lives now; the generation, bumped when the slot is freed, makes a stale handle answer "gone". A lookup answers here, gone or unloaded | decided (question 8, 2026-11-06) |
+| **Handle** | an entity's runtime id: 8 bytes, a 32-bit slot in the world's lookup table and a 32-bit generation, the same on every platform. The slot says where the entity lives now; the generation, bumped when the slot is freed, makes a stale handle answer "gone". A lookup answers here, gone or unloaded. A frame-tier type, `kyoten::frame::Handle`, since the render list keys a drawn entity by it | decided (question 8, 2026-11-06); its tier settled at step 9's kyoten half (2026-11-27) |
 | **Placed name** | a placed entity's name in its scene's records ("door-12"), which other records use to refer to it. The loader resolves it to a handle when its zone loads, and may key it by a 64-bit hash | decided (question 8, 2026-11-06) |
 | **Component** | a plain value, one piece of an entity's data, of one of four kinds. A kama type plus its record: the type holds the fields, and the record says how it is stored, kept, interpolated and saved | decided (questions 2 and 5) |
 | **Table** | all the entities of one prefab in one zone and layer, made from its archetype's table type, with the prefab's variants that have no budget of their own. Its ceiling is its (zone, layer, prefab) budget | decided (the layer since 2026-11-06; variants at question 8 part b, 2026-11-07) |
@@ -581,7 +586,9 @@ words.
 | **Schedule** | the resolved order of every processor, with its access, rate and cost, shown to humans and agents | decided |
 | **Step** | one tick of the simulation's one clock | decided |
 | **Frame** | one display refresh; Output runs once per frame | decided |
-| **Extract** | what the generated world writes after Output into a frame-tier render list, `RenderFrame`, which the platform draws: what entered, changed and left since the last list, each moving entity blended at the frame's time and relative to the camera's zone, or the whole scene when the platform asks | decided (step 9's questions, 2026-11-27, [design/rendering.md](design/rendering.md)) |
+| **Extract** | what the generated world writes after Output into a frame-tier render list, `RenderFrame`, which the platform draws: what entered, changed and left since the last list, each moving entity blended at the frame's time and kept in its zone, which each view draws relative to its own camera's zone, or the whole scene when the platform asks. What changed is known by a **change version** | decided (step 9's questions and its kyoten half's, 2026-11-27, [design/rendering.md](design/rendering.md)) |
+| **Change version** | an integer per column per chunk, which the generated world bumps when it hands that chunk's column to a `ref` parameter, and when a row is added: write access over a whole chunk, not a comparison of values, as Unity's Entities keeps one | settled (step 9's kyoten half, 2026-11-27, [design/rendering.md](design/rendering.md)) |
+| **Cut** | a teleport: `Transform.place(zone:, position:)` draws the new place at once, unblended and with no motion vector | decided (step 9's kyoten half, question 3, 2026-11-27) |
 | **Snapshot** | the world, or the columns other processors read, as it stood at the end of a step. A processor reading other entities sees it by default | decided (question 3, choice 3) |
 | **Command** | a queued change, applied at the end of its phase: structural through `Create<P>`, `Destroy`, `Gain<C>` and `Lose<C>`, or a value sent to another entity through `Send<C>` | decided (question 3, choice 4; the queues at question 8 part b, 2026-11-07) |
 | **Action** | a semantic input a game declares (`faster`, a button or an axis). The generator writes one field per action into an `Actions` component, which an entity carries to name the player that drives it; the Input phase fills it each step | decided (question 7, choice 4, revised 2026-11-06) |

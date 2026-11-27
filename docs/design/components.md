@@ -1593,7 +1593,9 @@ Every question in this doc is decided. The model's picture and vocabulary are ga
      | `Time` (world component) | frame | the step's length and number |
      | `Environment` (world component) | render | ambient light and the clear colour, later sky and fog |
 
-     The tier diagram's `MeshRef` is `Mesh`.
+     The tier diagram's `MeshRef` is `Mesh`. *(Corrected 2026-11-27, [rendering.md](rendering.md) § Decided, step 9's
+     kyoten half, question 1: `Mesh`, `Material`, `Camera`, `Light` and `Environment` are the frame tier's, beside
+     `DrawnView`, since the frame-tier render list carries them and the frame tier names no other tier.)*
   3. **Each module designs its components' fields:** rendering question 2 and KYR-9 for Mesh, Material, Camera, Light
      and Environment; KYR-54 for Actions; question 9 for Transform's position. This question settles the set, the
      names and the tiers. They are ordinary components, with records, merge patches and required components, like a

@@ -168,7 +168,8 @@ the default camera, light and material, and each camera's view is handed to the 
 - `Mesh`, `Material`, `Camera` and `Light`, and the world component `Environment`, live in `kyoten::world`, the World
   tier, as `Transform` does (REFERENCE's tier picture, "engine components (Transform, Mesh…)"): plain values naming no
   library type, since a game's fenced generated code holds them. Their fields start from § Decided's first cut, with
-  exposure and tone mapping on the camera and a camera's `player` and `view`.
+  exposure and tone mapping on the camera and a camera's `player` and `view`. *(Superseded 2026-11-27, § The questions
+  for step 9's kyoten half, question 1: the frame tier, which the frame-tier list must name.)*
 - The blend decided on 2026-11-04 (frame-phases § Decided) is built with it: `Transform` declares its blend and
   history, and the extract blends at the frame's render time, so Output's processors never compute an alpha.
 - Each `Camera` names its player and one of the game's declared views, and its `DrawnView` comes back from what the
@@ -178,6 +179,101 @@ the default camera, light and material, and each camera's view is handed to the 
 - The engine depends on `@kama/graphics` by path, as it does on `@kama/window`, and kyoten's workspace lists each
   package a path dependency below the top level needs.
 - A lost device's acquire is `@kama/gpu`'s GPU-18, filed the same day, not step 9's.
+
+## The questions for step 9's kyoten half
+
+Laid out from the code at the fifty-third session's start (2026-11-27), once step 9's two questions were decided: three
+read-only passes over kyoten as built, `@kama/graphics` as built (kama-graphics `82a86aa`), and the peer engines from
+source (Godot `7c97c29`, Bevy `5c485c4`, Unity's Entities Graphics 1.5.0, Unreal from its documentation). Asked in full in
+the chat that day.
+
+**What the code has:**
+- no change version, dirty mark, history or blend anywhere. `ComponentRecord`'s `blend` and `history` are read by
+  nothing;
+- the clock's render fraction (`Owed.fraction`) is computed and dropped by the loop;
+- the `World` contract and the `Platform` have no extract and no present;
+- nothing leaves a world, since `Destroy` is not built;
+- the engine's content holds only the `app` and `input` records. The tool reads prefabs from the game's content alone,
+  and a world component starts only from its code default.
+
+1. **What the render list carries, since the frame tier names no world type.** *(Decided 2026-11-27, below: (A).)*
+   - *The example:* the hello cube's prefab says `"Mesh": { "shape": "Box" }`. After Output the generated world writes
+     that mesh into `RenderFrame`, and the platform draws it.
+   - *The problem:* the `World` contract that names `RenderFrame` lives in `kyoten::frame`, whose `importsOnly` is
+     `std::math` and `std::collections` alone. So the list cannot hold `kyoten::world`'s `Mesh` or `Handle`, nor a
+     Module-tier `render`'s types. Step 8 met the same wall: `Requests` carries `DrawnView` and `Cursor`, so they are
+     frame-tier components.
+   - **(A) The five render components move to the frame tier,** beside `DrawnView`, `Cursor`, `TextEntry` and
+     `PadLock`, and the list carries each as it is, with what the extract derives (the blended placement). One type a
+     kind. Bevy's `#[derive(ExtractComponent)]` copies a component into its render world as itself (`type Out = Self`,
+     bevy_extract's `macros/src/extract_component.rs` at `5c485c4`, checked), and Bevy makes types of its own only
+     where it derives something (a view's matrices, a mesh's GPU record).
+   - (B) The components stay in `kyoten::world`, and the list carries frame-tier records of its own, filled field by
+     field: two types a kind, kept in step by hand.
+2. **Where a drawn entity is placed relative to the camera.** *(Decided 2026-11-27, below: (A).)*
+   - *The example:* a position is a zone and a `float32` offset. Item 8 of 2026-11-07 places each drawn entity relative
+     to the camera's zone in the extract, so the GPU sees small floats.
+   - *The problem:* two later decisions do not fit it. The list carries only what changed (2026-11-27), so a camera
+     walking into the next zone would change every drawn entity's relative place and resend the whole scene though
+     nothing moved. And in split screen, two cameras zones apart cannot share one relative placement, so the other
+     camera's view draws large floats.
+   - **(A) The list carries each entity's zone and its place within it,** which no camera changes, and each view
+     subtracts its own camera's zone when it draws: the zones' difference as integers times the zone size, plus the
+     offsets, exact up close as `offsetTo` is. Unreal draws each view in its translated world space (a view's
+     `PreViewTranslation`), and HDRP's camera-relative rendering works per camera. `@kama/graphics`' record then
+     carries a cell, a general large-world feature naming no engine concept (GFX-21).
+   - (B) Item 8 as it is, relative to player 1's camera's zone: the whole scene resent at each zone crossing, and a
+     second player's far view losing precision.
+3. **A teleport.** *(Decided 2026-11-27, below: (A).)*
+   - *The example:* a game respawns its player with `t.place(zone: spawnZone, position: spawnPoint);`, which components
+     question 9 names the teleport. With `Transform`'s blend built (linear position, slerp rotation, frame-phases
+     § Decided, 2026-11-04), the frames around that step would draw the player sweeping across the map, and motion
+     blur would later smear it.
+   - *The problem:* the blend cannot tell a move from a jump.
+   - **(A) `place` cuts the blend:** the new place is drawn at once, and the previous matrix is set to the current one,
+     so there is no motion vector. A processor writing `position` or `rotation` still blends, and the engine's own
+     rebasing, an offset leaving its zone, does not cut. It costs `Transform` a counter that no record sets. Godot's
+     renderer has the same call, `instance_teleport` (`rendering_server.h` at `7c97c29`, checked).
+   - (B) A snap past a distance: a guess, which snaps a fast mover and still smears a short teleport.
+   - (C) None until a game needs one.
+4. **How the engine supplies the default camera and light.** *(Decided 2026-11-27, below: (A).)*
+   - *The example:* the hello cube's scene places only the cube. The defaults decided on 2026-11-05 (question 3) are a
+     camera looking at the origin and a directional light with ambient light, each an engine record a game patches
+     field by field.
+   - *The problem:* engine records cannot place anything today (above), so the mechanism is to choose, and with it how
+     a game says "not these", such as a game with a camera rig of its own.
+   - **(A) Engine prefabs, `camera` and `sun`,** which the engine's `app` record lists as what a world starts with. A
+     game moves the camera by patching the prefab (`"prefabs": { "camera": { "Transform": { "position": { "z": 6 } } }
+     }`) and starts with its own by replacing the list. `Environment` takes its defaults from an engine record laid
+     over its code default. Two cameras drawing one player's view are refused at load, naming both. Unity's default
+     scene template (a Main Camera and a Directional Light) and Unreal's default level have this shape: the defaults
+     are scene data a project edits.
+   - (B) The loader adds the engine's camera when no placed prefab has a `Camera`, and the light when none has a
+     `Light`: nothing to write, but implicit, so a game adding one lamp loses the sun silently.
+   - (C) Each game places its own, as Godot and Bevy draw nothing without a placed camera: the hello cube grows two
+     lines, against the decided defaults.
+
+**Settled by the decided rules, to report, not asked:**
+- `Handle` moves to the frame tier, as `ZoneCoord` did for `Pose`, so the list keys a drawn entity by it.
+- The drawing is the open platforms', in `kyoten::platform`, which owns the window the renderer borrows: the `Platform`
+  contract's header already says the GPU joins it at the step that needs it. `Platform.present` comes after the frame's
+  steps and Output.
+- A change version is an integer per column per chunk, bumped when the generated world hands that chunk's column to a
+  `ref` parameter, and when a row is added. `Transform`'s history (its previous value and the step each sample was
+  written at) is kept at the same hand-off, and the extract lists every row of a chunk whose version moved: Unity's
+  Entities' semantics, write access over a whole chunk ("updated even when another job or system that has declared
+  write access to a component does not actually change the component value", its `ArchetypeChunk.DidChange` docs).
+- The blend time: the clock's fraction is kept and handed to the extract. The render time is one base step behind the
+  newest settled step, plus the fraction, and samples stamped by step blend at any writer's rate.
+- The generated world holds the first scene's `zoneSize` at run time.
+- A component offers only what the library draws: the `Box` shape; the standard material's colour, metallic, roughness
+  and emissive; a directional light; a perspective camera, with exposure and tone mapping, its player and its view;
+  `Environment`'s ambient light and background colour. The first cut's other cases each join with their library row
+  (the other shapes; point and spot lights, GFX-4; an orthographic camera, GFX-7; textures and shaders, KYR-10; glTF
+  meshes, GFX-2), as the owner put it of GFX-1's part 5 (2026-11-18): "we build what we know and add on as we go".
+- What left a world has its place in the list, filled once `Destroy` is built.
+- Each camera's `DrawnView`, from what the platform drew, joins the game's own `DrawnView`s before the input source
+  reads them.
 
 ## Decided
 
@@ -2333,3 +2429,32 @@ the default camera, light and material, and each camera's view is handed to the 
      Drawer and Bevy's instance buffers have this shape. It is the library's own decision of 2026-11-11 (area 1's
      question 1), which left only the public surface until an engine first drove it. It is designed, measured and asked
      in kama-graphics before the hello cube draws. Set aside: (B) the public scene graph now, a stopgap.
+
+- **2026-11-27, the owner: step 9's kyoten half, its four questions, each (A)** ("A (Recommended)" to each, asked in
+  full in the chat at the fifty-third session's start, then in one dialog; § The questions for step 9's kyoten half).
+  1. **The five render components are the frame tier's,** beside `DrawnView`, `Cursor`, `TextEntry` and `PadLock`:
+     `Mesh`, `Material`, `Camera`, `Light` and the world component `Environment`. `RenderFrame` carries each as it is,
+     with what the extract derives. It supersedes the settled placement in `kyoten::world` (§ The questions for step 9)
+     and components question 8's "render" column, since the frame-tier `World` contract names the list and the frame
+     tier names no other tier. A game names them `kyoten::frame::Mesh` and so on, as it names `kyoten::frame::Time`.
+     Set aside: (B) frame-tier records of their own beside world-tier components, two types a kind.
+  2. **Each view places what it draws relative to its own camera.** The list carries each drawn entity's zone and its
+     place within that zone, blended at the frame's time, and each view subtracts its camera's zone as it draws. It
+     amends 2026-11-07's item 8, where the extract placed everything relative to the camera's zone: a camera crossing a
+     zone now rewrites nothing, and split screen keeps its precision in every view. `@kama/graphics`' instance record
+     carries a cell for it, which GFX-21 designs. Set aside: (B) item 8 as it was.
+  3. **`Transform.place(zone:, position:)` cuts the blend,** as a teleport: the new place is drawn at once, with no
+     motion vector. Writing `position` or `rotation` blends, and the engine's rebasing does not cut. `Transform` keeps
+     a count of its cuts, which no record sets, and the extract compares the two samples' counts. Set aside: (B) a snap
+     past a distance; (C) none yet.
+  4. **The default camera and light are engine prefabs, `camera` and `sun`,** which the engine's `app` record lists as
+     the prefabs every world starts with. A game patches a prefab field by field, or replaces the list to start with
+     its own. `Environment` takes its defaults from an engine record laid over its code default, and two cameras
+     drawing one player's view are refused at load, naming both. Set aside: (B) a camera and a light added when none is
+     placed; (C) each game placing its own.
+
+  The rest, settled by the decided rules and reported (§ The questions for step 9's kyoten half): `Handle` in the frame
+  tier; the drawing in the open platforms, behind `Platform.present`; a change version per column per chunk, bumped on
+  a `ref` hand-off and on add, with `Transform`'s history kept at the same hand-off; the clock's fraction handed to the
+  extract; the first scene's `zoneSize` held at run time; each component offering only what the library draws; what
+  left a world in the list once `Destroy` is built; and each camera's `DrawnView` joining the game's own.
