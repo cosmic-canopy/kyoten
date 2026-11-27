@@ -3,11 +3,11 @@
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
-         kyoten::frame::DrawnView, std::math::Vec2, std::math::Vec3,
+         kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, std::math::Vec2, std::math::Vec3,
          spin::cube::Spin,
          spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering, spin::generated::Actions };
 
-export { show, seen, aimed, schemed, typing, framed };
+export { show, seen, aimed, schemed, typing, framed, pointed, modeName };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -80,4 +80,20 @@ fn void framed(ref DrawnView v, const ref Transform t, Handle me) {
     int32 player = v.player;
     int32 which = v.view;
     println(s: "framed: slot ${slot} player ${player} view ${which}");
+}
+
+// A cursor's mode as its case name.
+fn string modeName(CursorMode mode) {
+    return match (mode) { case Normal: "Normal"; case Hidden: "Hidden"; case Locked: "Locked"; };
+}
+
+// Output's own state (design/input.md § Decided, 2026-11-26, the sixth part's question 2): the engine's `Cursor`, which
+// an Output processor writes from what the game wants, here `Locked` once `faster` is held, never lowered. It prints the
+// mode it leaves.
+fn void pointed(ref Cursor c, const ref Actions input, Handle me) {
+    if (input.faster.held) { c.mode = CursorMode::Locked; }
+    uint32 slot = me.slot();
+    int32 player = c.player;
+    string m = modeName(mode: c.mode);
+    println(s: "pointed: slot ${slot} player ${player} mode ${m}");
 }

@@ -85,6 +85,9 @@ fn void loaded(ref Tally t, const ref string leg, const ref Ran r) {
     string said = before(text: r.said(), marker: runMarker());
     check(t: t, name: "spin: ${leg}: the loader lays each prefab's components over their defaults, a variant over its base",
           ok: r.says(what: "loaded: cube rate 2 player 1, fastCube rate 4, bigCube rate 2 size 2"), why: said);
+    // The engine's `Cursor` read by its mode's name, and a variant naming another player keeping its base's mode.
+    check(t: t, name: "spin: ${leg}: a prefab's `Cursor` names its mode by case name, a variant's laid over its base's",
+          ok: r.says(what: "loaded: cube's cursor player 1 Locked, fastCube's player 2 Locked"), why: said);
     string placed = after(text: said, marker: placedMarker());
     DynamicArray<string> shown = linesAfter(text: placed, prefix: "shown: ");
     // 2.0 is 0x40000000, 5.0 is 0x40a00000, 4.0 is 0x40800000 and 1.0 is 0x3f800000: `cube` at its prefab's rate,
@@ -185,6 +188,16 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
           why: said);
     check(t: t, name: "spin: ${leg}: the world's requests after Output: the one view Output drew, player 1's world, as drawn",
           ok: r.says(what: "spin: requests: 1 view, player 1's world 1440 x 810, its camera at z 5"), why: said);
+    // Each player's cursor mode (the sixth part's question 2): `pointed` locks player 1's cursor once `faster` is held,
+    // and the calm cube's, which asks Hidden, names no player.
+    DynamicArray<string> pointedLines = linesAfter(text: said, prefix: "pointed: ");
+    string pointed = "";
+    foreach (const ref string l in pointedLines.iterConst()) { pointed = pointed.isEmpty() ? copy l : pointed + " | " + l; }
+    string wantPointed = "slot 0 player 0 mode Hidden | slot 1 player 1 mode Locked | slot 0 player 0 mode Hidden | slot 1 player 1 mode Locked";
+    t.verdict(name: "spin: ${leg}: Output writes its own state, the engine's `Cursor`, from what the game wants",
+              why: pointed == wantPointed ? "" : "pointed `${pointed}`");
+    check(t: t, name: "spin: ${leg}: the world's requests after Output: player 1's cursor Locked, the one naming no player gathered by no one",
+          ok: r.says(what: "spin: requests: player 1's cursor Locked"), why: said);
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's

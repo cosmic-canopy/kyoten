@@ -12,7 +12,7 @@
 //   for each and calls it directly (target-platforms question 2). A closed platform is a private package's type
 //   implementing the same contract, with its own module marked as this one is.
 
-import { std::collections::DynamicArray, kyoten::frame::Sample };
+import { std::collections::DynamicArray, kyoten::frame::Sample, kyoten::frame::CursorMode };
 
 export { Platform };
 
@@ -39,6 +39,10 @@ type contract Platform for resource {
     // IME and an on-screen keyboard where no physical one is (design/input.md § Decided, 2026-11-25, the fifth part's
     // question 2).
     fn void textEntry(int32 player, bool on);
+    // Player `player`'s cursor asked to be `mode`, as the world asked after a frame (design/input.md § Decided,
+    // 2026-11-26, the sixth part's question 2): set at once, and while it asks `Locked`, a lock the window drops by
+    // itself (Escape or a tab switch on the web, a focus loss natively) asked for again, as the platform allows.
+    fn void cursor(int32 player, CursorMode mode);
     // The run ends with `code`, from inside the loop. Natively `run` then returns it; on the web, where `run` never
     // returns, the platform ends the program.
     fn void ended(uint8 code);

@@ -17,13 +17,18 @@
 // - **And each pad's reading, at its time** (`padAt`, WIN-28; design/input.md § Decided, the second part's question 3):
 //   a button's travel and a stick's axis that moved since the reading before, placed among the events' samples by
 //   time, so a stick and a button read together land in one step.
+// - **The cursor's mode is the game's** (design/input.md § Decided, 2026-11-26, the sixth part's question 2): player 1's,
+//   whose keyboard and mouse the window's are, set on the window as it changes. While the game still asks `Locked` and
+//   the window drops the lock by itself, the pump asks again: on the web at once, so the click that gives the page back
+//   its focus also locks it, since a browser grants a lock only at a click; natively once the window has the focus
+//   again, since only a focus loss drops it there.
 
 import { core::println, core::env::args, std::app::quit, std::time::Instant, std::time::monotonicNow,
          std::collections::DynamicArray, window::Window, window::WindowOptions, window::WindowError, window::Event, window::TimedEvent,
-         window::PointerKind, window::Pointer, window::Gamepad, window::Size, kyoten::frame::Sample, kyoten::frame::Device,
-         Platform };
+         window::PointerKind, window::Pointer, window::Gamepad, window::Size, window::CursorMode as WindowCursor,
+         kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::CursorMode, Platform };
 
-export { OpenPlatform, PadReadings, pumpInto };
+export { OpenPlatform, PadReadings, CursorAsk, pumpInto, askCursor, windowMode };
 
 // The last reading of each pad slot a pump took, so the next makes a sample only for what moved.
 type resource PadReadings {
@@ -42,6 +47,15 @@ type resource PadReadings {
     public fn void keep(int32 slot, Gamepad reading) { this.slots[cast<isize>(slot)] = reading; }
 }
 
+// The cursor's mode the game asks for player 1, and when the pump asks again for a lock the window dropped by itself
+// while the game still asks `Locked`: at once (the web's rule), or when the window has the focus again (the native one).
+type value CursorAsk {
+    public CursorMode wanted = CursorMode::Normal;
+    public bool againAtOnce = false;
+
+    public ctor make(bool againAtOnce) { this.againAtOnce = againAtOnce; }
+}
+
 // The web: the page's canvas, the content `preloadFiles` packed, and std::app's `quit` at the end.
 @compileFor(ARCH_WASM32)
 type resource OpenPlatform implements Platform {
@@ -50,6 +64,9 @@ type resource OpenPlatform implements Platform {
     PadReadings pads = PadReadings.make();
     // The window's logical size as of the last event a pump took, which a pointer's place is a fraction of.
     Size size = Size.of(width: 0, height: 0);
+    // The browser drops a lock at Escape or a tab switch, and grants one only at a click: asked again at once, it is the
+    // player's next click that locks.
+    CursorAsk cursorAsk = CursorAsk.make(againAtOnce: true);
 
     public ctor make() { }
 
@@ -62,12 +79,18 @@ type resource OpenPlatform implements Platform {
                       focused: focused);
     }
     public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
-        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size);
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size,
+                      cursor: this.cursorAsk);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     // A stopgap until `@kama/window`'s WIN-5 turns the page's text input on and off: the page types as it did, and the
     // binder takes what it types only while the entry is on.
     public fn void textEntry(int32 player, bool on) { }
+    public unsafe fn void cursor(int32 player, CursorMode mode) {
+        cursorIn(slot: this.window, cursor: this.cursorAsk, player: player, mode: mode);
+    }
+    // The cursor's mode the game asks for player 1, and this platform's rule for asking again.
+    public const fn CursorAsk askedCursor() { return this.cursorAsk; }
     public fn void ended(uint8 code) { quit(code: code); }
 }
 
@@ -79,6 +102,8 @@ type resource OpenPlatform implements Platform {
     PadReadings pads = PadReadings.make();
     // The window's logical size as of the last event a pump took, which a pointer's place is a fraction of.
     Size size = Size.of(width: 0, height: 0);
+    // A system window drops a lock when it loses the focus: asked again once it has it back.
+    CursorAsk cursorAsk = CursorAsk.make(againAtOnce: false);
 
     public ctor make() { }
 
@@ -89,12 +114,18 @@ type resource OpenPlatform implements Platform {
                       focused: focused);
     }
     public unsafe fn bool pumped(ref DynamicArray<Sample> into) {
-        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size);
+        return pumpOn(slot: this.window, began: this.began, into: into, pads: this.pads, size: this.size,
+                      cursor: this.cursorAsk);
     }
     public fn int64 now() { return monotonicNow().since(earlier: this.began).asNanos(); }
     // A stopgap until `@kama/window`'s WIN-5 turns the window's text input on and off: GLFW types as it did, and the
     // binder takes what it types only while the entry is on.
     public fn void textEntry(int32 player, bool on) { }
+    public unsafe fn void cursor(int32 player, CursorMode mode) {
+        cursorIn(slot: this.window, cursor: this.cursorAsk, player: player, mode: mode);
+    }
+    // The cursor's mode the game asks for player 1, and this platform's rule for asking again.
+    public const fn CursorAsk askedCursor() { return this.cursorAsk; }
     public fn void ended(uint8 code) { }
 }
 
@@ -131,16 +162,47 @@ unsafe fn bool openOn(ref Optional<Window> slot, const ref string title, int32 w
 
 // The window's events since the last tick, when there is one: false once one asks it to close.
 unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads,
-                      ref Size size) {
+                      ref Size size, ref CursorAsk cursor) {
     bool open = true;
     match (slot) {
         case Some(value: w): {
             w.pump();
-            open = pumpInto(w: w, began: began, into: into, pads: pads, size: size);
+            open = pumpInto(w: w, began: began, into: into, pads: pads, size: size, cursor: cursor);
         }
         case None: { }
     };
     return open;
+}
+
+// Player `player`'s cursor asked to be `mode`: player 1's is the window's, when there is one, and kept for the pump to ask
+// again; another player's is no window's.
+unsafe fn void cursorIn(ref Optional<Window> slot, ref CursorAsk cursor, int32 player, CursorMode mode) {
+    if (player != 1) { return; }
+    cursor.wanted = mode;
+    match (slot) {
+        case Some(value: w): { askCursor(w: w, cursor: cursor, mode: mode); }
+        case None: { }
+    };
+}
+
+// The cursor of `w` set to `mode` as the game asks, which `cursor` keeps for the pump to ask again while it is `Locked`.
+unsafe fn void askCursor(ref Window w, ref CursorAsk cursor, CursorMode mode) {
+    cursor.wanted = mode;
+    w.setCursor(mode: windowMode(mode: mode));
+}
+
+// The lock asked for again, while the game still asks `Locked`.
+unsafe fn void askAgain(ref Window w, const ref CursorAsk cursor) {
+    if (cursor.wanted == CursorMode::Locked) { w.setCursor(mode: WindowCursor::Locked); }
+}
+
+// kyoten's cursor mode as `@kama/window`'s.
+fn WindowCursor windowMode(CursorMode mode) {
+    return match (mode) {
+        case Normal: WindowCursor::Normal;
+        case Hidden: WindowCursor::Hidden;
+        case Locked: WindowCursor::Locked;
+    };
 }
 
 // Every event the window's queue holds, its input added to `into` as samples, each at its event's time in nanoseconds
@@ -148,8 +210,10 @@ unsafe fn bool pumpOn(ref Optional<Window> slot, Instant began, ref DynamicArray
 // time, placed by time among the events': false when one asks the window to close. A mouse event's place is a
 // fraction of the window's logical size as of that event, `size` as the last pump left it and as each `Resize`
 // leaves it, the window's own when it holds none (design/input.md § Decided, 2026-11-26, the sixth part's question 1);
-// the window holding the cursor locked, or letting it go, is a sample too.
-unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads, ref Size size) {
+// the window holding the cursor locked, or letting it go, is a sample too. A lock the window drops while `cursor` still
+// asks `Locked` is asked for again by `cursor`'s rule: at once, or at the focus's return (the sixth part's question 2).
+unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> into, ref PadReadings pads, ref Size size,
+                        ref CursorAsk cursor) {
     if (size.width <= 0 || size.height <= 0) { size = w.size(); }
     isize from = into.length();
     bool open = true;
@@ -197,7 +261,13 @@ unsafe fn bool pumpInto(ref Window w, Instant began, ref DynamicArray<Sample> in
                         if (p.kind == PointerKind::Mouse) { placeCursor(p: p, size: size, at: at, into: into); }
                     }
                     case Resize(width: wide, height: high): { size = Size.of(width: wide, height: high); }
-                    case PointerLock(locked: held): { into.add(item: Sample.cursorLock(locked: held, at: at)); }
+                    case PointerLock(locked: held): {
+                        into.add(item: Sample.cursorLock(locked: held, at: at));
+                        if (!held && cursor.againAtOnce) { askAgain(w: w, cursor: cursor); }
+                    }
+                    case Focus(focused: f): {
+                        if (f && !cursor.againAtOnce) { askAgain(w: w, cursor: cursor); }
+                    }
                     case PadDisconnected(slot: s): { into.add(item: Sample.padDisconnected(slot: s, at: at)); }
                     case _: { }
                 };

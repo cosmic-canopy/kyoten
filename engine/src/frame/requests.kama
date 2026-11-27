@@ -3,15 +3,17 @@
 // world gathers it after Output runs (`World.requests`), and the loop hands each change to the input source and the
 // platform. It says whether each player is typing, from the engine's `TextEntry`, and holds each view as drawn, from
 // the engine's `DrawnView`s, one for each player and view (design/input.md § Decided, 2026-11-26, the sixth part's question
-// 1); the cursor's mode, the game letting go of the pad lock and rumble join it.
+// 1), and each player's cursor mode, from the engine's `Cursor`s (the sixth part's question 2); the game letting go of the
+// pad lock and rumble join it.
 
-import { std::collections::DynamicArray, DrawnView };
+import { std::collections::DynamicArray, DrawnView, CursorMode };
 
 export { Requests };
 
 type resource Requests {
     DynamicArray<bool> typingField = DynamicArray.empty();
     DynamicArray<DrawnView> viewsField = DynamicArray.empty();
+    DynamicArray<CursorMode> cursorField = DynamicArray.empty();
 
     // Naming no player.
     public ctor make() { }
@@ -25,14 +27,31 @@ type resource Requests {
         return this.typingField[cast<isize>(player - 1)];
     }
 
-    // Room for `players` players, every request off and no view drawn.
+    // Room for `players` players, every request off, every cursor `Normal` and no view drawn.
     public fn void reset(int32 players) {
         assert(cond: players >= 0, msg: "requests name no negative count of players");
         while (this.typingField.length() > cast<isize>(players)) { Optional<bool> gone = this.typingField.pop(); }
         isize i = 0;
         while (i < this.typingField.length()) { this.typingField[i] = false; i = i + 1; }
         while (this.typingField.length() < cast<isize>(players)) { this.typingField.add(item: false); }
+        this.cursorField.clear();
+        while (this.cursorField.length() < cast<isize>(players)) { this.cursorField.add(item: CursorMode::Normal); }
         this.viewsField.clear();
+    }
+
+    // Player `player`'s cursor mode: `Normal` for a player it does not name.
+    public const fn CursorMode cursorMode(int32 player) {
+        if (player < 1 || cast<isize>(player) > this.cursorField.length()) { return CursorMode::Normal; }
+        return this.cursorField[cast<isize>(player - 1)];
+    }
+
+    // Player `player`'s cursor asked to be `mode`: the strongest ask since the reset is kept, `Locked` over `Hidden` over
+    // `Normal`, which asks nothing, so a `Cursor` left at its default never undoes another's ask (the sixth part of step
+    // 8). One for a player it does not name is a caller's bug, and traps.
+    public fn void askCursor(int32 player, CursorMode mode) {
+        assert(cond: player >= 1 && cast<isize>(player) <= this.cursorField.length(), msg: "requests name this player");
+        isize at = cast<isize>(player - 1);
+        if (strength(mode: mode) > strength(mode: this.cursorField[at])) { this.cursorField[at] = mode; }
     }
 
     // Player `player` is typing, or not; a player it does not name is a caller's bug, and traps.
@@ -75,8 +94,17 @@ type resource Requests {
     public fn void copyFrom(const ref Requests other) {
         this.reset(players: other.players());
         int32 p = 1;
-        while (p <= other.players()) { this.setTyping(player: p, on: other.typing(player: p)); p = p + 1; }
+        while (p <= other.players()) {
+            this.setTyping(player: p, on: other.typing(player: p));
+            this.askCursor(player: p, mode: other.cursorMode(player: p));
+            p = p + 1;
+        }
         isize i = 0;
         while (i < other.viewCount()) { this.viewsField.add(item: other.viewAt(index: i)); i = i + 1; }
     }
+}
+
+// How much a cursor's mode asks: `Normal` nothing, `Hidden` the cursor hidden, `Locked` hidden and held.
+fn int32 strength(CursorMode mode) {
+    return match (mode) { case Normal: 0; case Hidden: 1; case Locked: 2; };
 }

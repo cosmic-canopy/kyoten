@@ -1,3 +1,4 @@
 { "tier": "Frame",
   "components": { "TextEntry": { "output": true, "note": "whether a player is typing: Output's own state, read by the platform after each frame" },
-                  "DrawnView": { "output": true, "note": "a view as drawn for a player this frame, its place in the window, its own size and its camera: Output's own state, which the cursor is turned through" } } }
+                  "DrawnView": { "output": true, "note": "a view as drawn for a player this frame, its place in the window, its own size and its camera: Output's own state, which the cursor is turned through" },
+                  "Cursor": { "output": true, "note": "the cursor's mode a player's game asks, Normal, Hidden or Locked: Output's own state, read by the platform after each frame" } } }

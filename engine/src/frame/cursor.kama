@@ -1,0 +1,28 @@
+// kyoten::frame::Cursor — the cursor's mode a game asks for a player (the first slice's step 8, its sixth part, KYR-54;
+// design/input.md § Decided, 2026-11-26, the sixth part's question 2). It is Output's own state, `"output": true` in the
+// frame tier's records, as `TextEntry` is: the game requests and releases the lock whenever it likes, an Update processor
+// changing the game's own state (a menu open, a pause) and an Output processor writing the mode from it. A game's prefab
+// lists it on whatever entity asks: `"Cursor": { "player": 1, "mode": "Locked" }`.
+//
+// The platform reads every one after each frame, a player's strongest ask winning (`Locked`, then `Hidden`, then
+// `Normal`, which asks nothing), and sets the window's cursor as it changes. While the game still asks `Locked` and the
+// window dropped the lock by itself (Escape or a tab switch on the web, a focus loss natively), the engine asks again: the
+// web locks at the player's next click, natively when the window has the focus again.
+
+export { Cursor, CursorMode };
+
+// A cursor's mode: `Normal`, shown and free; `Hidden`, free but not drawn over the window; `Locked`, hidden and held at
+// the window's centre, its motion raw and unbounded (mouse look). Read and written by its case names.
+@generate(Serializable, Deserializable)
+type enum CursorMode { Normal, Hidden, Locked }
+
+@generate(Serializable, Deserializable)
+type value Cursor {
+    // The player it is for, numbered from 1; 0 names none, and asks nothing.
+    @field public int32 player = 0;
+    // The mode that player's cursor is asked to be in.
+    @field public CursorMode mode = CursorMode::Normal;
+
+    // Naming no player, and asking `Normal`.
+    public default ctor make() { }
+}

@@ -12,7 +12,9 @@ import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory
          kyoten::platform::Ending, kyoten::platform::Play, kyoten::platform::play, kyoten::platform::fixedTimestamp,
          kyoten::platform::OpenPlatform, kyoten::platform::pumpInto, kyoten::platform::PadReadings, window::Window,
          window::Event, window::Key, window::Pointer, window::PointerKind, window::PointerButton, window::PadButton,
-         window::PadAxis, window::Gamepad, kyoten::frame::Requests, kyoten::frame::DrawnView, std::math::Vec3, window::Size };
+         window::PadAxis, window::Gamepad, kyoten::frame::Requests, kyoten::frame::DrawnView, std::math::Vec3, window::Size,
+         kyoten::frame::CursorMode, kyoten::platform::CursorAsk, kyoten::platform::askCursor, kyoten::platform::windowMode,
+         window::CursorMode as WindowCursor, modeWord };
 
 export { platformTests };
 
@@ -40,6 +42,8 @@ type resource Log {
     bool drawing = false;                                 // whether the world draws player 1's view 0, at `drawnX`
     float32 drawnX = 0.0;
     bool drawingSecond = false;                           // and their view 1
+    CursorMode cursorOne = CursorMode::Normal;            // the cursor mode the world asks for player 1, and for player 2
+    CursorMode cursorTwo = CursorMode::Normal;
 
     public ctor make() { }
 
@@ -95,6 +99,10 @@ type resource Log {
     public const fn bool draws() { return this.drawing; }
     public const fn float32 drawnAt() { return this.drawnX; }
     public const fn bool drawsSecond() { return this.drawingSecond; }
+    public fn void askCursor(int32 player, CursorMode mode) {
+        if (player == 1) { this.cursorOne = mode; } else { this.cursorTwo = mode; }
+    }
+    public const fn CursorMode cursorOf(int32 player) { return player == 1 ? this.cursorOne : this.cursorTwo; }
     public fn void entry(const ref string what) {
         string was = copy this.entries;
         this.entries = was + what + " ";
@@ -126,6 +134,10 @@ type resource FakePlatform implements Platform {
         string s = on ? "+" : "-";
         this.log.derefMut().entry(what: "P${player}${s}");
     }
+    public fn void cursor(int32 player, CursorMode mode) {
+        string m = modeWord(m: mode);
+        this.log.derefMut().entry(what: "C${player}${m}");
+    }
     public fn void ended(uint8 code) { this.log.derefMut().end(code: code); }
 }
 
@@ -139,10 +151,12 @@ type resource Counter implements World {
     public fn void update(const ref Time time) { }
     public fn void constraints(const ref Time time) { }
     public fn void output(const ref Time time, const ref Handoff newest) { this.log.derefMut().output(); }
-    // Player 1 typing while the log says the world asks it.
+    // Player 1 typing while the log says the world asks it, and each of two players' cursor as the log asks it.
     public fn void requests(ref Requests into) {
-        into.reset(players: 1);
+        into.reset(players: 2);
         if (this.log.deref().asksTyping()) { into.setTyping(player: 1, on: true); }
+        into.askCursor(player: 1, mode: this.log.deref().cursorOf(player: 1));
+        into.askCursor(player: 2, mode: this.log.deref().cursorOf(player: 2));
         if (this.log.deref().draws()) {
             DrawnView v = DrawnView.default();
             v.player = 1;
@@ -524,6 +538,148 @@ fn void viewLoopCases(ref Tally t) {
               why: seen == "V1.0x1@5016666667 V1.0x2@5050000001 V1.1x0@5050000001 " ? "" : "handed `${seen}`");
 }
 
+// Each player's cursor mode the world asks after each frame (design/input.md § Decided, 2026-11-26, the sixth part's
+// question 2): each change handed to the platform, an unchanged one not, each player's apart.
+fn void cursorLoopCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 2 * STEP);
+    times.add(item: T0 + 3 * STEP);
+    times.add(item: T0 + 4 * STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    p.tick();
+    string quiet = log.deref().entriesSeen();
+    t.verdict(name: "loop: a world that asks every cursor Normal hands none on", why: quiet.isEmpty() ? "" : "handed `${quiet}`");
+    log.derefMut().askCursor(player: 1, mode: CursorMode::Locked);
+    p.tick();
+    p.tick();
+    log.derefMut().askCursor(player: 2, mode: CursorMode::Hidden);
+    p.tick();
+    log.derefMut().askCursor(player: 1, mode: CursorMode::Normal);
+    p.tick();
+    string seen = log.deref().entriesSeen();
+    t.verdict(name: "loop: each player's cursor mode is handed to the platform as it changes, never as before",
+              why: seen == "C1Locked C2Hidden C1Normal " ? "" : "handed `${seen}`");
+}
+
+// The lock samples among `samples`, each its 1 or 0, in order.
+fn string locksOf(const ref DynamicArray<Sample> samples) {
+    string got = "";
+    foreach (const ref Sample s in samples.iterConst()) {
+        if (s.kind != SampleKind::Lock) { continue; }
+        string one = s.value >= 0.5 ? "1" : "0";
+        got = got.isEmpty() ? copy one : got + " " + one;
+    }
+    return got;
+}
+
+// `w`'s events since the last pump, under `ask`'s rule, its lock samples spelled.
+unsafe fn string pumpedLocks(ref Window w, Instant began, ref CursorAsk ask) {
+    DynamicArray<Sample> samples = DynamicArray.empty();
+    PadReadings pads = PadReadings.make();
+    Size size = w.size();
+    bool open = pumpInto(w: w, began: began, into: samples, pads: pads, size: size, cursor: ask);
+    return locksOf(samples: samples);
+}
+
+// The cursor's mode on the window (the sixth part's question 2), on headless windows, each rule held on every leg: the
+// game's mode set at once; a lock the window drops while the game still asks `Locked` asked for again, natively when the
+// focus comes back and on the web at once; the game's own release, and a mode that is not `Locked`, never.
+unsafe fn void cursorAskCases(ref Tally t) {
+    Instant began = monotonicNow();
+    Window w = Window.headless(width: 64, height: 48);
+    CursorAsk native = CursorAsk.make(againAtOnce: false);
+    askCursor(w: w, cursor: native, mode: CursorMode::Locked);
+    string locked = pumpedLocks(w: w, began: began, ask: native);
+    string kept = modeWord(m: native.wanted);
+    t.verdict(name: "OpenPlatform: the game's Locked locks the window, and is kept", why: locked == "1" && kept == "Locked" ? "" : "locks `${locked}`, kept ${kept}");
+    w.post(event: Event::Focus(focused: false), at: msAfter(began: began, ms: 5));
+    string lost = pumpedLocks(w: w, began: began, ask: native);
+    t.verdict(name: "OpenPlatform: natively a focus loss drops the lock, which is not asked for again while unfocused",
+              why: lost == "0" ? "" : "locks `${lost}`");
+    w.post(event: Event::Focus(focused: true), at: msAfter(began: began, ms: 6));
+    string back = pumpedLocks(w: w, began: began, ask: native);
+    t.verdict(name: "OpenPlatform: natively the lock is asked for again when the focus comes back", why: back == "1" ? "" : "locks `${back}`");
+    askCursor(w: w, cursor: native, mode: CursorMode::Hidden);
+    string hidden = pumpedLocks(w: w, began: began, ask: native);
+    w.post(event: Event::Focus(focused: false), at: msAfter(began: began, ms: 7));
+    w.post(event: Event::Focus(focused: true), at: msAfter(began: began, ms: 8));
+    string unasked = pumpedLocks(w: w, began: began, ask: native);
+    t.verdict(name: "OpenPlatform: natively the game's own release, to Hidden, is never asked again",
+              why: hidden == "0" && unasked.isEmpty() ? "" : "locks `${hidden}`, then `${unasked}`");
+
+    Window v = Window.headless(width: 64, height: 48);
+    CursorAsk web = CursorAsk.make(againAtOnce: true);
+    askCursor(w: v, cursor: web, mode: CursorMode::Locked);
+    string first = pumpedLocks(w: v, began: began, ask: web);
+    v.post(event: Event::Focus(focused: false), at: msAfter(began: began, ms: 5));
+    string again = pumpedLocks(w: v, began: began, ask: web);
+    t.verdict(name: "OpenPlatform: on the web's rule a dropped lock is asked for again at once",
+              why: first == "1" && again == "0 1" ? "" : "locks `${first}`, then `${again}`");
+    askCursor(w: v, cursor: web, mode: CursorMode::Normal);
+    string released = pumpedLocks(w: v, began: began, ask: web);
+    t.verdict(name: "OpenPlatform: on the web's rule the game's own release, to Normal, is not asked again",
+              why: released == "0" ? "" : "locks `${released}`");
+
+    // A lock wanted and not held, with no lock dropped in the pump: only the native rule asks at the focus's return.
+    Window x = Window.headless(width: 64, height: 48);
+    CursorAsk webWants = CursorAsk.make(againAtOnce: true);
+    webWants.wanted = CursorMode::Locked;
+    x.post(event: Event::Focus(focused: true), at: msAfter(began: began, ms: 9));
+    string webFocus = pumpedLocks(w: x, began: began, ask: webWants);
+    Window y = Window.headless(width: 64, height: 48);
+    CursorAsk nativeWants = CursorAsk.make(againAtOnce: false);
+    nativeWants.wanted = CursorMode::Locked;
+    y.post(event: Event::Focus(focused: true), at: msAfter(began: began, ms: 9));
+    string nativeFocus = pumpedLocks(w: y, began: began, ask: nativeWants);
+    t.verdict(name: "OpenPlatform: the focus's return asks for the lock on the native rule alone",
+              why: webFocus.isEmpty() && nativeFocus == "1" ? "" : "web `${webFocus}`, native `${nativeFocus}`");
+    Window z = Window.headless(width: 64, height: 48);
+    CursorAsk shown = CursorAsk.make(againAtOnce: false);
+    z.post(event: Event::Focus(focused: true), at: msAfter(began: began, ms: 9));
+    string normal = pumpedLocks(w: z, began: began, ask: shown);
+    t.verdict(name: "OpenPlatform: the focus's return asks nothing while the game asks Normal", why: normal.isEmpty() ? "" : "locks `${normal}`");
+
+    bool same = windowMode(mode: CursorMode::Normal) == WindowCursor::Normal && windowMode(mode: CursorMode::Hidden) == WindowCursor::Hidden
+        && windowMode(mode: CursorMode::Locked) == WindowCursor::Locked;
+    t.verdict(name: "OpenPlatform: each of kyoten's cursor modes is the window's of the same name", why: same ? "" : "one is another");
+}
+
+// Each open platform's rule: the web's asks again at once, a native desktop's at the focus's return.
+@compileFor(ARCH_WASM32)
+fn bool expectedAgainAtOnce() { return true; }
+@compileFor(!ARCH_WASM32)
+fn bool expectedAgainAtOnce() { return false; }
+
+// The open platform itself, on a headless window: player 1's mode set on its window and kept, another player's on none.
+unsafe fn void cursorPlatformCases(ref Tally t) {
+    OpenPlatform here = OpenPlatform.make();
+    bool rule = here.askedCursor().againAtOnce;
+    t.verdict(name: "OpenPlatform: its rule for asking again is its target's", why: rule == expectedAgainAtOnce() ? "" : "the other's");
+    bool opened = here.openWindow(title: "cursor", width: 64, height: 48, headless: true, focused: false);
+    here.cursor(player: 1, mode: CursorMode::Locked);
+    DynamicArray<Sample> first = DynamicArray.empty();
+    bool open = here.pumped(into: first);
+    string locked = locksOf(samples: first);
+    string kept = modeWord(m: here.askedCursor().wanted);
+    t.verdict(name: "OpenPlatform: player 1's Locked locks its window, and is kept",
+              why: opened && open && locked == "1" && kept == "Locked" ? "" : "locks `${locked}`, kept ${kept}");
+    here.cursor(player: 2, mode: CursorMode::Normal);
+    DynamicArray<Sample> second = DynamicArray.empty();
+    bool still = here.pumped(into: second);
+    string other = locksOf(samples: second);
+    string after = modeWord(m: here.askedCursor().wanted);
+    t.verdict(name: "OpenPlatform: another player's cursor is no window's", why: other.isEmpty() && after == "Locked" ? "" : "locks `${other}`, kept ${after}");
+    OpenPlatform closed = OpenPlatform.make();
+    closed.cursor(player: 1, mode: CursorMode::Hidden);
+    string waiting = modeWord(m: closed.askedCursor().wanted);
+    t.verdict(name: "OpenPlatform: a mode asked before its window opens is kept", why: waiting == "Hidden" ? "" : "kept ${waiting}");
+}
+
 // A sample spelled: K, M or P for its device, a pad's slot and a colon, the control, `=` and its value; a pad's
 // connection `+` or `-`; then `@` and its time in milliseconds after `began`.
 fn string sampleText(const ref Sample s) {
@@ -577,15 +733,16 @@ unsafe fn void pumpCases(ref Tally t) {
     w.post(event: Event::Text(c: '\u{00E9}'), at: msAfter(began: began, ms: 15));
     DynamicArray<Sample> samples = DynamicArray.empty();
     PadReadings pads = PadReadings.make();
+    CursorAsk ask = CursorAsk.make(againAtOnce: false);
     Size size = w.size();
-    bool open = pumpInto(w: w, began: began, into: samples, pads: pads, size: size);
+    bool open = pumpInto(w: w, began: began, into: samples, pads: pads, size: size, cursor: ask);
     string got = textOf(samples: samples);
     t.verdict(name: "OpenPlatform: a window's input is samples at their events' times, a key's repeat its own, a touch none",
               why: got == "K82=1@5 R82@6 K82=0@7 C0=-0.5@8 C1=0.5@8 M0=1@8 C0=-0.5@9 C1=0.5@9 M0=0@9 P2+@12 P2:5=1@13 P2:5=0@14 P2-@15 X233@15" ? "" : "got `${got}`");
     t.verdict(name: "OpenPlatform: a pump with no close request keeps the window open", why: open ? "" : "it closed");
     w.post(event: Event::CloseRequested, at: msAfter(began: began, ms: 16));
     DynamicArray<Sample> after = DynamicArray.empty();
-    bool still = pumpInto(w: w, began: began, into: after, pads: pads, size: size);
+    bool still = pumpInto(w: w, began: began, into: after, pads: pads, size: size, cursor: ask);
     t.verdict(name: "OpenPlatform: a close request ends the run", why: !still && after.length() == 0 ? "" : "it went on");
 }
 
@@ -596,6 +753,7 @@ unsafe fn void cursorPumpCases(ref Tally t) {
     Window w = Window.headless(width: 64, height: 48);
     Instant began = monotonicNow();
     PadReadings pads = PadReadings.make();
+    CursorAsk ask = CursorAsk.make(againAtOnce: false);
     Size size = w.size();
     w.post(event: Event::PointerEnter(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 32.0, y: 24.0)), at: msAfter(began: began, ms: 3));
     w.post(event: Event::Resize(width: 32, height: 24), at: msAfter(began: began, ms: 4));
@@ -605,14 +763,14 @@ unsafe fn void cursorPumpCases(ref Tally t) {
     w.post(event: Event::PointerLock(locked: false), at: msAfter(began: began, ms: 7));
     w.post(event: Event::PointerEnter(pointer: Pointer.at(id: 2, kind: PointerKind::Touch, x: 1.0, y: 1.0)), at: msAfter(began: began, ms: 8));
     DynamicArray<Sample> first = DynamicArray.empty();
-    bool open = pumpInto(w: w, began: began, into: first, pads: pads, size: size);
+    bool open = pumpInto(w: w, began: began, into: first, pads: pads, size: size, cursor: ask);
     string got = textOf(samples: first);
     t.verdict(name: "OpenPlatform: a mouse's place is the cursor's samples, by the window's size as of each event; a lock a sample; a touch none",
               why: got == "C0=0@3 C1=0@3 C0=-0.5@5 C1=0.5@5 L=1@6 L=0@7" ? "" : "got `${got}`");
     w.post(event: Event::PointerMove(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 16.0, y: 12.0), dx: 8.0, dy: 6.0),
            at: msAfter(began: began, ms: 9));
     DynamicArray<Sample> second = DynamicArray.empty();
-    bool still = pumpInto(w: w, began: began, into: second, pads: pads, size: size);
+    bool still = pumpInto(w: w, began: began, into: second, pads: pads, size: size, cursor: ask);
     string next = textOf(samples: second);
     t.verdict(name: "OpenPlatform: the next pump places by the size the last one left",
               why: next == "C0=0@9 C1=0@9 D0=8@9 D1=6@9" ? "" : "got `${next}`");
@@ -621,7 +779,7 @@ unsafe fn void cursorPumpCases(ref Tally t) {
     w.post(event: Event::PointerMove(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 16.0, y: 12.0), dx: 0.0, dy: 0.0),
            at: msAfter(began: began, ms: 10));
     DynamicArray<Sample> third = DynamicArray.empty();
-    bool fresh = pumpInto(w: w, began: began, into: third, pads: pads, size: unsized);
+    bool fresh = pumpInto(w: w, began: began, into: third, pads: pads, size: unsized, cursor: ask);
     string read = textOf(samples: third);
     t.verdict(name: "OpenPlatform: a pump holding no size places by the window's own, which the resize posted to it moved",
               why: fresh && read == "C0=0@10 C1=0@10" ? "" : "got `${read}`");
@@ -631,7 +789,7 @@ unsafe fn void cursorPumpCases(ref Tally t) {
     flat.post(event: Event::PointerMove(pointer: Pointer.at(id: 1, kind: PointerKind::Mouse, x: 1.0, y: 1.0), dx: 1.0, dy: 0.0),
               at: msAfter(began: began, ms: 11));
     DynamicArray<Sample> nowhere = DynamicArray.empty();
-    bool flatOpen = pumpInto(w: flat, began: began, into: nowhere, pads: flatPads, size: flatSize);
+    bool flatOpen = pumpInto(w: flat, began: began, into: nowhere, pads: flatPads, size: flatSize, cursor: ask);
     string unplaced = textOf(samples: nowhere);
     t.verdict(name: "OpenPlatform: a window with no area places no cursor, its motion still a sample",
               why: flatOpen && unplaced == "D0=1@11" ? "" : "got `${unplaced}`");
@@ -653,6 +811,7 @@ unsafe fn void valuePumpCases(ref Tally t) {
     Window w = Window.headless(width: 64, height: 48);
     Instant began = monotonicNow();
     PadReadings pads = PadReadings.make();
+    CursorAsk ask = CursorAsk.make(againAtOnce: false);
     Pointer mouse = Pointer.at(id: 1, kind: PointerKind::Mouse, x: 48.0, y: 36.0);
     Size size = w.size();
     w.post(event: Event::PointerMove(pointer: mouse, dx: 3.0, dy: -2.0), at: msAfter(began: began, ms: 4));
@@ -662,7 +821,7 @@ unsafe fn void valuePumpCases(ref Tally t) {
     w.post(event: Event::PointerMove(pointer: Pointer.at(id: 4, kind: PointerKind::Touch, x: 1.0, y: 2.0), dx: 1.0, dy: 1.0),
            at: msAfter(began: began, ms: 7));
     DynamicArray<Sample> moved = DynamicArray.empty();
-    bool open = pumpInto(w: w, began: began, into: moved, pads: pads, size: size);
+    bool open = pumpInto(w: w, began: began, into: moved, pads: pads, size: size, cursor: ask);
     string motion = textOf(samples: moved);
     t.verdict(name: "OpenPlatform: the mouse's motion is a sample per axis it moved, as the window reports it; a touch's none",
               why: motion == "C0=0.5@4 C1=-0.5@4 D0=3@4 D1=-2@4 K20=1@5 C0=0.5@6 C1=-0.5@6 D1=5@6" ? "" : "got `${motion}`");
@@ -674,27 +833,27 @@ unsafe fn void valuePumpCases(ref Tally t) {
     w.postPad(slot: 1, pad: g, at: msAfter(began: began, ms: 30));
     w.post(event: Event::KeyDown(key: Key::KeyW, mods: 0, repeat: false), at: msAfter(began: began, ms: 40));
     DynamicArray<Sample> read = DynamicArray.empty();
-    bool still = pumpInto(w: w, began: began, into: read, pads: pads, size: size);
+    bool still = pumpInto(w: w, began: began, into: read, pads: pads, size: size, cursor: ask);
     string first = textOf(samples: read);
     t.verdict(name: "OpenPlatform: a pad's reading is a sample for each travel and axis that moved, at its time, before a later event's",
               why: first == "P1+@30 P1:6=1@30 T1:6=0.5@30 A1:0=0.25@30 A1:1=-0.75@30 K26=1@40" ? "" : "got `${first}`");
     DynamicArray<Sample> same = DynamicArray.empty();
-    bool steady = pumpInto(w: w, began: began, into: same, pads: pads, size: size);
+    bool steady = pumpInto(w: w, began: began, into: same, pads: pads, size: size, cursor: ask);
     string still2 = textOf(samples: same);
     t.verdict(name: "OpenPlatform: a reading where nothing moved makes no sample", why: same.length() == 0 ? "" : "got `" + still2 + "`");
     g.setAxis(axis: PadAxis::LeftX, value: 0.5);
     w.postPad(slot: 1, pad: g, at: msAfter(began: began, ms: 50));
     DynamicArray<Sample> nudged = DynamicArray.empty();
-    bool again = pumpInto(w: w, began: began, into: nudged, pads: pads, size: size);
+    bool again = pumpInto(w: w, began: began, into: nudged, pads: pads, size: size, cursor: ask);
     string stick = textOf(samples: nudged);
     t.verdict(name: "OpenPlatform: a stick moved alone is its axis's sample, at the reading's time",
               why: stick == "A1:0=0.5@50" ? "" : "got `${stick}`");
     w.postPad(slot: 1, pad: Gamepad.disconnected(), at: msAfter(began: began, ms: 60));
     DynamicArray<Sample> gone = DynamicArray.empty();
-    bool left = pumpInto(w: w, began: began, into: gone, pads: pads, size: size);
+    bool left = pumpInto(w: w, began: began, into: gone, pads: pads, size: size, cursor: ask);
     w.postPad(slot: 1, pad: g, at: msAfter(began: began, ms: 70));
     DynamicArray<Sample> back = DynamicArray.empty();
-    bool returned = pumpInto(w: w, began: began, into: back, pads: pads, size: size);
+    bool returned = pumpInto(w: w, began: began, into: back, pads: pads, size: size, cursor: ask);
     string fresh = textOf(samples: back);
     t.verdict(name: "OpenPlatform: a pad back after a disconnect reads anew, every travel and axis off rest a sample",
               why: fresh == "P1+@70 P1:6=1@70 T1:6=0.5@70 A1:0=0.5@70 A1:1=-0.75@70" ? "" : "got `${fresh}`");
@@ -706,6 +865,7 @@ unsafe fn void valuePumpCases(ref Tally t) {
 fn void platformTests(ref Tally t) {
     requestLoopCases(t: t);
     viewLoopCases(t: t);
+    cursorLoopCases(t: t);
     optionCases(t: t);
     timestampCases(t: t);
     windowCases(t: t);
@@ -719,4 +879,6 @@ fn void platformTests(ref Tally t) {
     pumpCases(t: t);
     valuePumpCases(t: t);
     cursorPumpCases(t: t);
+    cursorAskCases(t: t);
+    cursorPlatformCases(t: t);
 }

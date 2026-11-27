@@ -442,7 +442,8 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
     string requestsType = imports.nameOf(path: "kyoten::frame::Requests");
     t = t + "\n// What the game asks of its devices after Output, from Output's own state: each player typing whose `TextEntry`\n";
     t = t + "// is on (design/input.md § Decided, 2026-11-25, the fifth part's question 3), and each `DrawnView` as drawn (the\n";
-    t = t + "// sixth part's question 1). One naming no player of the world's, or no view yet, asks nothing.\n";
+    t = t + "// sixth part's question 1), and each `Cursor`'s mode, a player's strongest ask winning (its question 2). One\n";
+    t = t + "// naming no player of the world's, or no view yet, asks nothing.\n";
     t = t + "fn void " + requestsPass() + "(ref " + world + " w, ref " + requestsType + " into) {\n";
     t = t + "    into.reset(players: " + world + "::players);\n";
     foreach (const ref Family f in families.iterConst()) {
@@ -466,6 +467,18 @@ fn string passesKama(const ref string game, const ref DynamicArray<Family> famil
         t = t + "            int32 p = c." + column + "[i].player;\n";
         t = t + "            int32 v = c." + column + "[i].view;\n";
         t = t + "            if (p >= 1 && p <= " + world + "::players && v >= 0) { into.setView(view: c." + column + "[i]); }\n";
+        t = t + "            i = i + 1;\n";
+        t = t + "        }\n";
+        t = t + "    }\n";
+    }
+    foreach (const ref Family f in families.iterConst()) {
+        string column = columnOf(f: f, path: "kyoten::frame::Cursor");
+        if (column.isEmpty()) { continue; }
+        t = t + "    foreach (ref " + chunkType(f: f) + " c in w." + tableField(f: f) + ".chunks.iterMut()) {\n";
+        t = t + "        isize i = 0;\n";
+        t = t + "        while (i < c." + handleColumn() + ".length()) {\n";
+        t = t + "            int32 p = c." + column + "[i].player;\n";
+        t = t + "            if (p >= 1 && p <= " + world + "::players) { into.askCursor(player: p, mode: c." + column + "[i].mode); }\n";
         t = t + "            i = i + 1;\n";
         t = t + "        }\n";
         t = t + "    }\n";

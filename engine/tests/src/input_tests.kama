@@ -8,9 +8,11 @@ import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::SampleKind, kyoten::frame::Device,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
          kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text,
-         kyoten::frame::Requests, kyoten::frame::ZoneCoord, kyoten::frame::DrawnView, std::math::Mat4 };
+         kyoten::frame::Requests, kyoten::frame::ZoneCoord, kyoten::frame::DrawnView, std::math::Mat4,
+         kyoten::frame::Cursor, kyoten::frame::CursorMode, std::memory::Owned,
+         std::serialization::text::json::deserializeJsonBuffer };
 
-export { inputTests, spelled, digitalOf, lineOf };
+export { inputTests, spelled, digitalOf, lineOf, modeWord };
 
 // A processor reads an action through a `const ref`, so its fields must read there.
 fn bool heldThrough(const ref Digital d) { return d.held; }
@@ -366,6 +368,75 @@ fn void textEntryCases(ref Tally t) {
               why: e.player == 0 && !e.on ? "" : "player ${e.player}, on ${e.on}");
 }
 
+// A cursor's mode as its case name.
+fn string modeWord(CursorMode m) { return match (m) { case Normal: "Normal"; case Hidden: "Hidden"; case Locked: "Locked"; }; }
+
+// A `Cursor` read from `json`, or why not, as "refused: " and the reader's words.
+fn string cursorRead(const ref string json) {
+    Result<Cursor, Owned<Error>> read = deserializeJsonBuffer::<Cursor>(src: copy json, strict: true);
+    match (give read) {
+        case Ok(value: c): {
+            int32 p = c.player;
+            string m = modeWord(m: c.mode);
+            return "player ${p} ${m}";
+        }
+        case Err(error: e): {
+            string why = e.message();
+            return "refused: " + why;
+        }
+    };
+}
+
+// The cursor's mode a game asks for a player, Output's own state (design/input.md § Decided, 2026-11-26, the sixth
+// part's question 2): by default it names no player and asks `Normal`, so a prefab that lists it asks nothing until an
+// Output processor says so; a record names its mode by case name, and a misspelling is refused with every name listed.
+// A prefab naming no mode takes the default's through the loader, which spin's content holds.
+fn void cursorCases(ref Tally t) {
+    Cursor c = Cursor.default();
+    string m = modeWord(m: c.mode);
+    t.verdict(name: "Cursor: names no player and asks Normal by default", why: c.player == 0 && c.mode == CursorMode::Normal ? "" : "player ${c.player}, ${m}");
+    string locked = cursorRead(json: "{ \"player\": 1, \"mode\": \"Locked\" }");
+    t.verdict(name: "Cursor: a record names its mode by case name", why: locked == "player 1 Locked" ? "" : "read `${locked}`");
+    string hidden = cursorRead(json: "{ \"player\": 2, \"mode\": \"Hidden\" }");
+    t.verdict(name: "Cursor: each mode by its own name", why: hidden == "player 2 Hidden" ? "" : "read `${hidden}`");
+    string wrong = cursorRead(json: "{ \"player\": 1, \"mode\": \"Lockd\" }");
+    t.verdict(name: "Cursor: a misspelt mode is refused, every name listed",
+              why: wrong.startsWith(prefix: "refused: ") && wrong.contains(substring: "Normal") && wrong.contains(substring: "Hidden")
+                   && wrong.contains(substring: "Locked") ? "" : "read `${wrong}`");
+}
+
+// Each player's cursor mode a game asks (the sixth part's question 2): `Normal` until asked, the strongest ask since the
+// reset kept whatever order the asks come in, `Normal` for a player it does not name, and reset and copied as the rest.
+fn void requestCursorCases(ref Tally t) {
+    Requests r = Requests.make();
+    r.reset(players: 3);
+    string first = modeWord(m: r.cursorMode(player: 1));
+    t.verdict(name: "Requests: every player's cursor Normal until asked", why: first == "Normal" ? "" : "player 1 ${first}");
+    r.askCursor(player: 1, mode: CursorMode::Hidden);
+    r.askCursor(player: 1, mode: CursorMode::Normal);
+    string kept = modeWord(m: r.cursorMode(player: 1));
+    t.verdict(name: "Requests: a Normal ask after a Hidden one leaves it Hidden", why: kept == "Hidden" ? "" : "player 1 ${kept}");
+    r.askCursor(player: 2, mode: CursorMode::Hidden);
+    r.askCursor(player: 2, mode: CursorMode::Locked);
+    string raised = modeWord(m: r.cursorMode(player: 2));
+    t.verdict(name: "Requests: a Locked ask after a Hidden one makes it Locked", why: raised == "Locked" ? "" : "player 2 ${raised}");
+    r.askCursor(player: 3, mode: CursorMode::Locked);
+    r.askCursor(player: 3, mode: CursorMode::Hidden);
+    string held = modeWord(m: r.cursorMode(player: 3));
+    t.verdict(name: "Requests: a Hidden ask after a Locked one leaves it Locked", why: held == "Locked" ? "" : "player 3 ${held}");
+    string beyond = modeWord(m: r.cursorMode(player: 4));
+    string none = modeWord(m: r.cursorMode(player: 0));
+    t.verdict(name: "Requests: a player it does not name is Normal", why: beyond == "Normal" && none == "Normal" ? "" : "${none} and ${beyond}");
+    Requests c = Requests.make();
+    c.copyFrom(other: r);
+    string one = modeWord(m: c.cursorMode(player: 1));
+    string two = modeWord(m: c.cursorMode(player: 2));
+    t.verdict(name: "Requests: a copy keeps each player's cursor", why: one == "Hidden" && two == "Locked" ? "" : "${one} and ${two}");
+    r.reset(players: 2);
+    string back = modeWord(m: r.cursorMode(player: 2));
+    t.verdict(name: "Requests: reset puts every cursor back to Normal", why: back == "Normal" ? "" : "player 2 ${back}");
+}
+
 fn void sampleCases(ref Tally t) {
     Sample key = Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 1.0, at: 1234);
     bool keyOk = key.kind == SampleKind::Control && key.device == Device::Keyboard && key.slot == 0 && key.control == 82
@@ -658,11 +729,13 @@ fn void inputTests(ref Tally t) {
     actionListCases(t: t);
     poseCases(t: t);
     textEntryCases(t: t);
+    cursorCases(t: t);
     textCases(t: t);
     textActionCases(t: t);
     requestCases(t: t);
     viewCases(t: t);
     requestViewCases(t: t);
+    requestCursorCases(t: t);
     sampleCases(t: t);
     handoffCases(t: t);
     valueHandoffCases(t: t);
