@@ -456,5 +456,33 @@
 #   Chrome for Testing), @kama/image's (1,401, the sweep's 197), @kama/imagediff's (94) and @kama/graphics' (475
 #   natively, 476 in Firefox and Chrome for Testing, 451 in Edge). KY-35, KY-40, KY-45 and KY-58 re-checked,
 #   unchanged. The Mac's pin is 0.9.978 until it is rebuilt at 25d97c29.
-KAMA_VERSION=0.9.1027
-KAMA_BUILD=g25d97c29
+#
+# 2026-11-26: 0.9.1027 -> 0.9.1033 (03c39cb2), kama's dev HEAD with a clean tree, on its origin, at the owner's word
+# ("yes you can bump", the fifty-second session's end); 0.9.1027 kept in .scratch/kama-pin-0.9.1027. What moved, for
+# kyoten:
+#   0.9.1033 (a557c235): a name is judged by the declaration it resolves to, which closes KR-449 and KR-450, so KY-69
+#           and KY-70 are fixed and removed: a program's own type spelled `View` passes by `const ref` beside std's
+#           `type view`, and `Views::world` passed straight as an argument is the member, not a local named `world`.
+#           Each repro failed on 0.9.1027 and passes on it. Nothing to port: the view's component keeps the name
+#           `DrawnView` (the owner's (A)), and spin's binding of `Views::world` to a local stays, harmless.
+#   0.9.1032 (00e3f371, KR-361): `kama query --search NAME --deps` answers from the modules a package imports too, each
+#           result naming its package and module, which fixes KY-45 (removed): its repro answers `Transform` from
+#           `kyoten::world`. The generator still asks each dependency apart (cached); one `--deps` query could replace
+#           that when the tool's resolve is next touched.
+#   0.9.1031 (4be6fb56, KR-443, KR-446, KR-447): a dependency the program reaches no kama of adds nothing to the build,
+#           its `link` libraries, flags, `preloadFiles` and `emSettings` included.
+#   0.9.1028 to 0.9.1030 (KR-444, KR-440, KR-281's decisions 7 to 11): a dependency's syntax error said once; a reached
+#           package with C and kama gets its own `<name>.kama.h`; iOS apps through an Xcode project. None that kyoten
+#           calls.
+#   Every manifest passed `kama check` on it before the bump. Green on it with nothing else changed: tools/test.sh
+#   (engine 1037 natively and on wasm, the frame guard, the tool's 311, kyoten check, fps native and on wasm, vr
+#   checked), @kama/window's (334, 221 under node, 341 in Edge and Firefox, 352 through the driver, the unreached
+#   fixture linked), @kama/gpu's (344, 315 in Edge, 319 in Firefox and Chrome for Testing), @kama/image's (1,401, the
+#   sweep's 197), @kama/imagediff's (94) and @kama/graphics' (475 natively, 476 in Firefox and Chrome for Testing, 451
+#   in Edge, the cube on each web leg, its player's build at its record, 172,656 B), every leg debug and release, but
+#   @kama/graphics' four native cube runs: they need a monitor, and none was attached overnight (Windows listing every
+#   monitor not present). The cube built by 0.9.1027 failed the same way then, at its first frame, so the next start
+#   batch runs them with a monitor on.
+#   KY-35, KY-40 and KY-58 re-checked, unchanged. The Mac's pin is 0.9.978 until it is rebuilt at 03c39cb2.
+KAMA_VERSION=0.9.1033
+KAMA_BUILD=g03c39cb2

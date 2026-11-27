@@ -1055,3 +1055,9 @@ WIN-11, and a pad's sensors, WIN-22) are KYR-54's later parts.
   text input on and off; a player's settings reaching the filters and gestures; a game's own filters and gestures; how a
   higher layer merges an object entry; contexts, more local players and rebinding in a game's own UI; touch (WIN-11)
   and a pad's sensors (WIN-22); rumble, through `Requests`; and the gyro's scheme, found while laying out the sixth part.
+
+- **2026-11-26, the owner: the view's component keeps the name `DrawnView`,** with the pin moved to 0.9.1033, which
+  fixes KY-69. Asked at the fifty-second session's end: (A) bump and keep `DrawnView`, recommended, since it says what
+  the component holds, a view as drawn, and a game's code never sees two types spelled `View` (kama's `View<T>` and
+  kyoten's); (B) bump and rename it `View`, as question 1's answer wrote it; (C) no bump. The owner: "yes you can bump",
+  taken as (A).

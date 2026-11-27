@@ -100,13 +100,13 @@ the spin fixture runs headless on every leg.
 **`@kama/graphics`' GFX-1 is built through its six parts (the forty-third session), and the join's step 7 (the
 forty-fourth). Where the work is:**
 
-1. **At a session's start, run the suites on kyoten's pin, `0.9.1027+g25d97c29`** (`.kama-pin/`, through `tools/kama`;
+1. **At a session's start, run the suites on kyoten's pin, `0.9.1033+g03c39cb2`** (`.kama-pin/`, through `tools/kama`;
    AGENTS.kyoten.md § Build): `tools/test.sh`, then the packages' `tools/test.sh` with `KAMA` set to the pin: `@kama/window`'s,
    `@kama/gpu`'s, `@kama/image`'s, `@kama/imagediff`'s and `@kama/graphics`'. Their browser legs run under `kama run` in Edge, the pinned
    Firefox 160 and, in `@kama/gpu` and `@kama/graphics`, the pinned Chrome for Testing 157.0.8103.50 with its own flags;
    `@kama/window`'s runs that one through its driver (`~/browsers`, its `README.md`). **Every leg runs a debug build and a
    release build** since the thirty-second session (rendering.md § Decided, 2026-11-17), so each count below is held
-   twice on each leg. The closing counts, on 0.9.1027, as on 0.9.1026, 0.9.1018 and 0.9.978 before:
+   twice on each leg. The closing counts, on 0.9.1033, as on 0.9.1027, 0.9.1026, 0.9.1018 and 0.9.978 before:
    - tools/test.sh: engine 1037 native and on wasm, each debug and release; the frame guard, on wasm in both builds;
      the tool's 311; kyoten check; fps native, and on wasm in both builds; vr checked, since step 8's sixth part (the
      fifty-first and fifty-second sessions); 961 and 287 at the fifty-second's start, the five packages' as below,
@@ -140,8 +140,14 @@ forty-fourth). Where the work is:**
      `wgpuSurfaceGetCurrentTexture` on a lost device ("Parent device is lost"), ending the program, which `@kama/gpu`'s
      lost-device fix (GPU-15's, before every submit and map) does not reach; on WARP the last frame's read was still
      pending after 30 s. Rerun alone at the session's end, every leg passed at its counts, the cube on each (19 min
-     26 s), so both came under the load; the panic a lost device's acquire reaches is still `@kama/gpu`'s gap, for the
-     owner.
+     26 s), so both came under the load; the panic a lost device's acquire reaches is `@kama/gpu`'s GPU-18, filed at
+     the owner's word. **At the 0.9.1033 bump** (the session's end, overnight) its four native cube runs failed as
+     those two did, every case and the web legs passing, the cube's size record held: **no monitor was attached.**
+     Windows listed every monitor not present, its one screen the stand-in `WinDisc`, and the gate's slow stretches
+     (4 h 53 min in all) turned at its display changes (Kernel-PnP's event 1010). Then the cube built by 0.9.1027
+     failed the same way, at its first frame, as 0.9.1033's did, so the machine is the cause, not the pin. **A native
+     window's run needs a monitor:** with none, the device is lost at the first acquire and WARP's frames wait for
+     hours. The cube natively on 0.9.1033 is the next start batch's, with a monitor on.
    - **Natively on Windows both GPU packages' gates need DXC:** `@kama/gpu`'s `tools/fetch-dxc.sh` fills
      `third_party/dxc/<platform>/` (git-ignored, as wgpu-native's SDK is), and `@kama/graphics`' `tools/legs.sh` finds it
      in `../kama-gpu`. A fresh machine runs it once, as it runs kama's `fetch-webgpu.sh`.
@@ -157,56 +163,31 @@ forty-fourth). Where the work is:**
      beside a suite.
    - **A mutation driver started from Python gets no `emcc`,** even inside `bash -lic`: `.scratch/s32/mutate.py` exports
      emsdk's paths itself, and reports a run that skipped a web leg as INVALID. Read one run's log before a batch counts.
-   - **Read `../kama`'s log since `25d97c29`,** kyoten's pin, every commit in the range. First check that the pin is
-     still on kama's history: `git -C ../kama merge-base --is-ancestor 25d97c29 HEAD`. kama rebases at times. If the
+   - **Read `../kama`'s log since `03c39cb2`,** kyoten's pin, every commit in the range. First check that the pin is
+     still on kama's history: `git -C ../kama merge-base --is-ancestor 03c39cb2 HEAD`. kama rebases at times. If the
      pin has left its history, the commit with the same message may not be its twin: on 2026-11-14 the rebase put
      0.9.950 to 0.9.954 below the old pin's message. Compare the trees (`git diff --stat`) before rebuilding at one.
-     **At the bump `25d97c29` was kama's origin's HEAD** (2026-11-22, the forty-sixth session's start), so the Mac can
-     rebuild at it, and the range was empty. Read again at the session's end: a guard script's fix on kama's origin
-     (`82313c84`) and a roadmap commit in its tree here (`56ac55b9`, KR-440's brief and KR-444 filed), no compiler
-     change. **Read again at the forty-ninth session's end** (2026-11-24), two compiler commits, both on kama's
-     origin, neither one kyoten needs:
-     - 0.9.1028 (`ebd4e972`, KR-444): a syntax error in a dependency's file is said once;
-     - 0.9.1029 (`773a2213`, KR-440): a reached package with C and kama gets its own header, `<name>.kama.h`, given to
-       its C alone, so a package's C may call its own `expose fn`s by a generated declaration. `@kama/window`'s C reads
-       kama's clock through `kama_time.h` and calls none of its own, so a bump has nothing to port there; check its
-       gate and `@kama/graphics`' cube size record on it.
+     **At the bump `03c39cb2` was kama's origin's HEAD** (2026-11-26, the fifty-second session's end), so the Mac can
+     rebuild at it, and the range was empty.
 
-     Above them, a roadmap commit (`bf89767e`, KR-443 and KR-361 claimed by kama's Windows session), no compiler change.
-     **Read again at the fiftieth session's start** (2026-11-25), one compiler commit on kama's origin, which kyoten
-     does not need: 0.9.1030 (`4d260ed5`, KR-281's decisions 7 to 11), an iOS app built as an `.app` or an `.ipa`
-     through the Xcode project kama writes, `kama run` on iOS, and the simulator leg; KR-445 filed (trusted input on an
-     iOS run). Around it, roadmap commits alone: KR-426 ruled (a `Shared<T>` compares by its pointee, identity a named
-     `isSame`), the Mac's claims renewed, and KR-443 measured and ruled with KR-446 and KR-447 filed (`9a584382`, in
-     kama's tree here, not yet on its origin). **Read again at the fiftieth session's end** (2026-11-25), two compiler
-     commits in kama's tree here, neither on its origin yet, neither one kyoten needs:
-     - 0.9.1031 (`4be6fb56`, KR-443, KR-446, KR-447): a dependency the program reaches no kama of adds nothing to the
-       build, its `link` libraries, flags, `preloadFiles` and `emSettings` included, where before only its `csources`
-       were left out. Every game reaches the engine and the engine `@kama/window`, so a bump has nothing to port; check
-       that the tool's fixture games, fps and the frame guard still build on it;
-     - 0.9.1032 (`00e3f371`, KR-361): `kama query --search NAME --deps` searches the modules a package imports too.
-
-     **Read again at the fifty-first session's start and end** (2026-11-26): unchanged, `00e3f371`, nothing
-     uncommitted. Two kama bugs found building the sixth part are filed, each worked around: KY-69 (a type spelled
-     `View` taken for std's `type view`) and KY-70 (a type's `comptime` member passed as an argument checked as a
-     local of the same name). **Read again at the fifty-second session's start** (2026-11-26): one roadmap commit,
-     `4a4793c0`, filing KY-69 and KY-70 upstream as KR-449 and KR-450, no compiler change. **Read again at its end:**
-     one compiler commit on kama's origin, 0.9.1033 (`a557c235`), which judges a name by the declaration it resolves
-     to and closes KR-449 and KR-450. Both repros fail on the pin and pass on its binary, so a bump fixes KY-69 and
-     KY-70: `DrawnView` could then take the name `View` the sixth part's decision gave it, and spin's binding of
-     `Views::world` to a local could go (the owner's call). Beside it, kama's VS Code extension (`e96bccd3`) and a
-     roadmap commit (`03c39cb2`).
-
-     What 0.9.979 to 0.9.1027 brought, read session by session from the thirty-fifth, is `.kama-version`'s
+     What 0.9.979 to 0.9.1033 brought, read session by session from the thirty-fifth, is `.kama-version`'s
      entries for the bumps, and this item's history in the git log. A bump is optional until something kyoten needs
      lands, and checks first what a release in the range says it changes.
-   - **The pin is on 0.9.1027** (`25d97c29`) since 2026-11-22, the forty-sixth session's start (`.kama-version`), at
-     the owner's word ("A: bump now (Recommended)"), every suite green on it at 0.9.1026's counts with nothing changed.
-     Before it, 0.9.1026 (`b2f627b0`) since the forty-fifth session's readying, at the owner's word ("yes you can bump
-     first A"), every suite green on it at 0.9.1018's counts with nothing changed but the cube's web-size record;
+   - **The pin is on 0.9.1033** (`03c39cb2`) since 2026-11-26, the fifty-second session's end (`.kama-version`), at
+     the owner's word ("yes you can bump"), every suite green on it at 0.9.1027's counts with nothing changed but
+     `@kama/graphics`' native cube, which needs a monitor and had none (above). Before it, 0.9.1027 (`25d97c29`) since
+     2026-11-22, the forty-sixth session's start, at the owner's word ("A: bump now (Recommended)"), every suite green
+     on it at 0.9.1026's counts with nothing changed; 0.9.1026 (`b2f627b0`) since the forty-fifth session's readying,
+     at the owner's word ("yes you can bump first A"), every suite green on it at 0.9.1018's counts with nothing
+     changed but the cube's web-size record;
      0.9.1018 since the forty-fifth session, at the owner's word ("we can bump now"), with the 48 `.keys()` calls
      ported; 0.9.978 since the thirty-fifth session, whose 0.9.967 brought KR-378, so `@kama/window`'s WIN-24 can be
      built; and 0.9.966 since the thirty-second. `.kama-version` says what moved:
+     - **0.9.1028 to 0.9.1033:** a name is judged by the declaration it resolves to (0.9.1033, KR-449 and KR-450), which
+       fixes KY-69 and KY-70, and `kama query --search … --deps` answers from a package's dependencies too (0.9.1032,
+       KR-361), which fixes KY-45; all three are removed. The view's component keeps the name `DrawnView` (the owner's
+       word, input.md § Decided). The rest is none that kyoten calls: a dependency reached by no kama adding nothing to
+       the build, a package's own C header, iOS apps, a dependency's syntax error said once.
      - **0.9.1019 to 0.9.1026:** kama fixed three of the forty-fifth session's four gaps the day after they were filed,
        each now removed: a `return` with a value in a `void` function is refused (KR-435, KY-65); a negative `Duration`
        moves an `Instant` back, `now + (-d)` (KR-436, KY-66), so `@kama/window`'s tests dropped their
@@ -239,13 +220,13 @@ forty-fourth). Where the work is:**
        bump was green without Closure ever running on the packages' glue. A probe found two breakages, now fixed:
        `@kama/gpu`'s glue would not link under Closure (`GPUTextureUsage`), and `@kama/window`'s keyboard read every key
        as Unknown. That is why every leg now runs in both builds.
-   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `25d97c29`,** on kama's origin. It was rebuilt
+   - **The Mac's pin is on 0.9.978 (`5e542c55`) until it is rebuilt at `03c39cb2`,** on kama's origin. It was rebuilt
      at 0.9.978 on 2026-11-18 (kyoten `9c7704b`) from a clean clone at the owner's word, its `tools/test.sh` green
      with Windows's counts, every wasm leg in both builds. KY-3 is narrowed there: a program builds for
      `aarch64-ios17.0-simulator` with Xcode 27.2. A probe of `@kama/audio`'s that calls `run` needs `pace:`; its
      committed code has none.
    - **Still open with kama:**
-     - KY-45 and KY-40;
+     - KY-35 and KY-40;
      - KY-58, filed 2026-11-14, kama's KR-395 since 2026-11-15: an object held in a `Shared` cannot reach its own handle,
        worked around in GFX-1's part 2;
 2. **Track 1 continues, by each package's `ROADMAP.md`,** in the order the owner decided on 2026-11-10
