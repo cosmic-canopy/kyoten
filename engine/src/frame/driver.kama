@@ -61,6 +61,10 @@ type contract InputSource for resource {
     // cursor's samples that arrive from then on are turned through it (design/input.md § Decided, 2026-11-26, the sixth
     // part's question 1).
     fn void drawn(const ref DrawnView view, int64 at);
+    // The game letting go of player `player`'s pad lock turned on or off at `at`, on the frame timestamp's base, as the
+    // world asked after a frame: each time it turns on, that player's lock lets go as a disconnect does, and the next pad
+    // pressed takes them (design/input.md § Decided, 2026-11-26, the sixth part's question 3).
+    fn void padLock(int32 player, bool letGo, int64 at);
 }
 
 // One simulation step: Input, Update and Constraints, with the `Time` and the hand-off the caller hands in.

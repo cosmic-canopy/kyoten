@@ -11,7 +11,8 @@ import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten:
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow, glow::Spark,
          spin::cube::Spin, spin::cube::Size, spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering,
          std::math::Vec2, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text, kyoten::frame::Requests,
-         kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, spin::view::modeName, spin::generated::Views,
+         kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, kyoten::frame::PadLock, spin::view::modeName,
+         spin::generated::Views,
          spin::generated::Actions, spin::generated::CubePrefab,
          spin::generated::CubePrefabId, spin::generated::BigCubePrefab, spin::generated::BigCubePrefabId,
          spin::generated::Prefabs, kyoten::platform::OpenPlatform, GameWorld, openContent, loadPrefabs,
@@ -71,6 +72,12 @@ fn void load() {
             Rate clock = Rate.of(hz: baseHz, over: baseHz);
             Handoff quiet = Handoff.make(players: GameWorld::players, actions: GameWorld::actions());
             world.output(time: clock.at(step: 0), newest: quiet);
+            // What the placed world asks: the cube's prefab lets go of player 1's pad; `fast` and `quick`'s, of player 2's,
+            // past the world's one, which it gathers no request for.
+            Requests placedAsks = Requests.make();
+            world.requests(into: placedAsks);
+            bool placedLetGo = placedAsks.letsGo(player: 1);
+            println(s: "spin: placed requests: player 1 lets go ${placedLetGo}");
         }
         case Err(error: e): { refused(no: e); }
     };
@@ -135,11 +142,11 @@ fn uint8 main() {
     Actions a = Actions.forPlayer(player: 1);
     int32 player = a.player;
     bool held = a.faster.held;
-    CubePrefab c = CubePrefab.of(actions: a, aim: Aim.default(), cursor: Cursor.default(), drawnView: DrawnView.default(), slowAim: SlowAim.default(),
+    CubePrefab c = CubePrefab.of(actions: a, aim: Aim.default(), cursor: Cursor.default(), drawnView: DrawnView.default(), padLock: PadLock.default(), slowAim: SlowAim.default(),
                                  spin: Spin.default(), steering: Steering.default(), taps: Taps.default(),
                                  textEntry: TextEntry.default(), transform: Transform.default());
     float32 rate = c.spin.rate;
-    BigCubePrefab b = BigCubePrefab.of(actions: a, aim: Aim.default(), cursor: Cursor.default(), drawnView: DrawnView.default(), glow: Glow.default(),
+    BigCubePrefab b = BigCubePrefab.of(actions: a, aim: Aim.default(), cursor: Cursor.default(), drawnView: DrawnView.default(), glow: Glow.default(), padLock: PadLock.default(),
                                        size: Size.default(),
                                        slowAim: SlowAim.default(), spark: Spark.default(), spin: Spin.default(),
                                        steering: Steering.default(),
@@ -179,11 +186,17 @@ fn uint8 main() {
     aiming.player = 1;
     Cursor idle = Cursor.default();
     idle.mode = CursorMode::Hidden;
-    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, aim: Aim.default(), cursor: idle, drawnView: unseen,
+    // The game letting go of a pad (the sixth part's question 3): the calm cube's names player 1 and holds on, since its
+    // `faster` is never held; the pressed cube's lets go once it is, but names no player, which the world gathers no
+    // request for.
+    PadLock holding = PadLock.default();
+    holding.player = 1;
+    PadLock unnamed = PadLock.default();
+    Optional<Handle> one = world.create_cube(prefab: CubePrefab.of(actions: calm, aim: Aim.default(), cursor: idle, drawnView: unseen, padLock: holding,
                                                                    slowAim: SlowAim.default(), spin: two,
                                                                    steering: Steering.default(), taps: Taps.default(),
                                                                    textEntry: TextEntry.default(), transform: Transform.default()));
-    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, aim: Aim.default(), cursor: aiming, drawnView: seen,
+    Optional<Handle> other = world.create_cube(prefab: CubePrefab.of(actions: pressed, aim: Aim.default(), cursor: aiming, drawnView: seen, padLock: unnamed,
                                                                      slowAim: SlowAim.default(), spin: two,
                                                                      steering: Steering.default(), taps: Taps.default(),
                                                                      textEntry: typist, transform: Transform.default()));
@@ -246,6 +259,8 @@ fn uint8 main() {
     println(s: "spin: requests: ${drawn} view, player 1's world ${world1}");
     string mode1 = modeName(mode: asked.cursorMode(player: 1));
     println(s: "spin: requests: player 1's cursor ${mode1}");
+    bool letGo1 = asked.letsGo(player: 1);
+    println(s: "spin: requests: player 1 lets go ${letGo1}");
     println(s: "spin: Output again, on the same step");
     newest.clear();
     world.output(time: clock.at(step: 59), newest: newest);

@@ -44,6 +44,7 @@ type resource Log {
     bool drawingSecond = false;                           // and their view 1
     CursorMode cursorOne = CursorMode::Normal;            // the cursor mode the world asks for player 1, and for player 2
     CursorMode cursorTwo = CursorMode::Normal;
+    bool lettingGo = false;                               // whether the world lets go of player 2's pad lock
 
     public ctor make() { }
 
@@ -103,6 +104,8 @@ type resource Log {
         if (player == 1) { this.cursorOne = mode; } else { this.cursorTwo = mode; }
     }
     public const fn CursorMode cursorOf(int32 player) { return player == 1 ? this.cursorOne : this.cursorTwo; }
+    public fn void letGo(bool on) { this.lettingGo = on; }
+    public const fn bool letsGo() { return this.lettingGo; }
     public fn void entry(const ref string what) {
         string was = copy this.entries;
         this.entries = was + what + " ";
@@ -157,6 +160,7 @@ type resource Counter implements World {
         if (this.log.deref().asksTyping()) { into.setTyping(player: 1, on: true); }
         into.askCursor(player: 1, mode: this.log.deref().cursorOf(player: 1));
         into.askCursor(player: 2, mode: this.log.deref().cursorOf(player: 2));
+        if (this.log.deref().letsGo()) { into.setLetGo(player: 2, on: true); }
         if (this.log.deref().draws()) {
             DrawnView v = DrawnView.default();
             v.player = 1;
@@ -192,6 +196,10 @@ type resource Taker implements InputSource {
         int32 which = view.view;
         int32 x = cast<int32>(view.position.x);
         this.log.derefMut().entry(what: "V${p}.${which}x${x}@${at}");
+    }
+    public fn void padLock(int32 player, bool letGo, int64 at) {
+        string s = letGo ? "+" : "-";
+        this.log.derefMut().entry(what: "L${player}${s}@${at}");
     }
 }
 
@@ -566,6 +574,31 @@ fn void cursorLoopCases(ref Tally t) {
               why: seen == "C1Locked C2Hidden C1Normal " ? "" : "handed `${seen}`");
 }
 
+// The game letting go of a player's pad lock after each frame (the sixth part's question 3): each change handed to the
+// source at the frame's timestamp, an unchanged one not; player 2's, so the player handed on is the one asking.
+fn void letGoLoopCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    times.add(item: T0);
+    times.add(item: T0 + STEP);
+    times.add(item: T0 + 2 * STEP);
+    times.add(item: T0 + 3 * STEP);
+    log.derefMut().takeTimes(times: give times);
+    Play<Counter, FakePlatform, Taker> p = loopOn(log: copy log, line: "");
+    hostStarts(p: p);
+    p.tick();
+    string quiet = log.deref().entriesSeen();
+    t.verdict(name: "loop: a world that holds every pad on hands no let-go on", why: quiet.isEmpty() ? "" : "handed `${quiet}`");
+    log.derefMut().letGo(on: true);
+    p.tick();
+    p.tick();
+    log.derefMut().letGo(on: false);
+    p.tick();
+    string seen = log.deref().entriesSeen();
+    t.verdict(name: "loop: a let-go turned on and off is handed to the source once each, at its frame's timestamp",
+              why: seen == "L2+@5016666667 L2-@5050000001 " ? "" : "handed `${seen}`");
+}
+
 // The lock samples among `samples`, each its 1 or 0, in order.
 fn string locksOf(const ref DynamicArray<Sample> samples) {
     string got = "";
@@ -866,6 +899,7 @@ fn void platformTests(ref Tally t) {
     requestLoopCases(t: t);
     viewLoopCases(t: t);
     cursorLoopCases(t: t);
+    letGoLoopCases(t: t);
     optionCases(t: t);
     timestampCases(t: t);
     windowCases(t: t);

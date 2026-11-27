@@ -1,8 +1,10 @@
 { "prefabs": {
     "cube":     { "Transform": {}, "Spin": { "rate": 2 }, "Actions": { "player": 1 }, "TextEntry": { "player": 1 },
-                "DrawnView": { "player": 1, "view": 1 }, "Cursor": { "player": 1, "mode": "Locked" } },
+                "DrawnView": { "player": 1, "view": 1 }, "Cursor": { "player": 1, "mode": "Locked" },
+                "PadLock": { "player": 1, "letGo": true } },
     "fastCube": { "from": "cube", "Spin": { "rate": 4 }, "DrawnView": { "player": 2, "view": 1 }, "Cursor": { "player": 2 },
-                  "note": "a variant with the same components: cube's family; its view and its cursor name player 2, past the world's one, which the world gathers no request for" },
+                  "PadLock": { "player": 2 },
+                  "note": "a variant with the same components: cube's family; its view, its cursor and its let-go name player 2, past the world's one, which the world gathers no request for" },
     "bigCube":  { "from": "cube", "spin::cube::Size": { "by": 2 }, "Glow": {}, "DrawnView": { "player": 1, "view": -1 },
                   "note": "a variant that adds components: a family of its own, one key by its full path" } },
   "bindings": { "faster": { "keyboard": { "control": "ArrowUp", "gestures": [ { "hold": true } ] }, "gamepad": { "control": "RightShoulder", "gestures": [ { "chord": "LeftShoulder" } ] } },

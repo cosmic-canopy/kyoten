@@ -22,7 +22,8 @@
 //   one frame takes what they type from the next (design/input.md § Decided, 2026-11-25, the fifth part's question 3).
 //   Each view the world drew otherwise, or for the first time, goes to the input source at the frame's timestamp too,
 //   so the cursor's samples from then on are turned through the view on screen (the sixth part's question 1). Each
-//   player's cursor mode that changed goes to the platform, which sets the window's (the sixth part's question 2).
+//   player's cursor mode that changed goes to the platform, which sets the window's (the sixth part's question 2), and
+//   each player's let-go of their pad lock that changed to the input source at the frame's timestamp (its question 3).
 
 import { core::println, std::app::App, std::app::Lifecycle, std::app::Pace, std::app::run, std::memory::Owned,
          std::memory::Shared, std::collections::DynamicArray, kyoten::frame::World, kyoten::frame::Clock,
@@ -143,8 +144,9 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
     public const fn int64 stepsSettled() { return this.clock.settled(); }
 
     // What the world asks of its devices after this frame: each player's text entry that changed, to the input source
-    // at `now` and to the platform; each player's cursor mode that changed, to the platform; and each view drawn
-    // otherwise, or for the first time, to the input source.
+    // at `now` and to the platform; each player's cursor mode that changed, to the platform; each player's let-go of
+    // their pad lock that changed, to the input source at `now`; and each view drawn otherwise, or for the first time, to
+    // the input source.
     fn void handOn(int64 now) {
         this.world.requests(into: this.wanted);
         int32 most = this.wanted.players() > this.told.players() ? this.wanted.players() : this.told.players();
@@ -157,6 +159,8 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
             }
             CursorMode mode = this.wanted.cursorMode(player: p);
             if (mode != this.told.cursorMode(player: p)) { this.platform.cursor(player: p, mode: mode); }
+            bool letGo = this.wanted.letsGo(player: p);
+            if (letGo != this.told.letsGo(player: p)) { this.input.padLock(player: p, letGo: letGo, at: now); }
             p = p + 1;
         }
         isize i = 0;

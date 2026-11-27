@@ -552,6 +552,47 @@ fn void padCases(ref Tally t) {
     expectStep(t: t, b: b, step: 11, until: 1200, name: "binder: and drives player 1", want: "HP-");
 }
 
+// The game letting go of the pad lock (design/input.md § Decided, 2026-11-26, the sixth part's question 3): what the pad
+// held is released at that moment, the scheme back to the keyboard and the mouse, and the next pad pressed takes player
+// 1, as after a disconnect; a let-go turned off, another player's, or one before any pad locks, changes nothing.
+fn void padLockCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": \"RightShoulder\" } }");
+    b.padLock(player: 1, letGo: true, at: 50);
+    hand(b: b, s: pad(slot: 2, control: 5, value: 1.0, at: 110));
+    expectStep(t: t, b: b, step: 0, until: 200, name: "binder: a let-go before any pad locks leaves the next press to lock", want: "HP-");
+    bool locked2 = match (b.lockedPad()) { case Some(value: s): s == 2; case None: false; };
+    t.verdict(name: "binder: and that pad locks in", why: locked2 ? "" : "not slot 2");
+    b.padLock(player: 1, letGo: false, at: 250);
+    b.padLock(player: 2, letGo: true, at: 260);
+    expectStep(t: t, b: b, step: 1, until: 300, name: "binder: a let-go turned off, or another player's, keeps the lock and what it holds", want: "H--");
+    string kept = schemeAt(b: b, step: 2, until: 350);
+    bool still2 = match (b.lockedPad()) { case Some(value: s): s == 2; case None: false; };
+    t.verdict(name: "binder: and the pad's scheme", why: still2 && kept == "Gamepad" ? "" : "locked ${still2}, scheme ${kept}");
+    // The loop hands a let-go on after a frame's steps, at its timestamp, so the next step to end is after it.
+    b.padLock(player: 1, letGo: true, at: 410);
+    expectStep(t: t, b: b, step: 3, until: 500, name: "binder: the game's let-go releases what the locked pad held", want: "--R");
+    t.verdict(name: "binder: and lets the lock go", why: b.lockedPad().isNone() ? "" : "still locked");
+    string back = schemeAt(b: b, step: 4, until: 550);
+    t.verdict(name: "binder: and puts player 1 back on the keyboard and the mouse", why: back == "KeyboardMouse" ? "" : "scheme ${back}");
+    hand(b: b, s: pad(slot: 2, control: 5, value: 0.0, at: 610));
+    hand(b: b, s: pad(slot: 0, control: 5, value: 1.0, at: 620));
+    expectStep(t: t, b: b, step: 5, until: 700, name: "binder: the next pad pressed takes player 1", want: "HP-");
+    bool locked0 = match (b.lockedPad()) { case Some(value: s): s == 0; case None: false; };
+    t.verdict(name: "binder: and locks in", why: locked0 ? "" : "not slot 0");
+    hand(b: b, s: pad(slot: 2, control: 5, value: 1.0, at: 710));
+    hand(b: b, s: pad(slot: 0, control: 5, value: 0.0, at: 720));
+    expectStep(t: t, b: b, step: 6, until: 800, name: "binder: and the pad let go does nothing while another is locked", want: "--R");
+
+    // A frame that owes no step: the hold's time passes before the let-go, and no step has handed it, so the let-go
+    // lands after the hold fires, not before it.
+    Binder held = binderWith(json: "{ \"faster\": { \"gamepad\": { \"control\": \"RightShoulder\", \"gestures\": [ { \"hold\": true } ] } } }",
+                             input: gestureTimes());
+    hand(b: held, s: pad(slot: 0, control: 5, value: 1.0, at: 10 * MS));
+    expectStep(t: t, b: held, step: 0, until: 100 * MS, name: "binder: a pad's hold under way", want: "---");
+    held.padLock(player: 1, letGo: true, at: 600 * MS);
+    expectStep(t: t, b: held, step: 1, until: 700 * MS, name: "binder: a hold whose time passed before the let-go fires before it lets go", want: "HP-");
+}
+
 fn void playerCases(ref Tally t) {
     ActionList actions = actionsOf(a: "faster", b: "");
     SortedMap<string, BindingRecord> map = bindingsOf(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\" } }");
@@ -2328,6 +2369,7 @@ fn void binderTests(ref Tally t) {
     valueRefusalCases(t: t);
     edgeCases(t: t);
     padCases(t: t);
+    padLockCases(t: t);
     playerCases(t: t);
     cursorCases(t: t);
     cursorRefusalCases(t: t);

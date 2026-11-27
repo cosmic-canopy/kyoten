@@ -88,6 +88,8 @@ fn void loaded(ref Tally t, const ref string leg, const ref Ran r) {
     // The engine's `Cursor` read by its mode's name, and a variant naming another player keeping its base's mode.
     check(t: t, name: "spin: ${leg}: a prefab's `Cursor` names its mode by case name, a variant's laid over its base's",
           ok: r.says(what: "loaded: cube's cursor player 1 Locked, fastCube's player 2 Locked"), why: said);
+    check(t: t, name: "spin: ${leg}: the placed world lets go of player 1's pad, as its cube's prefab asks; player 2's gathered by no one",
+          ok: r.says(what: "spin: placed requests: player 1 lets go true"), why: said);
     string placed = after(text: said, marker: placedMarker());
     DynamicArray<string> shown = linesAfter(text: placed, prefix: "shown: ");
     // 2.0 is 0x40000000, 5.0 is 0x40a00000, 4.0 is 0x40800000 and 1.0 is 0x3f800000: `cube` at its prefab's rate,
@@ -198,6 +200,16 @@ fn void sameTurns(ref Tally t, const ref string leg, const ref Ran r) {
               why: pointed == wantPointed ? "" : "pointed `${pointed}`");
     check(t: t, name: "spin: ${leg}: the world's requests after Output: player 1's cursor Locked, the one naming no player gathered by no one",
           ok: r.says(what: "spin: requests: player 1's cursor Locked"), why: said);
+    // Each player's let-go of their pad lock (the sixth part's question 3): `released` lets go once `faster` is held, on the
+    // pressed cube, whose `PadLock` names no player; the calm cube's names player 1 and holds on.
+    DynamicArray<string> releasedLines = linesAfter(text: said, prefix: "released: ");
+    string released = "";
+    foreach (const ref string l in releasedLines.iterConst()) { released = released.isEmpty() ? copy l : released + " | " + l; }
+    string wantReleased = "slot 0 player 1 letGo false | slot 1 player 0 letGo true | slot 0 player 1 letGo false | slot 1 player 0 letGo true";
+    t.verdict(name: "spin: ${leg}: Output writes its own state, the engine's `PadLock`, from what the game wants",
+              why: released == wantReleased ? "" : "released `${released}`");
+    check(t: t, name: "spin: ${leg}: the world's requests after Output: player 1 holds on, the let-go naming no player gathered by no one",
+          ok: r.says(what: "spin: requests: player 1 lets go false"), why: said);
 }
 
 // The generated `run` (the first slice's step 7), under `--headless --fixed-fps 60 --quit-after 30`: the engine's

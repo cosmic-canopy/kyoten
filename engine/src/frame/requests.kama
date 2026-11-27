@@ -3,8 +3,8 @@
 // world gathers it after Output runs (`World.requests`), and the loop hands each change to the input source and the
 // platform. It says whether each player is typing, from the engine's `TextEntry`, and holds each view as drawn, from
 // the engine's `DrawnView`s, one for each player and view (design/input.md § Decided, 2026-11-26, the sixth part's question
-// 1), and each player's cursor mode, from the engine's `Cursor`s (the sixth part's question 2); the game letting go of the
-// pad lock and rumble join it.
+// 1), each player's cursor mode, from the engine's `Cursor`s (the sixth part's question 2), and whether the game lets go
+// of each player's pad lock, from the engine's `PadLock`s (its question 3); rumble joins it.
 
 import { std::collections::DynamicArray, DrawnView, CursorMode };
 
@@ -14,6 +14,7 @@ type resource Requests {
     DynamicArray<bool> typingField = DynamicArray.empty();
     DynamicArray<DrawnView> viewsField = DynamicArray.empty();
     DynamicArray<CursorMode> cursorField = DynamicArray.empty();
+    DynamicArray<bool> letGoField = DynamicArray.empty();
 
     // Naming no player.
     public ctor make() { }
@@ -36,7 +37,21 @@ type resource Requests {
         while (this.typingField.length() < cast<isize>(players)) { this.typingField.add(item: false); }
         this.cursorField.clear();
         while (this.cursorField.length() < cast<isize>(players)) { this.cursorField.add(item: CursorMode::Normal); }
+        this.letGoField.clear();
+        while (this.letGoField.length() < cast<isize>(players)) { this.letGoField.add(item: false); }
         this.viewsField.clear();
+    }
+
+    // Whether the game lets go of player `player`'s pad lock: false for a player it does not name.
+    public const fn bool letsGo(int32 player) {
+        if (player < 1 || cast<isize>(player) > this.letGoField.length()) { return false; }
+        return this.letGoField[cast<isize>(player - 1)];
+    }
+
+    // The game letting go of player `player`'s pad lock, or not; a player it does not name is a caller's bug, and traps.
+    public fn void setLetGo(int32 player, bool on) {
+        assert(cond: player >= 1 && cast<isize>(player) <= this.letGoField.length(), msg: "requests name this player");
+        this.letGoField[cast<isize>(player - 1)] = on;
     }
 
     // Player `player`'s cursor mode: `Normal` for a player it does not name.
@@ -97,6 +112,7 @@ type resource Requests {
         while (p <= other.players()) {
             this.setTyping(player: p, on: other.typing(player: p));
             this.askCursor(player: p, mode: other.cursorMode(player: p));
+            this.setLetGo(player: p, on: other.letsGo(player: p));
             p = p + 1;
         }
         isize i = 0;

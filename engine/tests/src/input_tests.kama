@@ -9,7 +9,7 @@ import { Tally, std::math::Vec2, std::math::Vec3, std::math::Quat,
          kyoten::frame::Handoff, kyoten::frame::PlayerActions, kyoten::frame::ActionList, kyoten::frame::Pose,
          kyoten::frame::Clock, kyoten::frame::Scheme, kyoten::frame::TextEntry, kyoten::frame::Text,
          kyoten::frame::Requests, kyoten::frame::ZoneCoord, kyoten::frame::DrawnView, std::math::Mat4,
-         kyoten::frame::Cursor, kyoten::frame::CursorMode, std::memory::Owned,
+         kyoten::frame::Cursor, kyoten::frame::CursorMode, kyoten::frame::PadLock, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer };
 
 export { inputTests, spelled, digitalOf, lineOf, modeWord };
@@ -437,6 +437,25 @@ fn void requestCursorCases(ref Tally t) {
     t.verdict(name: "Requests: reset puts every cursor back to Normal", why: back == "Normal" ? "" : "player 2 ${back}");
 }
 
+// The game letting go of a player's pad lock, Output's own state (design/input.md § Decided, 2026-11-26, the sixth part's
+// question 3): by default it names no player and holds on; and `Requests`' let-go, each player's apart, false for a
+// player it does not name, reset and copied as the rest.
+fn void padLockCases(ref Tally t) {
+    PadLock l = PadLock.default();
+    t.verdict(name: "PadLock: names no player and holds on by default", why: l.player == 0 && !l.letGo ? "" : "player ${l.player}, letGo ${l.letGo}");
+    Requests r = Requests.make();
+    r.reset(players: 2);
+    t.verdict(name: "Requests: no player's pad let go until asked", why: !r.letsGo(player: 1) && !r.letsGo(player: 2) ? "" : "one is");
+    r.setLetGo(player: 2, on: true);
+    t.verdict(name: "Requests: a player's pad let go, the other's not", why: r.letsGo(player: 2) && !r.letsGo(player: 1) ? "" : "read wrong");
+    t.verdict(name: "Requests: a player it does not name lets go of nothing", why: !r.letsGo(player: 0) && !r.letsGo(player: 3) ? "" : "one does");
+    Requests c = Requests.make();
+    c.copyFrom(other: r);
+    t.verdict(name: "Requests: a copy keeps each let-go", why: c.letsGo(player: 2) && !c.letsGo(player: 1) ? "" : "it did not");
+    r.reset(players: 2);
+    t.verdict(name: "Requests: reset holds every pad on again", why: !r.letsGo(player: 2) ? "" : "player 2 still lets go");
+}
+
 fn void sampleCases(ref Tally t) {
     Sample key = Sample.make(device: Device::Keyboard, slot: 0, control: 82, value: 1.0, at: 1234);
     bool keyOk = key.kind == SampleKind::Control && key.device == Device::Keyboard && key.slot == 0 && key.control == 82
@@ -736,6 +755,7 @@ fn void inputTests(ref Tally t) {
     viewCases(t: t);
     requestViewCases(t: t);
     requestCursorCases(t: t);
+    padLockCases(t: t);
     sampleCases(t: t);
     handoffCases(t: t);
     valueHandoffCases(t: t);

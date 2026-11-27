@@ -36,8 +36,9 @@
 // - **Split by time** (question 1): a step takes the samples that arrived by its end and were not handed off yet, so a
 //   frame that owes no step keeps its input for the next.
 // - **Player 1** has the keyboard and the mouse throughout, and **the first pad pressed**, locked until it disconnects
-//   (question 4): while one is locked another pad does nothing. A pad takes the lock with a button pressed, never a
-//   stick or a trigger's travel alone, so a drifting or knocked stick cannot take player 1.
+//   or the game lets go (question 4; the sixth part's question 3, `padLock`, as the world's `PadLock` asks after a
+//   frame): while one is locked another pad does nothing. A pad takes the lock with a button pressed, never a stick or a
+//   trigger's travel alone, so a drifting or knocked stick cannot take player 1.
 // - **One action on several controls** (`["ArrowUp", "KeyW"]`) is held while any of them is, and its edges are those
 //   of that combined state.
 // - **A stick's directions are controls** (the third part's question 2): `LeftStickUp`, `LeftStickDown`, `LeftStickLeft`,
@@ -672,6 +673,15 @@ type resource Binder implements InputSource {
     // How many drawings it keeps, for a test to read that a replaced one is forgotten.
     public const fn isize drawingsKept() { return this.drawnViews.length(); }
 
+    // The game letting go of player `player`'s pad lock turned on or off at `at`: each time player 1's turns on, their
+    // lock lets go as a disconnect does (design/input.md § Decided, 2026-11-26, the sixth part's question 3); staying on
+    // does nothing more, and turning off nothing.
+    public fn void padLock(int32 player, bool letGo, int64 at) {
+        if (player != 1 || !letGo) { return; }
+        this.advance(to: at);
+        this.letGoOfPad(t: at);
+    }
+
     public fn void textEntry(int32 player, bool on, int64 at) {
         if (player != 1 || on == this.typingNow) { return; }
         this.typingWas = this.typingNow;
@@ -929,11 +939,7 @@ type resource Binder implements InputSource {
         match (s.kind) {
             case Connected: { return; }
             case Disconnected: {
-                if (s.slot == this.lockSlot) {
-                    this.lockSlot = NO_PAD;
-                    this.release(device: Device::Gamepad, t: s.at);
-                    this.schemeNow = Scheme::KeyboardMouse;
-                }
+                if (s.slot == this.lockSlot) { this.letGoOfPad(t: s.at); }
                 return;
             }
             case Control: { }
@@ -1095,6 +1101,14 @@ type resource Binder implements InputSource {
     }
 
     // Every control of `device` off and at rest: a pad gone with its lock.
+    // Player 1's pad lock let go at `t`, by a disconnect or by the game: what the pad held released, the active scheme
+    // back to the keyboard and the mouse, and the next pad pressed taking player 1.
+    fn void letGoOfPad(int64 t) {
+        this.lockSlot = NO_PAD;
+        this.release(device: Device::Gamepad, t: t);
+        this.schemeNow = Scheme::KeyboardMouse;
+    }
+
     fn void release(Device device, int64 t) {
         isize i = 0;
         while (i < this.controls.length()) {

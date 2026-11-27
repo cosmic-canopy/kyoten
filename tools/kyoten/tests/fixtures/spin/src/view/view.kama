@@ -3,11 +3,12 @@
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
 import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
-         kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, std::math::Vec2, std::math::Vec3,
+         kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, kyoten::frame::PadLock, std::math::Vec2,
+         std::math::Vec3,
          spin::cube::Spin,
          spin::cube::Taps, spin::cube::Aim, spin::cube::SlowAim, spin::cube::Steering, spin::generated::Actions };
 
-export { show, seen, aimed, schemed, typing, framed, pointed, modeName };
+export { show, seen, aimed, schemed, typing, framed, pointed, released, modeName };
 
 fn void show(const ref Transform t, const ref Spin s, Handle me, const ref Time time) {
     uint32 slot = me.slot();
@@ -96,4 +97,14 @@ fn void pointed(ref Cursor c, const ref Actions input, Handle me) {
     int32 player = c.player;
     string m = modeName(mode: c.mode);
     println(s: "pointed: slot ${slot} player ${player} mode ${m}");
+}
+
+// Output's own state (the sixth part's question 3): the engine's `PadLock`, here letting go once `faster` is held, never
+// holding on again. It prints what it leaves.
+fn void released(ref PadLock l, const ref Actions input, Handle me) {
+    if (input.faster.held) { l.letGo = true; }
+    uint32 slot = me.slot();
+    int32 player = l.player;
+    bool letGo = l.letGo;
+    println(s: "released: slot ${slot} player ${player} letGo ${letGo}");
 }

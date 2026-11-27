@@ -1,0 +1,22 @@
+// kyoten::frame::PadLock — the game letting go of a player's pad lock (the first slice's step 8, its sixth part, KYR-54;
+// design/input.md § Decided, 2026-11-26, the sixth part's question 3). It is Output's own state, `"output": true` in the
+// frame tier's records, as `TextEntry` and `Cursor` are: a "press A to continue" screen, two pads on the desk, the player
+// picking up the other one. A game's prefab lists it on whatever entity asks: `"PadLock": { "player": 1 }`.
+//
+// The platform reads every one after each frame, any one asking letting go. The frame `letGo` turns on, the player's
+// lock lets go, what the pad held is released, and the next pad pressed takes the player, as after a disconnect. Staying
+// on does nothing more, so `lock.letGo = onTitleScreen` lets go each time the screen opens, and left on by mistake it
+// changes nothing.
+
+export { PadLock };
+
+@generate(Serializable, Deserializable)
+type value PadLock {
+    // The player it is for, numbered from 1; 0 names none, and asks nothing.
+    @field public int32 player = 0;
+    // Whether the game lets go of that player's pad: each time it turns on, the lock lets go.
+    @field public bool letGo = false;
+
+    // Naming no player, and holding on.
+    public default ctor make() { }
+}
