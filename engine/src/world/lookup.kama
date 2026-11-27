@@ -11,7 +11,7 @@
 //   the lookup's own ceiling, with KYR-61. The places are fixed widths, since a save will hold the slots of unloaded
 //   entities.
 
-import { std::collections::DynamicArray, Handle };
+import { std::collections::DynamicArray, kyoten::frame::Handle };
 
 export { Lookup, Place };
 

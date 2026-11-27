@@ -150,7 +150,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
         imports.add(path: inFenced(game: game, name: prefabType(f: f)));
         foreach (const ref Component c in f.components().iterConst()) { imports.add(path: c.path()); }
     }
-    imports.add(path: "kyoten::world::Handle");
+    imports.add(path: "kyoten::frame::Handle");
     imports.add(path: "kyoten::world::ChunkSize");
     imports.add(path: "kyoten::world::Lookup");
     imports.add(path: "kyoten::world::Place");
@@ -159,7 +159,7 @@ fn string tablesKama(const ref string game, const ref DynamicArray<Family> famil
     imports.add(path: "std::collections::CapacityFull");
     foreach (Phase p in phases()) { imports.add(path: inRoot(game: game, name: passName(phase: p))); }
     imports.add(path: inRoot(game: game, name: requestsPass()));
-    string handle = imports.nameOf(path: "kyoten::world::Handle");
+    string handle = imports.nameOf(path: "kyoten::frame::Handle");
     string chunkSize = imports.nameOf(path: "kyoten::world::ChunkSize");
     string lookupType = imports.nameOf(path: "kyoten::world::Lookup");
     string place = imports.nameOf(path: "kyoten::world::Place");
@@ -516,7 +516,7 @@ fn ImportSet worldImports(const ref string game, const ref DynamicArray<Family> 
     imports.add(path: "kyoten::frame::PlayerActions");
     imports.add(path: "kyoten::frame::ActionList");
     imports.add(path: "std::collections::DynamicArray");
-    imports.add(path: "kyoten::world::Handle");
+    imports.add(path: "kyoten::frame::Handle");
     imports.add(path: "kyoten::world::Lookup");
     foreach (const ref Family f in families.iterConst()) {
         imports.add(path: inFenced(game: game, name: prefabType(f: f)));
@@ -547,7 +547,7 @@ fn string worldKama(const ref string game, const ref DynamicArray<Family> famili
                     const ref string actionLines, isize views, const ref string viewLines) {
     string worldType = worldTypeName();
     ImportSet imports = worldImports(game: game, families: families, s: s);
-    string handle = imports.nameOf(path: "kyoten::world::Handle");
+    string handle = imports.nameOf(path: "kyoten::frame::Handle");
     string contract = imports.nameOf(path: "kyoten::frame::World");
     string time = imports.nameOf(path: "kyoten::frame::Time");
     string handoffType = imports.nameOf(path: "kyoten::frame::Handoff");

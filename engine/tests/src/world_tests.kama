@@ -1,7 +1,7 @@
 // kyoten::world (components § Decided): `Transform` (question 9: a zone and a float32 offset, on std::math, Y up and
 // right-handed), the 8-byte `Handle` (question 8, part a, choice 3) and the chunk-size rule (question 6, choice 4).
 
-import { Tally, kyoten::world::Transform, kyoten::frame::ZoneCoord, kyoten::world::Handle, kyoten::world::ChunkSize,
+import { Tally, kyoten::world::Transform, kyoten::frame::ZoneCoord, kyoten::frame::Handle, kyoten::world::ChunkSize,
          std::math::Vec3, std::math::Quat, std::serialization::text::json::JsonDeserializer, std::memory::Owned };
 
 export { worldTests };

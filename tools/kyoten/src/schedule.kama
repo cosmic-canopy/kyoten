@@ -227,7 +227,7 @@ unsafe fn Optional<Param> classify(const ref ParamEntry p, const ref string game
         else { no.add(where: file, what: "processor `${label}` takes `${shown}`: the step's time is handed in by reference: write `const ref ${written}`"); }
         return Optional::None;
     }
-    if (path == "kyoten::world::Handle") {
+    if (path == "kyoten::frame::Handle") {
         if (mode.isEmpty()) { return Optional::Some(value: Param.make(name: copy p.name(), kind: Access::EntityHandle, writes: false, path: "")); }
         no.add(where: file, what: "processor `${label}` takes `${shown}`: an entity's handle is taken by value, `${written} me`");
         return Optional::None;

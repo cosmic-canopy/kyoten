@@ -1,0 +1,35 @@
+// kyoten::frame::Color — a colour as a record writes it: red, green and blue in sRGB, each from 0 to 1 for a displayable
+// colour and beyond 1 for a brighter one (the first slice's step 9, KYR-9; rendering.md § Decided, 2026-11-27, step 9's
+// kyoten half). It is what three.js's `Color.setRGB` takes under its colour management, and what `@kama/graphics`'
+// `Color.make` takes: colours are written in sRGB and drawn in a linear working space (rendering.md § Decided, the
+// design pass's area 2, item 4), which the platform converts to as it draws. A record holds only what differs:
+// `"color": { "r": 0.2 }` keeps green and blue.
+//
+// The frame tier's, since the render components that hold it are (step 9's kyoten half, question 1), and named for no
+// library: a game's records and processors never see `@kama/graphics`.
+
+export { Color };
+
+@generate(Serializable, Deserializable)
+type value Color {
+    @field public float32 r = 1.0;
+    @field public float32 g = 1.0;
+    @field public float32 b = 1.0;
+
+    // White, each channel 1.
+    public default ctor white() { }
+
+    // Black, each channel 0.
+    public ctor black() {
+        this.r = 0.0;
+        this.g = 0.0;
+        this.b = 0.0;
+    }
+
+    // From its three channels, in sRGB.
+    public ctor of(float32 red, float32 green, float32 blue) {
+        this.r = red;
+        this.g = green;
+        this.b = blue;
+    }
+}

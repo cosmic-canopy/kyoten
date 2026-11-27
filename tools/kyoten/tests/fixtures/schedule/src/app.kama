@@ -1,7 +1,7 @@
 // The schedule fixture's main: one ticker, run through the frame's driver at the world's base rate for one second of
 // fed time, in 60 frames, each owing about five base steps. Output's `report` prints once a frame.
 
-import { core::println, kyoten::world::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
+import { core::println, kyoten::frame::Handle, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::frame,
          kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::DrawnView,
          kyoten::frame::CursorMode,
          std::collections::DynamicArray,

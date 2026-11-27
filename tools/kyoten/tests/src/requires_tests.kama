@@ -59,6 +59,28 @@ unsafe fn void requiresTests(ref Tally t, ref Setup s) {
     check(t: t, name: "requires: a circle of requirements ends, and adds the other",
           ok: pair.contains(substring: "// Required by `requires::parts::Left`.\n    public Right right;"),
           why: "prefabs.kama: " + prefabs);
+    // The engine's render components (rendering.md § Decided, 2026-11-27, step 9's kyoten half): the frame tier's `Mesh`
+    // requires the world tier's `Transform` and the frame tier's `Material`, so a prefab listing only a mesh is drawn.
+    string crate = typeText(text: prefabs, name: "CratePrefab");
+    check(t: t, name: "requires: the engine's Mesh brings a Transform, the world tier's, and a Material, the frame tier's, each saying so",
+          ok: crate.contains(substring: "// Required by `kyoten::frame::Mesh`.\n    public Material material;")
+              && crate.contains(substring: "// Required by `kyoten::frame::Mesh`.\n    public Transform transform;")
+              && crate.contains(substring: "\n    public Mesh mesh;"),
+          why: "prefabs.kama: " + prefabs);
+    check(t: t, name: "requires: loaded, a prefab listing only a mesh is a unit box in the lit default material",
+          ok: ran.says(what: "requires loaded: crate's mesh a box true, its roughness 0.5, its scale 1"), why: ran.said());
+    string lens = typeText(text: prefabs, name: "LensPrefab");
+    string beam = typeText(text: prefabs, name: "BeamPrefab");
+    check(t: t, name: "requires: the engine's Camera and Light each bring a Transform, saying so",
+          ok: lens.contains(substring: "// Required by `kyoten::frame::Camera`.\n    public Transform transform;")
+              && beam.contains(substring: "// Required by `kyoten::frame::Light`.\n    public Transform transform;"),
+          why: "prefabs.kama: " + prefabs);
+    check(t: t, name: "requires: loaded, a camera's and a light's records are laid over their defaults, each with its transform",
+          ok: ran.says(what: "requires loaded: lens's fov 75, its scale 1; beam's intensity 3, its scale 1"), why: ran.said());
+    string world = read(path: s.fixture(at: "requires/src/requires.world.generated.kama"));
+    check(t: t, name: "requires: every world holds the engine's Environment, a world component, from its default",
+          ok: world.contains(substring: "Environment world_Environment = Environment.default();"),
+          why: "requires.world.generated.kama: " + world);
 
     string said = copy ran.said();
     DynamicArray<string> shown = linesAfter(text: said, prefix: "shown: ");

@@ -1,0 +1,40 @@
+// kyoten::frame::Camera — a view of the world, drawn for a player (the first slice's step 9, KYR-9; rendering.md
+// § Decided, 2026-11-07, question 2's first cut, and 2026-11-27, step 9's two questions and its kyoten half; input.md
+// § Decided, 2026-11-26, the sixth part's question 1). Its records require a `Transform`: the camera is where its
+// entity is, looking along its own −Z, y up, as three.js's, Bevy's and Godot's cameras look.
+//
+// - `player` is the player it is drawn for, numbered from 1, and `view` which of the game's views it is (the generated
+//   `Views`), -1 naming none. What the platform drew comes back as the view's `DrawnView`, which turns the cursor for a
+//   binding that names the view.
+// - `fov` is the vertical field of view in degrees, and `near` and `far` the planes, in metres.
+// - `exposure` is in EV100, as Filament, Bevy, Unreal and `@kama/graphics` set it: the scene's linear light is scaled by
+//   2^−EV100 / 1.2. Its default is three.js's exposure of 1, −log2(1.2), so a light of intensity 1 looks as it does
+//   there; sunlight is about 15, indoors about 7.
+// - `toneMapping` is how the light is brought into the display's range, each camera its own.
+//
+// It offers what `@kama/graphics` draws: a perspective camera over the whole window. An orthographic camera (GFX-7) and
+// a view drawn into part of the window or a texture each join with the row that draws them.
+//
+// The frame tier's, beside `DrawnView`, since the frame-tier render list carries it as it is (step 9's kyoten half,
+// question 1).
+
+export { Camera, ToneMapping };
+
+// A camera's tone mapping, read and written by its case name, as `@kama/graphics` offers it: `None`, the light clamped;
+// `AgX`, Troy Sobotka's curve; `BlenderAgX`, Blender's AgX with its look, the library's default.
+@generate(Serializable, Deserializable)
+type enum ToneMapping { None, AgX, BlenderAgX }
+
+@generate(Serializable, Deserializable)
+type value Camera {
+    @field public int32 player = 1;
+    @field public int32 view = -1;
+    @field public float32 fov = 60.0;
+    @field public float32 near = 0.1;
+    @field public float32 far = 1000.0;
+    @field public float32 exposure = -0.2630344058;
+    @field public ToneMapping toneMapping = ToneMapping::BlenderAgX;
+
+    // Player 1's, naming no view: 60 degrees, from 0.1 m to 1 km, three.js's exposure of 1 and Blender's AgX.
+    public default ctor make() { }
+}

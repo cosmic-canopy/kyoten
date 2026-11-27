@@ -10,7 +10,8 @@
 // - A family is a base prefab and every variant with the same components, directly or through a chain, and it has
 //   one generated type. A variant that adds or drops a component has its own.
 //
-// Requirements come from the game's own component records; a dependency's and the engine's arrive with step 9.
+// Requirements come from the game's own component records and its dependencies' alike, the engine's included: its `Mesh`
+// requires a `Transform` and a `Material` (rendering.md § Decided, 2026-11-27, step 9's kyoten half).
 
 import { std::collections::DynamicArray, std::collections::SortedMap, kyoten::records::Store, Records, PrefabDecl,
          CodeFile, Index, Refusals, fieldCase, isReserved, inModule, lastOf, moduleOfPath };

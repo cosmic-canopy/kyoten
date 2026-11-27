@@ -3,7 +3,7 @@
 // slot's, answers gone. The same history gives the same handles, since randomness is keyed and ties are broken by
 // handle (question 4).
 
-import { Tally, kyoten::world::Lookup, kyoten::world::Place, kyoten::world::Handle };
+import { Tally, kyoten::world::Lookup, kyoten::world::Place, kyoten::frame::Handle };
 
 export { lookupTests };
 

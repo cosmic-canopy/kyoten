@@ -1,0 +1,31 @@
+// kyoten::frame::Material — how an entity's surface looks: the standard lit material, metallic and rough (the first
+// slice's step 9, KYR-9; rendering.md § Decided, 2026-11-07, question 2's first cut, and 2026-11-27, step 9's kyoten
+// half). A `Mesh` requires one, so its defaults are the lit default material every drawn entity has unless a record says
+// otherwise (rendering question 3): white, not metallic, half rough. A record holds only what differs:
+// `"Material": { "color": { "r": 0.9, "g": 0.2, "b": 0.1 }, "roughness": 0.3 }`.
+//
+// It offers what `@kama/graphics`' standard material draws. The first cut's `texture`, `transparent` and `shader` (a
+// WGSL asset) each join with the row that draws them (KYR-10, KYR-66).
+//
+// The frame tier's, beside `DrawnView`, since the frame-tier render list carries it as it is (step 9's kyoten half,
+// question 1).
+
+import { Color };
+
+export { Material };
+
+@generate(Serializable, Deserializable)
+type value Material {
+    // The base colour, in sRGB.
+    @field public Color color = Color.white();
+    // From 0, a dielectric, to 1, a metal.
+    @field public float32 metallic = 0.0;
+    // From 0, a mirror, to 1, fully rough.
+    @field public float32 roughness = 0.5;
+    // The light it gives off, in sRGB, and its strength: black, none, by default.
+    @field public Color emissive = Color.black();
+    @field public float32 emissiveIntensity = 1.0;
+
+    // The lit default material: white, not metallic, roughness 0.5, giving off no light.
+    public default ctor make() { }
+}

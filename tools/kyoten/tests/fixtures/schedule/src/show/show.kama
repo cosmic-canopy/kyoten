@@ -1,6 +1,6 @@
 // Output, once a frame: what each counter, the log and the world's score hold.
 
-import { core::println, kyoten::frame::Time, kyoten::world::Handle, schedule::sim::Fast, schedule::sim::Slow,
+import { core::println, kyoten::frame::Time, kyoten::frame::Handle, schedule::sim::Fast, schedule::sim::Slow,
          schedule::sim::Fifty, schedule::sim::Log, schedule::sim::Score };
 
 export { report };

@@ -3,7 +3,7 @@
 // `default ctor`; and `Left` and `Right` require each other. `grow` runs on every family with an `Axle` and a
 // `Transform`, so a family that has them only by requirement is seen to have them, and `show` prints each axle.
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle };
+import { core::println, kyoten::world::Transform, kyoten::frame::Handle };
 
 export { Wheel, Axle, Hub, Driver, Left, Right, grow, show };
 

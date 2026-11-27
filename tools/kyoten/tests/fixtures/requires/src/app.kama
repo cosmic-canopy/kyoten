@@ -2,13 +2,16 @@
 // have added, and did not, fails the build; then it creates a cart and a mill, steps the world once and runs Output,
 // whose `show` prints each axle; then it loads the prefabs from the content (step 5.5).
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Rate, kyoten::frame::step,
+import { core::println, kyoten::world::Transform, kyoten::frame::Handle, kyoten::frame::Rate, kyoten::frame::step,
          kyoten::frame::Handoff,
          requires::parts::Wheel, requires::parts::Axle, requires::parts::Hub, requires::parts::Driver,
          requires::parts::Left, requires::parts::Right, requires::generated::Actions, requires::generated::CartPrefab,
          requires::generated::CartPrefabId, requires::generated::MillPrefab, requires::generated::CarterPrefab,
          requires::generated::PairPrefab, GameWorld, requires::generated::MillPrefabId,
-         requires::generated::CarterPrefabId,
+         requires::generated::CarterPrefabId, requires::generated::CratePrefab, requires::generated::CratePrefabId,
+         requires::generated::LensPrefab, requires::generated::LensPrefabId, requires::generated::BeamPrefab,
+         requires::generated::BeamPrefabId, kyoten::frame::Mesh, kyoten::frame::MeshShape, kyoten::frame::Material,
+         kyoten::frame::Camera, kyoten::frame::Light,
          requires::generated::Prefabs, kyoten::content::LayerStack, kyoten::content::Content,
          kyoten::content::LoadRefusals, kyoten::content::readContent, kyoten::platform::OpenPlatform, openContent,
          loadPrefabs };
@@ -29,6 +32,13 @@ fn void load() {
             CartPrefab cart = p.cart(id: CartPrefabId.cart());
             CarterPrefab carter = p.carter(id: CarterPrefabId.carter());
             println(s: "requires loaded: mill's axle turns ${mill.axle.turns}, oiled's ${oiled.axle.turns}, cart's ${cart.axle.turns}, mill's hub teeth ${mill.hub.teeth}, carter's player ${carter.actions.player}");
+            // The engine's Mesh brings its Material and Transform at their defaults: the lit default material.
+            CratePrefab crate = p.crate(id: CratePrefabId.crate());
+            bool box = crate.mesh.shape == MeshShape::Box;
+            println(s: "requires loaded: crate's mesh a box ${box}, its roughness ${crate.material.roughness}, its scale ${crate.transform.scale.x}");
+            LensPrefab lens = p.lens(id: LensPrefabId.lens());
+            BeamPrefab beam = p.beam(id: BeamPrefabId.beam());
+            println(s: "requires loaded: lens's fov ${lens.camera.fov}, its scale ${lens.transform.scale.y}; beam's intensity ${beam.light.intensity}, its scale ${beam.transform.scale.z}");
         }
         case Err(error: e): { string m = e.message(); println(s: give m); }
     };
@@ -40,6 +50,9 @@ fn uint8 main() {
     int32 player = carter.actions.player;
     PairPrefab pair = PairPrefab.of(left: Left.default(), right: Right.default());
     int32 right = pair.right.n;
+    CratePrefab crate = CratePrefab.of(material: Material.default(), mesh: Mesh.default(), transform: Transform.default());
+    LensPrefab lens = LensPrefab.of(camera: Camera.default(), transform: Transform.default());
+    BeamPrefab beam = BeamPrefab.of(light: Light.default(), transform: Transform.default());
     println(s: "requires: oiled is a cart ${differ}, carter's player ${player}, pair's right ${right}");
 
     GameWorld world = GameWorld.make();

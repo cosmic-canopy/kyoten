@@ -1,0 +1,25 @@
+// kyoten::frame::Mesh — what an entity draws (the first slice's step 9, KYR-9; rendering.md § Decided, 2026-11-07,
+// question 2's first cut, and 2026-11-27, step 9's kyoten half). Its records require a `Transform`, where it is drawn,
+// and a `Material`, how its surface looks, so a prefab that lists only a mesh is drawn: `"Mesh": { "shape": "Box" }`.
+//
+// It offers only what `@kama/graphics` draws, so a record cannot ask for a mesh nothing draws: the `Box` shape. The
+// first cut's other shapes (`Sphere`, `Plane`, `Cylinder`), a glTF mesh from the assets (KYR-66, GFX-2) and
+// `castShadows` (GFX-4) each join with the library row that draws them.
+//
+// The frame tier's, beside `DrawnView`, since the frame-tier render list carries it as it is (step 9's kyoten half,
+// question 1).
+
+export { Mesh, MeshShape };
+
+// A built-in shape, read and written by its case name. `Box` is a unit cube about the entity's origin, 1 m on each side
+// as three.js's default `BoxGeometry`, which the entity's `Transform` scales.
+@generate(Serializable, Deserializable)
+type enum MeshShape { Box }
+
+@generate(Serializable, Deserializable)
+type value Mesh {
+    @field public MeshShape shape = MeshShape::Box;
+
+    // A unit box.
+    public default ctor make() { }
+}

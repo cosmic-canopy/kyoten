@@ -1,7 +1,7 @@
 // Every signature the second pass refuses, and processors whose records it refuses. Each reads `Hp`, so none conflicts
 // with another, but `hitA` and `hitB`, which both write `Armor` with no order between them.
 
-import { kyoten::frame::Time, kyoten::frame::TextEntry, kyoten::world::Handle, std::math::Vec3 };
+import { kyoten::frame::Time, kyoten::frame::TextEntry, kyoten::frame::Handle, std::math::Vec3 };
 
 export { Hp, Armor, Mark, Score, Ghostly, refTime, timeByValue, handleByRef, byValue, notKyoten, notBuilt,
          writesInOutput, returns, both, neither, lost, tooSlow, outputRated, iterates, randomly, sorted, nowhere, loopA,

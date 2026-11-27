@@ -1,0 +1,26 @@
+// kyoten::frame::Light — a light that shines on the world (the first slice's step 9, KYR-9; rendering.md § Decided,
+// 2026-11-07, question 2's first cut, and 2026-11-27, step 9's kyoten half). Its records require a `Transform`.
+//
+// It offers what `@kama/graphics` draws: a directional light, the sun's, shining along its entity's own −Z, as Bevy's
+// and Godot's directional lights shine, from everywhere at once, so the entity's place does not matter, only its turn.
+// `intensity` is in glTF's units, lux for a directional light. Its default, 1 in white, is the library's and three.js's,
+// which the camera's default exposure shows as three.js does. The first cut's `kind`, with point and spot lights,
+// `range`, `cone` and `castShadows` join with the library's GFX-4.
+//
+// The frame tier's, beside `DrawnView`, since the frame-tier render list carries it as it is (step 9's kyoten half,
+// question 1).
+
+import { Color };
+
+export { Light };
+
+@generate(Serializable, Deserializable)
+type value Light {
+    // Its colour, in sRGB.
+    @field public Color color = Color.white();
+    // Its strength, in lux.
+    @field public float32 intensity = 1.0;
+
+    // White, intensity 1.
+    public default ctor make() { }
+}

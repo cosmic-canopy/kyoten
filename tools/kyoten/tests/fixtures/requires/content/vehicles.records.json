@@ -3,4 +3,7 @@
     "oiled":  { "from": "cart", "Axle": { "turns": 5 }, "note": "lists only what cart already requires, so it is in cart's family" },
     "mill":   { "Hub": {}, "Axle": { "turns": 9 }, "note": "lists Axle, which Hub requires, so no requirement adds it" },
     "carter": { "Driver": {}, "Actions": { "player": 1 }, "note": "Driver requires Actions, which has no default ctor, so it is listed" },
-    "pair":   { "Left": {}, "note": "Left and Right require each other: a circle is allowed" } } }
+    "pair":   { "Left": {}, "note": "Left and Right require each other: a circle is allowed" },
+    "crate":  { "Mesh": { "shape": "Box" }, "note": "lists only the engine's Mesh: Transform, the world tier's, and Material, the frame tier's, come by its requirements, as the hello cube's do" },
+    "lens":   { "Camera": { "fov": 75 }, "note": "lists only the engine's Camera: its Transform comes by its requirement" },
+    "beam":   { "Light": { "intensity": 3 }, "note": "lists only the engine's Light: its Transform comes by its requirement" } } }

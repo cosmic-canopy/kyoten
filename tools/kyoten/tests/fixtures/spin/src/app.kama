@@ -5,7 +5,7 @@
 // last it calls the generated `run`, as a game's `main` does (step 7), which the tests run under
 // `--headless --fixed-fps 60 --quit-after 30`.
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::Rate,
+import { core::println, kyoten::world::Transform, kyoten::frame::Handle, kyoten::frame::Time, kyoten::frame::Rate,
          kyoten::frame::step, kyoten::frame::Handoff, kyoten::frame::Digital, kyoten::content::RecordSource, kyoten::content::LayerStack, kyoten::content::Content,
          kyoten::content::LoadRefusals, kyoten::content::readContent, std::collections::DynamicArray,
          std::collections::SortedMap, std::io::IoError, std::io::IoErrorKind, std::memory::Owned, glow::Glow, glow::Spark,

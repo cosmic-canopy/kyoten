@@ -1,5 +1,7 @@
-// kyoten::world::Handle — an entity's runtime identity: 8 bytes, a 32-bit slot and a 32-bit generation, the same on
-// every platform (components § Decided, question 8 part a, choice 3).
+// kyoten::frame::Handle — an entity's runtime identity: 8 bytes, a 32-bit slot and a 32-bit generation, the same on
+// every platform (components § Decided, question 8 part a, choice 3). It is the frame tier's since step 9
+// (rendering.md § Decided, 2026-11-27, step 9's kyoten half): the frame-tier render list keys each drawn entity by it,
+// and the frame tier names no other tier, as `ZoneCoord` moved here for `Pose`.
 //
 // - The slot is an entry in the world's lookup table, which says where the entity lives now (zone, layer, table,
 //   chunk, row), so a handle survives the entity moving.

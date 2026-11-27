@@ -2,7 +2,7 @@
 // bit, so the tool's tests can compare them with the same turns made by hand; and, the first slice's step 8, what
 // Output sees of each cube's `faster` (every step since its last frame) and how many presses the 30 Hz `tally` saw.
 
-import { core::println, kyoten::world::Transform, kyoten::world::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
+import { core::println, kyoten::world::Transform, kyoten::frame::Handle, kyoten::frame::Time, kyoten::frame::TextEntry,
          kyoten::frame::DrawnView, kyoten::frame::Cursor, kyoten::frame::CursorMode, kyoten::frame::PadLock, std::math::Vec2,
          std::math::Vec3,
          spin::cube::Spin,

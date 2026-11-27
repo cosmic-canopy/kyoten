@@ -1,0 +1,156 @@
+// The render components (the first slice's step 9, KYR-9; rendering.md § Decided, 2026-11-07, question 2's first cut,
+// and 2026-11-27, step 9's kyoten half): `Mesh`, `Material`, `Camera`, `Light` and the world component `Environment`, the
+// frame tier's, with `Color`. Their defaults are the default makeup's, each a record laid over them field by field, and
+// each offers only what `@kama/graphics` draws.
+
+import { Tally, kyoten::frame::Mesh, kyoten::frame::MeshShape, kyoten::frame::Material, kyoten::frame::Camera,
+         kyoten::frame::ToneMapping, kyoten::frame::Light, kyoten::frame::Environment, kyoten::frame::Color,
+         std::serialization::text::json::JsonDeserializer, std::memory::Owned, std::math::log2 };
+
+export { renderTests };
+
+fn bool sameColor(const ref Color c, float32 r, float32 g, float32 b) { return c.r == r && c.g == g && c.b == b; }
+
+// What a record's merge says: "" when it was taken, the reader's message when it was refused.
+fn string mergedMesh(ref Mesh into, const ref string src) {
+    JsonDeserializer r = JsonDeserializer.make(src: copy src, strict: true);
+    Result<Unit, Owned<Error>> m = into.mergeFrom(r: r);
+    return match (m) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+}
+
+fn void meshDefault(ref Tally t) {
+    Mesh m = Mesh.make();
+    bool box = m.shape == MeshShape::Box;
+    t.verdict(name: "render: a Mesh is a unit box by default", why: box ? "" : "its shape is not Box");
+}
+
+fn void meshRecord(ref Tally t) {
+    Mesh m = Mesh.make();
+    string why = mergedMesh(into: m, src: "{\"shape\": \"Box\"}");
+    if (why.isEmpty() && m.shape != MeshShape::Box) { why = "the shape read is not Box"; }
+    t.verdict(name: "render: a Mesh record names its shape by its case name", why: why);
+}
+
+// A record cannot ask for a shape nothing draws: the reader refuses the name and lists the shapes there are.
+fn void meshUndrawn(ref Tally t) {
+    Mesh m = Mesh.make();
+    string said = mergedMesh(into: m, src: "{\"shape\": \"Sphere\"}");
+    string why = said.isEmpty() ? "a Sphere was taken"
+        : (said.contains(substring: "Sphere") && said.contains(substring: "Box") ? "" : "refused, but not naming Sphere and Box: " + said);
+    t.verdict(name: "render: a Mesh record naming a shape the library does not draw is refused, listing Box", why: why);
+}
+
+fn void materialDefault(ref Tally t) {
+    Material m = Material.make();
+    bool ok = sameColor(c: m.color, r: 1.0, g: 1.0, b: 1.0) && m.metallic == 0.0 && m.roughness == 0.5
+        && sameColor(c: m.emissive, r: 0.0, g: 0.0, b: 0.0) && m.emissiveIntensity == 1.0;
+    t.verdict(name: "render: a Material is the lit default by default: white, metallic 0, roughness 0.5, no light given off",
+              why: ok ? "" : "a field is not its default");
+}
+
+// A record holds only what differs: one channel of a colour keeps the others, and the fields it leaves out keep theirs.
+fn void materialRecord(ref Tally t) {
+    Material m = Material.make();
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"color\": {\"r\": 0.25}, \"roughness\": 0.75, \"emissive\": {\"g\": 0.5}}",
+                                               strict: true);
+    Result<Unit, Owned<Error>> merged = m.mergeFrom(r: r);
+    string why = match (merged) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+    if (why.isEmpty()) {
+        bool ok = sameColor(c: m.color, r: 0.25, g: 1.0, b: 1.0) && m.roughness == 0.75 && m.metallic == 0.0
+            && sameColor(c: m.emissive, r: 0.0, g: 0.5, b: 0.0) && m.emissiveIntensity == 1.0;
+        if (!ok) { why = "a field the record leaves out lost its default, or one it sets was not taken"; }
+    }
+    t.verdict(name: "render: a Material record holds only what differs, a colour's one channel keeping the others", why: why);
+}
+
+// The default exposure is three.js's exposure of 1 in EV100, −log2(1.2), as `@kama/graphics` computes it: the same
+// float32, bit for bit, so a default camera matches the library's default.
+fn void cameraDefault(ref Tally t) {
+    Camera c = Camera.make();
+    float32 ev = cast<float32>(-log2(x: 1.2));
+    bool exposure = bitcast<uint32>(c.exposure) == bitcast<uint32>(ev);
+    bool ok = c.player == 1 && c.view == -1 && c.fov == 60.0 && c.near == 0.1 && c.far == 1000.0
+        && c.toneMapping == ToneMapping::BlenderAgX;
+    uint32 got = bitcast<uint32>(c.exposure);
+    uint32 want = bitcast<uint32>(ev);
+    t.verdict(name: "render: a Camera is player 1's by default, naming no view, 60 degrees from 0.1 m to 1 km, with BlenderAgX",
+              why: ok ? "" : "a field is not its default");
+    t.verdict(name: "render: a Camera's default exposure is the library's, -log2(1.2) EV100, bit for bit",
+              why: exposure ? "" : "exposure bits ${got}, the library's ${want}");
+}
+
+fn void cameraRecord(ref Tally t) {
+    Camera c = Camera.make();
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"toneMapping\": \"AgX\", \"fov\": 75, \"exposure\": 15}", strict: true);
+    Result<Unit, Owned<Error>> merged = c.mergeFrom(r: r);
+    string why = match (merged) { case Ok(value: u): ""; case Err(error: e): e.message(); };
+    if (why.isEmpty()) {
+        bool ok = c.toneMapping == ToneMapping::AgX && c.fov == 75.0 && c.exposure == 15.0 && c.near == 0.1 && c.player == 1;
+        if (!ok) { why = "a field the record leaves out lost its default, or one it sets was not taken"; }
+    }
+    t.verdict(name: "render: a Camera record names its tone mapping by its case name, laid over the defaults", why: why);
+}
+
+fn void lightDefault(ref Tally t) {
+    Light l = Light.make();
+    bool ok = sameColor(c: l.color, r: 1.0, g: 1.0, b: 1.0) && l.intensity == 1.0;
+    t.verdict(name: "render: a Light is white, intensity 1, by default", why: ok ? "" : "a field is not its default");
+}
+
+// A light's kind is not offered until the library draws a second one (GFX-4): a record naming it is refused.
+fn void lightKindless(ref Tally t) {
+    Light l = Light.make();
+    JsonDeserializer r = JsonDeserializer.make(src: "{\"kind\": \"Point\"}", strict: true);
+    Result<Unit, Owned<Error>> merged = l.mergeFrom(r: r);
+    string why = match (merged) {
+        case Ok(value: u): "a kind was taken";
+        case Err(error: e): e.message().contains(substring: "unknown field `kind`") ? "" : e.message();
+    };
+    t.verdict(name: "render: a Light record naming a kind is refused until the library draws a second kind", why: why);
+}
+
+fn void environmentDefault(ref Tally t) {
+    Environment e = Environment.make();
+    bool ok = e.ambientIntensity == 0.0 && sameColor(c: e.ambient, r: 1.0, g: 1.0, b: 1.0)
+        && sameColor(c: e.background, r: 0.0, g: 0.0, b: 0.0);
+    t.verdict(name: "render: an Environment's code default adds nothing: no ambient light, black behind",
+              why: ok ? "" : "a field is not its default");
+}
+
+fn void colorForms(ref Tally t) {
+    Color w = Color.white();
+    Color k = Color.black();
+    Color o = Color.of(red: 0.5, green: 0.25, blue: 2.0);
+    bool ok = sameColor(c: w, r: 1.0, g: 1.0, b: 1.0) && sameColor(c: k, r: 0.0, g: 0.0, b: 0.0)
+        && sameColor(c: o, r: 0.5, g: 0.25, b: 2.0);
+    t.verdict(name: "render: a Color is white, black, or its three sRGB channels, beyond 1 for a brighter one",
+              why: ok ? "" : "a channel is wrong");
+}
+
+// The same bytes on every target, as `Transform`'s: the native and wasm legs run this same case, and a chunk's rows
+// come from these sizes.
+fn void sizes(ref Tally t) {
+    usize mesh = sizeof(Mesh);
+    usize material = sizeof(Material);
+    usize camera = sizeof(Camera);
+    usize light = sizeof(Light);
+    usize environment = sizeof(Environment);
+    bool ok = mesh == 4 && material == 36 && camera == 28 && light == 16 && environment == 28;
+    t.verdict(name: "render: Mesh is 4 bytes, Material 36, Camera 28, Light 16 and Environment 28, on every target",
+              why: ok ? "" : "Mesh ${mesh}, Material ${material}, Camera ${camera}, Light ${light}, Environment ${environment}");
+}
+
+fn void renderTests(ref Tally t) {
+    meshDefault(t: t);
+    meshRecord(t: t);
+    meshUndrawn(t: t);
+    materialDefault(t: t);
+    materialRecord(t: t);
+    cameraDefault(t: t);
+    cameraRecord(t: t);
+    lightDefault(t: t);
+    lightKindless(t: t);
+    environmentDefault(t: t);
+    colorForms(t: t);
+    sizes(t: t);
+}

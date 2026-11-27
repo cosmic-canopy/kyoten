@@ -82,7 +82,7 @@ fn string loaderKama(const ref string game, const ref DynamicArray<Family> famil
     if (families.length() > 0) {
         names.add(path: "kyoten::content::Placement");
         names.add(path: "kyoten::content::layOver");
-        names.add(path: "kyoten::world::Handle");
+        names.add(path: "kyoten::frame::Handle");
     }
     bool anyWhole = false;
     foreach (const ref Family f in families.iterConst()) {
