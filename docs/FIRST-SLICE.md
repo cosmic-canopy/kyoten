@@ -850,6 +850,25 @@ forty-fourth). Where the work is:**
    instance handle, the record (with question 2's cell), the upload, cameras and views as data, and comparing values on
    write. The platform's drawing joins them once GFX-21 is built.
 
+   **Its first native run found a blocker in `@kama/gpu`** (the fifty-third session, `.scratch/s53/gfx21/`, the AMD
+   Radeon 880M on Vulkan):
+   - **A `writeBuffer` each frame keeps about 2.6 MB natively, whatever its size,** with the queue submitted and
+     drained every frame (`poll(wait: true)`). After about 2,500 frames wgpu-native's `wgpuQueueSubmit` panics "Not
+     enough memory left" and the program ends, about 40 seconds at 60 frames a second. The same frames with no
+     write stay flat at about 300 MB.
+   - The package's seam calls `wgpuQueueWriteBuffer`, `wgpuQueueSubmit` and `wgpuDevicePoll` directly, so the memory is
+     wgpu-native's or the driver's. `WGPU_BACKEND=dx12` was not honoured, so whether Direct3D 12 does the same is
+     not yet known.
+   - No gate saw it, since none runs a window past 60 frames. A pure C repro on wgpu-native, a `@kama/gpu` row and
+     an upstream report are the owner's to decide.
+
+   The upload's first numbers, one run with the machine quiet, are to be measured again once the memory is
+   understood. 10,000 records of 128 bytes, the median frame with the queue drained:
+   - one `writeBuffer` a changed record, as the core does today: 0.9 ms with one changed, 1.1 ms with 1 %, 4.4 ms
+     with 15 %, and 25 ms with every record;
+   - the whole buffer in one call: 1.0 to 2.9 ms;
+   - a frame's first write costs about 250 µs, and each after it about 1.8 µs.
+
    **Found while laying it out, for a later part:** any mouse motion moves player 1's active scheme to
    `KeyboardMouse`, and a Steam Deck's gyro arrives as mouse motion, so a pad player aiming by gyro would change scheme
    every frame (input.md § Decided, 2026-11-26). The pad-lock probe (`.scratch/s46/locktry/`) calls the platform's pump
@@ -965,6 +984,9 @@ not moved since the pin, so no bump.
   A placement reported as settled at the readying, the components in `kyoten::world`, did not survive the code: the
   frame-tier contract names the list, and the frame tier names no other tier. So it was asked, not changed quietly.
 - **Built:** step 9's kyoten half, parts 1 and 2 (`ff67545`, `a27f87e`), item 3; 31 of 31 and 23 of 23 mutations caught.
+- **Found by GFX-21's first measurement:** natively a `writeBuffer` each frame keeps about 2.6 MB until wgpu-native's
+  submit panics, after about 2,500 frames (item 3). The owner's gates for kama were running by then, so measuring
+  stopped.
 - **GFX-21's design pass began:** the peers' render surfaces read from source, written up as research/graphics.md
   § 11. The claims the questions rest on were checked by curl: Godot comparing values on a transform's write and keeping
   the previous one, Bevy's 15 % rule for a whole upload, and Bevy's extract copying a component as itself.
