@@ -995,6 +995,15 @@ not moved since the pin, so no bump.
   - a records mutation the fixture's build catches proves little alone, so read that a generated-text case fails too;
   - halfway between two rotations nlerp and slerp agree, so the blend needed a case a quarter of the way;
   - the engine's tests built one folder too shallow failed the content case: build them at `out/<dir>/`.
+- **Readied at the owner's word** ("you can definitely push and get ready for next session"), with nothing incoming on
+  any origin. kama's range since the pin holds two commits, in `../kama`'s tree only, not yet on its origin:
+  - 0.9.1034 (`66f725e4`): KR-448, a name looked up under the prefixes it is declared under, so a program importing
+    `SortedMap` analyzes in a fraction of the time;
+  - 0.9.1035 (`113ab46b`): KR-307, an `else if` ladder of up to 10,000 arms.
+
+  Neither is a kyoten gap, so a bump is optional. kyoten and kama-gpu were pushed. The owner saw `@kama/gpu`'s
+  triangle draw natively, its memory climbing about 160 MB a second for its 16 seconds, the `writeBuffer` finding in a
+  program with a window. Whether to file it as a `@kama/gpu` row first (A) or record it only (B) was asked at the end.
 
 **The fifty-second session** (2026-11-26). The Mac had pushed two `audio.md` commits to kyoten and seventeen to
 `@kama/audio`, each fast-forwarded; kama's range since the last read held one roadmap commit, so no bump.
