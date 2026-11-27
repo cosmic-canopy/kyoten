@@ -859,8 +859,14 @@ forty-fourth). Where the work is:**
    - The package's seam calls `wgpuQueueWriteBuffer`, `wgpuQueueSubmit` and `wgpuDevicePoll` directly, so the memory is
      wgpu-native's or the driver's. `WGPU_BACKEND=dx12` was not honoured, so whether Direct3D 12 does the same is
      not yet known.
-   - No gate saw it, since none runs a window past 60 frames. A pure C repro on wgpu-native, a `@kama/gpu` row and
-     an upstream report are the owner's to decide.
+   - No gate saw it, since none runs a window past 60 frames.
+   - **Filed as `@kama/gpu`'s GPU-19, first in its NOW,** at the owner's word ("A, file it as a row first … I know
+     we have this render loop working in kama as FFD and The Mallow Man work flat"; kama-gpu `a2c268b`). The games
+     write every frame on the same DLL and stay flat. Comparing them with the package pointed at its lost-device check,
+     and a probe the same day confirmed it (kama-gpu `006a976`): with the seam's `takes_work` left out, the frames
+     stayed flat. That check finishes an empty encoder and drops it unsubmitted before every submit, and doing so
+     while a write is pending keeps the memory. **GPU-19 is the next session's first work,** before GFX-21 is measured
+     again.
 
    The upload's first numbers, one run with the machine quiet, are to be measured again once the memory is
    understood. 10,000 records of 128 bytes, the median frame with the queue drained:
@@ -1003,7 +1009,8 @@ not moved since the pin, so no bump.
 
   Neither is a kyoten gap, so a bump is optional. kyoten and kama-gpu were pushed. The owner saw `@kama/gpu`'s
   triangle draw natively, its memory climbing about 160 MB a second for its 16 seconds, the `writeBuffer` finding in a
-  program with a window. Whether to file it as a `@kama/gpu` row first (A) or record it only (B) was asked at the end.
+  program with a window. The owner took (A): GPU-19, filed first in `@kama/gpu`'s NOW, its cause found the same day,
+  the seam's `takes_work` (kama-gpu `a2c268b`, `006a976`).
 
 **The fifty-second session** (2026-11-26). The Mac had pushed two `audio.md` commits to kyoten and seventeen to
 `@kama/audio`, each fast-forwarded; kama's range since the last read held one roadmap commit, so no bump.
