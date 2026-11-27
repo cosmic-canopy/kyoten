@@ -14,7 +14,7 @@ import { Tally, std::app::Lifecycle, std::collections::DynamicArray, std::memory
          window::Event, window::Key, window::Pointer, window::PointerKind, window::PointerButton, window::PadButton,
          window::PadAxis, window::Gamepad, kyoten::frame::Requests, kyoten::frame::DrawnView, std::math::Vec3, window::Size,
          kyoten::frame::CursorMode, kyoten::platform::CursorAsk, kyoten::platform::askCursor, kyoten::platform::windowMode,
-         window::CursorMode as WindowCursor, modeWord };
+         window::CursorMode as WindowCursor, modeWord, kyoten::input::Binder, binderFor, spelled, kyoten::frame::Digital };
 
 export { platformTests };
 
@@ -200,6 +200,31 @@ type resource Taker implements InputSource {
     public fn void padLock(int32 player, bool letGo, int64 at) {
         string s = letGo ? "+" : "-";
         this.log.derefMut().entry(what: "L${player}${s}@${at}");
+    }
+    public fn void cursor(int32 player, CursorMode mode, int64 at) {
+        string m = modeWord(m: mode);
+        this.log.derefMut().entry(what: "M${player}${m}@${at}");
+    }
+}
+
+// Records player 1's first digital action in each step's hand-off into the log, `S` and its spelling, and asks player 1's
+// cursor as the log says.
+type resource Recorder implements World {
+    Shared<Log> log;
+
+    public ctor make(Shared<Log> log) { this.log = give log; }
+
+    public fn void input(const ref Time time, const ref Handoff handoff) {
+        Digital d = handoff.digital(player: 1, action: 0);
+        string s = spelled(d: d);
+        this.log.derefMut().entry(what: "S" + s);
+    }
+    public fn void update(const ref Time time) { }
+    public fn void constraints(const ref Time time) { }
+    public fn void output(const ref Time time, const ref Handoff newest) { }
+    public fn void requests(ref Requests into) {
+        into.reset(players: 1);
+        into.askCursor(player: 1, mode: this.log.deref().cursorOf(player: 1));
     }
 }
 
@@ -570,8 +595,42 @@ fn void cursorLoopCases(ref Tally t) {
     log.derefMut().askCursor(player: 1, mode: CursorMode::Normal);
     p.tick();
     string seen = log.deref().entriesSeen();
-    t.verdict(name: "loop: each player's cursor mode is handed to the platform as it changes, never as before",
-              why: seen == "C1Locked C2Hidden C1Normal " ? "" : "handed `${seen}`");
+    t.verdict(name: "loop: each player's cursor mode is handed to the platform as it changes, and to the source at its frame's timestamp, never as before",
+              why: seen == "C1Locked M1Locked@5016666667 C2Hidden M2Hidden@5050000001 C1Normal M1Normal@5066666668 " ? "" : "handed `${seen}`");
+}
+
+// The cursor's mode end to end through the loop and the engine's binder (the sixth part's question 4): the game asks
+// Locked, the window locks and then lets go by itself, and the action bound to `"Unlocked"` is pressed for one step; the
+// game then asks Normal, and the window's release that follows presses nothing.
+fn void unlockedLoopCases(ref Tally t) {
+    Shared<Log> log = new Log.make();
+    DynamicArray<int64> times = DynamicArray.empty();
+    int64 k = 0;
+    while (k < 7) { times.add(item: T0 + k * STEP); k = k + 1; }
+    log.derefMut().takeTimes(times: give times);
+    Shared<Log> forWorld = copy log;
+    Shared<Log> forPlatform = copy log;
+    Shared<Ending> ending = new Ending.make();
+    Play<Recorder, FakePlatform, Binder> p = Play.make(world: Recorder.make(log: give forWorld),
+        platform: FakePlatform.make(log: give forPlatform), input: binderFor(json: "{ \"faster\": { \"mouse\": \"Unlocked\" } }"),
+        options: RunOptions.empty(), hz: 60, title: "probe", width: 640, height: 400, ending: give ending);
+    p.lifecycle(event: Lifecycle::Resumed);
+    p.lifecycle(event: Lifecycle::SurfaceReady);
+    log.derefMut().askCursor(player: 1, mode: CursorMode::Locked);
+    p.tick();
+    log.derefMut().pumpNext(s: Sample.cursorLock(locked: true, at: T0 + 5));
+    p.tick();
+    log.derefMut().pumpNext(s: Sample.cursorLock(locked: false, at: T0 + STEP + 5));
+    p.tick();
+    p.tick();
+    log.derefMut().pumpNext(s: Sample.cursorLock(locked: true, at: T0 + 3 * STEP + 5));
+    log.derefMut().askCursor(player: 1, mode: CursorMode::Normal);
+    p.tick();
+    log.derefMut().pumpNext(s: Sample.cursorLock(locked: false, at: T0 + 4 * STEP + 5));
+    p.tick();
+    string seen = log.deref().entriesSeen();
+    t.verdict(name: "loop: a lock let go by itself while the game asks Locked presses `Unlocked` once; the game's own release, nothing",
+              why: seen == "C1Locked S--- SHP- S--R S--- C1Normal S--- " ? "" : "seen `${seen}`");
 }
 
 // The game letting go of a player's pad lock after each frame (the sixth part's question 3): each change handed to the
@@ -900,6 +959,7 @@ fn void platformTests(ref Tally t) {
     viewLoopCases(t: t);
     cursorLoopCases(t: t);
     letGoLoopCases(t: t);
+    unlockedLoopCases(t: t);
     optionCases(t: t);
     timestampCases(t: t);
     windowCases(t: t);

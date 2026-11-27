@@ -56,6 +56,13 @@
 //   every stick an entry reads and every trigger's travel unless the entry's own filters name a `deadZone`: radial,
 //   before its own filters, where the entry reads both axes of one stick as its x and y, and on each axis or trigger
 //   alone otherwise. A record naming none reads raw.
+// - **A device letting go is a notice** (the sixth part's question 4), a control a digital entry names, kyoten's own as
+//   `Motion` and `Text` are: `"Lost"`, on a gamepad entry, the player's locked pad disconnecting; `"Unlocked"`, on a
+//   mouse entry, the cursor's lock let go while the game still asks `Locked` (`cursor`, as the world's `Cursor` asks
+//   after a frame), so taken away by something other than the game: Escape or a tab switch on the web, a focus loss
+//   natively. Each presses the actions bound to it for one step, at its moment, and moves no scheme. An entry naming one
+//   takes no filter, threshold or gesture, and none is held by a chord or a sequence: `"pause": { "keyboard":
+//   "Escape", "gamepad": ["Start", "Lost"], "mouse": "Unlocked" }` and Update sees `pause`, never a device.
 // - **Player 1's active scheme** (the second part's question 1) is the kind of device that last drove them: a key or a
 //   mouse button pressed or the mouse moved is `KeyboardMouse`; the locked pad's button pressed, a trigger past
 //   `PressedAt` or a stick past half its travel is `Gamepad`, so drift cannot switch it; the locked pad gone, back to
@@ -97,7 +104,7 @@ import { std::collections::DynamicArray, std::collections::SortedMap, std::memor
          kyoten::frame::Digital, kyoten::frame::Handoff, kyoten::frame::Sample, kyoten::frame::SampleKind,
          kyoten::frame::Device, kyoten::frame::InputSource, kyoten::frame::ActionList, kyoten::frame::Time,
          kyoten::frame::Scheme, kyoten::frame::Text, kyoten::frame::PlayerActions, kyoten::frame::DrawnView,
-         kyoten::frame::Pose, std::math::Vec4, std::math::Quat,
+         kyoten::frame::Pose, kyoten::frame::CursorMode, std::math::Vec4, std::math::Quat,
          kyoten::records::BindingRecord, kyoten::records::ControlEntry, kyoten::records::ActionKind,
          kyoten::records::FilterRecord, kyoten::records::FilterKind, kyoten::records::InputRecord, std::math::exp,
          std::math::pow, std::math::floor, kyoten::records::GestureRecord, kyoten::records::GestureKind,
@@ -401,6 +408,10 @@ type resource Binder implements InputSource {
     DynamicArray<Drawn> drawnViews = DynamicArray.empty();
     Vec2 cursorPlace = Vec2.zero();
     bool cursorLocked = false;
+    // Player 1's cursor mode the game asks, from `modeSince` on, and as it was before (the sixth part's question 4).
+    CursorMode modeNow = CursorMode::Normal;
+    CursorMode modeWas = CursorMode::Normal;
+    int64 modeSince = 0;
 
     // A binder for `players` players and the game's actions, each kind's named in the generated order, bound by
     // `bindings`, every content layer's merged, with `input`'s defaults; `hz` the base rate, whose step's seconds a
@@ -682,6 +693,18 @@ type resource Binder implements InputSource {
         this.letGoOfPad(t: at);
     }
 
+    // Player `player`'s cursor mode asked from `at` on: player 1's, the one this binder drives, which tells a lock the game
+    // let go of from one taken away (the sixth part's question 4).
+    public fn void cursor(int32 player, CursorMode mode, int64 at) {
+        if (player != 1) { return; }
+        this.modeWas = this.modeNow;
+        this.modeNow = mode;
+        this.modeSince = at;
+    }
+
+    // Player 1's cursor mode as the game asked it at `t`.
+    const fn CursorMode modeAt(int64 t) { return t >= this.modeSince ? this.modeNow : this.modeWas; }
+
     public fn void textEntry(int32 player, bool on, int64 at) {
         if (player != 1 || on == this.typingNow) { return; }
         this.typingWas = this.typingNow;
@@ -939,7 +962,10 @@ type resource Binder implements InputSource {
         match (s.kind) {
             case Connected: { return; }
             case Disconnected: {
-                if (s.slot == this.lockSlot) { this.letGoOfPad(t: s.at); }
+                if (s.slot == this.lockSlot) {
+                    this.letGoOfPad(t: s.at);
+                    this.noticeAt(kind: SampleKind::Disconnected, t: s.at);
+                }
                 return;
             }
             case Control: { }
@@ -974,7 +1000,11 @@ type resource Binder implements InputSource {
                 return;
             }
             case Lock: {
-                this.cursorLocked = s.value >= 0.5;
+                bool nowLocked = s.value >= 0.5;
+                if (this.cursorLocked && !nowLocked && this.modeAt(t: s.at) == CursorMode::Locked) {
+                    this.noticeAt(kind: SampleKind::Lock, t: s.at);
+                }
+                this.cursorLocked = nowLocked;
                 return;
             }
             case Text: {
@@ -1101,6 +1131,23 @@ type resource Binder implements InputSource {
     }
 
     // Every control of `device` off and at rest: a pad gone with its lock.
+    // A notice at `t`, `kind` a pad's disconnect (`"Lost"`) or the cursor's lock (`"Unlocked"`): every control bound to
+    // it pressed and let go at that moment, so each action bound is pressed for one step; it moves no scheme.
+    fn void noticeAt(SampleKind kind, int64 t) {
+        isize i = 0;
+        while (i < this.controls.length()) {
+            if (this.controls[i].kind == kind) { this.controls[i].on = true; }
+            i = i + 1;
+        }
+        this.settle(t: t);
+        i = 0;
+        while (i < this.controls.length()) {
+            if (this.controls[i].kind == kind) { this.controls[i].on = false; }
+            i = i + 1;
+        }
+        this.settle(t: t);
+    }
+
     // Player 1's pad lock let go at `t`, by a disconnect or by the game: what the pad held released, the active scheme
     // back to the keyboard and the mouse, and the next pad pressed taking player 1.
     fn void letGoOfPad(int64 t) {
@@ -1457,6 +1504,9 @@ type resource Binder implements InputSource {
     // stick's direction; or a key, kyoten's either-side `Shift`, `Control`, `Alt` and `Meta`, or a mouse button. Why the
     // name is refused, or "".
     fn string modifierControls(const ref string name, Device device) {
+        if (isNotice(name: name)) {
+            return "names `" + name + "` to hold, a notice, which presses for one step and holds nothing: bind it on an action of its own";
+        }
         string quoted = "\"" + name + "\"";
         if (device == Device::Gamepad) {
             Result<PadButton, Owned<Error>> p = deserializeJsonBuffer::<PadButton>(src: copy quoted, strict: true);
@@ -2061,6 +2111,17 @@ type resource Binder implements InputSource {
                 foreach (const ref string name in names.iterConst()) {
                     if (device == Device::Keyboard && name == "Text") {
                         no.add(line: whose + " names `Text`, the keyboard's typed text, which only a `Text` action reads");
+                        continue;
+                    }
+                    if (isNotice(name: name)) {
+                        string refusedNotice = noticeRefusal(name: name, device: device, entry: e);
+                        if (!refusedNotice.isEmpty()) {
+                            no.add(line: whose + " " + refusedNotice);
+                            continue;
+                        }
+                        Bound heard = Bound.make(device: device, control: 0);
+                        heard.kind = name == "Lost" ? SampleKind::Disconnected : SampleKind::Lock;
+                        this.controls.add(item: heard);
                         continue;
                     }
                     if (device == Device::Gamepad) {
@@ -2698,6 +2759,24 @@ fn string thresholdRefusal(FilterRecord f) {
     return "";
 }
 
+// Whether `name` is one of kyoten's notices (the sixth part's question 4): `Lost`, a pad's, and `Unlocked`, the mouse's.
+fn bool isNotice(const ref string name) { return name == "Lost" || name == "Unlocked"; }
+
+// Why a digital entry of `device` cannot name the notice `name`, or "": `Lost` on a gamepad entry and `Unlocked` on a
+// mouse entry alone, and in an entry with no filter, threshold or gesture, since a notice is a press for one step.
+fn string noticeRefusal(const ref string name, Device device, const ref ControlEntry entry) {
+    if (name == "Lost" && device != Device::Gamepad) {
+        return "names `Lost`, the player's locked pad disconnecting, which a gamepad entry names";
+    }
+    if (name == "Unlocked" && device != Device::Mouse) {
+        return "names `Unlocked`, the cursor's lock taken away, which a mouse entry names";
+    }
+    if (entry.filters().length() > 0 || entry.gestures().length() > 0) {
+        return "names `" + name + "`, a notice, a press for one step, which takes no filter, threshold or gesture: bind it on an action of its own";
+    }
+    return "";
+}
+
 // The kind of the action named `name`, as a records file writes it, or "" when the game declares none of that name.
 fn string kindOf(const ref ActionList actions, const ref string name) {
     if (actions.digitalNames().contains(item: name)) { return "Digital"; }
@@ -2829,6 +2908,10 @@ fn Result<int32, Owned<Error>> controlOf(Device device, const ref string name) {
 // `@kama/window`'s readers, a pad's stick axis by `PadAxis` (its Y turned over), or the mouse's `MotionX` or `MotionY`
 // (its Y turned over). A reader's refusal lists every name.
 fn Optional<Source> valueSourceOf(Device device, const ref string name, ref string why) {
+    if (isNotice(name: name)) {
+        why = "`" + name + "` is a notice, a press for one step, which only a `Digital` action reads";
+        return Optional::None;
+    }
     string quoted = "\"" + name + "\"";
     match (device) {
         case Keyboard: {

@@ -9,7 +9,7 @@ import {
     kyoten::frame::World, kyoten::frame::Time, kyoten::frame::Clock, kyoten::frame::Owed, kyoten::frame::TimeScale,
     kyoten::frame::step, kyoten::frame::frame, kyoten::frame::InputSource, kyoten::frame::Handoff, kyoten::frame::Sample,
     kyoten::frame::ActionList,
-    kyoten::frame::Requests, kyoten::frame::DrawnView,
+    kyoten::frame::Requests, kyoten::frame::DrawnView, kyoten::frame::CursorMode,
 };
 
 export { driverTests };
@@ -100,6 +100,7 @@ type resource Script implements InputSource {
     public fn void textEntry(int32 player, bool on, int64 at) { }
     public fn void drawn(const ref DrawnView view, int64 at) { }
     public fn void padLock(int32 player, bool letGo, int64 at) { }
+    public fn void cursor(int32 player, CursorMode mode, int64 at) { }
 
     public const fn string windows() { return copy this.asked; }
 

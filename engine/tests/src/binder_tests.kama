@@ -7,14 +7,14 @@
 
 import { Tally, spelled, std::collections::DynamicArray, std::collections::SortedMap, std::memory::Owned,
          std::serialization::text::json::deserializeJsonBuffer,
-         kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList,
+         kyoten::frame::Digital, kyoten::frame::Sample, kyoten::frame::Device, kyoten::frame::ActionList, kyoten::frame::CursorMode,
          std::math::Vec2, std::math::Vec3, std::math::sqrt, std::math::exp, std::math::floor, kyoten::frame::Time, kyoten::frame::Scheme,
          kyoten::records::BindingRecord, kyoten::records::InputRecord,
          kyoten::input::Binder, kyoten::input::BindingError, kyoten::frame::Text, lineOf, kyoten::frame::DrawnView,
          kyoten::frame::ZoneCoord, kyoten::frame::Pose, kyoten::frame::Handoff, std::math::Vec4, std::math::Quat,
          std::math::Mat4 };
 
-export { binderTests };
+export { binderTests, binderFor };
 
 comptime int64 EVERYTHING = 9223372036854775807;
 
@@ -591,6 +591,112 @@ fn void padLockCases(ref Tally t) {
     expectStep(t: t, b: held, step: 0, until: 100 * MS, name: "binder: a pad's hold under way", want: "---");
     held.padLock(player: 1, letGo: true, at: 600 * MS);
     expectStep(t: t, b: held, step: 1, until: 700 * MS, name: "binder: a hold whose time passed before the let-go fires before it lets go", want: "HP-");
+}
+
+// The notices (design/input.md § Decided, 2026-11-26, the sixth part's question 4): `"Lost"` presses for one step when
+// player 1's locked pad disconnects, and `"Unlocked"` when the cursor's lock is let go while the game asks `Locked`, each
+// at its moment; neither for another pad's disconnect, a pad the game let go of, the game's own release, a lock let go
+// while the game asks `Hidden`, nor a lock let go that was not held.
+fn void noticeCases(ref Tally t) {
+    Binder b = binderFor(json: "{ \"faster\": { \"keyboard\": \"ArrowUp\", \"gamepad\": [\"RightShoulder\", \"Lost\"], \"mouse\": \"Unlocked\" } }");
+    hand(b: b, s: pad(slot: 0, control: 5, value: 1.0, at: 110));
+    expectStep(t: t, b: b, step: 0, until: 200, name: "notice: the pad pressed drives player 1, its entry naming `Lost` beside a button", want: "HP-");
+    hand(b: b, s: pad(slot: 0, control: 5, value: 0.0, at: 210));
+    expectStep(t: t, b: b, step: 1, until: 300, name: "notice: and its release", want: "--R");
+    hand(b: b, s: Sample.padDisconnected(slot: 1, at: 310));
+    expectStep(t: t, b: b, step: 2, until: 400, name: "notice: another pad's disconnect presses no `Lost`", want: "---");
+    hand(b: b, s: Sample.padDisconnected(slot: 0, at: 410));
+    expectStep(t: t, b: b, step: 3, until: 500, name: "notice: the locked pad's disconnect presses `Lost` at its moment", want: "HP-");
+    expectStep(t: t, b: b, step: 4, until: 600, name: "notice: for one step", want: "--R");
+
+    b.cursor(player: 1, mode: CursorMode::Locked, at: 600);
+    hand(b: b, s: Sample.cursorLock(locked: true, at: 610));
+    expectStep(t: t, b: b, step: 5, until: 700, name: "notice: the cursor locking presses nothing", want: "---");
+    hand(b: b, s: Sample.cursorLock(locked: false, at: 710));
+    expectStep(t: t, b: b, step: 6, until: 800, name: "notice: a lock let go while the game asks Locked presses `Unlocked` at its moment", want: "HP-");
+    expectStep(t: t, b: b, step: 7, until: 900, name: "notice: for one step, too", want: "--R");
+    hand(b: b, s: Sample.cursorLock(locked: false, at: 910));
+    expectStep(t: t, b: b, step: 8, until: 1000, name: "notice: a lock let go that was not held presses nothing", want: "---");
+    hand(b: b, s: Sample.cursorLock(locked: true, at: 1010));
+    b.cursor(player: 1, mode: CursorMode::Normal, at: 1050);
+    hand(b: b, s: Sample.cursorLock(locked: false, at: 1050));
+    expectStep(t: t, b: b, step: 9, until: 1100, name: "notice: the game's own release presses nothing, its mode from its moment on", want: "---");
+    b.cursor(player: 1, mode: CursorMode::Hidden, at: 1100);
+    hand(b: b, s: Sample.cursorLock(locked: true, at: 1110));
+    hand(b: b, s: Sample.cursorLock(locked: false, at: 1120));
+    expectStep(t: t, b: b, step: 10, until: 1200, name: "notice: nor a lock let go while the game asks Hidden", want: "---");
+    b.cursor(player: 2, mode: CursorMode::Locked, at: 1200);
+    hand(b: b, s: Sample.cursorLock(locked: true, at: 1210));
+    hand(b: b, s: Sample.cursorLock(locked: false, at: 1220));
+    expectStep(t: t, b: b, step: 11, until: 1300, name: "notice: another player's Locked is not player 1's", want: "---");
+
+    // A lock taken away before the game's release, its sample handed off after the game asked Normal: still a notice.
+    Binder late = binderFor(json: "{ \"faster\": { \"mouse\": \"Unlocked\" } }");
+    late.cursor(player: 1, mode: CursorMode::Locked, at: 100);
+    hand(b: late, s: Sample.cursorLock(locked: true, at: 110));
+    late.cursor(player: 1, mode: CursorMode::Normal, at: 300);
+    hand(b: late, s: Sample.cursorLock(locked: false, at: 290));
+    expectStep(t: t, b: late, step: 0, until: 400, name: "notice: a lock taken away before the game's release is judged by the mode as of then", want: "HP-");
+
+    // `Lost` and `Unlocked` on two actions, each pressing its own; neither moving the scheme, `Unlocked` while a pad
+    // drives player 1; and `Lost` pressing anew the action its pad's button held when it disconnected.
+    Binder scheme = binderFor(json: "{ \"faster\": { \"gamepad\": [\"RightShoulder\", \"Lost\"] }, \"jump\": { \"mouse\": \"Unlocked\" } }");
+    scheme.cursor(player: 1, mode: CursorMode::Locked, at: 50);
+    hand(b: scheme, s: Sample.cursorLock(locked: true, at: 60));
+    hand(b: scheme, s: pad(slot: 0, control: 5, value: 1.0, at: 110));
+    hand(b: scheme, s: Sample.cursorLock(locked: false, at: 120));
+    Digital jumped = scheme.handoff(index: 0, until: 200).digital(player: 1, action: 1);
+    string pressed = spelled(d: jumped);
+    t.verdict(name: "notice: `Unlocked` while a pad drives player 1", why: pressed == "HP-" ? "" : "got ${pressed}");
+    string kept = schemeAt(b: scheme, step: 1, until: 300);
+    t.verdict(name: "notice: moves no scheme", why: kept == "Gamepad" ? "" : "scheme ${kept}");
+    hand(b: scheme, s: Sample.padDisconnected(slot: 0, at: 310));
+    string fasterLost = "";
+    string jumpLost = "";
+    borrow scheme.handoff(index: 2, until: 400) as lost {
+        fasterLost = spelled(d: lost.digital(player: 1, action: 0));
+        jumpLost = spelled(d: lost.digital(player: 1, action: 1));
+    }
+    t.verdict(name: "notice: `Lost` presses anew the action its pad's button held, and only the action bound to it",
+              why: fasterLost == "HP-" && jumpLost == "---" ? "" : "faster ${fasterLost}, jump ${jumpLost}");
+
+    // The game letting go of the pad lock is no loss: the pad let go of, then disconnected, presses no `Lost`.
+    Binder letGo = binderFor(json: "{ \"faster\": { \"gamepad\": [\"RightShoulder\", \"Lost\"] } }");
+    hand(b: letGo, s: pad(slot: 0, control: 5, value: 1.0, at: 110));
+    hand(b: letGo, s: pad(slot: 0, control: 5, value: 0.0, at: 120));
+    expectStep(t: t, b: letGo, step: 0, until: 200, name: "notice: a pad pressed and let go", want: "HP-");
+    expectStep(t: t, b: letGo, step: 1, until: 300, name: "notice: released", want: "--R");
+    letGo.padLock(player: 1, letGo: true, at: 300);
+    hand(b: letGo, s: Sample.padDisconnected(slot: 0, at: 310));
+    expectStep(t: t, b: letGo, step: 2, until: 400, name: "notice: the game's let-go, and that pad's disconnect after it, press no `Lost`", want: "---");
+}
+
+// Where a notice cannot press, refused at load, naming why.
+fn void noticeRefusalCases(ref Tally t) {
+    expectRefused(t: t, name: "notice: `Lost` on the keyboard is refused", json: "{ \"faster\": { \"keyboard\": \"Lost\" } }",
+                  says: "the keyboard binding of `faster` names `Lost`, the player's locked pad disconnecting, which a gamepad entry names");
+    expectRefused(t: t, name: "notice: `Lost` on the mouse is refused", json: "{ \"faster\": { \"mouse\": [\"Left\", \"Lost\"] } }",
+                  says: "the mouse binding of `faster` names `Lost`, the player's locked pad disconnecting, which a gamepad entry names");
+    expectRefused(t: t, name: "notice: `Unlocked` on a pad is refused", json: "{ \"faster\": { \"gamepad\": \"Unlocked\" } }",
+                  says: "the gamepad binding of `faster` names `Unlocked`, the cursor's lock taken away, which a mouse entry names");
+    expectRefused(t: t, name: "notice: `Unlocked` on the keyboard is refused", json: "{ \"faster\": { \"keyboard\": \"Unlocked\" } }",
+                  says: "the keyboard binding of `faster` names `Unlocked`, the cursor's lock taken away, which a mouse entry names");
+    expectRefused(t: t, name: "notice: an entry naming one with a gesture is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": [\"Start\", \"Lost\"], \"gestures\": [ { \"hold\": true } ] } } }",
+                  says: "the gamepad binding of `faster` names `Lost`, a notice, a press for one step, which takes no filter, threshold or gesture: bind it on an action of its own");
+    expectRefused(t: t, name: "notice: an entry naming one with a threshold is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": [\"RightTrigger\", \"Lost\"], \"filters\": [ { \"threshold\": 0.6 } ] } } }",
+                  says: "names `Lost`, a notice, a press for one step, which takes no filter, threshold or gesture");
+    expectRefused(t: t, name: "notice: a chord holding one is refused",
+                  json: "{ \"faster\": { \"gamepad\": { \"control\": \"Start\", \"gestures\": [ { \"chord\": \"Lost\" } ] } } }",
+                  says: "names `Lost` to hold, a notice, which presses for one step and holds nothing: bind it on an action of its own");
+    expectRefused(t: t, name: "notice: a sequence's step naming one is refused",
+                  json: "{ \"faster\": { \"mouse\": { \"control\": \"Left\", \"gestures\": [ { \"sequence\": { \"steps\": [\"Unlocked\"], \"within\": 0.3 } } ] } } }",
+                  says: "names `Unlocked` to hold, a notice, which presses for one step and holds nothing");
+    expectRefused(t: t, name: "notice: one on a value action is refused", json: "{ \"throttle\": { \"gamepad\": \"Lost\" } }",
+                  says: "`Lost` is a notice, a press for one step, which only a `Digital` action reads");
+    string fine = refusalOf(json: "{ \"faster\": { \"keyboard\": \"Escape\", \"gamepad\": [\"Start\", \"Lost\"], \"mouse\": \"Unlocked\" } }");
+    t.verdict(name: "notice: `pause`'s shape, a key, a button and `Lost`, and `Unlocked`, is accepted", why: fine.isEmpty() ? "" : fine);
 }
 
 fn void playerCases(ref Tally t) {
@@ -2370,6 +2476,8 @@ fn void binderTests(ref Tally t) {
     edgeCases(t: t);
     padCases(t: t);
     padLockCases(t: t);
+    noticeCases(t: t);
+    noticeRefusalCases(t: t);
     playerCases(t: t);
     cursorCases(t: t);
     cursorRefusalCases(t: t);

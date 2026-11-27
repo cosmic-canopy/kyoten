@@ -23,6 +23,8 @@
 //   Each view the world drew otherwise, or for the first time, goes to the input source at the frame's timestamp too,
 //   so the cursor's samples from then on are turned through the view on screen (the sixth part's question 1). Each
 //   player's cursor mode that changed goes to the platform, which sets the window's (the sixth part's question 2), and
+//   to the input source at the frame's timestamp, which tells the game's own release from a lock taken away (its
+//   question 4), and
 //   each player's let-go of their pad lock that changed to the input source at the frame's timestamp (its question 3).
 
 import { core::println, std::app::App, std::app::Lifecycle, std::app::Pace, std::app::run, std::memory::Owned,
@@ -144,7 +146,8 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
     public const fn int64 stepsSettled() { return this.clock.settled(); }
 
     // What the world asks of its devices after this frame: each player's text entry that changed, to the input source
-    // at `now` and to the platform; each player's cursor mode that changed, to the platform; each player's let-go of
+    // at `now` and to the platform; each player's cursor mode that changed, to the platform and to the input source at
+    // `now`; each player's let-go of
     // their pad lock that changed, to the input source at `now`; and each view drawn otherwise, or for the first time, to
     // the input source.
     fn void handOn(int64 now) {
@@ -158,7 +161,10 @@ type resource Play<W: World, P: Platform, S: InputSource> implements App {
                 this.platform.textEntry(player: p, on: on);
             }
             CursorMode mode = this.wanted.cursorMode(player: p);
-            if (mode != this.told.cursorMode(player: p)) { this.platform.cursor(player: p, mode: mode); }
+            if (mode != this.told.cursorMode(player: p)) {
+                this.platform.cursor(player: p, mode: mode);
+                this.input.cursor(player: p, mode: mode, at: now);
+            }
             bool letGo = this.wanted.letsGo(player: p);
             if (letGo != this.told.letsGo(player: p)) { this.input.padLock(player: p, letGo: letGo, at: now); }
             p = p + 1;
