@@ -1060,6 +1060,17 @@ forty-fourth). Where the work is:**
   - "the draws cost more than the uploads" was written before reading the gather, which copies two WGSL strings a mesh
     every render: the 12.4 ms is the per-mesh work, split unmeasured;
   - the heredoc trap again: a shell line continuation in `tools/test.sh` became `\n`, caught by printing the function.
+- **The owner asked whether the fix's memory keeps growing:** it does not. Over 100,000 frames Vulkan grew 5 MB in the
+  first 1,000, the same warm-up a run with no check shows, then stayed at 252 MB; Direct3D 12 stayed at 261 MB from
+  the first sample. No command buffer was kept on either (`.scratch/s54/gpu19/long-runs.log`).
+- **Readied at the owner's word** ("yes push and get ready for the next session"), with nothing incoming on any origin
+  and kama unchanged since the start. kyoten, kama-gpu and kama-graphics were pushed.
+  - **Still the owner's:** the comment for wgpu-native #638, `.scratch/s54/gpu19/wgpu-native-638-comment.md`, to post.
+  - **What the watcher found:** read `.scratch/s54/cubeloss/watch.log` first, if it ran a round with nobody
+    connected. That tells GPU-18 whether the cube fails only then.
+  - **Next session:** `@kama/gpu`'s GPU-5, compute. Its questions are laid out from WebGPU's description and asked at
+    the start; the scatter's case is its first. Beside it, GFX-21's parts that do not wait on the scatter, and step
+    9's part 3 here, the extract.
 
 **The fifty-third session** (2026-11-27). The Mac had pushed one `@kama/audio` docs commit, fast-forwarded. kama had
 not moved since the pin, so no bump.
