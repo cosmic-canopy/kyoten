@@ -2508,3 +2508,68 @@ the chat that day.
     render time, as frame-phases' rule of 2026-11-04 has it ("Output asks for the component at its render time"). The
     render time is one base step behind the newest settled step plus the fraction, so a 60 Hz writer blends at the
     clock's fraction and a 30 Hz one over its two steps.
+- **2026-11-27, the owner: `@kama/graphics`' GFX-21, its four questions, each (A)** (the fifty-fourth session, asked in
+  full in the chat once measured, research/graphics.md § 11). Questions 1 and 4 were "A (Recommended)" at once. On 2 and
+  3 the owner asked back: "Is option 1 the most performant production answer? is that what the Unity and Unreal and
+  Bevy do?" and "is A the production answer? can you check if that is what the peers do?" Each was checked at the
+  peers' source, and question 2 was asked again in its production form, since the (A) first offered staged the
+  peers' answer behind a stopgap. Then each was "A (Recommended)".
+  1. **An instance is an owned handle the core hands back,** a resource the engine keeps (kyoten's platform, by entity),
+     its slot freed when it is dropped. kama's ownership makes a leaked or doubly freed instance impossible, and a
+     handle used on another core is refused. The scene graph's own meshes hold their records this way today
+     (`scene.kama`'s internal `Instance`). Godot's RID and Unity's BatchID are the same table, each with an explicit free.
+     Set aside: (B) an id with a generation, freed by `release(id:)`, which leaks when the release is forgotten;
+     (C) the engine's own key, looked up inside the core at every write.
+  2. **A frame's changed records reach the GPU as the peers' compute scatter,** so `@kama/gpu`'s compute (GPU-5) is
+     brought forward, before GFX-21's upload is built.
+     - **How it works:** the changed records and their slots go up in one write, and a compute pass places each in the
+       instance buffer.
+     - **The fallback:** above a share of records changed, the whole buffer goes up in one write instead, as Bevy's
+       `SPARSE_UPLOAD_THRESHOLD` of 0.15 does ("obtained experimentally"). The share's default is measured here.
+     - **Checked at source:**
+       - Bevy scatters below its share (`sparse_buffer_vec.rs:97-103`);
+       - Unity's Entities Graphics 1.5.0 always scatters: its changed data is written into pooled upload buffers
+         (`SparseUploader.cs:723`, `LockBufferForWrite`) and copied by a compute kernel (`:755`);
+       - Unreal's scatter-upload classes (`FScatterUploadBuffer`, `FRDGScatterUploadBuffer`, `UnifiedBuffer.h`) are
+         named in Epic's API reference, unchecked beyond their names.
+     - **Measured here** (10,000 records of 128 bytes): one `writeBuffer` a record costs about 1.8 µs each, 4.0 ms at
+       15 % and 27.5 ms with all; the whole buffer 0.2 ms whatever changed. The scatter's gain grows with the scene,
+       at 10⁵ and beyond.
+     - **The rest of GFX-21 does not wait for it,** since the upload is the core's own.
+     - **Set aside:** (B) runs and the whole buffer now, the scatter later, whose first half is a stopgap; (C) always
+       the whole buffer, whose cost grows with the scene, not the change; and one write a record, as today.
+  3. **Views are data.** The engine makes views, each a camera in its cell, a projection, a target, a rectangle of it
+     and an order, a later view drawn over an earlier one as Bevy's `order` has it. Every view of a frame is drawn
+     together, each with its own frame block, and each hands back its projection and the size it drew, which kyoten's
+     `DrawnView` reads.
+     - **Checked at source:**
+       - Godot: `camera_create`, `viewport_create`, `viewport_attach_camera`, and `viewport_attach_to_screen` with a
+         rectangle (`rendering_server.h:537-583` at `7c97c29`); `RendererViewport::draw_viewports` draws every active
+         viewport in a frame (`renderer_viewport.cpp:795`);
+       - Bevy's `Camera` at main `5c485c4` (`bevy_camera/src/camera.rs:388-400`): a `viewport` rectangle "within the
+         configured `RenderTarget`", an `order`, and `computed`, "the projection matrix and the render target size";
+       - Unity: a pipeline's `Render(ScriptableRenderContext context, List<Camera> cameras)`, every camera of the frame
+         at once (the script reference).
+     - **From docs only:** Unreal's `FSceneViewFamily`, "a set of views into a scene which only have different view
+       transforms", and `BeginRenderingViewFamilies`.
+     - **Today's shape:** `render(scene:, camera:)` draws one camera a call, each its own walk, upload and submit over
+       one frame block, with no rectangle, handing back only counts.
+     - **Set aside:** (B) one render call a camera, as today.
+  4. **A write that changes nothing marks nothing.** The core compares a written matrix with the one it holds, and
+     marks the record only when it differs. Godot's `RendererSceneCull::instance_set_transform` returns when they are
+     equal ("Must be checked to avoid worst evil", checked at `renderer_scene_cull.cpp:1024-1025`). kyoten's change
+     versions mark every chunk a processor was handed by `ref`, so its list carries what did not move. A compare costs
+     nanoseconds, where an upload costs 1.8 µs or more, and an unmoved instance keeps no false motion. Set aside: (B)
+     every write marking, as Unity's change versions do.
+  - **Settled beside them, for the owner to object to:**
+    - **The record:** the world matrix within its cell, the previous frame's matrix (area 3's question 4, for motion
+      vectors), the normal matrix, the cell (three `int32`s, question 2 of step 9's kyoten half) and flags, a mirrored
+      mesh found at the write rather than each render. That is about 192 bytes, from 112. A write that cuts (kyoten's
+      `Transform.place`) sets the previous matrix to the new one, as Godot's `instance_teleport` does.
+    - **The draw path:** each instance keeps its draw, its pipeline, its material's group and its geometry's buffers,
+      found when its geometry or material changes rather than each render. Today every render copies and compares two
+      WGSL strings a mesh, which at 10⁴ takes 12.4 ms with nothing moved. Drawing a geometry and material in common as
+      one instanced draw stays in GFX-2, with culling and sorting, unseen by the surface.
+    - **The scene graph becomes a client of the same surface,** so `examples/cube` and a program's scene draw as before.
+    - **Lights and the environment are data beside the instances,** as views are.
+    - **The surface lives in `@kama/graphics`' public module and names no engine.**

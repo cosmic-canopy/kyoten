@@ -846,17 +846,24 @@ forty-fourth). Where the work is:**
       the tool reading the engine's content prefabs, `Environment`'s engine record, and two cameras on one player's view
       refused at load.
 
-   **Beside them, GFX-21's design pass:** the peers' render surfaces are read from source (research/graphics.md § 11,
-   the claims the questions rest on checked by curl), and its numbers are measured, below. Next its questions are
-   laid out from the code and asked in full:
-   - the instance handle;
-   - the record, with question 2's cell;
-   - the upload;
-   - the draws batched, which the scene graph's 12.4 ms at 10⁴ puts beside the upload;
-   - cameras and views as data;
-   - comparing values on write.
+   **Beside them, GFX-21's design pass is done:** the peers' render surfaces were read from source (research/graphics.md
+   § 11, the claims the questions rest on checked by curl), its numbers measured (below), and its four questions decided
+   at the fifty-fourth session's end, each (A) ([design/rendering.md](design/rendering.md) § Decided, 2026-11-27):
+   1. an instance is an owned handle, freed when dropped;
+   2. a frame's changed records go up as the peers' compute scatter, with the whole buffer above a measured share, so
+      `@kama/gpu`'s compute (GPU-5) comes first, moved into its NOW;
+   3. views are data, each with a rectangle and an order, all drawn in one frame, each handing back its projection
+      and drawn size for `DrawnView`;
+   4. a write that changes nothing marks nothing.
 
-   The platform's drawing joins them once GFX-21 is built.
+   The owner asked back on 2 and 3, whether (A) was the production answer and what the peers do. The peers were
+   checked at source: Bevy and Unity's Entities Graphics scatter by compute, Godot, Bevy and Unity draw every camera of
+   a frame together. Question 2 was then asked again in its production form. Settled beside them, and reported: the
+   record at about 192 bytes, each instance keeping its draw, the scene graph on the same surface, and batching staying
+   in GFX-2.
+
+   **The order from here:** `@kama/gpu`'s GPU-5 and `@kama/graphics`' GFX-21, the scatter waiting on GPU-5 and the
+   rest not, beside step 9's part 3 here. The platform's drawing joins them once GFX-21 is built.
 
    **Its first native run found a blocker in `@kama/gpu`** (the fifty-third session, `.scratch/s53/gfx21/`, the AMD
    Radeon 880M on Vulkan):
@@ -1032,7 +1039,11 @@ forty-fourth). Where the work is:**
   The owner then said "It sounds like we can take your recommendations".
 - **Built:** GPU-19 (kama-gpu `4de4373`), item 3. 6 of 8 mutations caught, the other two not reachable or equivalent.
 - **Measured for GFX-21 with kama quiet** (item 3): the upload again on the fixed package, and the scene graph's path
-  at 10,000 meshes. Its next step is the questions.
+  at 10,000 meshes.
+- **GFX-21's four questions, asked at the end, each (A)** (item 3; rendering.md § Decided). Questions 1 and 4 were
+  answered at once. On 2 and 3 the owner asked whether (A) was the most performant production answer and what Unity,
+  Unreal and Bevy do. The peers were checked at source, and question 2 was asked again, since its first (A) staged
+  the peers' compute scatter behind a stopgap. GPU-5 moved into `@kama/gpu`'s NOW for it.
 - **The owner asked why `@kama/gpu`'s triangle draws where `@kama/graphics`' cube lost its device.** Both ask for the
   same GPU the same way, but the cube does far more before its first frame.
   - **Not RustDesk's virtual display, as first said:** the cube build that failed at 09:53 drew at 14:43 with a
